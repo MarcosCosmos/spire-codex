@@ -73,9 +73,9 @@ def _encode_cursor(submitted_at, run_hash: str) -> str:
     submitted_at is normally a datetime (or None). Legacy runs imported from the
     old SQLite store can still hold it as a string, which has no isoformat() and
     used to crash here, 500-ing the whole page. Coerce anything non-datetime to
-    text so a page boundary never raises. tools/backfill_run_submitted_at.py
-    converts those strings to real dates so the keyset walk covers the whole
-    corpus; until it runs, such a boundary just reads as its raw timestamp."""
+    text so a page boundary never raises. A one-time backfill converted those
+    strings to real dates so the keyset walk covers the whole corpus; any
+    straggler boundary just reads as its raw timestamp."""
     if submitted_at is None:
         sa = ""
     elif hasattr(submitted_at, "isoformat"):
