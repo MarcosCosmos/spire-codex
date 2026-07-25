@@ -87,7 +87,8 @@ jobs:
         # here — the lru_cache on news loaders is gone, so the running
         # container picks up the new files on the next request.
         if: steps.commit.outputs.committed == 'true'
-        uses: appleboy/ssh-action@v1
+        # SHA-pinned: this third-party action receives the prod SSH key.
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
