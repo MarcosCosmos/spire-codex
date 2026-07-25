@@ -101,6 +101,8 @@ class Card(BaseModel):
     # and a handful of utility cards. The C# default is `true`, so we only
     # surface the field when it's explicitly `false` to keep the payload tight.
     can_be_generated_in_combat: bool | None = None
+    # Present (true) on the 21 co-op-only cards; absent otherwise.
+    multiplayer_only: bool | None = None
     compendium_order: int = 0
     # Which monsters generate this card in combat (parsed from the game code —
     # see card_parser.build_card_sources). Absent on cards with no source.
@@ -157,6 +159,7 @@ class Character(BaseModel):
     quotes: dict[str, str] | None = None
     dialogues: list[CharacterDialogue] | None = None
     image_url: str | None = None
+    animation_url: str | None = None
 
 
 class MerchantPrice(BaseModel):
@@ -286,6 +289,7 @@ class Potion(BaseModel):
 class Act(BaseModel):
     id: str
     name: str
+    index: int | None = None
     num_rooms: int | None = None
     bosses: list[str]
     ancients: list[str]
@@ -468,6 +472,7 @@ class Epoch(BaseModel):
     unlocks_relics: list[str] | None = None
     unlocks_potions: list[str] | None = None
     expands_timeline: list[str] | None = None
+    image_url: str | None = None
 
 
 class Story(BaseModel):
