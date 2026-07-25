@@ -15,7 +15,8 @@ name: spire-codex-monitoring
 
 services:
   node-exporter:
-    image: prom/node-exporter:latest
+    # Pinned: an unattended :latest pull can silently break metrics shipping.
+    image: prom/node-exporter:v1.12.1
     container_name: node-exporter
     restart: unless-stopped
     network_mode: host
@@ -44,7 +45,8 @@ services:
   #   CF_ACCESS_CLIENT_ID=<id>.access
   #   CF_ACCESS_CLIENT_SECRET=<secret>
   alloy:
-    image: grafana/alloy:latest
+    # Pinned: an unattended :latest pull can silently break log shipping.
+    image: grafana/alloy:v1.18.0
     container_name: alloy
     restart: unless-stopped
     command: run --server.http.listen-addr=0.0.0.0:12345 /etc/alloy/config.alloy
