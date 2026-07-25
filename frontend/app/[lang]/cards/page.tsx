@@ -17,7 +17,7 @@ import {
 import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
 import { t } from "@/lib/ui-translations";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 const API = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 

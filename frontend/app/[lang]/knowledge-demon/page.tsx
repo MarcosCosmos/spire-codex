@@ -9,8 +9,6 @@ import {
 } from "@/lib/languages";
 import { buildLanguageAlternates, DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
 
-export const dynamic = "force-dynamic";
-
 const CATEGORY = "knowledge-demon";
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {

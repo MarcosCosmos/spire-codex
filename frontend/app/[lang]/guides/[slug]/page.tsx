@@ -1,7 +1,5 @@
 import { permanentRedirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-
 type Props = { params: Promise<{ lang: string; slug: string }> };
 
 // Guides are English-language content; the localized wrappers served the

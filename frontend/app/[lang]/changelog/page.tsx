@@ -11,8 +11,6 @@ import {
 import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
 import { t } from "@/lib/ui-translations";
 
-export const dynamic = "force-dynamic";
-
 const CATEGORY = "changelog";
 const CATEGORY_LABEL = "Changelog";
 

@@ -18,8 +18,6 @@ import "../../card-revamp.css";
 import "../../meta-extra.css";
 import "../../relic-potion-extra.css";
 
-export const dynamic = "force-dynamic";
-
 const API = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 const CATEGORY = "merchant";
