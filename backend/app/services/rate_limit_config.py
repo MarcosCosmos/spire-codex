@@ -267,15 +267,6 @@ def endpoint_defaults() -> dict[str, str]:
     return dict(_ENDPOINT_DEFAULTS)
 
 
-# Back-compat: the browse cap on its own (a handy helper; the limiter uses
-# tier_limit_value now).
-def default_limit_value(*_args, **_kwargs) -> str:
-    cfg = get_config()
-    if not cfg.get("enabled", True):
-        return _DISABLED_LIMIT
-    return cfg.get("default_limit") or _DEFAULT_LIMIT
-
-
 def _validate_limit(value: str, field: str) -> str:
     from limits import parse
 

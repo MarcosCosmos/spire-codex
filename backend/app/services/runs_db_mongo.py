@@ -1178,31 +1178,6 @@ def _item_stats_pipeline(field: str) -> list[dict]:
     ]
 
 
-def _scalar_item_stats_pipeline(field: str) -> list[dict]:
-    """Like _item_stats_pipeline, but for arrays of scalar strings
-    (relics, potions might be stored either way — keeping flexibility).
-    Currently unused; documents store relics + potions as objects with
-    `.id`, so _item_stats_pipeline covers it."""
-    return [
-        {"$unwind": f"${field}"},
-        {
-            "$group": {
-                "_id": {"run": "$_id", "item": f"${field}"},
-                "win": {"$first": "$win"},
-                "copies": {"$sum": 1},
-            }
-        },
-        {
-            "$group": {
-                "_id": "$_id.item",
-                "count": {"$sum": "$copies"},
-                "total_runs_with": {"$sum": 1},
-                "win_runs": {"$sum": {"$cond": ["$win", 1, 0]}},
-            }
-        },
-    ]
-
-
 @_instrument("get_stats")
 def get_stats(
     character: str | None = None,
@@ -2192,7 +2167,7 @@ def list_runs(
     }
 
 
-@_instrument("leaderboard")
+@_instrument("set_run_hidden")
 def set_run_hidden(run_hash: str, hidden: bool) -> dict:
     """Flag or unflag every doc sharing this run_hash as ineligible. Hidden runs
     stay in the collection but drop out of leaderboards, /charts, the stats, and
@@ -2557,7 +2532,7 @@ def get_user_picks(steam_id: str) -> dict[str, dict]:
     return {"cards": tally(cards), "ancients": tally(ancients)}
 
 
-@_instrument("get_username_for_hash")
+@_instrument("primary_share_hash")
 def primary_share_hash(data: dict) -> str | None:
     """The player-0 share hash recomputed from a submitted run blob.
 
