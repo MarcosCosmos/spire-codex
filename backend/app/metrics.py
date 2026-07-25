@@ -149,18 +149,6 @@ run_export_pages = Counter(
     "Paginated run export page fetches (a bounded ?limit= request)",
 )
 
-# ── Auth ────────────────────────────────────────────────────
-auth_logins = Counter(
-    "spire_codex_auth_logins_total",
-    "User logins",
-    ["provider"],
-)
-auth_signups = Counter(
-    "spire_codex_auth_signups_total",
-    "New account creations",
-    ["provider"],
-)
-
 # ── Compare pages ───────────────────────────────────────────
 compare_views = Counter(
     "spire_codex_compare_views_total",

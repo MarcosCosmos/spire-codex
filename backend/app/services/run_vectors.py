@@ -462,30 +462,6 @@ def load_archetypes() -> dict | None:
         return None
 
 
-def anomalous_runs(limit: int = 30) -> list[dict]:
-    """Runs farthest from every archetype centroid: nothing else looks like them."""
-    import numpy as np
-
-    out: list[dict] = []
-    for ch in _OFFICIAL_CHARACTERS:
-        try:
-            dists = np.load(_VEC_DIR / f"{ch}_dists.npy")
-            with np.load(_VEC_DIR / f"{ch}_meta.npz") as z:
-                hashes = z["hash"]
-        except OSError:
-            continue
-        n = min(len(hashes), len(dists))
-        for i in np.argsort(dists[:n])[::-1][:limit]:
-            out.append(
-                {
-                    "run_hash": hashes[int(i)].decode(),
-                    "distance": round(float(dists[int(i)]), 3),
-                }
-            )
-    out.sort(key=lambda r: -r["distance"])
-    return out[:limit]
-
-
 def _load_labels(character: str):
     import numpy as np
 

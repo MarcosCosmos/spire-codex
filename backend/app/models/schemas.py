@@ -500,25 +500,3 @@ class GuideSummary(BaseModel):
 
 class Guide(GuideSummary):
     content: str
-
-
-class StatsResponse(BaseModel):
-    cards: int
-    characters: int
-    relics: int
-    monsters: int
-    potions: int
-    enchantments: int
-    encounters: int
-    events: int
-    powers: int
-    keywords: int
-    intents: int
-    orbs: int
-    afflictions: int
-    modifiers: int
-    achievements: int
-    epochs: int
-    acts: int
-    ascensions: int
-    images: int

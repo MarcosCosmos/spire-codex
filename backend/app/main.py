@@ -234,28 +234,6 @@ def _warm_run_entity_stats() -> None:
             kick_snapshot_load()
         except Exception:
             pass
-        # One-time field backfills for runs that predate a field
-        # (username_lower normalization, the `bought` shop-purchase list),
-        # off the request path (the runs collection is large). Idempotent
-        # via their $exists guards, so running them on every worker is
-        # safe — all but the first are a bounded no-op.
-        import threading
-
-        def _backfill_run_fields():
-            try:
-                from .services.runs_db_mongo import (
-                    backfill_bought,
-                    backfill_username_lower,
-                )
-
-                backfill_username_lower()
-                backfill_bought()
-            except Exception:
-                pass
-
-        threading.Thread(
-            target=_backfill_run_fields, daemon=True, name="run-field-backfill"
-        ).start()
         return
     import threading
 
