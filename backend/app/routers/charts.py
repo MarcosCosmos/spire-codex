@@ -17,8 +17,7 @@ import re
 import time
 
 from fastapi import APIRouter, HTTPException, Query, Request, Response
-from slowapi import Limiter
-from ..dependencies import client_ip
+from ..dependencies import shared_limiter
 from ..services import rate_limit_config
 
 from ..services import cache as app_cache
@@ -33,7 +32,7 @@ router = APIRouter(prefix="/api/charts", tags=["Charts"])
 # client_ip, not slowapi's get_remote_address: behind Cloudflare -> nginx
 # the latter reads the proxy address, so every visitor would share ONE
 # bucket and these limits would trip fleet-wide (see dependencies.client_ip).
-limiter = Limiter(key_func=client_ip, **rate_limit_config.storage_kwargs())
+limiter = shared_limiter
 logger = logging.getLogger(__name__)
 
 # On-demand entries. Chart data only changes when the snapshot does (one

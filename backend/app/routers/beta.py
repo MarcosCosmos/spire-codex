@@ -6,8 +6,7 @@ VersionMiddleware). What lives here is the metadata about the beta branch.
 """
 
 from fastapi import APIRouter, Request
-from slowapi import Limiter
-from ..dependencies import client_ip
+from ..dependencies import shared_limiter
 from ..services import rate_limit_config
 
 from ..services.beta_diff import get_beta_diff
@@ -17,7 +16,7 @@ router = APIRouter(prefix="/api/beta", tags=["Beta"])
 # client_ip, not slowapi's get_remote_address: behind Cloudflare -> nginx
 # the latter reads the proxy address, so every visitor would share ONE
 # bucket and these limits would trip fleet-wide (see dependencies.client_ip).
-limiter = Limiter(key_func=client_ip, **rate_limit_config.storage_kwargs())
+limiter = shared_limiter
 
 
 @router.get("/diff")

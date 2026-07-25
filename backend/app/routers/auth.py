@@ -7,9 +7,8 @@ import os
 
 from fastapi import APIRouter, HTTPException, Request, UploadFile, File
 from fastapi.responses import JSONResponse
-from slowapi import Limiter
 
-from ..dependencies import client_ip
+from ..dependencies import shared_limiter
 from ..services import rate_limit_config
 from ..services.auth_jwt import (
     get_current_user,
@@ -19,7 +18,7 @@ from ..services.auth_jwt import (
 )
 
 router = APIRouter(prefix="/api/auth", tags=["Auth"])
-limiter = Limiter(key_func=client_ip, **rate_limit_config.storage_kwargs())
+limiter = shared_limiter
 
 _MAX_UPLOAD_SIZE = 512 * 1024  # 512 KB per file
 _MAX_UPLOAD_FILES = 100
