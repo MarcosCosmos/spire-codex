@@ -1,12 +1,15 @@
 name: Runs DB backup
 
-# Daily SQLite snapshot of /var/www/spire-codex/data/runs.db onto the
-# same prod host under ~/backups/spire-codex-runs/. No sudo — the
-# SSH deploy user already owns its home dir, so permissions are
-# straightforward. Keeps the last 30 days; older snapshots are
-# pruned in the same step. Still single-host risk (the note in the
-# PR that added this is load-bearing) — swap to S3/R2 later if the
-# data becomes irreplaceable.
+# Daily mongodump of the live runs store onto the prod host under
+# ~/backups/spire-codex-mongo/. The old SQLite snapshot this replaces
+# targeted the frozen legacy runs.db; Mongo has been the source of
+# truth since the migration, so this is the backup that matters.
+#
+# The dump runs through the official mongo image (the host has no
+# mongo tools installed), reading MONGO_URL from the box's .env, and
+# is verified with a dry-run restore before it counts. Keeps 14 daily
+# archives. Still single-host risk — ship to R2 later if the corpus
+# becomes irreplaceable.
 
 on:
   workflow_dispatch: {}
@@ -21,49 +24,58 @@ concurrency:
 
 jobs:
   backup:
-    name: Snapshot runs.db on prod
+    name: mongodump on prod
     runs-on: self-hosted
     steps:
-      - name: SSH — snapshot + rotate
-        uses: appleboy/ssh-action@v1
+      - name: SSH — dump + verify + rotate
+        # SHA-pinned: this third-party action receives the prod SSH key.
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          # A full dump can take a while as the corpus grows; don't let the
+          # action's 10m default kill it mid-archive.
+          command_timeout: 60m
           script: |
             set -euo pipefail
-            BACKUP_DIR="$HOME/backups/spire-codex-runs"
-            SRC="/var/www/spire-codex/data/runs.db"
+            BACKUP_DIR="$HOME/backups/spire-codex-mongo"
             STAMP=$(date -u +%Y-%m-%dT%H-%M-%SZ)
-            TMP=$(mktemp "$HOME/runs.db.XXXXXX")
-            DEST="$BACKUP_DIR/runs-${STAMP}.db.gz"
+            DEST="$BACKUP_DIR/mongo-${STAMP}.archive.gz"
 
             mkdir -p "$BACKUP_DIR"
 
-            if [ ! -s "$SRC" ]; then
-              echo "ERROR: source DB missing or empty at $SRC" >&2
+            MONGO_URL=$(grep -E '^MONGO_URL=' /var/www/spire-codex/.env | head -1 | cut -d= -f2-)
+            if [ -z "$MONGO_URL" ]; then
+              echo "ERROR: MONGO_URL not found in /var/www/spire-codex/.env" >&2
               exit 1
             fi
 
-            # `.backup` is SQLite's online-safe copy — runs without
-            # locking the live DB even if submissions are in flight.
-            sqlite3 "$SRC" ".backup $TMP"
+            TMP=$(mktemp "$BACKUP_DIR/.mongo.XXXXXX")
+            trap 'rm -f "$TMP"' EXIT
 
-            # Verify the snapshot before we ship it + retain it.
-            sqlite3 "$TMP" "PRAGMA integrity_check;" \
-              | tee /tmp/runs-integrity.log \
-              | grep -q '^ok$' \
-              || { echo "integrity check failed" >&2; cat /tmp/runs-integrity.log >&2; rm -f "$TMP"; exit 1; }
+            # --network host so localhost and public-IP URIs both work.
+            docker run --rm --network host mongo:7.0 \
+              mongodump --uri="$MONGO_URL" --archive --gzip --quiet > "$TMP"
 
-            gzip -9 "$TMP"
-            mv "${TMP}.gz" "$DEST"
+            if [ ! -s "$TMP" ]; then
+              echo "ERROR: mongodump produced an empty archive" >&2
+              exit 1
+            fi
 
+            # Verify the archive actually restores before retaining it.
+            docker run --rm -i --network none mongo:7.0 \
+              mongorestore --archive --gzip --dryRun --quiet < "$TMP" \
+              || { echo "ERROR: archive failed dry-run restore" >&2; exit 1; }
+
+            mv "$TMP" "$DEST"
+            trap - EXIT
             echo "wrote $DEST ($(du -h "$DEST" | cut -f1))"
 
-            # Retention — keep last 30 daily snapshots. mtime-based so a
+            # Retention — keep the last 14 daily archives. mtime-based so a
             # run that accidentally happens twice in a day doesn't double
             # up the count.
-            find "$BACKUP_DIR" -maxdepth 1 -name 'runs-*.db.gz' -mtime +30 -print -delete
+            find "$BACKUP_DIR" -maxdepth 1 -name 'mongo-*.archive.gz' -mtime +14 -print -delete
 
             echo "retained:"
             ls -1h "$BACKUP_DIR" | tail -10
