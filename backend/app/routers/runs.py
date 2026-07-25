@@ -58,7 +58,7 @@ _STAT_FILTER_TO_BRACKET = {
 
 
 @lru_cache(maxsize=256)
-def _load_run_blob(run_hash: str) -> str | None:
+def _load_run_blob_cached(run_hash: str) -> str:
     """Read a run JSON file once and serve from memory thereafter.
 
     Run files are immutable once submitted, so a cache is safe — the only
@@ -67,7 +67,11 @@ def _load_run_blob(run_hash: str) -> str | None:
     `run_hash` (the next request hits the file directly). Returning the
     raw text keeps FastAPI from re-serializing on every request, which
     matters when a scraper enumerates hashes and turns the worker into a
-    json.dumps loop. `None` means file missing.
+    json.dumps loop.
+
+    Raises FileNotFoundError on a miss so lru_cache never stores it: a
+    cached None used to serve stale 404s for a hash requested moments
+    before its run finished submitting, until eviction or an admin action.
     """
     run_file = _data_dir / "runs" / f"{run_hash}.json"
     if run_file.exists():
@@ -79,7 +83,17 @@ def _load_run_blob(run_hash: str) -> str | None:
         blob = get_run_blob(run_hash)
         if blob is not None:
             return json.dumps(blob, ensure_ascii=False)
-    return None
+    raise FileNotFoundError(run_hash)
+
+
+def _load_run_blob(run_hash: str) -> str | None:
+    try:
+        return _load_run_blob_cached(run_hash)
+    except FileNotFoundError:
+        return None
+
+
+_load_run_blob.cache_clear = _load_run_blob_cached.cache_clear  # type: ignore[attr-defined]
 
 
 @router.post("", tags=["Runs"])
