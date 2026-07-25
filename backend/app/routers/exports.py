@@ -106,6 +106,7 @@ def _build_match(start, end, cursor) -> dict:
     clauses: list[dict] = [
         {"character": {"$in": list(OFFICIAL_CHARACTERS)}},
         {"ascension": {"$gte": 0, "$lte": 10}},
+        {"hidden": {"$ne": True}},
     ]
 
     range_q: dict = {}

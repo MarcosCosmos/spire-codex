@@ -2382,19 +2382,21 @@ def _leaderboard_live(
 
 @_instrument("get_run_rank")
 def get_run_rank(run_hash: str, category: str = "fastest") -> dict:
-    """Rank of a single winning run within its character's leaderboard."""
+    """Rank of a single winning run within its character's leaderboard.
+    Hidden runs neither rank nor count as ahead, matching /leaderboard."""
     coll = _get_collection()
     row = coll.find_one(
         {"_id": run_hash},
-        {"win": 1, "character": 1, "run_time": 1, "ascension": 1},
+        {"win": 1, "character": 1, "run_time": 1, "ascension": 1, "hidden": 1},
     )
-    if not row or not row.get("win"):
+    if not row or not row.get("win") or row.get("hidden"):
         return {"rank": None}
 
     if category == "highest_ascension":
         ahead = coll.count_documents(
             {
                 "win": {"$in": [True, 1]},
+                "hidden": {"$ne": True},
                 "character": row["character"],
                 "$or": [
                     {"ascension": {"$gt": row.get("ascension", 0)}},
@@ -2409,6 +2411,7 @@ def get_run_rank(run_hash: str, category: str = "fastest") -> dict:
         ahead = coll.count_documents(
             {
                 "win": {"$in": [True, 1]},
+                "hidden": {"$ne": True},
                 "character": row["character"],
                 "run_time": {"$lt": row.get("run_time", 0)},
             }
@@ -2427,7 +2430,7 @@ def seed_rank_for(steam_id: str | None, seed: str) -> dict:
     winning run in that pool.
     """
     coll = _get_collection()
-    base = {"seed": seed, "was_abandoned": {"$ne": True}}
+    base = {"seed": seed, "was_abandoned": {"$ne": True}, "hidden": {"$ne": True}}
     seed_total = coll.count_documents(base)
     seed_wins = coll.count_documents({**base, "win": {"$in": [True, 1]}})
 
@@ -2436,7 +2439,12 @@ def seed_rank_for(steam_id: str | None, seed: str) -> dict:
     percentile = None
     if steam_id:
         mine = coll.find_one(
-            {"seed": seed, "win": {"$in": [True, 1]}, "steam_id": steam_id},
+            {
+                "seed": seed,
+                "win": {"$in": [True, 1]},
+                "hidden": {"$ne": True},
+                "steam_id": steam_id,
+            },
             {"run_time": 1},
             sort=[("run_time", 1)],
         )
@@ -2446,6 +2454,7 @@ def seed_rank_for(steam_id: str | None, seed: str) -> dict:
                     {
                         "seed": seed,
                         "win": {"$in": [True, 1]},
+                        "hidden": {"$ne": True},
                         "run_time": {"$lt": mine.get("run_time", 0)},
                     }
                 )
@@ -2453,16 +2462,19 @@ def seed_rank_for(steam_id: str | None, seed: str) -> dict:
             )
 
         best = coll.find_one(
-            {"win": {"$in": [True, 1]}, "steam_id": steam_id},
+            {"win": {"$in": [True, 1]}, "hidden": {"$ne": True}, "steam_id": steam_id},
             {"run_time": 1},
             sort=[("run_time", 1)],
         )
-        global_total = coll.count_documents({"win": {"$in": [True, 1]}})
+        global_total = coll.count_documents(
+            {"win": {"$in": [True, 1]}, "hidden": {"$ne": True}}
+        )
         if best and global_total:
             global_rank = (
                 coll.count_documents(
                     {
                         "win": {"$in": [True, 1]},
+                        "hidden": {"$ne": True},
                         "run_time": {"$lt": best.get("run_time", 0)},
                     }
                 )
@@ -2470,7 +2482,9 @@ def seed_rank_for(steam_id: str | None, seed: str) -> dict:
             )
             percentile = round(global_rank * 100.0 / global_total, 1)
     else:
-        global_total = coll.count_documents({"win": {"$in": [True, 1]}})
+        global_total = coll.count_documents(
+            {"win": {"$in": [True, 1]}, "hidden": {"$ne": True}}
+        )
 
     return {
         "seed": seed,
@@ -2656,12 +2670,12 @@ def get_run_rank_scoped(
     coll = _get_collection()
     row = coll.find_one(
         {"_id": run_hash},
-        {"win": 1, "character": 1, "run_time": 1, "ascension": 1},
+        {"win": 1, "character": 1, "run_time": 1, "ascension": 1, "hidden": 1},
     )
-    if not row or not row.get("win"):
+    if not row or not row.get("win") or row.get("hidden"):
         return {"rank": None, "total": 0}
 
-    scope: dict[str, Any] = {"win": {"$in": [True, 1]}}
+    scope: dict[str, Any] = {"win": {"$in": [True, 1]}, "hidden": {"$ne": True}}
     if not today_only:
         scope["character"] = row["character"]
     if game_mode:
@@ -2700,7 +2714,12 @@ def get_win_rate_comparison(username: str) -> list[dict]:
     user_chars = list(
         coll.aggregate(
             [
-                {"$match": {"username_lower": username.lower()}},
+                {
+                    "$match": {
+                        "username_lower": username.lower(),
+                        "hidden": {"$ne": True},
+                    }
+                },
                 {
                     "$group": {
                         "_id": "$character",

@@ -1417,7 +1417,7 @@ def build_user_blob_stats(username: str) -> dict[str, Any]:
         cursor = (
             _get_collection()
             .find(
-                {"username_lower": u.lower()},
+                {"username_lower": u.lower(), "hidden": {"$ne": True}},
                 {
                     "_id": 1,
                     "character": 1,

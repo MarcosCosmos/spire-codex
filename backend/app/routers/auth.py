@@ -271,6 +271,7 @@ def _compute_personal_bests(username: str) -> dict:
     base_match = {
         "username_lower": username.lower() if username else None,
         "win": {"$in": [True, 1]},
+        "hidden": {"$ne": True},
     }
     proj = {
         "_id": 1,
