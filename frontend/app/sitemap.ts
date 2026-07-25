@@ -3,11 +3,12 @@ import { ALL_BROWSE_SLUGS } from "./cards/browse/slug-map";
 import { SUPPORTED_LANGS } from "@/lib/languages";
 import { imageUrl } from "@/lib/image-url";
 
-export const dynamic = "force-dynamic";
+// Regenerate at most every 30 minutes: crawler fetches between ticks are
+// served from cache instead of re-running ~21 API list fetches each hit.
+export const revalidate = 1800;
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://spire-codex.com";
 const API = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-const API_PUBLIC = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_API_URL || "";
 
 /**
  * Locale-prefixed routes are only emitted when the route ACTUALLY exists
@@ -21,6 +22,12 @@ const API_PUBLIC = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_A
  *
  * The intersection gets both list + detail URLs in the sitemap; the
  * list-only entries get only the index page.
+ *
+ * Re-verified 2026-07-25 against the tree: added the hubs that had
+ * landed since May (charts, community-stats, tier-list, mod, overlay,
+ * knowledge-demon, giveaway, meta) plus modifiers, which always had a
+ * localized list page but was only in the detail set. `/{lang}/runs`
+ * stays out on purpose: it 308s to /runs.
  */
 const LANG_LIST_ROUTES = [
   "cards",
@@ -35,6 +42,7 @@ const LANG_LIST_ROUTES = [
   "keywords",
   "badges",
   "timeline",
+  "modifiers",
   // Static/hub pages that also have localized versions
   "ancients",
   "merchant",
@@ -43,6 +51,9 @@ const LANG_LIST_ROUTES = [
   "guides",
   "news",
   "leaderboards",
+  "tier-list",
+  "charts",
+  "community-stats",
   "compare",
   "changelog",
   "developers",
@@ -50,6 +61,11 @@ const LANG_LIST_ROUTES = [
   "reference",
   "images",
   "about",
+  "mod",
+  "overlay",
+  "knowledge-demon",
+  "giveaway",
+  "meta",
 ] as const;
 
 // Routes with a working `app/[lang]/{route}/[id]/page.tsx` (or `[slug]`).
@@ -77,6 +93,9 @@ const LANG_DETAIL_ROUTES = new Set([
   "afflictions",
   "modifiers",
   "achievements",
+  // app/[lang]/guides/[slug]/page.tsx exists; localized guide URLs were
+  // never emitted even though the pages render.
+  "guides",
 ]);
 
 const STATIC_PAGES = [
@@ -165,8 +184,11 @@ const DYNAMIC_ROUTES = [
 ];
 
 async function fetchEntities(endpoint: string): Promise<EntityWithImage[]> {
+  // Internal API base like every other server fetch in this file —
+  // imageUrl() resolved these through the public edge. Cached so a
+  // sitemap regen inside the revalidate window is free.
   try {
-    const res = await fetch(imageUrl(endpoint));
+    const res = await fetch(`${API}${endpoint}`, { next: { revalidate: 1800 } });
     if (!res.ok) return [];
     return res.json();
   } catch {
