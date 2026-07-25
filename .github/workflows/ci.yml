@@ -18,15 +18,19 @@ jobs:
   # updates) skip lint and image builds entirely: data/ and data-beta/
   # are volume-mounted on the server and arrive via git pull at deploy,
   # so no image contains them.
+  # PR-triggered jobs run on GitHub-hosted runners: this is a public repo,
+  # and a PR branch must never execute code (npm postinstall hooks, pip
+  # sdist builds) on the self-hosted runner whose persistent Docker daemon
+  # also builds the prod images. Pushes to main keep the warm runner.
   changes:
     name: Detect changed areas
-    runs-on: self-hosted
+    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-latest' || 'self-hosted' }}
     outputs:
       frontend: ${{ steps.filter.outputs.frontend }}
       backend: ${{ steps.filter.outputs.backend }}
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@6852f92c20ea7fd3b0c25de3b5112db3a98da050 # v3
         id: filter
         with:
           filters: |
@@ -38,21 +42,22 @@ jobs:
   # ── Secrets check ──────────────────────────────────────
   secrets-check:
     name: Scan for secrets
-    runs-on: self-hosted
+    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-latest' || 'self-hosted' }}
     steps:
       # Shallow checkout: trufflehog scans the working tree (filesystem
       # mode), so full history only inflated the .git dir it walks.
       - uses: actions/checkout@v4
 
       - name: TruffleHog secret scan
+        # Version-pinned so a hijacked :latest can't silently defeat the gate.
         run: |
-          docker run --rm -v "$GITHUB_WORKSPACE:/repo:ro" trufflesecurity/trufflehog:latest \
+          docker run --rm -v "$GITHUB_WORKSPACE:/repo:ro" trufflesecurity/trufflehog:3.96.0 \
             filesystem /repo --only-verified --fail
 
   # ── Frontend checks ────────────────────────────────────
   frontend-lint:
     name: Frontend lint & type-check
-    runs-on: self-hosted
+    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-latest' || 'self-hosted' }}
     needs: changes
     if: needs.changes.outputs.frontend == 'true'
     defaults:
@@ -85,7 +90,33 @@ jobs:
   # ── Backend checks ─────────────────────────────────────
   backend-lint:
     name: Backend lint
-    runs-on: self-hosted
+    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-latest' || 'self-hosted' }}
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ruff
+        # Ruff needs no project deps; installing requirements.txt here
+        # wasted minutes per run.
+        run: pip install ruff
+
+      - name: Ruff lint
+        run: ruff check app/
+
+      - name: Ruff format check
+        run: ruff format --check app/
+
+  backend-tests:
+    name: Backend tests
+    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-latest' || 'self-hosted' }}
     needs: changes
     if: needs.changes.outputs.backend == 'true'
     defaults:
@@ -99,13 +130,10 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: pip install -r requirements.txt ruff
+        run: pip install -r requirements.txt pytest
 
-      - name: Ruff lint
-        run: ruff check app/
-
-      - name: Ruff format check
-        run: ruff format --check app/
+      - name: Pytest
+        run: python -m pytest -q
 
   # ── Build & Push (main only) ─────────────────────────────
   # One channel only: the beta site merged into the main deployment
@@ -114,7 +142,7 @@ jobs:
   build-stable:
     name: Build & push images
     runs-on: self-hosted
-    needs: [changes, secrets-check, frontend-lint, backend-lint]
+    needs: [changes, secrets-check, frontend-lint, backend-lint, backend-tests]
     # Skipped lint jobs (data-only or single-sided changes) shouldn't
     # block the build of the side that DID change, hence the explicit
     # result checks instead of plain `needs` gating.
@@ -124,6 +152,7 @@ jobs:
       needs.secrets-check.result == 'success' &&
       (needs.frontend-lint.result == 'success' || needs.frontend-lint.result == 'skipped') &&
       (needs.backend-lint.result == 'success' || needs.backend-lint.result == 'skipped') &&
+      (needs.backend-tests.result == 'success' || needs.backend-tests.result == 'skipped') &&
       (needs.changes.outputs.frontend == 'true' || needs.changes.outputs.backend == 'true')
     steps:
       - uses: actions/checkout@v4
