@@ -2589,12 +2589,28 @@ def get_username_for_hash(run_hash: str) -> str | None:
 
 @_instrument("find_sibling_hashes")
 def find_sibling_hashes(run_hash: str) -> list[str]:
-    """For a multiplayer run, find sibling player runs (same seed)."""
+    """For a multiplayer run, find sibling player runs (same seed and party
+    size). Solo and daily runs return nothing: on a shared daily seed "same
+    seed" is every other player's run, and the caller copies a sibling's
+    file in as this run's blob."""
     coll = _get_collection()
-    row = coll.find_one({"_id": run_hash}, {"seed": 1})
+    row = coll.find_one(
+        {"_id": run_hash}, {"seed": 1, "player_count": 1, "game_mode": 1}
+    )
     if not row or not row.get("seed"):
         return []
-    siblings = coll.find({"seed": row["seed"], "_id": {"$ne": run_hash}}, {"_id": 1})
+    if (row.get("player_count") or 1) <= 1:
+        return []
+    if (row.get("game_mode") or "standard").lower() == "daily":
+        return []
+    siblings = coll.find(
+        {
+            "seed": row["seed"],
+            "player_count": row.get("player_count"),
+            "_id": {"$ne": run_hash},
+        },
+        {"_id": 1},
+    ).limit(20)
     return [s["_id"] for s in siblings]
 
 
@@ -2754,11 +2770,23 @@ def get_user_runs(
     total = coll.count_documents(match)
     skip = (page - 1) * limit
 
+    # Include-projection of exactly the fields emitted below — the old
+    # {"raw": 0} exclude hauled full docs (deck, card_choices,
+    # map_point_history) to serve ~11 scalars per row.
+    proj = {
+        "character": 1,
+        "win": 1,
+        "was_abandoned": 1,
+        "ascension": 1,
+        "game_mode": 1,
+        "player_count": 1,
+        "floors_reached": 1,
+        "killed_by": 1,
+        "username": 1,
+        "submitted_at": 1,
+    }
     rows = list(
-        coll.find(match, {"raw": 0})
-        .sort("submitted_at", DESCENDING)
-        .skip(skip)
-        .limit(limit)
+        coll.find(match, proj).sort("submitted_at", DESCENDING).skip(skip).limit(limit)
     )
 
     runs = []

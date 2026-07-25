@@ -116,7 +116,20 @@ def _write(r, fields: dict[tuple[str, str], int], cursor: tuple | None) -> None:
 def fetch_row(run_hash: str) -> dict | None:
     from .runs_db_mongo import _get_collection
 
-    d = _get_collection().find_one({"_id": run_hash})
+    d = _get_collection().find_one(
+        {"_id": run_hash},
+        {
+            "character": 1,
+            "win": 1,
+            "submitted_at": 1,
+            "player_count": 1,
+            "ascension": 1,
+            "game_mode": 1,
+            "killed_by": 1,
+            "username": 1,
+            "build_id": 1,
+        },
+    )
     if not d:
         return None
     return {
