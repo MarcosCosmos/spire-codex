@@ -13,7 +13,7 @@ import SearchTrigger from "@/app/components/SearchTrigger";
 import { buildWebSiteJsonLd, buildVideoGameJsonLd } from "@/lib/jsonld";
 import { fetchSteamMeta } from "@/lib/steam-meta";
 import { t } from "@/lib/ui-translations";
-import { SITE_URL, SITE_NAME, IS_BETA, HOME_OG_IMAGE } from "@/lib/seo";
+import { SITE_URL, SITE_NAME, HOME_OG_IMAGE } from "@/lib/seo";
 import "@/app/home-revamp.css";
 import {
   isValidLang,
@@ -122,16 +122,9 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
           <section className="hero">
             <h1 className="wordmark">
               SPIRE <span>CODEX</span>
-              {IS_BETA && (
-                <sup className="ml-2 align-super text-xs font-semibold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400">
-                  BETA
-                </sup>
-              )}
             </h1>
             <p className="htag">
-              {IS_BETA
-                ? t("Preview of upcoming Slay the Spire 2 content", lang)
-                : t("The complete database for Slay the Spire 2", lang)}
+              {t("The complete database for Slay the Spire 2", lang)}
             </p>
             <div style={{ maxWidth: 540, margin: "18px auto 0" }}>
               <SearchTrigger variant="hero" />

@@ -12,15 +12,14 @@ import JsonLd from "./components/JsonLd";
 import SearchTrigger from "./components/SearchTrigger";
 import { buildWebSiteJsonLd, buildVideoGameJsonLd } from "@/lib/jsonld";
 import { fetchSteamMeta } from "@/lib/steam-meta";
-import { SITE_NAME, IS_BETA, buildLanguageAlternates, HOME_OG_IMAGE } from "@/lib/seo";
+import { SITE_NAME, buildLanguageAlternates, HOME_OG_IMAGE } from "@/lib/seo";
 import "./home-revamp.css";
 
 const API = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-const title = `${IS_BETA ? "Beta " : ""}Database, Wiki & Guide - Slay the Spire 2 (sts2) | ${SITE_NAME}`;
-const description = IS_BETA
-  ? "Beta preview of upcoming Slay the Spire 2 (sts2) content. Browse new cards, relics, characters, monsters, potions, events, powers, and more."
-  : "The complete Slay the Spire 2 (sts2) database. Browse cards, relics, characters, monsters, potions, events, and powers. Filter by character, rarity, and keyword.";
+const title = `Database, Wiki & Guide - Slay the Spire 2 (sts2) | ${SITE_NAME}`;
+const description =
+  "The complete Slay the Spire 2 (sts2) database. Browse cards, relics, characters, monsters, potions, events, and powers. Filter by character, rarity, and keyword.";
 
 // ISR with 60s revalidation. The HTML caches at CF edge for 60s so
 // most visits return without hitting Next.js at all. After 60s the
@@ -91,16 +90,10 @@ export default async function Home() {
           <section className="hero">
             <h1 className="wordmark">
               SPIRE <span>CODEX</span>
-              {IS_BETA && (
-                <sup className="ml-2 align-super text-xs font-semibold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400">
-                  BETA
-                </sup>
-              )}
             </h1>
             <p className="htag">
-              {IS_BETA
-                ? "Preview of upcoming Slay the Spire 2 content, every card, relic, monster, and run."
-                : "The complete database for Slay the Spire 2, every card, relic, monster, and run, searchable and cross-referenced."}
+              The complete database for Slay the Spire 2, every card, relic,
+              monster, and run, searchable and cross-referenced.
             </p>
             <div style={{ maxWidth: 540, margin: "18px auto 0" }}>
               <SearchTrigger variant="hero" />

@@ -15,7 +15,7 @@ import ThemeToggle from "./ThemeToggle";
 import { recordRecent, getRecent, isRecentType, ENTITY_SINGULAR, prettyRecentName, type RecentEntity } from "@/lib/recent-entities";
 import { t } from "@/lib/ui-translations";
 import { cachedFetch } from "@/lib/fetch-cache";
-import { IS_BETA, SITE_URL } from "@/lib/seo";
+import { SITE_URL } from "@/lib/seo";
 import { LANG_PREFIXES } from "@/lib/languages";
 
 const LANG_CODES = LANG_PREFIXES;
@@ -26,8 +26,6 @@ interface NavGroup {
   label: string;
   links: { href: string; label: string; badge?: "discord-bot" }[];
 }
-
-const BETA_HIDDEN = new Set(["/guides", "/showcase", "/leaderboards", "/leaderboards/submit", "/leaderboards/stats", "/leaderboards/scoring", "/tier-list"]);
 
 // Routes that should only highlight on exact match (not prefix match)
 const EXACT_MATCH = new Set(["/leaderboards"]);
@@ -266,7 +264,7 @@ export default function Navbar() {
   }, [strippedPath]);
 
   const renderMega = (group: NavGroup, isLast: boolean) => {
-    const links = IS_BETA ? group.links.filter((l) => !BETA_HIDDEN.has(l.href)) : group.links;
+    const links = group.links;
     if (links.length === 0) return null;
     const hasActive = links.some((link) => !link.href.startsWith("http") && isLinkActive(strippedPath, link.href));
     const linkByLabel = new Map(links.map((l) => [l.label, l]));
@@ -423,8 +421,7 @@ export default function Navbar() {
               <SearchTrigger variant="icon" />
             </div>
 
-          {/* User menu, hidden on beta (accounts are stable-only for now) */}
-          {!authLoading && !IS_BETA && (
+          {!authLoading && (
             <div className="relative">
               <button
                 ref={userButtonRef}
@@ -590,7 +587,7 @@ export default function Navbar() {
 
                 <div className="flex-1 overflow-y-auto pb-10">
                   {NAV_GROUPS.map((group) => {
-                    const links = IS_BETA ? group.links.filter((l) => !BETA_HIDDEN.has(l.href)) : group.links;
+                    const links = group.links;
                     if (links.length === 0) return null;
                     const isExpanded = expandedGroups.has(group.label);
                     const hasActive = links.some((link) => !link.href.startsWith("http") && isLinkActive(strippedPath, link.href));

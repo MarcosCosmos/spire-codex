@@ -2,8 +2,7 @@ import { SUPPORTED_LANGS, LANG_HREFLANG } from "./languages";
 
 export const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL || "https://spire-codex.com";
-export const IS_BETA = SITE_URL.includes("beta.");
-export const SITE_NAME = IS_BETA ? "Spire Codex (Beta)" : "Spire Codex";
+export const SITE_NAME = "Spire Codex";
 // Default social card for all non-home pages. The black-background
 // silent logo composition reads as a self-contained brand asset on any
 // surface (Twitter, Discord, FB) and replaces the older

@@ -1,14 +1,10 @@
-import { IS_BETA } from "@/lib/seo";
 import HomeStatsLive from "./HomeStatsLive";
 
 const API = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-// Beta has run submissions disabled, so its stats endpoint reports near
-// zero. Pull from stable on beta so the section matches the community
-// leaderboards above. Server-side fetch, no CORS hop.
-const RUNS_HOST = IS_BETA ? "https://spire-codex.com" : "";
-const RUNS_API = IS_BETA ? "https://spire-codex.com" : API;
+const RUNS_HOST = "";
+const RUNS_API = API;
 const PUBLIC_API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-const POLL_BASE = IS_BETA ? "https://spire-codex.com" : PUBLIC_API;
+const POLL_BASE = PUBLIC_API;
 
 const REVALIDATE = 300;
 

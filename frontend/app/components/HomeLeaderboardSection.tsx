@@ -1,16 +1,12 @@
-import { IS_BETA } from "@/lib/seo";
 import HomeLeaderboardLive from "./HomeLeaderboardLive";
 
 const API = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-// Beta has run submissions disabled, so its local runs data is essentially
-// empty. Fetch leaderboard + recent-runs data from stable instead so the
-// section actually has content to show; in-page links point at stable too.
-const RUNS_HOST = IS_BETA ? "https://spire-codex.com" : "";
-const RUNS_API = IS_BETA ? "https://spire-codex.com" : API;
+const RUNS_HOST = "";
+const RUNS_API = API;
 // Browser-side polling must use the PUBLIC API base; API_INTERNAL_URL only
 // resolves inside the Docker network during server render.
 const PUBLIC_API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-const POLL_BASE = IS_BETA ? "https://spire-codex.com" : PUBLIC_API;
+const POLL_BASE = PUBLIC_API;
 
 const REVALIDATE = 300;
 const TARGET_ASCENSION = 10;
