@@ -20,15 +20,14 @@ import os
 import httpx
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
-from slowapi import Limiter
 
-from ..dependencies import client_ip
+from ..dependencies import shared_limiter
 from ..services import rate_limit_config
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/qa-feedback", tags=["Feedback"])
-limiter = Limiter(key_func=client_ip, **rate_limit_config.storage_kwargs())
+limiter = shared_limiter
 
 
 class QAFeedback(BaseModel):

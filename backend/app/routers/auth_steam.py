@@ -35,9 +35,8 @@ import httpx
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from pydantic import BaseModel
-from slowapi import Limiter
 
-from ..dependencies import client_ip
+from ..dependencies import shared_limiter
 from ..services import rate_limit_config
 from ..services import auth_session_store
 from ..services.auth_session_store import SESSION_TTL_SECONDS
@@ -45,7 +44,7 @@ from ..services.auth_session_store import SESSION_TTL_SECONDS
 logger = logging.getLogger("spire-codex.auth")
 
 router = APIRouter(prefix="/api/auth/steam", tags=["Auth"])
-limiter = Limiter(key_func=client_ip, **rate_limit_config.storage_kwargs())
+limiter = shared_limiter
 
 _REALM_ENV_KEY = "SPIRE_CODEX_PUBLIC_BASE"
 

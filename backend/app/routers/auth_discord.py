@@ -14,9 +14,8 @@ import urllib.parse
 import httpx
 from fastapi import APIRouter, Request
 from fastapi.responses import RedirectResponse
-from slowapi import Limiter
 
-from ..dependencies import client_ip
+from ..dependencies import shared_limiter
 from ..services import rate_limit_config
 from ..services.auth_jwt import (
     clear_oauth_state_cookie,
@@ -29,7 +28,7 @@ from ..services.auth_jwt import (
 logger = logging.getLogger("spire-codex.auth")
 
 router = APIRouter(prefix="/api/auth/discord", tags=["Auth"])
-limiter = Limiter(key_func=client_ip, **rate_limit_config.storage_kwargs())
+limiter = shared_limiter
 
 _DISCORD_API = "https://discord.com/api/v10"
 _DISCORD_AUTHORIZE = "https://discord.com/api/oauth2/authorize"

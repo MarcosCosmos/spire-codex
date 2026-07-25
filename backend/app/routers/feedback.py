@@ -6,9 +6,8 @@ import os
 import httpx
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
-from slowapi import Limiter
 
-from ..dependencies import client_ip
+from ..dependencies import shared_limiter
 from ..services import rate_limit_config
 from ..metrics import feedback_submissions
 from ..services import github_issues
@@ -19,7 +18,7 @@ router = APIRouter(prefix="/api/feedback", tags=["Feedback"])
 
 WEBHOOK_URL = os.environ.get("FEEDBACK_WEBHOOK_URL", "")
 
-limiter = Limiter(key_func=client_ip, **rate_limit_config.storage_kwargs())
+limiter = shared_limiter
 
 
 class FeedbackRequest(BaseModel):

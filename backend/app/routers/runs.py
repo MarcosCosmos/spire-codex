@@ -7,9 +7,8 @@ import time
 from functools import lru_cache
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, Query, Request, Response
-from slowapi import Limiter
 from starlette.concurrency import run_in_threadpool
-from ..dependencies import client_ip
+from ..dependencies import shared_limiter
 from ..services import rate_limit_config
 from ..services.runs_db import submit_run, get_stats, claim_runs
 from ..services import cache as app_cache
@@ -43,7 +42,7 @@ router = APIRouter(prefix="/api/runs", tags=["Runs"])
 # client_ip, not slowapi's get_remote_address: behind Cloudflare -> nginx
 # the latter reads the proxy address, so every visitor would share ONE
 # bucket and these limits would trip fleet-wide (see dependencies.client_ip).
-limiter = Limiter(key_func=client_ip, **rate_limit_config.storage_kwargs())
+limiter = shared_limiter
 
 MAX_BODY_SIZE = 512 * 1024  # 512 KB
 

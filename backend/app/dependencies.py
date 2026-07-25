@@ -1,6 +1,7 @@
 """Shared FastAPI dependencies."""
 
 from fastapi import Query, Request
+from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 
@@ -26,6 +27,26 @@ def client_ip(request: Request) -> str:
     if xff:
         return xff.split(",", 1)[0].strip()
     return get_remote_address(request)
+
+
+def _make_shared_limiter() -> Limiter:
+    # Imported lazily: rate_limit_config itself imports client_ip from this
+    # module inside a function, so a top-level import here would be the only
+    # thing turning that into a cycle.
+    from .services import rate_limit_config
+
+    # One per-IP limiter shared by every router. key_style="endpoint" scopes
+    # each counter by ROUTE — slowapi's default "url" gave every concrete
+    # path its own bucket, so caps on parameterized routes like
+    # /shared/{run_hash} were per-hash and never actually bit.
+    return Limiter(
+        key_func=client_ip,
+        key_style="endpoint",
+        **rate_limit_config.storage_kwargs(),
+    )
+
+
+shared_limiter = _make_shared_limiter()
 
 
 VALID_LANGUAGES = {
