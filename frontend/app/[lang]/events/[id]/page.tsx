@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import EventDetail from "@/app/events/[id]/EventDetail";
-import { stripTags, SITE_NAME, SITE_URL, stripTagsFlat, clipMetaDescription } from "@/lib/seo";
+import { stripTags, SITE_NAME, SITE_URL, stripTagsFlat, clipMetaDescription, buildLanguageAlternates } from "@/lib/seo";
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
-import { isValidLang, LANG_HREFLANG, LANG_NAMES, LANG_GAME_NAME, SUPPORTED_LANGS, type LangCode } from "@/lib/languages";
+import { isValidLang, LANG_HREFLANG, LANG_NAMES, LANG_GAME_NAME, type LangCode } from "@/lib/languages";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
 import { imageUrl } from "@/lib/image-url";
 
@@ -24,8 +24,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const gameName = LANG_GAME_NAME[langCode];
     const name = entity.name || entity.title || id;
     const title = `${gameName} ${name} - Event | Spire Codex (${LANG_NAMES[langCode]})`;
-    const languages: Record<string, string> = { "en": `${SITE_URL}/events/${id}`, "x-default": `${SITE_URL}/events/${id}` };
-    for (const code of SUPPORTED_LANGS) languages[LANG_HREFLANG[code]] = `${SITE_URL}/${code}/events/${id}`;
+    const languages = buildLanguageAlternates(`/events/${id}`);
     return {
       title,
       description: clipMetaDescription(`${gameName} event, ${name}${desc ? `: ${desc}` : ""}`),

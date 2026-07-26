@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import RelicDetail from "@/app/relics/[id]/RelicDetail";
-import { stripTags, SITE_NAME, SITE_URL, stripTagsFlat, clipMetaDescription } from "@/lib/seo";
+import { stripTags, SITE_NAME, SITE_URL, stripTagsFlat, clipMetaDescription, buildLanguageAlternates } from "@/lib/seo";
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
-import { isValidLang, LANG_HREFLANG, LANG_NAMES, LANG_GAME_NAME, SUPPORTED_LANGS, type LangCode } from "@/lib/languages";
+import { isValidLang, LANG_HREFLANG, LANG_NAMES, LANG_GAME_NAME, type LangCode } from "@/lib/languages";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
 import { imageUrl } from "@/lib/image-url";
 
@@ -33,8 +33,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
     const gameName = LANG_GAME_NAME[langCode];
     const name = entity.name || entity.title || id;
     const title = `${gameName} ${name} - Relic | Spire Codex (${LANG_NAMES[langCode]})`;
-    const languages: Record<string, string> = { "en": `${SITE_URL}/relics/${id}`, "x-default": `${SITE_URL}/relics/${id}` };
-    for (const code of SUPPORTED_LANGS) languages[LANG_HREFLANG[code]] = `${SITE_URL}/${code}/relics/${id}`;
+    const languages = buildLanguageAlternates(`/relics/${id}`);
     return {
       title,
       description: clipMetaDescription(`${gameName} relic, ${name}${desc ? `: ${desc}` : ""}`),

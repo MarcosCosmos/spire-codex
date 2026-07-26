@@ -11,10 +11,9 @@ import {
   LANG_CARDS,
   LANG_NAMES,
   LANG_HREFLANG,
-  SUPPORTED_LANGS,
   type LangCode,
 } from "@/lib/languages";
-import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
+import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL, buildLanguageAlternates } from "@/lib/seo";
 import { t } from "@/lib/ui-translations";
 
 export const revalidate = 60;
@@ -33,13 +32,7 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   const title = `${gameName} ${cardsWord} | Spire Codex (${nativeName})`;
   const description = `${gameName} ${cardsWord} (${nativeName}). Every card across Ironclad, Silent, Defect, Necrobinder, and Regent, art, stats, upgrades, and keywords.`;
 
-  const languages: Record<string, string> = {
-    "en": `${SITE_URL}/cards`,
-    "x-default": `${SITE_URL}/cards`,
-  };
-  for (const code of SUPPORTED_LANGS) {
-    languages[LANG_HREFLANG[code]] = `${SITE_URL}/${code}/cards`;
-  }
+  const languages = buildLanguageAlternates(`/cards`);
 
   return {
     title,

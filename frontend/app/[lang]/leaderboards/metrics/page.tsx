@@ -8,10 +8,9 @@ import {
   LANG_GAME_NAME,
   LANG_NAMES,
   LANG_HREFLANG,
-  SUPPORTED_LANGS,
   type LangCode,
 } from "@/lib/languages";
-import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
+import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL, buildLanguageAlternates } from "@/lib/seo";
 import { t } from "@/lib/ui-translations";
 
 // Render per request like the English route (avoids a build-time empty
@@ -37,13 +36,7 @@ export async function generateMetadata({
   const title = `${gameName} ${t("Card Metrics", lang)} | Spire Codex (${nativeName})`;
   const description = t("metrics_tagline", lang);
 
-  const languages: Record<string, string> = {
-    en: `${SITE_URL}/leaderboards/metrics`,
-    "x-default": `${SITE_URL}/leaderboards/metrics`,
-  };
-  for (const code of SUPPORTED_LANGS) {
-    languages[LANG_HREFLANG[code]] = `${SITE_URL}/${code}/leaderboards/metrics`;
-  }
+  const languages = buildLanguageAlternates(`/leaderboards/metrics`);
 
   return {
     title,

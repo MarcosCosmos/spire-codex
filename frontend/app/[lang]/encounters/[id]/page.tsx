@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import EncounterDetail from "@/app/encounters/[id]/EncounterDetail";
-import { clipMetaDescription, DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
+import { clipMetaDescription, DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL, buildLanguageAlternates } from "@/lib/seo";
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
-import { isValidLang, LANG_HREFLANG, LANG_NAMES, LANG_GAME_NAME, SUPPORTED_LANGS, type LangCode } from "@/lib/languages";
+import { isValidLang, LANG_HREFLANG, LANG_NAMES, LANG_GAME_NAME, type LangCode } from "@/lib/languages";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
 
 const API_INTERNAL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -28,8 +28,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const description = clipMetaDescription(
       `${gameName} ${roomType}encounter, ${name}.${monsterList}`,
     );
-    const languages: Record<string, string> = { "en": `${SITE_URL}/encounters/${id}`, "x-default": `${SITE_URL}/encounters/${id}` };
-    for (const code of SUPPORTED_LANGS) languages[LANG_HREFLANG[code]] = `${SITE_URL}/${code}/encounters/${id}`;
+    const languages = buildLanguageAlternates(`/encounters/${id}`);
     return {
       title,
       description,

@@ -13,7 +13,7 @@ import SearchTrigger from "@/app/components/SearchTrigger";
 import { buildWebSiteJsonLd, buildVideoGameJsonLd } from "@/lib/jsonld";
 import { fetchSteamMeta } from "@/lib/steam-meta";
 import { t } from "@/lib/ui-translations";
-import { SITE_URL, SITE_NAME, HOME_OG_IMAGE } from "@/lib/seo";
+import { SITE_URL, SITE_NAME, HOME_OG_IMAGE, buildLanguageAlternates } from "@/lib/seo";
 import "@/app/home-revamp.css";
 import {
   isValidLang,
@@ -69,13 +69,7 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   // page reads as a language mismatch to crawlers (flagged on all 13 homes).
   const description = `${gameName} ${dbWord} (${nativeName}), Spire Codex. ${t("Browse cards, relics, characters, monsters, potions, events, and powers.", lang)}`;
 
-  const languages: Record<string, string> = {
-    "en": `${SITE_URL}/`,
-    "x-default": `${SITE_URL}/`,
-  };
-  for (const code of SUPPORTED_LANGS) {
-    languages[LANG_HREFLANG[code]] = `${SITE_URL}/${code}`;
-  }
+  const languages = buildLanguageAlternates("/");
 
   // Mirror `/page.tsx`: localized landing pages also use the bare-logo
   // OG asset rather than the branded composition that detail/list

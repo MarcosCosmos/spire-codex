@@ -4,13 +4,12 @@ import JsonLd from "@/app/components/JsonLd";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
 import RichDescription from "@/app/components/RichDescription";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
-import { stripTags, stripTagsFlat, clipMetaDescription, SITE_NAME, SITE_URL } from "@/lib/seo";
+import { stripTags, stripTagsFlat, clipMetaDescription, SITE_NAME, SITE_URL, buildLanguageAlternates } from "@/lib/seo";
 import {
   isValidLang,
   LANG_HREFLANG,
   LANG_NAMES,
   LANG_GAME_NAME,
-  SUPPORTED_LANGS,
   type LangCode,
 } from "@/lib/languages";
 import { t } from "@/lib/ui-translations";
@@ -75,13 +74,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     `${gameName} run-end badge, ${badge.name}${desc ? `: ${desc}` : ""}`,
   );
 
-  const languages: Record<string, string> = {
-    en: `${SITE_URL}/badges/${id}`,
-    "x-default": `${SITE_URL}/badges/${id}`,
-  };
-  for (const code of SUPPORTED_LANGS) {
-    languages[LANG_HREFLANG[code]] = `${SITE_URL}/${code}/badges/${id}`;
-  }
+  const languages = buildLanguageAlternates(`/badges/${id}`);
 
   return {
     title,

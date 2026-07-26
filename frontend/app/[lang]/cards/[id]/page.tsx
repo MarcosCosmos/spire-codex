@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import CardDetail from "@/app/cards/[id]/CardDetail";
-import { stripTags, stripTagsFlat, clipMetaDescription, SITE_NAME, SITE_URL } from "@/lib/seo";
+import { stripTags, stripTagsFlat, clipMetaDescription, SITE_NAME, SITE_URL, buildLanguageAlternates } from "@/lib/seo";
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
-import { isValidLang, LANG_HREFLANG, LANG_NAMES, LANG_GAME_NAME, SUPPORTED_LANGS, type LangCode } from "@/lib/languages";
+import { isValidLang, LANG_HREFLANG, LANG_NAMES, LANG_GAME_NAME, type LangCode } from "@/lib/languages";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
 import { cardOgImages } from "@/lib/image-url";
 import { enchantmentsForCard } from "@/lib/card-enchantments";
@@ -38,8 +38,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
     const metaDesc = clipMetaDescription(
       `${gameName}, ${card.name} (${card.cost ?? "X"}-cost ${card.rarity} ${card.type}, ${color}). ${descFlat}${keywords}`,
     );
-    const languages: Record<string, string> = { "en": `${SITE_URL}/cards/${id}`, "x-default": `${SITE_URL}/cards/${id}` };
-    for (const code of SUPPORTED_LANGS) languages[LANG_HREFLANG[code]] = `${SITE_URL}/${code}/cards/${id}`;
+    const languages = buildLanguageAlternates(`/cards/${id}`);
     const ogImages = cardOgImages(card, lang);
     return {
       title,

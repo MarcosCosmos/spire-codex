@@ -5,10 +5,9 @@ import {
   LANG_GAME_NAME,
   LANG_NAMES,
   LANG_HREFLANG,
-  SUPPORTED_LANGS,
   type LangCode,
 } from "@/lib/languages";
-import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
+import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL, buildLanguageAlternates } from "@/lib/seo";
 import { t } from "@/lib/ui-translations";
 
 // The stats, tier-list, and metrics pages all link "How scoring works" with
@@ -30,13 +29,7 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   const title = `Codex Score - ${t("How scoring works", lang)} - ${gameName} | Spire Codex (${nativeName})`;
   const description = `How Codex Score ranks every ${gameName} card, relic, and potion. Bayesian-shrunk win rate, S-through-F tier bands, and full formula methodology. ${nativeName}.`;
 
-  const languages: Record<string, string> = {
-    "en": `${SITE_URL}/${PATH}`,
-    "x-default": `${SITE_URL}/${PATH}`,
-  };
-  for (const code of SUPPORTED_LANGS) {
-    languages[LANG_HREFLANG[code]] = `${SITE_URL}/${code}/${PATH}`;
-  }
+  const languages = buildLanguageAlternates(`/${PATH}`);
 
   return {
     title,

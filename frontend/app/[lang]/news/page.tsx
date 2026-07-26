@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import JsonLd from "@/app/components/JsonLd";
 import { buildBreadcrumbJsonLd, buildCollectionPageJsonLd } from "@/lib/jsonld";
-import { SITE_URL, SITE_NAME, DEFAULT_OG_IMAGE } from "@/lib/seo";
+import { SITE_URL, SITE_NAME, DEFAULT_OG_IMAGE, buildLanguageAlternates } from "@/lib/seo";
 import type { NewsArticle, NewsListResponse } from "@/lib/api";
 import { newsExcerpt, formatNewsDate, newsSlugForArticle } from "@/lib/steam-news";
 import {
@@ -10,7 +10,6 @@ import {
   LANG_GAME_NAME,
   LANG_NAMES,
   LANG_HREFLANG,
-  SUPPORTED_LANGS,
   type LangCode,
 } from "@/lib/languages";
 import { t } from "@/lib/ui-translations";
@@ -50,13 +49,7 @@ export async function generateMetadata({
   const title = `${gameName} ${t("News", lang)} - ${t("News - Subtitle", lang)} | ${SITE_NAME} (${nativeName})`;
   const description = t("news_meta_description", lang);
 
-  const languages: Record<string, string> = {
-    en: `${SITE_URL}/news`,
-    "x-default": `${SITE_URL}/news`,
-  };
-  for (const code of SUPPORTED_LANGS) {
-    languages[LANG_HREFLANG[code]] = `${SITE_URL}/${code}/news`;
-  }
+  const languages = buildLanguageAlternates(`/news`);
 
   return {
     title,

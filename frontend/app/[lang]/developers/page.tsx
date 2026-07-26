@@ -6,10 +6,9 @@ import {
   LANG_GAME_NAME,
   LANG_NAMES,
   LANG_HREFLANG,
-  SUPPORTED_LANGS,
   type LangCode,
 } from "@/lib/languages";
-import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
+import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL, buildLanguageAlternates } from "@/lib/seo";
 import { t } from "@/lib/ui-translations";
 
 const CATEGORY = "developers";
@@ -28,13 +27,7 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   const title = `${gameName} Developer API & Tooltip Widget | Spire Codex (${nativeName})`;
   const description = `Integrate ${gameName} game data into your projects. Public REST API with 22+ endpoints, embeddable tooltip widget, and multi-language support. ${nativeName}.`;
 
-  const languages: Record<string, string> = {
-    "en": `${SITE_URL}/${CATEGORY}`,
-    "x-default": `${SITE_URL}/${CATEGORY}`,
-  };
-  for (const code of SUPPORTED_LANGS) {
-    languages[LANG_HREFLANG[code]] = `${SITE_URL}/${code}/${CATEGORY}`;
-  }
+  const languages = buildLanguageAlternates(`/${CATEGORY}`);
 
   return {
     title,

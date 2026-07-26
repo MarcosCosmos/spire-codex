@@ -7,10 +7,9 @@ import {
   LANG_GAME_NAME,
   LANG_NAMES,
   LANG_HREFLANG,
-  SUPPORTED_LANGS,
   type LangCode,
 } from "@/lib/languages";
-import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
+import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL, buildLanguageAlternates } from "@/lib/seo";
 import { t } from "@/lib/ui-translations";
 
 // The localized reference hub and footer link /<lang>/modifiers on every
@@ -31,13 +30,7 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   const title = `${gameName} ${t(CATEGORY_LABEL, lang)} | Spire Codex (${nativeName})`;
   const description = `${gameName} ${t(CATEGORY_LABEL, lang)} (${nativeName}). All 16 custom-mode modifiers, Draft, Sealed Deck, Insanity, and more. Effects, deck rules, and Neow interactions for each.`;
 
-  const languages: Record<string, string> = {
-    "en": `${SITE_URL}/${CATEGORY}`,
-    "x-default": `${SITE_URL}/${CATEGORY}`,
-  };
-  for (const code of SUPPORTED_LANGS) {
-    languages[LANG_HREFLANG[code]] = `${SITE_URL}/${code}/${CATEGORY}`;
-  }
+  const languages = buildLanguageAlternates(`/${CATEGORY}`);
 
   return {
     title,

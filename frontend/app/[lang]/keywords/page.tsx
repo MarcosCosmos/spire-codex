@@ -8,10 +8,9 @@ import {
   LANG_GAME_NAME,
   LANG_NAMES,
   LANG_HREFLANG,
-  SUPPORTED_LANGS,
   type LangCode,
 } from "@/lib/languages";
-import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
+import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL, buildLanguageAlternates } from "@/lib/seo";
 import { t } from "@/lib/ui-translations";
 
 export const dynamic = "force-dynamic";
@@ -55,13 +54,7 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   const title = `${gameName} Card ${t(CATEGORY_LABEL, lang)} | Spire Codex (${nativeName})`;
   const description = `${gameName} Card ${t(CATEGORY_LABEL, lang)} (${nativeName}). Every keyword and game term, Exhaust, Ethereal, Innate, Retain, Sly, Eternal, and more, with all cards using each.`;
 
-  const languages: Record<string, string> = {
-    "en": `${SITE_URL}/${CATEGORY}`,
-    "x-default": `${SITE_URL}/${CATEGORY}`,
-  };
-  for (const code of SUPPORTED_LANGS) {
-    languages[LANG_HREFLANG[code]] = `${SITE_URL}/${code}/${CATEGORY}`;
-  }
+  const languages = buildLanguageAlternates(`/${CATEGORY}`);
 
   return {
     title,

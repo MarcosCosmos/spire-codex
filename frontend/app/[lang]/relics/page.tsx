@@ -11,10 +11,9 @@ import {
   LANG_RELICS,
   LANG_NAMES,
   LANG_HREFLANG,
-  SUPPORTED_LANGS,
   type LangCode,
 } from "@/lib/languages";
-import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
+import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL, buildLanguageAlternates } from "@/lib/seo";
 import { t } from "@/lib/ui-translations";
 
 const API = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -31,13 +30,7 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   const title = `${gameName} ${relicsWord} | Spire Codex (${nativeName})`;
   const description = `${gameName} ${relicsWord} (${nativeName}). Every relic by rarity and character pool, effects, flavor text, shop prices, and upgraded starters.`;
 
-  const languages: Record<string, string> = {
-    "en": `${SITE_URL}/relics`,
-    "x-default": `${SITE_URL}/relics`,
-  };
-  for (const code of SUPPORTED_LANGS) {
-    languages[LANG_HREFLANG[code]] = `${SITE_URL}/${code}/relics`;
-  }
+  const languages = buildLanguageAlternates(`/relics`);
 
   return {
     title,

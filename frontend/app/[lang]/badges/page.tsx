@@ -11,10 +11,9 @@ import {
   LANG_GAME_NAME,
   LANG_NAMES,
   LANG_HREFLANG,
-  SUPPORTED_LANGS,
   type LangCode,
 } from "@/lib/languages";
-import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
+import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL, buildLanguageAlternates } from "@/lib/seo";
 import { t } from "@/lib/ui-translations";
 import type { Badge } from "@/lib/api";
 import { imageUrl } from "@/lib/image-url";
@@ -48,13 +47,7 @@ export async function generateMetadata({
   const title = `${gameName} ${t("Badges", lang)} | Spire Codex (${nativeName})`;
   const description = `${gameName} ${t("Badges", lang)}, ${t("badges_tagline", lang)}`;
 
-  const languages: Record<string, string> = {
-    en: `${SITE_URL}/badges`,
-    "x-default": `${SITE_URL}/badges`,
-  };
-  for (const code of SUPPORTED_LANGS) {
-    languages[LANG_HREFLANG[code]] = `${SITE_URL}/${code}/badges`;
-  }
+  const languages = buildLanguageAlternates(`/badges`);
 
   return {
     title,
