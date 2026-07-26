@@ -4,8 +4,8 @@ import type { Character, Card } from "@/lib/api";
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd } from "@/lib/jsonld";
 import CompareDetail from "@/app/compare/[pair]/CompareDetail";
-import { isValidLang, LANG_HREFLANG, LANG_NAMES, LANG_GAME_NAME, SUPPORTED_LANGS, type LangCode } from "@/lib/languages";
-import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
+import { isValidLang, LANG_HREFLANG, LANG_NAMES, LANG_GAME_NAME, type LangCode } from "@/lib/languages";
+import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL, buildLanguageAlternates } from "@/lib/seo";
 
 export const revalidate = 3600;
 
@@ -46,8 +46,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = `${gameName} ${nameA} vs ${nameB} - Character Comparison | Spire Codex (${LANG_NAMES[langCode]})`;
   const description = `Compare ${nameA} and ${nameB} in ${gameName}. Side-by-side stats, card pool breakdowns by type and rarity, keyword distributions, and starting decks.`;
 
-  const languages: Record<string, string> = { "en": `${SITE_URL}/compare/${pair}`, "x-default": `${SITE_URL}/compare/${pair}` };
-  for (const code of SUPPORTED_LANGS) languages[LANG_HREFLANG[code]] = `${SITE_URL}/${code}/compare/${pair}`;
+  const languages = buildLanguageAlternates(`/compare/${pair}`);
 
   return {
     title,

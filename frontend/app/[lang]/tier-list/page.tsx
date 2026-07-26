@@ -5,10 +5,9 @@ import {
   LANG_GAME_NAME,
   LANG_NAMES,
   LANG_HREFLANG,
-  SUPPORTED_LANGS,
   type LangCode,
 } from "@/lib/languages";
-import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
+import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL, buildLanguageAlternates } from "@/lib/seo";
 import { t } from "@/lib/ui-translations";
 
 // Render per request like the English route (avoids a build-time empty bake
@@ -29,13 +28,7 @@ export async function generateMetadata({
   const title = `${gameName} ${t("Tier List", lang)} | Spire Codex (${nativeName})`;
   const description = `${gameName} tier list ranking every card, relic, and potion S through F. Codex Score from community win rates. ${nativeName}.`;
 
-  const languages: Record<string, string> = {
-    en: `${SITE_URL}/tier-list`,
-    "x-default": `${SITE_URL}/tier-list`,
-  };
-  for (const code of SUPPORTED_LANGS) {
-    languages[LANG_HREFLANG[code]] = `${SITE_URL}/${code}/tier-list`;
-  }
+  const languages = buildLanguageAlternates(`/tier-list`);
 
   return {
     title,

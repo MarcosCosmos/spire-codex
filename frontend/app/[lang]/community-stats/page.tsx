@@ -6,10 +6,9 @@ import {
   LANG_GAME_NAME,
   LANG_NAMES,
   LANG_HREFLANG,
-  SUPPORTED_LANGS,
   type LangCode,
 } from "@/lib/languages";
-import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
+import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL, buildLanguageAlternates } from "@/lib/seo";
 import { t } from "@/lib/ui-translations";
 
 // Render per request like the English route (avoids a build-time empty bake
@@ -30,13 +29,7 @@ export async function generateMetadata({
   const title = `${gameName} ${t("Community Stats", lang)} | Spire Codex (${nativeName})`;
   const description = `Fun ${gameName} community stats: how players vote at every event, what kills runs most, win rates by ascension and character, and run records, all from community-submitted runs. ${nativeName}.`;
 
-  const languages: Record<string, string> = {
-    en: `${SITE_URL}/community-stats`,
-    "x-default": `${SITE_URL}/community-stats`,
-  };
-  for (const code of SUPPORTED_LANGS) {
-    languages[LANG_HREFLANG[code]] = `${SITE_URL}/${code}/community-stats`;
-  }
+  const languages = buildLanguageAlternates(`/community-stats`);
 
   return {
     title,

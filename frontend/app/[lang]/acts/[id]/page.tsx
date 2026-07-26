@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import ActDetail from "@/app/acts/[id]/ActDetail";
-import { clipMetaDescription, DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
+import { clipMetaDescription, DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL, buildLanguageAlternates } from "@/lib/seo";
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd } from "@/lib/jsonld";
-import { isValidLang, LANG_HREFLANG, LANG_NAMES, LANG_GAME_NAME, SUPPORTED_LANGS, type LangCode } from "@/lib/languages";
+import { isValidLang, LANG_HREFLANG, LANG_NAMES, LANG_GAME_NAME, type LangCode } from "@/lib/languages";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
 
 export const revalidate = 3600;
@@ -25,8 +25,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const desc = clipMetaDescription(
       `${gameName} act, ${act.name}. ${act.num_rooms || "?"} rooms, ${act.bosses.length} bosses, ${act.encounters.length} encounters.`,
     );
-    const languages: Record<string, string> = { "en": `${SITE_URL}/acts/${id}`, "x-default": `${SITE_URL}/acts/${id}` };
-    for (const code of SUPPORTED_LANGS) languages[LANG_HREFLANG[code]] = `${SITE_URL}/${code}/acts/${id}`;
+    const languages = buildLanguageAlternates(`/acts/${id}`);
     return {
       title, description: desc,
       openGraph: {

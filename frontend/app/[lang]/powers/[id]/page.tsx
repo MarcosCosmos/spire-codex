@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import PowerDetail from "@/app/powers/[id]/PowerDetail";
-import { stripTags, SITE_NAME, SITE_URL, stripTagsFlat, clipMetaDescription } from "@/lib/seo";
+import { stripTags, SITE_NAME, SITE_URL, stripTagsFlat, clipMetaDescription, buildLanguageAlternates } from "@/lib/seo";
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
-import { isValidLang, LANG_HREFLANG, LANG_NAMES, LANG_GAME_NAME, SUPPORTED_LANGS, type LangCode } from "@/lib/languages";
+import { isValidLang, LANG_HREFLANG, LANG_NAMES, LANG_GAME_NAME, type LangCode } from "@/lib/languages";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
 import { imageUrl } from "@/lib/image-url";
 
@@ -24,8 +24,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const gameName = LANG_GAME_NAME[langCode];
     const name = entity.name || entity.title || id;
     const title = `${gameName} ${name} - Power | Spire Codex (${LANG_NAMES[langCode]})`;
-    const languages: Record<string, string> = { "en": `${SITE_URL}/powers/${id}`, "x-default": `${SITE_URL}/powers/${id}` };
-    for (const code of SUPPORTED_LANGS) languages[LANG_HREFLANG[code]] = `${SITE_URL}/${code}/powers/${id}`;
+    const languages = buildLanguageAlternates(`/powers/${id}`);
     return {
       title,
       description: clipMetaDescription(`${gameName} power, ${name}${desc ? `: ${desc}` : ""}`),
