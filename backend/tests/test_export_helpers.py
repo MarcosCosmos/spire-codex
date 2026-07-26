@@ -24,6 +24,7 @@ from app.routers.exports import (
 
 # --- _parse_iso ------------------------------------------------------------
 
+
 def test_parse_iso_aware_passthrough():
     dt = _parse_iso("2026-06-22T19:51:28+00:00", "start")
     assert dt == datetime(2026, 6, 22, 19, 51, 28, tzinfo=timezone.utc)
@@ -41,6 +42,7 @@ def test_parse_iso_rejects_garbage():
 
 
 # --- cursor codec ----------------------------------------------------------
+
 
 def test_cursor_roundtrip_with_timestamp():
     dt = datetime(2026, 6, 22, 19, 51, 28, 664000, tzinfo=timezone.utc)
@@ -79,22 +81,26 @@ def test_decode_cursor_rejects_missing_separator():
 
 # --- _build_match ----------------------------------------------------------
 
+
 def _char_clause(match):
     """Pull the official-character clause out of a match (order-independent)."""
-    clause = match if "character" in match else next(
-        c for c in match["$and"] if "character" in c
+    clause = (
+        match
+        if "character" in match
+        else next(c for c in match["$and"] if "character" in c)
     )
     return set(clause["character"]["$in"])
 
 
 def test_build_match_no_params_is_official_runs_filter():
     match = _build_match(None, None, None)
-    # No range/cursor -> only the baseline official-runs clauses:
-    # official characters and the official ascension range (A11+ is modded).
+    # No range/cursor -> only the baseline clauses: official characters,
+    # the official ascension range (A11+ is modded), and not hidden.
     assert _char_clause(match) == OFFICIAL_CHARACTERS
     ascension_clause = next(c for c in match["$and"] if "ascension" in c)
     assert ascension_clause["ascension"] == {"$gte": 0, "$lte": 10}
-    assert len(match["$and"]) == 2
+    assert {"hidden": {"$ne": True}} in match["$and"]
+    assert len(match["$and"]) == 3
 
 
 def test_build_match_half_open_range():
@@ -131,6 +137,7 @@ def test_build_match_cursor_past_nulls():
 
 # --- _page_params ------------------------------------------------------------
 
+
 def test_page_params_all_absent():
     # Called directly (not via FastAPI), Query defaults are the sentinel
     # objects, so pass the absent values explicitly.
@@ -158,6 +165,7 @@ def test_page_params_rejects_malformed_before_handler():
 
 
 # --- _export_cost ----------------------------------------------------------
+
 
 class _FakeRequest:
     def __init__(self, query):
