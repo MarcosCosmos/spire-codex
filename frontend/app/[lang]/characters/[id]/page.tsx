@@ -7,8 +7,6 @@ import { isValidLang, LANG_HREFLANG, LANG_NAMES, LANG_GAME_NAME, SUPPORTED_LANGS
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
 import { imageUrl } from "@/lib/image-url";
 
-export const dynamic = "force-dynamic";
-
 const API_INTERNAL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const API_PUBLIC = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_API_URL || "";
 

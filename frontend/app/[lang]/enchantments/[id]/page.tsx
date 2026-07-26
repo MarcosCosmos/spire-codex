@@ -8,8 +8,6 @@ import { redirectMissingEntity } from "@/lib/redirect-helpers";
 import { imageUrl } from "@/lib/image-url";
 import { cardsForEnchantment } from "@/lib/card-enchantments";
 
-export const dynamic = "force-dynamic";
-
 const API_INTERNAL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const API_PUBLIC = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_API_URL || "";
 

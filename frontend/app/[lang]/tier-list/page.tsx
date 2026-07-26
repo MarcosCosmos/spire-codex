@@ -13,7 +13,7 @@ import { t } from "@/lib/ui-translations";
 
 // Render per request like the English route (avoids a build-time empty bake
 // when the backend is unreachable); the shared body's fetches stay cached.
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 export async function generateMetadata({
   params,

@@ -13,8 +13,6 @@ import { t } from "@/lib/ui-translations";
 import JsonLd from "@/app/components/JsonLd";
 import { buildBreadcrumbJsonLd, buildCollectionPageJsonLd } from "@/lib/jsonld";
 
-export const dynamic = "force-dynamic";
-
 const CATEGORY = "unlocks";
 const CATEGORY_LABEL = "Unlocks";
 
