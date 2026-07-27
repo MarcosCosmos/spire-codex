@@ -295,12 +295,14 @@ export default function LiveScene({
 }) {
   const char = (p.character ?? "colorless").toLowerCase();
   const enemies: Enemy[] = (p.enemies ?? []).filter((e) => (e.hp ?? 1) > 0);
-  // Dead only on an actual death signal: a death ticker event or HP at 0.
-  // `p.death` (the killer's line) rides every beat once it exists, so it is NOT
-  // a death signal on its own -- it's just the quote to show when dead.
+  // Dead = current HP at 0. A death ticker event can't decide it on its own:
+  // events persist for the rest of the run, so after a co-op revive the stale
+  // death event kept the banner up while the player fought on. The event is
+  // only the fallback when the beat carries no HP at all. `p.death` (the
+  // killer's line) rides every beat once it exists and is never a signal --
+  // it's just the quote to show when dead.
   const dead =
-    (p.events ?? []).some((e) => e.k === "death") ||
-    (p.hp != null && p.hp <= 0);
+    p.hp != null ? p.hp <= 0 : (p.events ?? []).some((e) => e.k === "death");
   const hand = p.hand ?? [];
   const hpPct =
     p.hp != null && p.max_hp
