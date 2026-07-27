@@ -101,6 +101,15 @@ http {
       listen 80;
       server_name spire-codex.com www.spire-codex.com;
 
+      # Runtime DNS via Docker's embedded resolver: a static proxy_pass name
+      # is resolved once at config load and cached forever, so a deploy that
+      # recreates containers onto new IPs leaves nginx proxying into the void
+      # until a restart (the 2026-07-27 outage). Variables force a re-lookup
+      # on the resolver TTL — the same pattern the staging block uses.
+      resolver 127.0.0.11 valid=10s;
+      set $codex_backend http://spire-codex-backend:8000;
+      set $codex_frontend http://spire-codex-frontend:3000;
+
 {% if origin_verify_secret | default('') %}
       # Refuse requests that didn't come through Cloudflare (missing/incorrect
       # origin-verify header). Applies to the public apex only — the LB health
@@ -116,7 +125,7 @@ http {
 
       # API and static image requests -> backend container
       location /api/ {
-          proxy_pass http://spire-codex-backend:8000;
+          proxy_pass $codex_backend;
           proxy_http_version 1.1;
           proxy_set_header Host $host;
           proxy_set_header X-Real-IP $remote_addr;
@@ -127,7 +136,7 @@ http {
       location /metrics {
           allow {{ metrics_monitor_ip }};
           deny all;
-          proxy_pass http://spire-codex-backend:8000/metrics;
+          proxy_pass $codex_backend;
           proxy_http_version 1.1;
           proxy_set_header Host $host;
           proxy_set_header X-Real-IP $remote_addr;
@@ -153,7 +162,7 @@ http {
       location /health {
           allow {{ metrics_monitor_ip }};
           deny all;
-          proxy_pass http://spire-codex-backend:8000/health;
+          proxy_pass $codex_backend;
           proxy_http_version 1.1;
           proxy_set_header Host $host;
       }
@@ -186,7 +195,7 @@ http {
       }
 
       location /static/ {
-          proxy_pass http://spire-codex-backend:8000;
+          proxy_pass $codex_backend;
           proxy_http_version 1.1;
           proxy_set_header Host $host;
           proxy_set_header X-Real-IP $remote_addr;
@@ -195,7 +204,7 @@ http {
       }
 
       location /docs {
-          proxy_pass http://spire-codex-backend:8000;
+          proxy_pass $codex_backend;
           proxy_http_version 1.1;
           proxy_set_header Host $host;
           proxy_set_header X-Real-IP $remote_addr;
@@ -204,7 +213,7 @@ http {
       }
 
       location /openapi.json {
-          proxy_pass http://spire-codex-backend:8000;
+          proxy_pass $codex_backend;
           proxy_http_version 1.1;
           proxy_set_header Host $host;
           proxy_set_header X-Real-IP $remote_addr;
@@ -213,7 +222,7 @@ http {
       }
 
       location /auth/steam-popup {
-          proxy_pass http://spire-codex-backend:8000;
+          proxy_pass $codex_backend;
           proxy_http_version 1.1;
           proxy_set_header Host $host;
           proxy_set_header X-Real-IP $remote_addr;
@@ -226,7 +235,7 @@ http {
       # slash strip loop Next.js was creating). The ^~ prefix wins over
       # any regex location so /qa/*.webp lands on backend.
       location = /qa {
-          proxy_pass http://spire-codex-backend:8000/qa/;
+          proxy_pass $codex_backend/qa/;
           proxy_set_header Host $host;
           proxy_set_header X-Real-IP $remote_addr;
           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -234,7 +243,7 @@ http {
       }
 
       location ^~ /qa/ {
-          proxy_pass http://spire-codex-backend:8000;
+          proxy_pass $codex_backend;
           proxy_set_header Host $host;
           proxy_set_header X-Real-IP $remote_addr;
           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -243,7 +252,7 @@ http {
 
       # Everything else -> frontend container
       location / {
-          proxy_pass http://spire-codex-frontend:3000;
+          proxy_pass $codex_frontend;
           proxy_http_version 1.1;
           proxy_set_header Host $host;
           proxy_set_header X-Real-IP $remote_addr;
@@ -252,35 +261,13 @@ http {
       }
   }
 
+# beta.spire-codex.com is retired: the beta channel lives at /beta on the
+# main site and the beta containers are gone (a static proxy_pass to a
+# missing container fails nginx config load, so this must never come back
+# as a proxy block).
 server {
     server_name beta.spire-codex.com;
-
-    location / {
-        proxy_pass http://spire-codex-beta-frontend:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-    location /api/ {
-        proxy_pass http://spire-codex-beta-backend:8000;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-    location /static/ {
-        proxy_pass http://spire-codex-beta-backend:8000;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-    location /docs       { proxy_pass http://spire-codex-beta-backend:8000; }
-    location /openapi.json { proxy_pass http://spire-codex-beta-backend:8000; }
+    return 301 https://spire-codex.com$request_uri;
 }
 
 # Staging -- uses runtime DNS resolution so nginx doesn't fail when
@@ -339,6 +326,10 @@ server {
                   origin.spire-codex.com
                   origin-backup.spire-codex.com;
 
+      # Same runtime-DNS pattern as the main block (see the comment there).
+      resolver 127.0.0.11 valid=10s;
+      set $codex_backend http://spire-codex-backend:8000;
+
       # Recognizable response so you can tell traffic landed here
       location = /healthz {
           access_log off;
@@ -354,7 +345,7 @@ server {
       location /metrics {
           allow {{ metrics_monitor_ip }};
           deny all;
-          proxy_pass http://spire-codex-backend:8000/metrics;
+          proxy_pass $codex_backend;
           proxy_http_version 1.1;
           proxy_set_header Host $host;
           proxy_set_header X-Real-IP $remote_addr;
@@ -363,7 +354,7 @@ server {
       location /health {
           allow {{ metrics_monitor_ip }};
           deny all;
-          proxy_pass http://spire-codex-backend:8000/health;
+          proxy_pass $codex_backend;
           proxy_http_version 1.1;
           proxy_set_header Host $host;
       }
@@ -399,6 +390,10 @@ server {
       listen 80;
       server_name analytics.spire-codex.com;
 
+      # Same runtime-DNS pattern as the main block (see the comment there).
+      resolver 127.0.0.11 valid=10s;
+      set $umami_upstream http://umami:3000;
+
       # Don't log analytics traffic — the metrics-monitor scraper does
       # not hit this host, and tracker pings would 10x the access log.
       access_log off;
@@ -406,7 +401,7 @@ server {
       # Tracker script — every visitor's browser fetches this from
       # the SSR'd <script src=...>. Must be public.
       location = /script.js {
-          proxy_pass http://umami:3000;
+          proxy_pass $umami_upstream;
           proxy_set_header Host $host;
           proxy_set_header X-Real-IP $remote_addr;
       }
@@ -415,7 +410,7 @@ server {
       # Must accept traffic from every visitor IP. Umami applies its
       # own internal sender check via the website_id.
       location = /api/send {
-          proxy_pass http://umami:3000;
+          proxy_pass $umami_upstream;
           proxy_http_version 1.1;
           proxy_set_header Host $host;
           proxy_set_header X-Real-IP $remote_addr;
@@ -429,7 +424,7 @@ server {
       location / {
           allow {{ admin_ip }};
           deny all;
-          proxy_pass http://umami:3000;
+          proxy_pass $umami_upstream;
           proxy_http_version 1.1;
           proxy_set_header Host $host;
           proxy_set_header X-Real-IP $remote_addr;
