@@ -836,6 +836,11 @@ def _submit_player_run(
         if not doc.get("hidden"):
             bump_stats_counters(doc)
     except DuplicateKeyError:
+        # Re-uploading the exact run file restores a soft-deleted run:
+        # holding the file is ownership proof, and delete only ever meant
+        # "hide from my profile" — without this, a delete-then-reupload
+        # leaves the list empty while every upload reports "duplicate".
+        _undelete_on_reupload(coll, run_hash)
         # The run already exists (commonly: it was submitted anonymously
         # before the client started sending an identity). Re-submitting with
         # a steam_id / discord_id becomes a migration path — tag the existing
@@ -1130,6 +1135,12 @@ def _build_match(
     if username:
         # Case-insensitive, exact (anchored) match on the normalized field.
         m["username_lower"] = username.lower()
+        # A user's own stats honor their soft deletes (None matches missing
+        # or null). Username-scoped only: the lookup is index-narrowed to one
+        # player, so the non-indexable null-match stays cheap, and community
+        # aggregates keep counting the runs (delete means "off my profile",
+        # not "out of the community data").
+        m["deleted_at"] = None
     # Drop admin-flagged cheated runs from every stat (absent field = eligible).
     m["hidden"] = {"$ne": True}
     return m
@@ -2723,6 +2734,7 @@ def get_win_rate_comparison(username: str) -> list[dict]:
                     "$match": {
                         "username_lower": username.lower(),
                         "hidden": {"$ne": True},
+                        "deleted_at": None,
                     }
                 },
                 {
@@ -2816,6 +2828,16 @@ def get_user_runs(
         )
 
     return {"runs": runs, "total": total, "page": page, "limit": limit}
+
+
+def _undelete_on_reupload(coll, run_hash: str) -> None:
+    """Clear a soft delete when the same run file comes back in. Guarded on
+    deleted_at being set so the common duplicate (never-deleted) is a no-op
+    matching zero docs."""
+    coll.update_one(
+        {"_id": run_hash, "deleted_at": {"$ne": None}},
+        {"$unset": {"deleted_at": ""}},
+    )
 
 
 def soft_delete_run(run_hash: str, user_id: str) -> dict:
