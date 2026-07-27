@@ -35,6 +35,7 @@ import {
   type LivePet,
   type LivePlayer,
   type LivePower,
+  type LiveSeat,
   type MonsterMap,
 } from "../live-shared";
 import { LiveEventPanel, LiveLootPanel, LiveShopPanel } from "../LiveEventShop";
@@ -208,6 +209,55 @@ function Vitals({
 /** Friendly summons beside the player token (the Necrobinder's Osty and any
  * future pet): portrait + name + HP, so a spectator can see the summon's health.
  * Dead pets drop off. `owner` co-op matching is left to the caller. */
+/** A co-op teammate on the combat scene, drawn from seat vitals alone so the
+ * whole party shows even when only one player runs the mod (the modded client
+ * reports every seat). The beat carries no per-seat name yet, so the
+ * character name stands in until the payload grows one. */
+function PartyMate({
+  seat,
+  turnSide,
+}: {
+  seat: LiveSeat;
+  turnSide?: string | null;
+}) {
+  const down = seat.alive === false;
+  const active = !down && turnSide === "player" && !seat.ended_turn;
+  return (
+    <div
+      className={`flex flex-col items-center gap-1 ${down ? "opacity-50" : ""}`}
+    >
+      <span
+        className={`inline-flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-2 bg-[var(--bg-primary)] transition ${
+          active
+            ? "border-[var(--accent-gold)] ring-2 ring-[var(--accent-gold)]/60"
+            : down
+              ? "border-rose-500/60 grayscale"
+              : "border-[var(--accent-gold)]/40"
+        }`}
+      >
+        <CharacterIcon character={seat.character} className="h-[88%] w-[88%]" />
+      </span>
+      <div className="flex items-center gap-1 text-xs font-semibold text-[var(--text-primary)]">
+        <span className="max-w-[7rem] truncate">
+          {displayName(`CHARACTER.${seat.character ?? ""}`)}
+        </span>
+        {down && (
+          <span className="text-[10px] font-bold uppercase text-rose-400">
+            down
+          </span>
+        )}
+        {!down && seat.ended_turn && turnSide === "player" && (
+          <span className="text-[10px] text-emerald-400" title="Turn locked in">
+            ✓
+          </span>
+        )}
+      </div>
+      <Vitals hp={seat.hp} maxHp={seat.max_hp} block={seat.block} />
+    </div>
+  );
+}
+
+
 function PetRow({ pets, monsters }: { pets: LivePet[]; monsters: MonsterMap }) {
   const live = pets.filter((pt) => pt && pt.alive !== false && (pt.id || pt.name));
   if (!live.length) return null;
@@ -303,6 +353,9 @@ export default function LiveScene({
   // it's just the quote to show when dead.
   const dead =
     p.hp != null ? p.hp <= 0 : (p.events ?? []).some((e) => e.k === "death");
+  // Co-op teammates, reported per-beat by the mod-holder's client; the owner's
+  // own seat is the big sprite, so it stays out of the party cluster.
+  const mates = (p.players ?? []).filter((s) => !s.is_me);
   const hand = p.hand ?? [];
   const hpPct =
     p.hp != null && p.max_hp
@@ -580,6 +633,13 @@ export default function LiveScene({
                 <PowerRow powers={p.player_powers ?? []} />
                 <OrbRow orbs={p.orbs ?? []} slots={p.orb_slots} />
                 <PetRow pets={p.pets ?? []} monsters={monsters} />
+                {mates.length > 0 && (
+                  <div className="mt-2 flex max-w-[16rem] flex-wrap justify-center gap-4">
+                    {mates.map((s, i) => (
+                      <PartyMate key={i} seat={s} turnSide={p.turn_side} />
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Enemy tokens */}
