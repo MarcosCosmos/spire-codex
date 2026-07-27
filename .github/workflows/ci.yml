@@ -106,7 +106,7 @@ jobs:
       - name: Install ruff
         # Ruff needs no project deps; installing requirements.txt here
         # wasted minutes per run.
-        run: pip install ruff
+        run: pip install "ruff==0.15.14"
 
       - name: Ruff lint
         run: ruff check app/
