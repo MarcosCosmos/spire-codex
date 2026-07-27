@@ -189,6 +189,15 @@ def _ensure_indexes(coll) -> None:
     # ~740k-doc collection.
     coll.create_index([("run_hash", ASCENDING)], sparse=True)
     coll.create_index([("run_time", ASCENDING)])
+    # Tiny partial index over just the hidden (cheated/moderated) docs so
+    # _count_visible can subtract them index-only. A bare hidden: {$ne: True}
+    # clause on the big win counts disqualifies the covering index and fetches
+    # every candidate doc — the 60s counts that 504'd submit enrichment.
+    coll.create_index(
+        [("win", ASCENDING), ("run_time", ASCENDING)],
+        name="hidden_win_runtime",
+        partialFilterExpression={"hidden": True},
+    )
     coll.create_index([("ascension", DESCENDING), ("run_time", ASCENDING)])
     coll.create_index([("character", ASCENDING), ("submitted_at", DESCENDING)])
     coll.create_index([("character", ASCENDING), ("run_time", ASCENDING)])
@@ -2355,6 +2364,15 @@ def _leaderboard_live(
     }
 
 
+def _count_visible(coll, query: dict) -> int:
+    """count_documents excluding hidden runs, index-only: count the full set,
+    then subtract the hidden subset (served by the tiny hidden_win_runtime
+    partial index). Never put hidden: {$ne: True} straight into a large
+    count — it disqualifies the covering index and fetches every candidate
+    doc, which is what stalled submit enrichment into gateway 504s."""
+    return coll.count_documents(query) - coll.count_documents({**query, "hidden": True})
+
+
 @_instrument("get_run_rank")
 def get_run_rank(run_hash: str, category: str = "fastest") -> dict:
     """Rank of a single winning run within its character's leaderboard.
@@ -2368,10 +2386,10 @@ def get_run_rank(run_hash: str, category: str = "fastest") -> dict:
         return {"rank": None}
 
     if category == "highest_ascension":
-        ahead = coll.count_documents(
+        ahead = _count_visible(
+            coll,
             {
                 "win": {"$in": [True, 1]},
-                "hidden": {"$ne": True},
                 "character": row["character"],
                 "$or": [
                     {"ascension": {"$gt": row.get("ascension", 0)}},
@@ -2380,16 +2398,16 @@ def get_run_rank(run_hash: str, category: str = "fastest") -> dict:
                         "run_time": {"$lt": row.get("run_time", 0)},
                     },
                 ],
-            }
+            },
         )
     else:
-        ahead = coll.count_documents(
+        ahead = _count_visible(
+            coll,
             {
                 "win": {"$in": [True, 1]},
-                "hidden": {"$ne": True},
                 "character": row["character"],
                 "run_time": {"$lt": row.get("run_time", 0)},
-            }
+            },
         )
     return {"rank": ahead + 1, "category": category}
 
@@ -2405,9 +2423,9 @@ def seed_rank_for(steam_id: str | None, seed: str) -> dict:
     winning run in that pool.
     """
     coll = _get_collection()
-    base = {"seed": seed, "was_abandoned": {"$ne": True}, "hidden": {"$ne": True}}
-    seed_total = coll.count_documents(base)
-    seed_wins = coll.count_documents({**base, "win": {"$in": [True, 1]}})
+    base = {"seed": seed, "was_abandoned": {"$ne": True}}
+    seed_total = _count_visible(coll, base)
+    seed_wins = _count_visible(coll, {**base, "win": {"$in": [True, 1]}})
 
     seed_rank = None
     global_rank = None
@@ -2425,13 +2443,13 @@ def seed_rank_for(steam_id: str | None, seed: str) -> dict:
         )
         if mine:
             seed_rank = (
-                coll.count_documents(
+                _count_visible(
+                    coll,
                     {
                         "seed": seed,
                         "win": {"$in": [True, 1]},
-                        "hidden": {"$ne": True},
                         "run_time": {"$lt": mine.get("run_time", 0)},
-                    }
+                    },
                 )
                 + 1
             )
@@ -2441,25 +2459,21 @@ def seed_rank_for(steam_id: str | None, seed: str) -> dict:
             {"run_time": 1},
             sort=[("run_time", 1)],
         )
-        global_total = coll.count_documents(
-            {"win": {"$in": [True, 1]}, "hidden": {"$ne": True}}
-        )
+        global_total = _count_visible(coll, {"win": {"$in": [True, 1]}})
         if best and global_total:
             global_rank = (
-                coll.count_documents(
+                _count_visible(
+                    coll,
                     {
                         "win": {"$in": [True, 1]},
-                        "hidden": {"$ne": True},
                         "run_time": {"$lt": best.get("run_time", 0)},
-                    }
+                    },
                 )
                 + 1
             )
             percentile = round(global_rank * 100.0 / global_total, 1)
     else:
-        global_total = coll.count_documents(
-            {"win": {"$in": [True, 1]}, "hidden": {"$ne": True}}
-        )
+        global_total = _count_visible(coll, {"win": {"$in": [True, 1]}})
 
     return {
         "seed": seed,
@@ -2666,7 +2680,7 @@ def get_run_rank_scoped(
     if not row or not row.get("win") or row.get("hidden"):
         return {"rank": None, "total": 0}
 
-    scope: dict[str, Any] = {"win": {"$in": [True, 1]}, "hidden": {"$ne": True}}
+    scope: dict[str, Any] = {"win": {"$in": [True, 1]}}
     if not today_only:
         scope["character"] = row["character"]
     if game_mode:
@@ -2692,8 +2706,8 @@ def get_run_rank_scoped(
     else:
         ahead_q = {**scope, "run_time": {"$lt": row.get("run_time", 0)}}
 
-    ahead = coll.count_documents(ahead_q)
-    total = coll.count_documents(scope)
+    ahead = _count_visible(coll, ahead_q)
+    total = _count_visible(coll, scope)
     return {"rank": ahead + 1, "total": total}
 
 
