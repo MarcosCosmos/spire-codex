@@ -5,22 +5,47 @@
     "title": "Patch Recap: Beta v0.109.0",
     "author": "Spire Codex",
     "date": "2026-07-17",
-    "updated": null,
+    "updated": "2026-07-27",
     "category": "general",
+    "channel": "beta",
     "tags": [
       "patch notes",
       "balance",
-      "v0.109.0"
+      "v0.109.0",
+      "v0.109.1"
     ],
-    "summary": "Everything in the July 16 beta patch, pulled from the game files: two new Neow relics, the reworks, the rarity shuffle, and the changes the patch notes left out.",
+    "summary": "Everything in the July 16 beta patch, pulled from the game files: two new Neow relics, the reworks, the rarity shuffle, and the changes the patch notes left out. Updated with the v0.109.1 hotfix and its unannounced staged content.",
     "difficulty": "beginner",
     "character": null,
     "website": null,
     "bluesky": null,
     "twitter": null,
     "twitch": null,
-    "content": "The July 16 beta patch is a big one: two new Neow relics with exclusive rewards, a stack of reworks, a rarity shuffle across three characters, and the start of Traditional Chinese support. Here is everything that matters, pulled straight from the game files rather than the patch notes, which means it includes a couple of things the notes did not mention.\n\n## Two new Neow relics\n\n[[relic:Dowsing Rod]] adds a [[Dowsing]] quest card to your deck. Dowsing costs nothing and does nothing in combat, but after you enter 5 more ? rooms it transforms into [[Abundance]], an Ancient skill that lets you pick 1 of 3 upgraded Powers to add to your hand, free to play that turn. If you like reading ? room odds (see our unknown rooms page for how those actually work), this relic pays you for routing through them.\n\n[[relic:Neow's Sacrifice]] gives you an [[potion:Ambergris]] and adds a Guilty curse to your deck. Ambergris heals 50% of your max HP and gives you an extra turn, which is the kind of potion you sit on until a boss tries to kill you. The curse is the price.\n\n## The stuff the patch notes didn't tell you\n\nTwo changes shipped in the build without a line in the notes:\n\n- [[Tutor]] is a brand new Regent rare for multiplayer: another player chooses a card in their draw pile to add into their hand. It was not announced anywhere.\n- [[Mirage]] got completely reworked, from \"Gain Block equal to Poison on ALL enemies\" at 1 cost to a 0-cost skill that gives you energy next turn. Mega Crit quietly edited the patch notes after the fact to add this one.\n\n## Reworks\n\n- [[Well-Laid Plans]] is now a rare power, cost 1 (0 upgraded): at the end of your turn you no longer discard your hand. It also works in multiplayer now.\n- [[Expertise]] no longer draws to a hand size. It draws 2 (3) cards and they gain Retain this turn.\n- [[Eidolon]] now plays ALL Ethereal cards in your exhaust pile, then exhausts. Necrobinder players have some thinking to do.\n- [[Pillar of Creation]] triggers once per turn now: the first time you create a card each turn, gain 5 (7) Block instead of 3 per creation.\n- [[relic:Diamond Diadem]] drops its play-2-or-fewer-cards condition entirely: start combat with 20 Block that is not removed at the start of your next turn.\n- [[relic:History Course]] only repeats Attacks now, not Skills.\n\n## The rarity shuffle\n\nRarity changes move cards between draft pools, so these change what you see in rewards more than what the cards do:\n\n- [[Taunt]] is Common now (and blocks 6 (8), down from 7)\n- [[Bloodletting]] moves up to Uncommon\n- [[Cruelty]] drops from Rare to Uncommon\n- [[Dominate]] climbs from Uncommon to Rare\n- [[Accelerant]] drops from Rare to Uncommon\n\n## Number changes worth knowing\n\n- [[Demon Form]] gives 3 (4) Strength per turn, up from 2 (3)\n- [[Hyperbeam]] hits for 30 (38), [[Sunder]] for 26 (34)\n- [[Outbreak]] deals 4 (5), up from 3 (4)\n- [[Primal Force]]'s Giant Rock tokens hit for 20 (24), up from 16 (20)\n- [[Expect a Fight]] no longer locks your energy gain for the turn\n- [[Collision Course]] drops to 10 (14) damage\n- [[Trash to Treasure]]'s upgrade now lowers its cost instead of granting Innate\n\n## Enemies\n\n[[monster:Aeonglass]] got its front-loaded damage pulled back: Ebb drops from 26 (32) to 22 (26). Our encounter stats have Aeonglass as the deadliest boss in the game, so this nerf is aimed straight at that spike. Meanwhile [[monster:Torch Head Amalgam]] goes the other way with a new Strong Tackle opener at 26 (32), so act 3 hallway fights just got meaner.\n\n## Ancients\n\n- Tanx's [[relic:Meat Cleaver]] cook heal drops from 9 to 5\n- Tezcatara's [[relic:Toy Box]] gives 5 wax relics, up from 4\n- Vakuu's [[relic:Fiddle]] draws 3, up from 2\n- Vakuu's [[relic:Sere Talon]] and [[relic:Distinguished Cape]] swapped downsides\n- Orobos' [[relic:Sand Castle]] moved from Pool 1 to Pool 2\n- Darv's blessing pools got shuffled for more variety, so expect Energy relics more often\n\n## Multiplayer\n\nThe co-op damage kings all got taxed: [[Midnight]] drops from 99 (120) to 60 (72), [[The Ball]] scales at +10 (15) instead of +15 (25), and [[Blade Symphony]] costs 2 (1) with the upgrade no longer adding extra Shivs. You can also play nearly any potion on another player now, which makes Ambergris even more interesting in co-op.\n\n## Traditional Chinese\n\nThe game started translating into Traditional Chinese this patch, and Spire Codex supports it already: the whole site runs in 繁體中文 on the beta channel, including the full set of game-rendered card images in Traditional Chinese. Pick it from the language menu.\n\nEvery change above is live in our beta channel data, and you can compare any card's stats across patches with the version filter on the stats pages. The full machine-generated diff is on the changelog page.",
-    "channel": "beta"
+    "content": "# Patch Recap: Beta v0.109.0\n\nThe July 16 beta patch is a big one: two new Neow relics with exclusive rewards, a stack of reworks, a rarity shuffle across three characters, and the start of Traditional Chinese support. Here is everything that matters, pulled straight from the game files rather than the patch notes, which means it includes a couple of things the notes did not mention.\n\n## Two new Neow relics\n\n[[relic:Dowsing Rod]] adds a [[Dowsing]] quest card to your deck. Dowsing costs nothing and does nothing in combat, but after you enter 5 more ? rooms it transforms into [[Abundance]], an Ancient skill that lets you pick 1 of 3 upgraded Powers to add to your hand, free to play that turn. If you like reading ? room odds (see our unknown rooms page for how those actually work), this relic pays you for routing through them.\n\n[[relic:Neow's Sacrifice]] gives you an [[potion:Ambergris]] and adds a Guilty curse to your deck. Ambergris heals 50% of your max HP and gives you an extra turn, which is the kind of potion you sit on until a boss tries to kill you. The curse is the price.\n\n## The stuff the patch notes didn't tell you\n\nTwo changes shipped in the build without a line in the notes:\n\n- [[Tutor]] is a brand new Regent rare for multiplayer: another player chooses a card in their draw pile to add into their hand. It was not announced anywhere.\n- [[Mirage]] got completely reworked, from \"Gain Block equal to Poison on ALL enemies\" at 1 cost to a 0-cost skill that gives you energy next turn. Mega Crit quietly edited the patch notes after the fact to add this one.\n\n## Reworks\n\n- [[Well-Laid Plans]] is now a rare power, cost 1 (0 upgraded): at the end of your turn you no longer discard your hand. It also works in multiplayer now.\n- [[Expertise]] no longer draws to a hand size. It draws 2 (3) cards and they gain Retain this turn.\n- [[Eidolon]] now plays ALL Ethereal cards in your exhaust pile, then exhausts. Necrobinder players have some thinking to do.\n- [[Pillar of Creation]] triggers once per turn now: the first time you create a card each turn, gain 5 (7) Block instead of 3 per creation.\n- [[relic:Diamond Diadem]] drops its play-2-or-fewer-cards condition entirely: start combat with 20 Block that is not removed at the start of your next turn.\n- [[relic:History Course]] only repeats Attacks now, not Skills.\n\n## The rarity shuffle\n\nRarity changes move cards between draft pools, so these change what you see in rewards more than what the cards do:\n\n- [[Taunt]] is Common now (and blocks 6 (8), down from 7)\n- [[Bloodletting]] moves up to Uncommon\n- [[Cruelty]] drops from Rare to Uncommon\n- [[Dominate]] climbs from Uncommon to Rare\n- [[Accelerant]] drops from Rare to Uncommon\n\n## Number changes worth knowing\n\n- [[Demon Form]] gives 3 (4) Strength per turn, up from 2 (3)\n- [[Hyperbeam]] hits for 30 (38), [[Sunder]] for 26 (34)\n- [[Outbreak]] deals 4 (5), up from 3 (4)\n- [[Primal Force]]'s Giant Rock tokens hit for 20 (24), up from 16 (20)\n- [[Expect a Fight]] no longer locks your energy gain for the turn\n- [[Collision Course]] drops to 10 (14) damage\n- [[Trash to Treasure]]'s upgrade now lowers its cost instead of granting Innate\n\n## Enemies\n\n[[monster:Aeonglass]] got its front-loaded damage pulled back: Ebb drops from 26 (32) to 22 (26). Our encounter stats have Aeonglass as the deadliest boss in the game, so this nerf is aimed straight at that spike. Meanwhile [[monster:Torch Head Amalgam]] goes the other way with a new Strong Tackle opener at 26 (32), so act 3 hallway fights just got meaner.\n\n## Ancients\n\n- Tanx's [[relic:Meat Cleaver]] cook heal drops from 9 to 5\n- Tezcatara's [[relic:Toy Box]] gives 5 wax relics, up from 4\n- Vakuu's [[relic:Fiddle]] draws 3, up from 2\n- Vakuu's [[relic:Sere Talon]] and [[relic:Distinguished Cape]] swapped downsides\n- Orobos' [[relic:Sand Castle]] moved from Pool 1 to Pool 2\n- Darv's blessing pools got shuffled for more variety, so expect Energy relics more often\n\n## Multiplayer\n\nThe co-op damage kings all got taxed: [[Midnight]] drops from 99 (120) to 60 (72), [[The Ball]] scales at +10 (15) instead of +15 (25), and [[Blade Symphony]] costs 2 (1) with the upgrade no longer adding extra Shivs. You can also play nearly any potion on another player now, which makes Ambergris even more interesting in co-op.\n\n## Traditional Chinese\n\nThe game started translating into Traditional Chinese this patch, and Spire Codex supports it already: the whole site runs in 繁體中文 on the beta channel, including the full set of game-rendered card images in Traditional Chinese. Pick it from the language menu.\n\nEvery change above is live in our beta channel data, and you can compare any card's stats across patches with the version filter on the stats pages. The full machine-generated diff is on the changelog page.\n\n## Update: v0.109.1 (July 25)\n\nThe official notes for this hotfix are one line: corrected Traditional Chinese translations to fix broken plural evaluation. The game files tell a longer story. None of what follows made the notes.\n\n### Staged content: The Adversary\n\nThree new monsters are sitting in the files: The Adversary Mk 1, Mk 2, and Mk 3. Each is an escalating version of the same kit (Smash becomes Bash becomes Crash, a Beam that grows from 15 to 18 damage, and a multi-hit Barrage), but none of them have HP values or an encounter wired up yet. A new Battleworn Dummy Event Encounter shipped alongside them, also unwired. It reads like an upcoming event where the training dummy fights back, getting tougher each round. Nothing here is reachable in normal play yet.\n\n### Four new powers\n\n- Gravity: whenever you play a card this turn, deal 2 damage to ALL enemies.\n- Leadership: all other allies deal 1 additional damage.\n- Magic Bomb: take 20 damage at the end of your turn, cleared if the Magi Knight dies. There is no Magi Knight anywhere in the game files yet, which is its own teaser.\n- No Energy Gain: you cannot gain additional energy this turn.\n\n### One new enchantment\n\nSlumbering Essence: if the card is in your hand at the end of turn, its cost drops by 1 until it is played.\n\n### Quietly wired in\n\n- Chomper and Tunneler now share a new encounter, the Tunneling Twosome. No act is assigned to it in the files yet.\n- Byrdonis, Haunted Ship, and Leaf Slime (M) got real attack patterns defined (Swoop then Peck, Haunt then Swipe then Stomp, Sticky Shot then Clump Shot). Our monster pages now show the cycles instead of a blank pattern.\n\n### The official fix\n\nThe Traditional Chinese corrections are real and already flowing through the site: the beta channel's 繁體中文 data updated with this ingest.\n\nNo card text, values, or art changed, so every existing card render stays current. The full machine diff is on the changelog page under v0.109.1."
+  },
+  {
+    "id": "boss-guide",
+    "slug": "boss-guide",
+    "title": "Boss Guide: Every Boss Ranked by Deadliness",
+    "author": "Spire Codex",
+    "date": "2026-07-16",
+    "updated": null,
+    "category": "general",
+    "channel": null,
+    "tags": [
+      "bosses",
+      "elites",
+      "encounters",
+      "strategy"
+    ],
+    "summary": "Every Slay the Spire 2 boss and elite ranked by how many runs it actually ends, from 800,000+ community runs, with the fights each character should fear most.",
+    "difficulty": "intermediate",
+    "character": null,
+    "website": null,
+    "bluesky": null,
+    "twitter": null,
+    "twitch": null,
+    "content": "Most boss guides tell you what the author died to. This one is built from what everyone died to: every ranking below comes from community-submitted runs on Spire Codex, counting how many parties walked into each fight and how many did not walk out. The [live encounter stats](https://spire-codex.com/leaderboards/encounters) update continuously; these numbers are a mid-July 2026 snapshot of the main branch.\n\n## The deadliest boss in the game\n\n[[encounter:Aeonglass]] ends 25.4% of the runs that reach it, the highest death rate of any fight in the game. It also deals the most damage per fight (74 on average) in only 7 turns, the highest damage density of any boss. Mega Crit added it in Major Update #2 as the replacement for the Doormaker fight, and the community data says the replacement did not make act 3 kinder. Every character suffers here, but Necrobinder dies most at 29%.\n\n## Act by act\n\n**Act 1** has six possible bosses, and they are not created equal. [[encounter:Vantom]] (16.5% deaths) and [[encounter:Lagavulin Matriarch]] (16.1%) top the list, while [[encounter:Soul Fysh]] (12.6%) is the one you hope the map gives you. The Matriarch hides a character-specific trap: she kills 23% of Silents against 12 to 17% of everyone else, the most lopsided character split of any boss. If you are on Silent and see her on the map, route for extra damage before the boss floor.\n\n**Act 2** is where runs go to die in volume. [[encounter:Knowledge Demon]] ends 22.1% of attempts (Defect suffers most at 26%), and [[encounter:Kaiser Crab]] takes 19.9% with Ironclad as its favorite meal. [[encounter:The Insatiable]] is the merciful draw at 16%. Both of the big two average around 60 damage across 8 turns, so walking in below roughly two thirds HP is how healthy runs become dead ones.\n\n**Act 3** stacks [[encounter:Aeonglass]] next to [[encounter:Test Subject]] (22%) and [[encounter:Queen]] (18%). Test Subject is the longest boss fight in the game at 9.3 average turns, which makes it a pure scaling check: a deck that plateaus by turn 5 loses slowly and certainly. Queen punishes the front-loaded decks instead, with Ironclad and Defect dying most.\n\n## The elite gatekeepers\n\nElites kill fewer parties per fight but you face far more of them. [[encounter:The Decimillipede]] is the deadliest at 11.5%, and its 4.4-turn average makes it the opposite of Test Subject: a burst check that is over before scaling matters. [[encounter:Phantasmal Gardeners]] (11%) and [[encounter:Phrog Parasite]] (9.4%) rule act 1, and both punish decks that drafted setup cards over damage in the first few floors. By act 3 the elites ([[encounter:Knight Gang]], [[encounter:Mecha Knight]], [[encounter:Soul Nexus]]) all sit under 4.2%, not because they are weak but because the decks that reach them are strong. The act 1 elite gauntlet is the real filter.\n\n## What the numbers say about preparation\n\nThree patterns fall straight out of the data. First, fight length is the hidden stat: short fights (Decimillipede) check burst, long fights (Test Subject, Vantom at 9 turns) check scaling, and a deck needs an answer to both by act 2. Second, know your character's nemesis: Silent fears the Matriarch, Defect fears the Knowledge Demon, Ironclad fears the Crab and the Queen, and everyone fears Aeonglass. Third, average damage taken tells you the entry fee: act 2 bosses cost about 60 HP, Aeonglass costs 74, and the [merchant's](https://spire-codex.com/merchant) removal service before a boss floor is usually worth more than another card.\n\nPer-boss pages carry full per-character splits, HP ranges, and attack patterns, linked from the [encounters index](https://spire-codex.com/encounters). For what to draft so these fights stop ending your runs, the [character tier lists](https://spire-codex.com/guides) rank every card and relic from the same run data, and [Understanding Encounters](https://spire-codex.com/guides/understanding-encounters) covers reading intents. If a boss ended your run anyway, [upload it](https://spire-codex.com/leaderboards/submit) and make the numbers smarter."
   },
   {
     "id": "builds-guide",
@@ -30,6 +55,7 @@
     "date": "2026-07-16",
     "updated": null,
     "category": "general",
+    "channel": null,
     "tags": [
       "builds",
       "archetypes",
@@ -45,50 +71,6 @@
     "content": "A build is just the cards the data already likes, drafted on purpose. Every package below is assembled from the top of each character's community ratings, the same numbers behind the [tier lists](https://spire-codex.com/tier-list), so these are the archetypes that win runs, not theorycraft. Character links go to the full tier guides.\n\n## Ironclad: pay HP, get everything\n\nHis two best packages overlap: HP-as-resource ([[Offering]], [[Crimson Mantle]], [[Tear Asunder]], with [[relic:Red Skull]] rewarding low HP) and exhaust ([[Fiend Fire]], [[Pact's End]], with [[relic:Charon's Ashes]] turning every exhaust into AoE). [[relic:Self-Forming Clay]] converts the self-damage into next-turn Block and glues the two together. Details in the [Ironclad tier list](https://spire-codex.com/guides/ironclad-tier-list).\n\n## Silent: discard first, shivs second\n\nDiscard is her best engine: [[Tools of the Trade]] and [[Storm of Steel]] feed Sly cards, and [[relic:Tough Bandages]] (the highest-rated relic in the game) plus [[relic:Tingsha]] pay Block and damage per discard. The shiv package ([[Blade of Ink]], [[Fan of Knives]], [[relic:Helical Dart]]) is a close second, and [[Malaise]], her most underrated card, slots into every build. The [Silent tier list](https://spire-codex.com/guides/silent-tier-list) has the numbers.\n\n## Defect: zero-cost tempo over orb greed\n\nThe data likes [[All for One]] plus [[relic:Power Cell]] zero-cost tempo more than pure orb scaling, with [[relic:Data Disk]] and [[relic:Gold-Plated Cables]] as the orb backbone when Frost and Plasma do come. [[Echo Form]] is fine, just drafted like it is better than it is. See the [Defect tier list](https://spire-codex.com/guides/defect-tier-list).\n\n## Necrobinder: Souls into everything\n\nThe strongest character has three overlapping engines: Souls and Ethereal ([[Glimpse Beyond]], [[Banshee's Cry]], [[relic:Big Hat]], [[relic:Funerary Mask]]), Osty ([[Reanimate]], [[Necro Mastery]], [[relic:Bone Flute]]), and Doom ([[Neurosurge]], [[Oblivion]], [[relic:Undying Sigil]]). Any two of the three win; the [Necrobinder tier list](https://spire-codex.com/guides/necrobinder-tier-list) ranks the pieces.\n\n## Regent: chain skills until something dies\n\nEverything feeds the skill chain: [[Big Bang]] and [[Decisions, Decisions]] as payoffs, [[Make It So]] recurring through it, [[GUARDS!!!]] converting dead cards, and [[relic:Regalite]] paying Block for every created card while [[relic:Lunar Pastry]] funds the turn. [[Prophesize]], his most skipped good card, is the draw the chain wants. Full rankings in the [Regent tier list](https://spire-codex.com/guides/regent-tier-list).\n\nArchetypes drift with every patch; the [card metrics](https://spire-codex.com/leaderboards/metrics) page is the live version of this guide, and the win rates update as the community climbs."
   },
   {
-    "id": "steam-reviews",
-    "slug": "steam-reviews",
-    "title": "What the Mixed Steam Reviews Actually Say",
-    "author": "Spire Codex",
-    "date": "2026-07-16",
-    "updated": null,
-    "category": "general",
-    "tags": [
-      "reviews",
-      "steam",
-      "early access"
-    ],
-    "summary": "Slay the Spire 2 sits at Mixed on Steam. Here is what the numbers look like, what Mega Crit has changed in response, and what 830,000 community runs say about who is still playing.",
-    "difficulty": "beginner",
-    "character": null,
-    "website": null,
-    "bluesky": null,
-    "twitter": null,
-    "twitch": null,
-    "content": "Slay the Spire 2's Steam page shows a Mixed rating, and if you searched that phrase before buying, here is the honest picture, with numbers.\n\n## The raw numbers\n\nAs of mid-July 2026, the game sits at 60% positive: 114,588 positive reviews against 75,007 negative, out of 189,595 total, at a $24.99 early access price. For the sequel to one of the best-reviewed games in the genre, that number is the story, and it is worth understanding rather than waving off.\n\n## What changed, and what Mega Crit did about it\n\nThe sequel launched into early access as a bigger, harder, more systemic game than the original: five characters, co-op, Ancients, enchantments, and a full rebalance rather than a content pack. Big rework sequels split their audiences, and this one did.\n\nWhat the review score does not show is the response rate. Major Update #2 removed the Doormaker fight outright, the boss the community argued about most. The same cycle reworked the Ironclad card players disliked most and eased the lower Ascensions where new players were bouncing. And when asked for deadlines, the studio published a roadmap without dates, saying exacting deadlines produce sloppy, uninspired work. Whatever you think of a Mixed score, the patch record reads like a team that is listening. The [news page](https://spire-codex.com/news) tracks every update as it lands.\n\n## What the players who stayed are doing\n\nReview scores measure sentiment; run data measures engagement. Spire Codex has received over 830,000 community-submitted runs, and the pool grows daily. The game is genuinely harder than its predecessor, solo players win 19.1% of runs overall, and the difficulty is a real part of the review split. But the depth is also real: the [community stats](https://spire-codex.com/community-stats) show a meta still shifting patch to patch, and the [tier lists](https://spire-codex.com/tier-list) rebuilt from scratch as the balance moves.\n\n## Should that score stop you?\n\nIf you loved the original for its readable, tight balance, early access will still show you rough edges, and waiting for 1.0 is defensible. If you want more Spire with more systems and can live with a live balance sheet, the game underneath the score is the deepest deckbuilder Mega Crit has made, for $24.99. Either way, decide on current information: the reviews aggregate two years of patches, and the game you would install today is not the one the oldest reviews describe."
-  },
-  {
-    "id": "lantern-key",
-    "slug": "lantern-key",
-    "title": "The Lantern Key, Explained",
-    "author": "Spire Codex",
-    "date": "2026-07-16",
-    "updated": null,
-    "category": "general",
-    "tags": [
-      "lantern key",
-      "events",
-      "secrets"
-    ],
-    "summary": "What the Lantern Key does in Slay the Spire 2: where the event appears, what each choice is worth, and what keeping the key unlocks.",
-    "difficulty": "beginner",
-    "character": null,
-    "website": null,
-    "bluesky": null,
-    "twitter": null,
-    "twitch": null,
-    "content": "The Lantern Key is one of the sequel's chained secrets: an event choice in one act that changes what you can find in the next. Here is exactly how it works, from the game files.\n\n## The event\n\n[[event:The Lantern Key]] appears in Act 2 (the Hive). You find a faintly glowing key, and a stranger who looks like bad news claims it. Two choices:\n\n- **Return the Key**: gain 100 Gold. The stranger thanks you and rewards you handsomely. Safe, done, no key.\n- **Keep the Key**: fight the stranger to keep it. Win the combat and the [[Lantern Key]] joins your deck as a card.\n\n## What the card does\n\nThe Lantern Key card's whole text is: \"Unlocks a special event in the next Act.\" It is not playable in combat; it rides in your deck as a pass. Reach the next act with it and a special event becomes available on your map that runs without the key never see.\n\n## Should you keep it?\n\nTreat it as a bet priced at 100 gold plus one fight's worth of HP. If your deck is healthy at the Act 2 midpoint, the fight is affordable and a bonus act 3 event is usually worth more than 100 gold, extra events mean extra chances at relics and removals when they matter most. If you are limping, take the gold: 100 at a shop is a card removal or a potion, and dead climbers unlock nothing.\n\nOne caution for lean decks: the key is a card. Until it leaves, it occupies a draw like any other card, so ultra-thin combo decks pay a small consistency tax to carry it. For most decks that tax is invisible.\n\nThe [events index](https://spire-codex.com/events) has every event's full choices and outcomes, and the [boss guide](https://spire-codex.com/guides/boss-guide) covers what act 2 will throw at you on the way to spending it."
-  },
-  {
     "id": "characters-guide",
     "slug": "characters-guide",
     "title": "Characters: Who Returns and Who Is New",
@@ -96,6 +78,7 @@
     "date": "2026-07-16",
     "updated": null,
     "category": "general",
+    "channel": null,
     "tags": [
       "characters",
       "roster",
@@ -118,6 +101,7 @@
     "date": "2026-07-16",
     "updated": null,
     "category": "general",
+    "channel": null,
     "tags": [
       "co-op",
       "multiplayer",
@@ -133,28 +117,6 @@
     "content": "Slay the Spire 2 shipped with co-op built in: up to four players climb one Spire together, each with their own character, deck, and seat at every reward screen. This guide covers how it works and what the community data says about playing in a group. Every number comes from runs submitted to Spire Codex.\n\n## The headline: co-op is easier, and it scales\n\nFrom over 830,000 submitted runs, win rates by party size:\n\n- Solo: 19.1% (504,572 runs)\n- 2 players: 23.6% (177,807 runs)\n- 3 players: 46.9% (92,996 runs)\n- 4 players: 71.3% (56,833 runs)\n\nA full party wins almost three out of four runs, nearly four times the solo rate. Shared damage, more total card plays per enemy turn, and cross-player support effects compound hard. If you are stuck on a wall solo, the data says bring friends; if you want the real challenge, the [leaderboards](https://spire-codex.com/leaderboards) rank solo and co-op separately for exactly this reason.\n\n## The co-op card pool\n\nA slice of every character's pool only makes sense with allies, and some of the highest-rated cards in the game live there: [[Tank]] (allies take half damage) tops Ironclad's list, [[Sneaky]] tops Silent's, [[Ignition]] channels Plasma for a teammate, [[Glimpse Beyond]] gives ALL players Souls, and [[Legion of Bone]] summons for the whole party. Neow even has a multiplayer-only relic offer in [[relic:Massive Scroll]]. The [tier list](https://spire-codex.com/tier-list) and [card metrics](https://spire-codex.com/leaderboards/metrics) both slice by player-count bracket, so you can see each card's rating in your actual party size instead of the blended number.\n\n## Stats without pollution\n\nBecause co-op is so much easier, every stat page on Spire Codex separates the pools: the metrics brackets (solo, 2P, 3P, 4P), the community stats, and the leaderboards all keep solo rankings clean of four-player wins. Solo players comparing themselves to the tier list should use the Solo bracket; it is the honest baseline.\n\n## Spectating\n\nWith the [Spire Codex mod](https://spire-codex.com/guides/best-mods), anyone in the party can share a live view at [spire-codex.com/live](https://spire-codex.com/live): the map, every seat's HP and deck, the current fight, and shop decisions as they happen. It doubles as a coaching tool, since a friend can watch your reward screens and disagree with you in real time.\n\nUploaded co-op runs count every seat, and each player's page shows their own history. If your group climbs regularly, [upload the runs](https://spire-codex.com/leaderboards/submit) and check who is actually carrying."
   },
   {
-    "id": "keywords-guide",
-    "slug": "keywords-guide",
-    "title": "Keywords and Terms, Explained",
-    "author": "Spire Codex",
-    "date": "2026-07-16",
-    "updated": null,
-    "category": "general",
-    "tags": [
-      "keywords",
-      "mechanics",
-      "reference"
-    ],
-    "summary": "Every Slay the Spire 2 keyword, buff, debuff, and orb with current-patch definitions from the game files, organized by what is universal and what belongs to each character.",
-    "difficulty": "beginner",
-    "character": null,
-    "website": null,
-    "bluesky": null,
-    "twitter": null,
-    "twitch": null,
-    "content": "Slay the Spire 2 splits its vocabulary into a few distinct systems, and knowing which is which makes card text much easier to read: card keywords (properties printed on cards), powers (buffs and debuffs applied in combat), orbs (the Defect's system), and a handful of character mechanics. Every definition below comes from the current game files, and every name links to a live page that lists which cards and monsters actually use it.\n\n## Card keywords\n\nThese seven are printed on cards and describe how the card itself behaves:\n\n- [[keyword:Exhaust]]: Removed until the end of combat.\n- [[keyword:Ethereal]]: If this card is in your Hand at the end of the turn, it is Exhausted.\n- [[keyword:Innate]]: Start each combat with this card in your Hand.\n- [[keyword:Retain]]: Not discarded at the end of turn.\n- [[keyword:Eternal]]: Cannot be removed or transformed from your Deck. New to the sequel, and the reason some cards are with you for life.\n- [[keyword:Sly]]: If discarded from your Hand before the end of your turn, it plays for free. The engine behind Silent's discard decks.\n- [[keyword:Unplayable]]: Cannot be played.\n\nTwo related terms appear in card text rather than as printed keywords: Replay plays the card an additional time (the Glam and Spiral enchantments grant it), and Stun prevents an enemy from acting on its next turn.\n\n## Buffs\n\n- [[power:Strength]]: Increases attack damage.\n- [[power:Dexterity]]: Increases Block gained from cards.\n- [[power:Focus]]: Increases the effectiveness of Orbs.\n- [[power:Vigor]]: The next Attack deals additional damage.\n- [[power:Thorns]]: When hit by an attack, deal damage back.\n- [[power:Artifact]]: Negates debuffs, one charge per debuff.\n- [[power:Buffer]]: Prevents the next 2 times you would lose HP. Worth knowing: it is 2 charges per stack this patch, not 1.\n- [[power:Intangible]]: Reduce all damage taken and HP loss to 1 this turn.\n- [[power:Barricade]]: Block is not removed at the start of your turn.\n- [[power:Plating]]: Gain Block at the end of your turn, reduced by 1 each turn.\n- [[power:Regen]]: Heal at the end of your turn, reduced by 1 each turn.\n- [[power:Ritual]]: Gain Strength at the end of your turn.\n\n## Debuffs\n\n- [[power:Weak]]: Deal 25% less damage with Attacks.\n- [[power:Vulnerable]]: Take 50% more damage from Attacks.\n- [[power:Frail]]: Gain 25% less Block from cards. Easy to forget because it only hurts your defense.\n- [[power:Poison]]: Lose HP at the start of the turn, reduced by 1 each turn.\n- [[power:Doom]]: At the end of the enemy turn, a creature with at least as much Doom as HP dies outright. Necrobinder's execute mechanic.\n- [[power:Confused]]: Card costs randomize from 0 to 3 on draw.\n- [[power:Smoggy]]: Only 1 Skill can be played per turn.\n\n## Orbs, Channel, and Evoke\n\nOrbs are the Defect's system. Channeling an orb fills your first empty slot; if the slots are full, the oldest orb Evokes automatically to make room, and you can Evoke on demand to consume the rightmost orb for its stronger effect. [[power:Focus]] scales all of it, with one exception below.\n\n- [[orb:Lightning]]: Passively deals 3 damage to a random enemy each turn; Evoke deals 8.\n- [[orb:Frost]]: Passively gains 2 Block each turn; Evoke gains 5.\n- [[orb:Dark]]: Grows by 6 damage every turn, and Evoke unloads it on the lowest-HP enemy. The patient option.\n- [[orb:Glass]]: New to the sequel: passively deals 4 damage to ALL enemies but decays by 1 each turn, Evoke for 8 to everyone. Strong now, weaker later, the anti-Dark.\n- [[orb:Plasma]]: Grants energy passively and on Evoke, and is the one orb Focus does not affect.\n\n## Character mechanics\n\n- **Summon** (Necrobinder): Summons Osty, her skeletal companion; repeat Summons raise his Max HP for the combat. Souls are the Ethereal cards her engine feeds on.\n- **Forge** (Regent): The first Forge each combat adds Sovereign Blade to your Hand, and every point of Forge adds damage to it. Fencing Manual's Forge 10 every combat is why it rates so well in the [Regent tier list](https://spire-codex.com/guides/regent-tier-list).\n- **Shivs** (Silent): 0-cost throwaway Attacks; half her pool creates or upgrades them.\n\nThe [reference page](https://spire-codex.com/reference) keeps all of this in one place, [keywords](https://spire-codex.com/keywords) lists every card using each keyword, and each power page shows every card and monster that applies it. Definitions regenerate from the game files each patch, so when a number changes, the pages change with it."
-  },
-  {
     "id": "enchantments-guide",
     "slug": "enchantments-guide",
     "title": "How Enchantments Work",
@@ -162,6 +124,7 @@
     "date": "2026-07-16",
     "updated": null,
     "category": "general",
+    "channel": null,
     "tags": [
       "enchantments",
       "cards",
@@ -177,71 +140,96 @@
     "content": "Enchantments are permanent card modifiers: purple text added to a single card that lasts the rest of the run. They stack with upgrades (a card can be upgraded and enchanted), and unlike Afflictions, the debuff counterpart, an enchantment never wears off. Everything below comes from the current game files, so the values are what the game actually does this patch, and every name links to a live page with full details.\n\n## Reading an enchantment\n\nAn enchanted card shows a marker and its added text in purple. Several enchantments carry a level, shown as X: [[enchantment:Sharp]] 3 adds 3 damage, [[enchantment:Swift]] 1 draws 1 card. Sources that grant enchantments often grant them at a specific level, like the shop relic that applies Momentum 5.\n\nThe one everyone searches for: [[enchantment:Imbued]] plays the card automatically at the start of each combat, before you have spent anything, so yes, an Imbued card is effectively free every fight. Put it on an expensive Skill and it is one of the strongest effects in the game.\n\n## Where enchantments come from\n\nThere is no enchantment shop tab; they arrive through three doors, and knowing them is the difference between stumbling into one enchantment per run and building around them.\n\n**Ancients and their relics.** The Ancients are the main source. The Symbiote event enchants directly, and ancient relics carry the biggest batch effects: [[relic:Tri-Boomerang]] puts [[enchantment:Instinct]] (doubled attack damage) on three Attacks, [[relic:Nutritious Soup]] turns every Strike into a 0-cost Eternal card via [[enchantment:Tezcatara's Ember]], [[relic:Pael's Claw]] enchants all Defends with [[enchantment:Goopy]], [[relic:Electric Shrymp]] grants the Imbued Skill, and [[relic:Beautiful Bracelet]] spreads Swift 3 across three cards. Even Neow deals them: her [[relic:Silken Tress]] curse option enchants a full card reward with [[enchantment:Glam]].\n\n**Shop relics.** Five purchasable relics apply enchantments on pickup or ongoing: [[relic:Gnarled Hammer]] (Sharp 3 on up to three Attacks), [[relic:Kifuda]] (Adroit on up to three cards), [[relic:Punch Dagger]] (Momentum 5), [[relic:Royal Stamp]] ([[enchantment:Royally Approved]]: Innate plus Retain), and [[relic:Wing Charm]], which enchants a random card in every future card reward. [[relic:Mystic Lighter]] does not apply any, but makes every enchanted Attack hit 9 harder, the closest thing to an enchantment build-around.\n\n**Events.** Nine events can enchant, including Symbiote, Grave of the Forgotten, Sapphire Seed, Spiraling Whirlpool, and Stone of All Time. The [events index](https://spire-codex.com/events) has each one's exact choices and costs.\n\n## Every enchantment\n\n- [[enchantment:Adroit]]: Gain X Block.\n- [[enchantment:Clone]]: This card can be duplicated at Rest Sites.\n- [[enchantment:Corrupted]]: Deal 50% more damage, but lose 2 HP.\n- [[enchantment:Glam]]: This card has Replay once per combat.\n- [[enchantment:Goopy]]: Gains Exhaust; each play permanently increases its Block by 1.\n- [[enchantment:Imbued]]: Played automatically at the start of each combat.\n- [[enchantment:Inky]]: Deals 1 additional damage and applies 1 Weak.\n- [[enchantment:Instinct]]: Attack damage is doubled.\n- [[enchantment:Momentum]]: Attack damage increases by X this combat when played.\n- [[enchantment:Nimble]]: Block gained increases by X.\n- [[enchantment:Perfect Fit]]: Goes to the top of the Draw Pile instead of shuffling in.\n- [[enchantment:Royally Approved]]: Gains Innate and Retain.\n- [[enchantment:Sharp]]: Damage increases by X.\n- [[enchantment:Slither]]: Cost randomizes from 0 to 3 on draw.\n- [[enchantment:Slumbering Essence]]: Held at end of turn, its cost drops by 1 until played.\n- [[enchantment:Soul's Power]]: Loses Exhaust.\n- [[enchantment:Sown]]: First play each combat grants energy.\n- [[enchantment:Spiral]]: Gains Replay 1.\n- [[enchantment:Steady]]: Gains Retain.\n- [[enchantment:Swift]]: First play draws X cards.\n- [[enchantment:Tezcatara's Ember]]: Costs 0, deals 3 more damage, gains Eternal (Strikes only).\n- [[enchantment:Vigorous]]: First play deals X additional damage.\n\nA note if you compare lists elsewhere: values drift between patches, and a few widely shared lists still show older numbers (Corrupted costing 3 HP, Inky adding 2). The [enchantments page](https://spire-codex.com/enchantments) regenerates from the game files every patch, so it and this guide reflect the current build, and every card page shows exactly which enchantments it can take, with the enchanted card render.\n\nFor which cards deserve your enchantments, the [character tier lists](https://spire-codex.com/guides) rank every card from community run data, and the [Neow guide](https://spire-codex.com/guides/neow-relic-offer) covers the Silken Tress trade in context."
   },
   {
-    "id": "boss-guide",
-    "slug": "boss-guide",
-    "title": "Boss Guide: Every Boss Ranked by Deadliness",
+    "id": "keywords-guide",
+    "slug": "keywords-guide",
+    "title": "Keywords and Terms, Explained",
     "author": "Spire Codex",
     "date": "2026-07-16",
     "updated": null,
     "category": "general",
+    "channel": null,
     "tags": [
-      "bosses",
-      "elites",
-      "encounters",
-      "strategy"
+      "keywords",
+      "mechanics",
+      "reference"
     ],
-    "summary": "Every Slay the Spire 2 boss and elite ranked by how many runs it actually ends, from 800,000+ community runs, with the fights each character should fear most.",
-    "difficulty": "intermediate",
+    "summary": "Every Slay the Spire 2 keyword, buff, debuff, and orb with current-patch definitions from the game files, organized by what is universal and what belongs to each character.",
+    "difficulty": "beginner",
     "character": null,
     "website": null,
     "bluesky": null,
     "twitter": null,
     "twitch": null,
-    "content": "Most boss guides tell you what the author died to. This one is built from what everyone died to: every ranking below comes from community-submitted runs on Spire Codex, counting how many parties walked into each fight and how many did not walk out. The [live encounter stats](https://spire-codex.com/leaderboards/encounters) update continuously; these numbers are a mid-July 2026 snapshot of the main branch.\n\n## The deadliest boss in the game\n\n[[encounter:Aeonglass]] ends 25.4% of the runs that reach it, the highest death rate of any fight in the game. It also deals the most damage per fight (74 on average) in only 7 turns, the highest damage density of any boss. Mega Crit added it in Major Update #2 as the replacement for the Doormaker fight, and the community data says the replacement did not make act 3 kinder. Every character suffers here, but Necrobinder dies most at 29%.\n\n## Act by act\n\n**Act 1** has six possible bosses, and they are not created equal. [[encounter:Vantom]] (16.5% deaths) and [[encounter:Lagavulin Matriarch]] (16.1%) top the list, while [[encounter:Soul Fysh]] (12.6%) is the one you hope the map gives you. The Matriarch hides a character-specific trap: she kills 23% of Silents against 12 to 17% of everyone else, the most lopsided character split of any boss. If you are on Silent and see her on the map, route for extra damage before the boss floor.\n\n**Act 2** is where runs go to die in volume. [[encounter:Knowledge Demon]] ends 22.1% of attempts (Defect suffers most at 26%), and [[encounter:Kaiser Crab]] takes 19.9% with Ironclad as its favorite meal. [[encounter:The Insatiable]] is the merciful draw at 16%. Both of the big two average around 60 damage across 8 turns, so walking in below roughly two thirds HP is how healthy runs become dead ones.\n\n**Act 3** stacks [[encounter:Aeonglass]] next to [[encounter:Test Subject]] (22%) and [[encounter:Queen]] (18%). Test Subject is the longest boss fight in the game at 9.3 average turns, which makes it a pure scaling check: a deck that plateaus by turn 5 loses slowly and certainly. Queen punishes the front-loaded decks instead, with Ironclad and Defect dying most.\n\n## The elite gatekeepers\n\nElites kill fewer parties per fight but you face far more of them. [[encounter:The Decimillipede]] is the deadliest at 11.5%, and its 4.4-turn average makes it the opposite of Test Subject: a burst check that is over before scaling matters. [[encounter:Phantasmal Gardeners]] (11%) and [[encounter:Phrog Parasite]] (9.4%) rule act 1, and both punish decks that drafted setup cards over damage in the first few floors. By act 3 the elites ([[encounter:Knight Gang]], [[encounter:Mecha Knight]], [[encounter:Soul Nexus]]) all sit under 4.2%, not because they are weak but because the decks that reach them are strong. The act 1 elite gauntlet is the real filter.\n\n## What the numbers say about preparation\n\nThree patterns fall straight out of the data. First, fight length is the hidden stat: short fights (Decimillipede) check burst, long fights (Test Subject, Vantom at 9 turns) check scaling, and a deck needs an answer to both by act 2. Second, know your character's nemesis: Silent fears the Matriarch, Defect fears the Knowledge Demon, Ironclad fears the Crab and the Queen, and everyone fears Aeonglass. Third, average damage taken tells you the entry fee: act 2 bosses cost about 60 HP, Aeonglass costs 74, and the [merchant's](https://spire-codex.com/merchant) removal service before a boss floor is usually worth more than another card.\n\nPer-boss pages carry full per-character splits, HP ranges, and attack patterns, linked from the [encounters index](https://spire-codex.com/encounters). For what to draft so these fights stop ending your runs, the [character tier lists](https://spire-codex.com/guides) rank every card and relic from the same run data, and [Understanding Encounters](https://spire-codex.com/guides/understanding-encounters) covers reading intents. If a boss ended your run anyway, [upload it](https://spire-codex.com/leaderboards/submit) and make the numbers smarter."
+    "content": "Slay the Spire 2 splits its vocabulary into a few distinct systems, and knowing which is which makes card text much easier to read: card keywords (properties printed on cards), powers (buffs and debuffs applied in combat), orbs (the Defect's system), and a handful of character mechanics. Every definition below comes from the current game files, and every name links to a live page that lists which cards and monsters actually use it.\n\n## Card keywords\n\nThese seven are printed on cards and describe how the card itself behaves:\n\n- [[keyword:Exhaust]]: Removed until the end of combat.\n- [[keyword:Ethereal]]: If this card is in your Hand at the end of the turn, it is Exhausted.\n- [[keyword:Innate]]: Start each combat with this card in your Hand.\n- [[keyword:Retain]]: Not discarded at the end of turn.\n- [[keyword:Eternal]]: Cannot be removed or transformed from your Deck. New to the sequel, and the reason some cards are with you for life.\n- [[keyword:Sly]]: If discarded from your Hand before the end of your turn, it plays for free. The engine behind Silent's discard decks.\n- [[keyword:Unplayable]]: Cannot be played.\n\nTwo related terms appear in card text rather than as printed keywords: Replay plays the card an additional time (the Glam and Spiral enchantments grant it), and Stun prevents an enemy from acting on its next turn.\n\n## Buffs\n\n- [[power:Strength]]: Increases attack damage.\n- [[power:Dexterity]]: Increases Block gained from cards.\n- [[power:Focus]]: Increases the effectiveness of Orbs.\n- [[power:Vigor]]: The next Attack deals additional damage.\n- [[power:Thorns]]: When hit by an attack, deal damage back.\n- [[power:Artifact]]: Negates debuffs, one charge per debuff.\n- [[power:Buffer]]: Prevents the next 2 times you would lose HP. Worth knowing: it is 2 charges per stack this patch, not 1.\n- [[power:Intangible]]: Reduce all damage taken and HP loss to 1 this turn.\n- [[power:Barricade]]: Block is not removed at the start of your turn.\n- [[power:Plating]]: Gain Block at the end of your turn, reduced by 1 each turn.\n- [[power:Regen]]: Heal at the end of your turn, reduced by 1 each turn.\n- [[power:Ritual]]: Gain Strength at the end of your turn.\n\n## Debuffs\n\n- [[power:Weak]]: Deal 25% less damage with Attacks.\n- [[power:Vulnerable]]: Take 50% more damage from Attacks.\n- [[power:Frail]]: Gain 25% less Block from cards. Easy to forget because it only hurts your defense.\n- [[power:Poison]]: Lose HP at the start of the turn, reduced by 1 each turn.\n- [[power:Doom]]: At the end of the enemy turn, a creature with at least as much Doom as HP dies outright. Necrobinder's execute mechanic.\n- [[power:Confused]]: Card costs randomize from 0 to 3 on draw.\n- [[power:Smoggy]]: Only 1 Skill can be played per turn.\n\n## Orbs, Channel, and Evoke\n\nOrbs are the Defect's system. Channeling an orb fills your first empty slot; if the slots are full, the oldest orb Evokes automatically to make room, and you can Evoke on demand to consume the rightmost orb for its stronger effect. [[power:Focus]] scales all of it, with one exception below.\n\n- [[orb:Lightning]]: Passively deals 3 damage to a random enemy each turn; Evoke deals 8.\n- [[orb:Frost]]: Passively gains 2 Block each turn; Evoke gains 5.\n- [[orb:Dark]]: Grows by 6 damage every turn, and Evoke unloads it on the lowest-HP enemy. The patient option.\n- [[orb:Glass]]: New to the sequel: passively deals 4 damage to ALL enemies but decays by 1 each turn, Evoke for 8 to everyone. Strong now, weaker later, the anti-Dark.\n- [[orb:Plasma]]: Grants energy passively and on Evoke, and is the one orb Focus does not affect.\n\n## Character mechanics\n\n- **Summon** (Necrobinder): Summons Osty, her skeletal companion; repeat Summons raise his Max HP for the combat. Souls are the Ethereal cards her engine feeds on.\n- **Forge** (Regent): The first Forge each combat adds Sovereign Blade to your Hand, and every point of Forge adds damage to it. Fencing Manual's Forge 10 every combat is why it rates so well in the [Regent tier list](https://spire-codex.com/guides/regent-tier-list).\n- **Shivs** (Silent): 0-cost throwaway Attacks; half her pool creates or upgrades them.\n\nThe [reference page](https://spire-codex.com/reference) keeps all of this in one place, [keywords](https://spire-codex.com/keywords) lists every card using each keyword, and each power page shows every card and monster that applies it. Definitions regenerate from the game files each patch, so when a number changes, the pages change with it."
   },
   {
-    "id": "regent-tier-list",
-    "slug": "regent-tier-list",
-    "title": "Regent Card Tier List",
+    "id": "lantern-key",
+    "slug": "lantern-key",
+    "title": "The Lantern Key, Explained",
     "author": "Spire Codex",
-    "date": "2026-07-15",
+    "date": "2026-07-16",
     "updated": null,
     "category": "general",
+    "channel": null,
     "tags": [
-      "tier list",
-      "cards",
-      "regent"
+      "lantern key",
+      "events",
+      "secrets"
     ],
-    "summary": "The best Regent cards in Slay the Spire 2 right now, ranked by Codex Score from community runs, plus the 9%-pick-rate sleeper and the most-drafted trap.",
-    "difficulty": "intermediate",
-    "character": "regent",
+    "summary": "What the Lantern Key does in Slay the Spire 2: where the event appears, what each choice is worth, and what keeping the key unlocks.",
+    "difficulty": "beginner",
+    "character": null,
     "website": null,
     "bluesky": null,
     "twitter": null,
     "twitch": null,
-    "content": "Ratings come from community-submitted runs: Codex Score grades a card's win rate when picked against the average. This is Regent as of mid-July 2026 on the main branch. The [live tier list](https://spire-codex.com/tier-list/cards?color=regent) updates continuously and can slice by bracket.\n\n## The top of the list\n\n[[Big Bang]] leads at a 53.8% win rate and a 68.7% pick rate, the most-drafted rare on the roster, and for once the crowd is right: draw, energy, a Star, and Forge 5 stapled to one skill is everything Regent wants. [[GUARDS!!!]] (53.7%) is its equal on a third of the picks; converting dead cards into Minion Sacrifice on demand is the character's cleanest engine.\n\n[[Decisions, Decisions]] (52.9%) triples your best skill, and with Big Bang or GUARDS!!! in hand that line simply wins fights. [[Make It So]] (52.4%) keeps coming back in exactly the skill-dense decks Regent drafts anyway.\n\n## The sleeper\n\n[[Prophesize]] gets picked 9% of the time, the lowest pick rate of any B-or-better Regent card, and still wins half its runs. Draw 6 is not flashy, but a deck full of cheap skills turns it into a full extra turn. The data says stop skipping it.\n\n## Solid picks\n\n[[Bundle of Joy]], [[Dying Star]], [[Foregone Conclusion]], [[Comet]], and [[Tyranny]] hold B tier between 49 and 52%. Dying Star doubles as a Strength strip that saves act 3 elite fights. [[Largesse]] is co-op support, discount it solo.\n\n## The traps\n\n[[Falling Star]] is the roster's biggest trap: an F tier 29.5% win rate that still gets drafted almost a third of the time it appears. [[Celestial Might]] shares the floor at 32.3% with a fraction of the picks.\n\n## The relics\n\nRegent's relic pool is graded on the [relic tier list](https://spire-codex.com/tier-list/relics?pool=regent). Relic win rates run high everywhere (collecting relics correlates with surviving), so trust the tiers over the raw percentages.\n\n[[relic:Lunar Pastry]] tops the pool in S tier at a 67.2% win rate, end-of-turn energy that every Regent deck can spend. [[relic:Regalite]] and [[relic:Orange Dough]] join it in S: Regent creates cards constantly, so Block-per-created-card is effectively a defense engine. [[relic:Fencing Manual]] is the pool's standout common (Forge 10 every combat). The trap is [[relic:Divine Destiny]] at F tier and a 48% win rate, the only Regent relic below the baseline.\n\nFull numbers, per-act splits, and Codex Elo live on the [card metrics page](https://spire-codex.com/leaderboards/metrics). If your Regent runs say otherwise, [upload them](https://spire-codex.com/leaderboards/submit) and prove it.\n\nMore character tier lists: [Ironclad](https://spire-codex.com/guides/ironclad-tier-list), [Silent](https://spire-codex.com/guides/silent-tier-list), [Defect](https://spire-codex.com/guides/defect-tier-list), [Necrobinder](https://spire-codex.com/guides/necrobinder-tier-list)."
+    "content": "The Lantern Key is one of the sequel's chained secrets: an event choice in one act that changes what you can find in the next. Here is exactly how it works, from the game files.\n\n## The event\n\n[[event:The Lantern Key]] appears in Act 2 (the Hive). You find a faintly glowing key, and a stranger who looks like bad news claims it. Two choices:\n\n- **Return the Key**: gain 100 Gold. The stranger thanks you and rewards you handsomely. Safe, done, no key.\n- **Keep the Key**: fight the stranger to keep it. Win the combat and the [[Lantern Key]] joins your deck as a card.\n\n## What the card does\n\nThe Lantern Key card's whole text is: \"Unlocks a special event in the next Act.\" It is not playable in combat; it rides in your deck as a pass. Reach the next act with it and a special event becomes available on your map that runs without the key never see.\n\n## Should you keep it?\n\nTreat it as a bet priced at 100 gold plus one fight's worth of HP. If your deck is healthy at the Act 2 midpoint, the fight is affordable and a bonus act 3 event is usually worth more than 100 gold, extra events mean extra chances at relics and removals when they matter most. If you are limping, take the gold: 100 at a shop is a card removal or a potion, and dead climbers unlock nothing.\n\nOne caution for lean decks: the key is a card. Until it leaves, it occupies a draw like any other card, so ultra-thin combo decks pay a small consistency tax to carry it. For most decks that tax is invisible.\n\nThe [events index](https://spire-codex.com/events) has every event's full choices and outcomes, and the [boss guide](https://spire-codex.com/guides/boss-guide) covers what act 2 will throw at you on the way to spending it."
   },
   {
-    "id": "necrobinder-tier-list",
-    "slug": "necrobinder-tier-list",
-    "title": "Necrobinder Card Tier List",
+    "id": "steam-reviews",
+    "slug": "steam-reviews",
+    "title": "What the Mixed Steam Reviews Actually Say",
     "author": "Spire Codex",
-    "date": "2026-07-15",
+    "date": "2026-07-16",
     "updated": null,
     "category": "general",
+    "channel": null,
     "tags": [
-      "tier list",
-      "cards",
-      "necrobinder"
+      "reviews",
+      "steam",
+      "early access"
     ],
-    "summary": "The best Necrobinder cards in Slay the Spire 2 right now, ranked by Codex Score from community runs, featuring the highest-rated card in the entire game.",
-    "difficulty": "intermediate",
-    "character": "necrobinder",
+    "summary": "Slay the Spire 2 sits at Mixed on Steam. Here is what the numbers look like, what Mega Crit has changed in response, and what 830,000 community runs say about who is still playing.",
+    "difficulty": "beginner",
+    "character": null,
     "website": null,
     "bluesky": null,
     "twitter": null,
     "twitch": null,
-    "content": "Ratings come from community-submitted runs: Codex Score grades a card's win rate when picked against the average. This is Necrobinder as of mid-July 2026 on the main branch. The [live tier list](https://spire-codex.com/tier-list/cards?color=necrobinder) updates continuously and can slice by bracket.\n\n## The top of the list\n\n[[Glimpse Beyond]] is the single highest-rated card in the game: a perfect 100 Codex Score on a 62% win rate. Souls into every draw pile scales absurdly in co-op, and even solo it is a top pick. If you see it, the data says take it.\n\n[[Neurosurge]] (56.5% win) is the honest S tier for every mode: energy, cards, and a Doom cost that a Necrobinder deck is already built to answer.\n\nThe underrated one is [[Shared Fate]]: 55.4% win rate on a 19.7% pick rate. Symmetric Strength loss reads bad and plays great, because the enemy misses the Strength more than you do.\n\n## The engine pieces\n\n[[Banshee's Cry]] (54.9%) is the Ethereal payoff that clears acts, and [[Misery]] (52.6%) spreads your debuffs to the whole board. The sleeper is [[Legion of Bone]], an uncommon rating A tier at 52.7%, the best summon-per-gold card in the pool and one of the reasons Necrobinder feels strong in every bracket.\n\n## Solid picks\n\n[[Spirit of Ash]], [[Seance]], [[Necro Mastery]], [[Oblivion]], and [[Reanimate]] all hold B tier around 50%. Reanimate's flat Summon 20 is the safest of them; Necro Mastery wants an Osty deck already in motion.\n\n## The traps\n\n[[Reap]] and [[Sow]] sit at the bottom at 30 to 33% win rates. The names promise an engine, the numbers say it never comes online.\n\n## The relics\n\nNecrobinder has four S-tier relics in a nine-relic pool, more than any other character, graded on the [relic tier list](https://spire-codex.com/tier-list/relics?pool=necrobinder). Relic win rates run high across the board, so the tier is the signal.\n\n[[relic:Ivory Tile]] and [[relic:Big Hat]] tie at the top (66.3% win rate), [[relic:Funerary Mask]] seeds the Soul engine from turn 0, and [[relic:Bone Flute]] is arguably the best common relic in the game, S tier at 65.1% for having Osty do what Osty does. The only one to think twice about is [[relic:Phylactery Unbound]], D tier at 51.2%, which reads like a build-around and performs like a blank.\n\nFull numbers, per-act splits, and Codex Elo live on the [card metrics page](https://spire-codex.com/leaderboards/metrics). For how her deck loops actually work, read [Necrobinder's True Potential](https://spire-codex.com/guides/necrobinder-true-potential), then [upload your runs](https://spire-codex.com/leaderboards/submit).\n\nMore character tier lists: [Ironclad](https://spire-codex.com/guides/ironclad-tier-list), [Silent](https://spire-codex.com/guides/silent-tier-list), [Defect](https://spire-codex.com/guides/defect-tier-list), [Regent](https://spire-codex.com/guides/regent-tier-list)."
+    "content": "Slay the Spire 2's Steam page shows a Mixed rating, and if you searched that phrase before buying, here is the honest picture, with numbers.\n\n## The raw numbers\n\nAs of mid-July 2026, the game sits at 60% positive: 114,588 positive reviews against 75,007 negative, out of 189,595 total, at a $24.99 early access price. For the sequel to one of the best-reviewed games in the genre, that number is the story, and it is worth understanding rather than waving off.\n\n## What changed, and what Mega Crit did about it\n\nThe sequel launched into early access as a bigger, harder, more systemic game than the original: five characters, co-op, Ancients, enchantments, and a full rebalance rather than a content pack. Big rework sequels split their audiences, and this one did.\n\nWhat the review score does not show is the response rate. Major Update #2 removed the Doormaker fight outright, the boss the community argued about most. The same cycle reworked the Ironclad card players disliked most and eased the lower Ascensions where new players were bouncing. And when asked for deadlines, the studio published a roadmap without dates, saying exacting deadlines produce sloppy, uninspired work. Whatever you think of a Mixed score, the patch record reads like a team that is listening. The [news page](https://spire-codex.com/news) tracks every update as it lands.\n\n## What the players who stayed are doing\n\nReview scores measure sentiment; run data measures engagement. Spire Codex has received over 830,000 community-submitted runs, and the pool grows daily. The game is genuinely harder than its predecessor, solo players win 19.1% of runs overall, and the difficulty is a real part of the review split. But the depth is also real: the [community stats](https://spire-codex.com/community-stats) show a meta still shifting patch to patch, and the [tier lists](https://spire-codex.com/tier-list) rebuilt from scratch as the balance moves.\n\n## Should that score stop you?\n\nIf you loved the original for its readable, tight balance, early access will still show you rough edges, and waiting for 1.0 is defensible. If you want more Spire with more systems and can live with a live balance sheet, the game underneath the score is the deepest deckbuilder Mega Crit has made, for $24.99. Either way, decide on current information: the reviews aggregate two years of patches, and the game you would install today is not the one the oldest reviews describe."
+  },
+  {
+    "id": "best-mods",
+    "slug": "best-mods",
+    "title": "The Best Mods on the Steam Workshop",
+    "author": "Spire Codex",
+    "date": "2026-07-15",
+    "updated": null,
+    "category": "general",
+    "channel": null,
+    "tags": [
+      "mods",
+      "workshop",
+      "tools"
+    ],
+    "summary": "The most popular Slay the Spire 2 Workshop mods right now, what they do, and how the Spire Codex companion mod turns your runs into live stats.",
+    "difficulty": "beginner",
+    "character": null,
+    "website": null,
+    "bluesky": null,
+    "twitter": null,
+    "twitch": null,
+    "content": "Slay the Spire 1 had one of the best modding scenes in the genre, and the sequel is off to a fast start: the STS2 Workshop already has over 1,500 items. Since the game supports Workshop mods natively, installing any of these is one click, no launcher required.\n\nHere are the mods worth your subscription right now, based on what the Workshop community is actually subscribing to, plus the one we build ourselves.\n\n## The top community mods\n\n**BaseLib and RitsuLib** by Alchyr and OLC sit at the top of the subscriber charts for a simple reason: they are the frameworks most content mods are built on. You will rarely interact with them directly, but half the mods below list them as dependencies, so grab them first.\n\n**Quick Restart 2** by (Gk) Erasels does exactly what the name says: restart a run instantly instead of clicking back through menus. If you practice specific matchups or reroll starts, this saves real time every session.\n\n**Regent FX Omnistar** by Vitech[CN] is the most subscribed visual mod, a full effects overhaul for the Regent. If you main the star throne, this is the drip.\n\n**Downfall** by lamali carries the most famous name in Spire modding. The original Downfall was the play-as-the-villains expansion for STS1, and the team is building on the sequel now. Watch this one.\n\n**Minty Spire 2** by (Gk) Erasels and **Intent Graph** by Chaofan are the quality-of-life picks: extra run information and clearer enemy intent data. If you care about making better decisions with better information, these are for you. Better Mod Menu by Crunchmybeloved rounds out the toolbox if you end up running more than a few mods at once.\n\n## The Spire Codex Mod\n\nWe built the [SpireCodex companion mod](https://steamcommunity.com/sharedfiles/filedetails/?id=3747536911), and it does a different job than everything above: it connects your game to this site.\n\nWith the mod subscribed:\n\n- Your finished runs upload automatically and count toward the [community stats](https://spire-codex.com/community-stats), [tier list](https://spire-codex.com/tier-list), and [leaderboards](https://spire-codex.com/leaderboards). Sign in with Steam once and every run attaches to your profile.\n- Friends can spectate your climb live at [spire-codex.com/live](https://spire-codex.com/live): your map, deck, hand, fights, and shop decisions, updating as you play. If you stream, viewers can follow along without squinting at your VOD.\n- In-game stat lookups show you the community's win and pick rates for the cards and relics you are offered, filterable by skill bracket, so \"is this card actually good at A10\" gets answered on the reward screen.\n- After a win, you get a shareable run page with your full deck, route, and per-floor history.\n\nNone of it touches gameplay or difficulty, so it stacks cleanly with everything else in this list.\n\n## Installing mods\n\nSubscribe on the Workshop page, launch the game, and enable the mod in the mods menu. Slay the Spire 2 is in early access, so patches occasionally break mods for a few days; if something misbehaves after an update, check the mod's Workshop page before assuming your run is cursed.\n\nIf you build something for STS2 yourself, whether a mod, a bot, or a tool on the [Spire Codex API](https://spire-codex.com/developers), tell us and we will feature it on the [community showcase](https://spire-codex.com/showcase)."
   },
   {
     "id": "defect-tier-list",
@@ -251,6 +239,7 @@
     "date": "2026-07-15",
     "updated": null,
     "category": "general",
+    "channel": null,
     "tags": [
       "tier list",
       "cards",
@@ -266,28 +255,6 @@
     "content": "Ratings come from community-submitted runs: Codex Score grades a card's win rate when picked against the average. This is Defect as of mid-July 2026 on the main branch, and the headline is that Defect has no S-tier card right now, the flattest top end of any character. The [live tier list](https://spire-codex.com/tier-list/cards?color=defect) updates continuously.\n\n## The top of the list\n\n[[All for One]] leads at A tier with a 52.9% win rate. Zero-cost recursion has been Defect's best plan since the first game and the sequel data agrees. [[Ignition]] (52.3%) rides co-op, it channels Plasma for another player, so solo players should discount it.\n\n[[Reboot]] (50.9%) is quietly excellent as both a reset button and draw engine in one card.\n\n## The reputation check\n\n[[Echo Form]] is the most interesting row in the whole dataset: a 64.6% pick rate, the highest of any Defect rare, against a 50.8% win rate that only earns B tier. Players draft it like it is still the STS1 win condition. It is good, but the data says it is a fair card being picked like a broken one. Same story smaller with [[Machine Learning]] (44.7% pick, 49.1% win).\n\n## Solid picks\n\n[[Supercritical]], [[Helix Drill]], and [[Meteor Strike]] round out B tier. Meteor Strike at a 14.1% pick rate is the underdrafted one of the three; three Plasma attached to 24 damage is real tempo. [[Ice Lance]] and [[Signal Boost]] sit at C, take them with a plan or not at all.\n\n## The traps\n\n[[Darkness]], [[Barrage]], and [[Sunder]] hold the floor at 29 to 31% win rates. Barrage especially reads like orb payoff and performs like a blank.\n\n## The relics\n\nDefect's relic pool mirrors its card pool: solid, no standouts. The full grades are on the [relic tier list](https://spire-codex.com/tier-list/relics?pool=defect); relic win rates run high everywhere, so read the tiers, not the raw percentages.\n\n[[relic:Power Cell]] leads at A tier and a 63.5% win rate, with [[relic:Data Disk]] right behind it as one of the best commons anywhere, a permanent Focus from floor 1. [[relic:Gold-Plated Cables]] and [[relic:Metronome]] both reward committed orb decks at B tier. The trap is [[relic:Infused Core]] at F tier and a 41.7% win rate, over twenty points under the pool's best.\n\nFull numbers with per-act pick splits and Codex Elo live on the [card metrics page](https://spire-codex.com/leaderboards/metrics). Think the meta is missing something? [Upload your runs](https://spire-codex.com/leaderboards/submit).\n\nMore character tier lists: [Ironclad](https://spire-codex.com/guides/ironclad-tier-list), [Silent](https://spire-codex.com/guides/silent-tier-list), [Necrobinder](https://spire-codex.com/guides/necrobinder-tier-list), [Regent](https://spire-codex.com/guides/regent-tier-list)."
   },
   {
-    "id": "silent-tier-list",
-    "slug": "silent-tier-list",
-    "title": "Silent Card Tier List",
-    "author": "Spire Codex",
-    "date": "2026-07-15",
-    "updated": null,
-    "category": "general",
-    "tags": [
-      "tier list",
-      "cards",
-      "silent"
-    ],
-    "summary": "The best Silent cards in Slay the Spire 2 right now, ranked by Codex Score from community runs, including the most underrated pick on the whole roster.",
-    "difficulty": "intermediate",
-    "character": "silent",
-    "website": null,
-    "bluesky": null,
-    "twitter": null,
-    "twitch": null,
-    "content": "Ratings come from community-submitted runs: Codex Score grades a card's win rate when picked against the average, so B is average and S warps runs. This is Silent as of mid-July 2026 on the main branch; the [live tier list](https://spire-codex.com/tier-list/cards?color=silent) updates continuously and can slice by bracket.\n\n## The top of the list\n\n[[Sneaky]] tops the chart at a 56.9% win rate, but it is a co-op card (Block whenever another player attacks). Solo players should check the Solo bracket before drafting it on reputation.\n\nThe all-mode stars are [[Adrenaline]] (55% win, 65.5% pick rate, the most trusted card in the pool) and [[Blade of Ink]] (54.8%). Free energy and cards has no downside, and Inky Shivs scale with everything Silent already wants to do.\n\nThe one to actually learn from is [[Malaise]]: a 54.8% win rate on an 18.8% pick rate. Players skip it and the data says they are wrong. X cost Strength removal plus Weak neuters exactly the fights that kill Silent runs.\n\n## The engine pieces\n\n[[Abrasive]], [[Afterimage]], [[Fan of Knives]], and [[Tools of the Trade]] all rate A tier between 52 and 54%. Afterimage gets picked on sight (54.9%) and earns it. Fan of Knives converts a shiv deck from single-target to board clear, which is the difference in act 2. [[Assassinate]] (53.7%) is the rare attack that fits every build.\n\n## Solid picks\n\n[[Storm of Steel]] and [[Expose]] hold B tier. Expose is the highest-picked uncommon here (45.3%) and performs to its rating, not above it.\n\n## The traps\n\n[[Dagger Spray]] props up the floor at a 33.4% win rate. Multi-hit chip damage does not justify a card slot in this pool.\n\n## The relics\n\nSilent's relic pool is the strongest in the game, graded on the [relic tier list](https://spire-codex.com/tier-list/relics?pool=silent). Relic win rates run high everywhere (relic count correlates with surviving), so trust the tiers over the raw percentages.\n\n[[relic:Tough Bandages]] is a perfect 100 Codex Score at a 69% win rate, the highest-rated relic in the game: discard synergy turns into free Block on a character built around discarding. [[relic:Paper Krane]] (66.9%) and [[relic:Helical Dart]] (65.6%) join it in S tier, and the drop-off barely exists: even the pool's worst pickups, like [[relic:Ring of the Drake]], sit at C rather than F. There is no real trap here; if a Silent-pool relic is offered, the data says take it.\n\nFull numbers, per-act splits, and Codex Elo are on the [card metrics page](https://spire-codex.com/leaderboards/metrics). Disagree? [Upload your runs](https://spire-codex.com/leaderboards/submit) and change the data.\n\nMore character tier lists: [Ironclad](https://spire-codex.com/guides/ironclad-tier-list), [Defect](https://spire-codex.com/guides/defect-tier-list), [Necrobinder](https://spire-codex.com/guides/necrobinder-tier-list), [Regent](https://spire-codex.com/guides/regent-tier-list)."
-  },
-  {
     "id": "ironclad-tier-list",
     "slug": "ironclad-tier-list",
     "title": "Ironclad Card Tier List",
@@ -295,6 +262,7 @@
     "date": "2026-07-15",
     "updated": null,
     "category": "general",
+    "channel": null,
     "tags": [
       "tier list",
       "cards",
@@ -310,6 +278,29 @@
     "content": "Every rating here comes from community-submitted runs on Spire Codex: Codex Score grades each card's win rate when picked against the average, so a B is average and an S is a run-warper. This is the state of Ironclad as of mid-July 2026 on the main branch. The [live tier list](https://spire-codex.com/tier-list/cards?color=ironclad) updates continuously and can slice by A10 and player-count brackets.\n\n## The top of the list\n\n[[Tank]] sits alone in S tier at a 56.3% win rate, but read the card: allies take half damage. It is a co-op card, and its rating is carried by multiplayer runs. If you play solo, flip the tier list to the Solo bracket before you force it.\n\nFor every run, the real headliners are [[Offering]] (52.5% win, picked over half the time it appears) and [[Crimson Mantle]] (52.3%). Offering is the same deal it has always been: 6 HP for tempo and cards is almost always worth it. Crimson Mantle turns 1 HP a turn into 8 Block, which effectively ends most early fights on its own.\n\n[[Impervious]] (51.6%) is the panic button that wins boss fights, and [[Fiend Fire]] (50.5%) is still the exhaust payoff that ends them. Note Fiend Fire's pick rate is only 18%, players are underdrafting it relative to how often it wins.\n\n## Solid picks\n\n[[Aggression]], [[Not Yet]], [[Mangle]], [[Tear Asunder]], and [[Thrash]] all sit in B tier around a 49 to 50% win rate. None of them carry a run alone, but none of them are mistakes. [[Pact's End]] rewards a deck that is already exhausting; do not take it first.\n\n## The traps\n\n[[Break]] and [[Cinder]] hold the floor at roughly 31% win rates. Break in particular looks like removal support and plays like a dead card. The data is blunt about both.\n\n## The relics\n\nIronclad's own relic pool is graded on the [relic tier list](https://spire-codex.com/tier-list/relics?pool=ironclad). One reading note: relic win rates run high across the board, because runs that collect relics are runs that survive, so trust the tier, which grades against the relic baseline, more than the raw percentage.\n\n[[relic:Self-Forming Clay]] and [[relic:Ruined Helmet]] share the top at A tier and a 63.9% win rate: free Block from taking hits, and doubled Strength on your first gain, both feed exactly what Ironclad already does. [[relic:Paper Phrog]] (63.1%) makes every Vulnerable source better, and [[relic:Red Skull]] is the best common in the pool, 3 Strength for playing at half HP, which an Ironclad deck does anyway. The trap is [[relic:Black Blood]] at F tier and a 40.5% win rate, well below the relic baseline.\n\nThe full list with per-act pick splits and Codex Elo lives on the [card metrics page](https://spire-codex.com/leaderboards/metrics). If your own runs disagree with the community, [upload them](https://spire-codex.com/leaderboards/submit) and move the numbers.\n\nMore character tier lists: [Silent](https://spire-codex.com/guides/silent-tier-list), [Defect](https://spire-codex.com/guides/defect-tier-list), [Necrobinder](https://spire-codex.com/guides/necrobinder-tier-list), [Regent](https://spire-codex.com/guides/regent-tier-list)."
   },
   {
+    "id": "necrobinder-tier-list",
+    "slug": "necrobinder-tier-list",
+    "title": "Necrobinder Card Tier List",
+    "author": "Spire Codex",
+    "date": "2026-07-15",
+    "updated": null,
+    "category": "general",
+    "channel": null,
+    "tags": [
+      "tier list",
+      "cards",
+      "necrobinder"
+    ],
+    "summary": "The best Necrobinder cards in Slay the Spire 2 right now, ranked by Codex Score from community runs, featuring the highest-rated card in the entire game.",
+    "difficulty": "intermediate",
+    "character": "necrobinder",
+    "website": null,
+    "bluesky": null,
+    "twitter": null,
+    "twitch": null,
+    "content": "Ratings come from community-submitted runs: Codex Score grades a card's win rate when picked against the average. This is Necrobinder as of mid-July 2026 on the main branch. The [live tier list](https://spire-codex.com/tier-list/cards?color=necrobinder) updates continuously and can slice by bracket.\n\n## The top of the list\n\n[[Glimpse Beyond]] is the single highest-rated card in the game: a perfect 100 Codex Score on a 62% win rate. Souls into every draw pile scales absurdly in co-op, and even solo it is a top pick. If you see it, the data says take it.\n\n[[Neurosurge]] (56.5% win) is the honest S tier for every mode: energy, cards, and a Doom cost that a Necrobinder deck is already built to answer.\n\nThe underrated one is [[Shared Fate]]: 55.4% win rate on a 19.7% pick rate. Symmetric Strength loss reads bad and plays great, because the enemy misses the Strength more than you do.\n\n## The engine pieces\n\n[[Banshee's Cry]] (54.9%) is the Ethereal payoff that clears acts, and [[Misery]] (52.6%) spreads your debuffs to the whole board. The sleeper is [[Legion of Bone]], an uncommon rating A tier at 52.7%, the best summon-per-gold card in the pool and one of the reasons Necrobinder feels strong in every bracket.\n\n## Solid picks\n\n[[Spirit of Ash]], [[Seance]], [[Necro Mastery]], [[Oblivion]], and [[Reanimate]] all hold B tier around 50%. Reanimate's flat Summon 20 is the safest of them; Necro Mastery wants an Osty deck already in motion.\n\n## The traps\n\n[[Reap]] and [[Sow]] sit at the bottom at 30 to 33% win rates. The names promise an engine, the numbers say it never comes online.\n\n## The relics\n\nNecrobinder has four S-tier relics in a nine-relic pool, more than any other character, graded on the [relic tier list](https://spire-codex.com/tier-list/relics?pool=necrobinder). Relic win rates run high across the board, so the tier is the signal.\n\n[[relic:Ivory Tile]] and [[relic:Big Hat]] tie at the top (66.3% win rate), [[relic:Funerary Mask]] seeds the Soul engine from turn 0, and [[relic:Bone Flute]] is arguably the best common relic in the game, S tier at 65.1% for having Osty do what Osty does. The only one to think twice about is [[relic:Phylactery Unbound]], D tier at 51.2%, which reads like a build-around and performs like a blank.\n\nFull numbers, per-act splits, and Codex Elo live on the [card metrics page](https://spire-codex.com/leaderboards/metrics). For how her deck loops actually work, read [Necrobinder's True Potential](https://spire-codex.com/guides/necrobinder-true-potential), then [upload your runs](https://spire-codex.com/leaderboards/submit).\n\nMore character tier lists: [Ironclad](https://spire-codex.com/guides/ironclad-tier-list), [Silent](https://spire-codex.com/guides/silent-tier-list), [Defect](https://spire-codex.com/guides/defect-tier-list), [Regent](https://spire-codex.com/guides/regent-tier-list)."
+  },
+  {
     "id": "neow-relic-offer",
     "slug": "neow-relic-offer",
     "title": "How Neow's Relic Offer Works",
@@ -317,6 +308,7 @@
     "date": "2026-07-15",
     "updated": null,
     "category": "general",
+    "channel": null,
     "tags": [
       "neow",
       "ancients",
@@ -333,6 +325,52 @@
     "content": "Neow is back in Slay the Spire 2, but she doesn't work the way she did in the first game. There are no blessing menus with four options anymore. In STS2 she is one of the eight Ancients, and like every Ancient she puts three relics in front of you: two from her positive pool and one from her curse pool. You take one. That's the whole interaction, and it's still one of the biggest swings in the run.\n\nThis guide covers her exact pools, the exclusion rules the game uses to build the offer, and what the community stats say about which relics are actually worth taking. All of it comes from the game files and from the runs players have submitted to Spire Codex.\n\n## How the offer is built\n\nThe game picks the curse option first, then removes anything from the positive pool that would overlap with it. That matters more than it sounds, because several of her relics come in mirrored pairs:\n\n- If [[relic:Cursed Pearl]] (gain Greed, get 333 gold) is the curse, [[relic:Golden Pearl]] (150 gold, no strings) is pulled from the positive pool.\n- If [[relic:Hefty Tablet]] (pick 1 of 3 rares, gain an Injury) is the curse, [[relic:Arcane Scroll]] (random rare, free) is out.\n- If [[relic:Leafy Poultice]] (transform a Strike and a Defend, lose 12 max HP) is the curse, [[relic:New Leaf]] (transform 1 card, free) is out.\n- If [[relic:Precarious Shears]] (remove 2 cards, lose 16 HP) is the curse, [[relic:Precise Scissors]] (remove 1 card, free) is out.\n- If [[relic:Large Capsule]] (2 random relics plus an extra Strike and Defend) is the curse, both [[relic:Small Capsule]] and [[relic:Lava Rock]] are out.\n\nSo you never get to choose between the free version and the taxed version of the same effect. Neow makes you pay for the bigger number or settle for the smaller one.\n\nA few positive-pool slots are also coin flips between two relics: [[relic:Lava Rock]] or [[relic:Small Capsule]], [[relic:Neow's Talisman]] or [[relic:Pomander]], [[relic:Nutritious Oyster]] or [[relic:Stone Humidifier]]. And two are situational: [[relic:Massive Scroll]] only shows up in multiplayer, [[relic:Scroll Boxes]] only if your deck can form bundles.\n\n## What players actually take\n\nFrom over 800,000 submitted runs:\n\n- [[relic:Hefty Tablet]] has a 58% take rate. A rare card of your choice on floor 1 shapes the whole run, and one Injury is a cheap price.\n- [[relic:Arcane Scroll]] sits right beside it at 58%. Same idea, no Injury, no choice of which rare.\n- [[relic:Leafy Poultice]] gets taken 44% of the time. Two targeted transforms out of your starter cards is real deck quality, but 12 max HP is a lot in the early acts.\n- [[relic:Large Capsule]] and [[relic:Precarious Shears]] both sit around 36%. The Capsule's extra Strike and Defend undo part of what the relics give you, and the Shears' 16 HP hurts when act 1 elites are already dangerous.\n\nThe pattern is simple: players pay HP and deck pollution for early rares, and they're right to. Early scaling wins runs in STS2 the same way it did in the first game.\n\n## Reading the offer by deck plan\n\nThe right pick depends on what your character wants, and STS2's five characters want different things.\n\nIf you plan to fight act 1 elites, [[relic:Booming Conch]] (draw 2 extra cards at the start of elite combats) turns those fights from a gamble into a farm. [[relic:Lava Rock]] (the act 1 boss drops 2 relics) is the other elite-adjacent pick, a guaranteed payoff for surviving.\n\nIf your deck plan needs thinning, take the removal even when it's taxed. Necrobinder and Silent both come online faster with starters gone, and [[relic:Precarious Shears]]' 16 HP is worth two removals on floor 1 if you route toward an early rest site.\n\nIf you're on Defect or Regent and need to hit power spikes, the card relics ([[relic:Hefty Tablet]], [[relic:Arcane Scroll]], [[relic:Kaleidoscope]] for off-character cards) beat the economy relics. Ironclad can afford greedier picks like [[relic:Cursed Pearl]] since gold converts to shop removals anyway.\n\nAnd don't sleep on [[relic:Phial Holster]]. A potion slot plus two random potions is quiet, but potions carry more fights in STS2 than most players give them credit for.\n\n## The Neow-flavored wildcards\n\nTwo of her relics reference her directly and both are gambles. [[relic:Neow's Torment]] adds [[Neow's Fury]] to your deck, a card you either build around or resent every shuffle. [[relic:Neow's Bones]], from the curse pool, hands you 2 random Neow relics plus a random curse, which is the closest thing STS2 has to the old boss relic swap: sometimes you walk away with [[relic:Fishing Rod]] and [[relic:Winged Boots]], sometimes you get punished.\n\n## The short version\n\nTake the rare card options unless your HP is already committed elsewhere. Pay for removal if your deck plan needs to be thin. Check whether the curse option locks out the free version of something you wanted, because if the free version is still on the table, the taxed one has to beat it by a lot.\n\nEvery relic in this guide links to live win-rate and pick-rate data on its page, and the full offer tables for all eight Ancients are on the Ancients page. If you want to see how your own Neow picks stack up, upload your runs and check the community stats.\n\nView all of the [cards](https://spire-codex.com/cards) and [relics](https://spire-codex.com/relics) so that way you can stay aware of what others are picking and how everyone is climbing the tower. The [tier list](https://spire-codex.com/tier-list) helps decide what the best players are doing and can help you make more informed decisions."
   },
   {
+    "id": "regent-tier-list",
+    "slug": "regent-tier-list",
+    "title": "Regent Card Tier List",
+    "author": "Spire Codex",
+    "date": "2026-07-15",
+    "updated": null,
+    "category": "general",
+    "channel": null,
+    "tags": [
+      "tier list",
+      "cards",
+      "regent"
+    ],
+    "summary": "The best Regent cards in Slay the Spire 2 right now, ranked by Codex Score from community runs, plus the 9%-pick-rate sleeper and the most-drafted trap.",
+    "difficulty": "intermediate",
+    "character": "regent",
+    "website": null,
+    "bluesky": null,
+    "twitter": null,
+    "twitch": null,
+    "content": "Ratings come from community-submitted runs: Codex Score grades a card's win rate when picked against the average. This is Regent as of mid-July 2026 on the main branch. The [live tier list](https://spire-codex.com/tier-list/cards?color=regent) updates continuously and can slice by bracket.\n\n## The top of the list\n\n[[Big Bang]] leads at a 53.8% win rate and a 68.7% pick rate, the most-drafted rare on the roster, and for once the crowd is right: draw, energy, a Star, and Forge 5 stapled to one skill is everything Regent wants. [[GUARDS!!!]] (53.7%) is its equal on a third of the picks; converting dead cards into Minion Sacrifice on demand is the character's cleanest engine.\n\n[[Decisions, Decisions]] (52.9%) triples your best skill, and with Big Bang or GUARDS!!! in hand that line simply wins fights. [[Make It So]] (52.4%) keeps coming back in exactly the skill-dense decks Regent drafts anyway.\n\n## The sleeper\n\n[[Prophesize]] gets picked 9% of the time, the lowest pick rate of any B-or-better Regent card, and still wins half its runs. Draw 6 is not flashy, but a deck full of cheap skills turns it into a full extra turn. The data says stop skipping it.\n\n## Solid picks\n\n[[Bundle of Joy]], [[Dying Star]], [[Foregone Conclusion]], [[Comet]], and [[Tyranny]] hold B tier between 49 and 52%. Dying Star doubles as a Strength strip that saves act 3 elite fights. [[Largesse]] is co-op support, discount it solo.\n\n## The traps\n\n[[Falling Star]] is the roster's biggest trap: an F tier 29.5% win rate that still gets drafted almost a third of the time it appears. [[Celestial Might]] shares the floor at 32.3% with a fraction of the picks.\n\n## The relics\n\nRegent's relic pool is graded on the [relic tier list](https://spire-codex.com/tier-list/relics?pool=regent). Relic win rates run high everywhere (collecting relics correlates with surviving), so trust the tiers over the raw percentages.\n\n[[relic:Lunar Pastry]] tops the pool in S tier at a 67.2% win rate, end-of-turn energy that every Regent deck can spend. [[relic:Regalite]] and [[relic:Orange Dough]] join it in S: Regent creates cards constantly, so Block-per-created-card is effectively a defense engine. [[relic:Fencing Manual]] is the pool's standout common (Forge 10 every combat). The trap is [[relic:Divine Destiny]] at F tier and a 48% win rate, the only Regent relic below the baseline.\n\nFull numbers, per-act splits, and Codex Elo live on the [card metrics page](https://spire-codex.com/leaderboards/metrics). If your Regent runs say otherwise, [upload them](https://spire-codex.com/leaderboards/submit) and prove it.\n\nMore character tier lists: [Ironclad](https://spire-codex.com/guides/ironclad-tier-list), [Silent](https://spire-codex.com/guides/silent-tier-list), [Defect](https://spire-codex.com/guides/defect-tier-list), [Necrobinder](https://spire-codex.com/guides/necrobinder-tier-list)."
+  },
+  {
+    "id": "silent-tier-list",
+    "slug": "silent-tier-list",
+    "title": "Silent Card Tier List",
+    "author": "Spire Codex",
+    "date": "2026-07-15",
+    "updated": null,
+    "category": "general",
+    "channel": null,
+    "tags": [
+      "tier list",
+      "cards",
+      "silent"
+    ],
+    "summary": "The best Silent cards in Slay the Spire 2 right now, ranked by Codex Score from community runs, including the most underrated pick on the whole roster.",
+    "difficulty": "intermediate",
+    "character": "silent",
+    "website": null,
+    "bluesky": null,
+    "twitter": null,
+    "twitch": null,
+    "content": "Ratings come from community-submitted runs: Codex Score grades a card's win rate when picked against the average, so B is average and S warps runs. This is Silent as of mid-July 2026 on the main branch; the [live tier list](https://spire-codex.com/tier-list/cards?color=silent) updates continuously and can slice by bracket.\n\n## The top of the list\n\n[[Sneaky]] tops the chart at a 56.9% win rate, but it is a co-op card (Block whenever another player attacks). Solo players should check the Solo bracket before drafting it on reputation.\n\nThe all-mode stars are [[Adrenaline]] (55% win, 65.5% pick rate, the most trusted card in the pool) and [[Blade of Ink]] (54.8%). Free energy and cards has no downside, and Inky Shivs scale with everything Silent already wants to do.\n\nThe one to actually learn from is [[Malaise]]: a 54.8% win rate on an 18.8% pick rate. Players skip it and the data says they are wrong. X cost Strength removal plus Weak neuters exactly the fights that kill Silent runs.\n\n## The engine pieces\n\n[[Abrasive]], [[Afterimage]], [[Fan of Knives]], and [[Tools of the Trade]] all rate A tier between 52 and 54%. Afterimage gets picked on sight (54.9%) and earns it. Fan of Knives converts a shiv deck from single-target to board clear, which is the difference in act 2. [[Assassinate]] (53.7%) is the rare attack that fits every build.\n\n## Solid picks\n\n[[Storm of Steel]] and [[Expose]] hold B tier. Expose is the highest-picked uncommon here (45.3%) and performs to its rating, not above it.\n\n## The traps\n\n[[Dagger Spray]] props up the floor at a 33.4% win rate. Multi-hit chip damage does not justify a card slot in this pool.\n\n## The relics\n\nSilent's relic pool is the strongest in the game, graded on the [relic tier list](https://spire-codex.com/tier-list/relics?pool=silent). Relic win rates run high everywhere (relic count correlates with surviving), so trust the tiers over the raw percentages.\n\n[[relic:Tough Bandages]] is a perfect 100 Codex Score at a 69% win rate, the highest-rated relic in the game: discard synergy turns into free Block on a character built around discarding. [[relic:Paper Krane]] (66.9%) and [[relic:Helical Dart]] (65.6%) join it in S tier, and the drop-off barely exists: even the pool's worst pickups, like [[relic:Ring of the Drake]], sit at C rather than F. There is no real trap here; if a Silent-pool relic is offered, the data says take it.\n\nFull numbers, per-act splits, and Codex Elo are on the [card metrics page](https://spire-codex.com/leaderboards/metrics). Disagree? [Upload your runs](https://spire-codex.com/leaderboards/submit) and change the data.\n\nMore character tier lists: [Ironclad](https://spire-codex.com/guides/ironclad-tier-list), [Defect](https://spire-codex.com/guides/defect-tier-list), [Necrobinder](https://spire-codex.com/guides/necrobinder-tier-list), [Regent](https://spire-codex.com/guides/regent-tier-list)."
+  },
+  {
     "id": "necrobinder-true-potential",
     "slug": "necrobinder-true-potential",
     "title": "Necrobinder's True Potential",
@@ -340,6 +378,7 @@
     "date": "2026-04-11",
     "updated": null,
     "category": "character",
+    "channel": null,
     "tags": [
       "necrobinder",
       "graveblast",
@@ -366,6 +405,7 @@
     "date": "2026-04-02",
     "updated": null,
     "category": "character",
+    "channel": null,
     "tags": [
       "necrobinder",
       "offensive",
@@ -390,6 +430,7 @@
     "date": "2026-04-01",
     "updated": null,
     "category": "general",
+    "channel": null,
     "tags": [
       "beginner",
       "basics",
@@ -412,6 +453,7 @@
     "date": "2026-04-01",
     "updated": null,
     "category": "general",
+    "channel": null,
     "tags": [
       "beginner",
       "deckbuilding",
@@ -436,6 +478,7 @@
     "date": "2026-04-01",
     "updated": null,
     "category": "strategy",
+    "channel": null,
     "tags": [
       "encounters",
       "monsters",
@@ -450,27 +493,5 @@
     "twitter": "ptrlrd",
     "twitch": "yitsy",
     "content": "## Reading Enemy Intents\n\nEvery enemy in Slay the Spire 2 telegraphs their next action through intent icons displayed above their head. Learning to read and react to these intents is fundamental to consistent play.\n\n### Intent Types\n\n- **Sword** — The enemy will attack. The number shows how much damage\n- **Shield** — The enemy will gain Block or buff itself\n- **Skull** — The enemy will apply a debuff\n- **Question Mark** — The enemy is performing an unknown or special action\n\n## Act-by-Act Breakdown\n\n### Act 1\n\nAct 1 enemies are relatively straightforward but can punish unrefined decks. Focus on adding damage cards early to handle hallway fights efficiently.\n\n**Watch out for:** Multi-hit attacks that bypass small amounts of Block, and enemies that scale if fights go too long.\n\n### Act 2\n\nThe difficulty spikes significantly in Act 2. Enemies hit harder, have more HP, and use more complex patterns. You'll need both scaling damage and reliable defense.\n\n**Watch out for:** Artifact charges that prevent debuffs, enemies that split or summon reinforcements.\n\n### Act 3\n\nAct 3 enemies assume you have a functional deck. Fights are long and punishing. Without scaling (Strength, multi-hit, Powers), you'll struggle.\n\n**Watch out for:** Enemies with massive HP pools, fights that punish slow play with escalating damage.\n\n## Boss Preparation\n\nBefore each boss fight, consider:\n\n1. **Do you have enough damage?** Bosses have large HP pools\n2. **Can you handle their signature mechanic?** Each boss has a unique challenge\n3. **Is your deck fast enough?** Some bosses punish slow setups\n4. **Do you have answers to debuffs?** Many bosses apply nasty debuffs"
-  },
-  {
-    "id": "best-mods",
-    "slug": "best-mods",
-    "title": "The Best Mods on the Steam Workshop",
-    "author": "Spire Codex",
-    "date": "2026-07-15",
-    "updated": null,
-    "category": "general",
-    "tags": [
-      "mods",
-      "workshop",
-      "tools"
-    ],
-    "summary": "The most popular Slay the Spire 2 Workshop mods right now, what they do, and how the Spire Codex companion mod turns your runs into live stats.",
-    "difficulty": "beginner",
-    "character": null,
-    "website": null,
-    "bluesky": null,
-    "twitter": null,
-    "twitch": null,
-    "content": "Slay the Spire 1 had one of the best modding scenes in the genre, and the sequel is off to a fast start: the STS2 Workshop already has over 1,500 items. Since the game supports Workshop mods natively, installing any of these is one click, no launcher required.\n\nHere are the mods worth your subscription right now, based on what the Workshop community is actually subscribing to, plus the one we build ourselves.\n\n## The top community mods\n\n**BaseLib and RitsuLib** by Alchyr and OLC sit at the top of the subscriber charts for a simple reason: they are the frameworks most content mods are built on. You will rarely interact with them directly, but half the mods below list them as dependencies, so grab them first.\n\n**Quick Restart 2** by (Gk) Erasels does exactly what the name says: restart a run instantly instead of clicking back through menus. If you practice specific matchups or reroll starts, this saves real time every session.\n\n**Regent FX Omnistar** by Vitech[CN] is the most subscribed visual mod, a full effects overhaul for the Regent. If you main the star throne, this is the drip.\n\n**Downfall** by lamali carries the most famous name in Spire modding. The original Downfall was the play-as-the-villains expansion for STS1, and the team is building on the sequel now. Watch this one.\n\n**Minty Spire 2** by (Gk) Erasels and **Intent Graph** by Chaofan are the quality-of-life picks: extra run information and clearer enemy intent data. If you care about making better decisions with better information, these are for you. Better Mod Menu by Crunchmybeloved rounds out the toolbox if you end up running more than a few mods at once.\n\n## The Spire Codex Mod\n\nWe built the [SpireCodex companion mod](https://steamcommunity.com/sharedfiles/filedetails/?id=3747536911), and it does a different job than everything above: it connects your game to this site.\n\nWith the mod subscribed:\n\n- Your finished runs upload automatically and count toward the [community stats](https://spire-codex.com/community-stats), [tier list](https://spire-codex.com/tier-list), and [leaderboards](https://spire-codex.com/leaderboards). Sign in with Steam once and every run attaches to your profile.\n- Friends can spectate your climb live at [spire-codex.com/live](https://spire-codex.com/live): your map, deck, hand, fights, and shop decisions, updating as you play. If you stream, viewers can follow along without squinting at your VOD.\n- In-game stat lookups show you the community's win and pick rates for the cards and relics you are offered, filterable by skill bracket, so \"is this card actually good at A10\" gets answered on the reward screen.\n- After a win, you get a shareable run page with your full deck, route, and per-floor history.\n\nNone of it touches gameplay or difficulty, so it stacks cleanly with everything else in this list.\n\n## Installing mods\n\nSubscribe on the Workshop page, launch the game, and enable the mod in the mods menu. Slay the Spire 2 is in early access, so patches occasionally break mods for a few days; if something misbehaves after an update, check the mod's Workshop page before assuming your run is cursed.\n\nIf you build something for STS2 yourself, whether a mod, a bot, or a tool on the [Spire Codex API](https://spire-codex.com/developers), tell us and we will feature it on the [community showcase](https://spire-codex.com/showcase)."
   }
 ]
