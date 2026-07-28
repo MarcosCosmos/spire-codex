@@ -1,0 +1,2652 @@
+[
+  {
+    "id": "ACCELERANT",
+    "name": "Acelerante",
+    "description": "El [gold]Veneno[/gold] se activa una vez más.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "ACCURACY",
+    "name": "Precisión",
+    "description": "Las [gold]Navajas[/gold] infligen daño adicional.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "ADAPTABLE",
+    "name": "Adaptable",
+    "description": "Cuando [gold]this creature[/gold] muere, revive aún más fuerte.",
+    "description_raw": "Cuando [gold]{OwnerName}[/gold] muere, revive aún más fuerte.",
+    "type": "Buff",
+    "stack_type": "Single",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "AFTERIMAGE",
+    "name": "Imagen residual",
+    "description": "Cuando juegues una carta, gana [blue]1[/blue] de [gold]Bloqueo[/gold].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "AGGRESSION",
+    "name": "Agresión",
+    "description": "Al comienzo de tu turno, coloca un Ataque aleatorio de tu [gold]Pila de descarte[/gold] en tu [gold]Mano[/gold] y [gold]Mejóralo[/gold] durante el resto del combate.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "AMBERGRIS",
+    "name": "Ámbar gris",
+    "description": "Juega un turno adicional tras este.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "ANTICIPATE",
+    "name": "Temporary Dexterity",
+    "description": "Gana [gold]Destreza[/gold] hasta el final del turno.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "ARSENAL",
+    "name": "Arsenal",
+    "description": "Cuando crees una carta, gana [blue]1[/blue] de [gold]Fuerza[/gold].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "ARTIFACT",
+    "name": "Artefacto",
+    "description": "[gold]Anula[/gold] efectos negativos.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "ASLEEP",
+    "name": "Siesta",
+    "description": "Despierta tras perder PV o después de [blue]2[/blue] turnos.",
+    "description_raw": "Despierta tras perder PV o {Amount:plural:al siguiente turno|después de [blue]{}[/blue] turnos}.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "AUTOMATION",
+    "name": "Automatización",
+    "description": "Por cada [blue]10[/blue] cartas que robes, gana [energy:1].",
+    "description_raw": "Por cada [blue]{BaseCards}[/blue] cartas que robes, gana {Amount:energyIcons()}.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "BACK_ATTACK_LEFT",
+    "name": "Ataque por la espalda",
+    "description": "Inflige un [blue]50 %[/blue] más de daño cuando te ataca por detrás.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Single",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "BACK_ATTACK_RIGHT",
+    "name": "Ataque por la espalda",
+    "description": "Inflige un [blue]50 %[/blue] más de daño cuando te ataca por detrás.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Single",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "BARRICADE",
+    "name": "Barricada",
+    "description": "El [gold]Bloqueo[/gold] no se pierde al comienzo de tu turno.",
+    "description_raw": "El [gold]Bloqueo[/gold] no se pierde al comienzo de{ApplierName.StringValue:cond:l turno de [gold]{OwnerName}'s[/gold]| tu turno}.",
+    "type": "Buff",
+    "stack_type": "Single",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "BATTLEWORN_DUMMY_TIME_LIMIT",
+    "name": "Límite de tiempo",
+    "description": "Tienes [blue]3[/blue] turnos más para derrotar al Muñeco de entrenamiento maltrecho.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "BEACON_OF_HOPE",
+    "name": "Égida de la esperanza",
+    "description": "Cuando ganes [gold]Bloqueo[/gold] durante tu turno, el resto de jugadores obtienen la mitad de ese [gold]Bloqueo[/gold].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Single",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "BIASED_COGNITION",
+    "name": "Conocimiento parcial",
+    "description": "Al comienzo de tu turno, pierde [blue]1[/blue] de [gold]Concentración[/gold].",
+    "description_raw": null,
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "BLACK_HOLE",
+    "name": "Agujero negro",
+    "description": "Cuando gastes o ganes [star:1], inflige [blue]3[/blue] de daño a TODOS los enemigos.",
+    "description_raw": "Cuando gastes o ganes {singleStarIcon}, inflige [blue]3[/blue] de daño a TODOS los enemigos.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "BLOCK_NEXT_TURN",
+    "name": "Bloqueo inminente",
+    "description": "Al comienzo de tu siguiente turno, gana [blue]4[/blue] de [gold]Bloqueo[/gold].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "BLUR",
+    "name": "Difuminarse",
+    "description": "El [gold]Bloqueo[/gold] no se pierde al comienzo de tus siguientes 2 turnos.",
+    "description_raw": "El [gold]Bloqueo[/gold] no se pierde al comienzo de {Amount:plural:tu siguiente turno|tus siguientes {} turnos}.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "BORROWED_TIME",
+    "name": "Tiempo prestado",
+    "description": "Jugar cartas cuesta 1 [energy:1] más este turno.",
+    "description_raw": "Jugar cartas cuesta 1 {Amount:energyIcons()} más este turno.",
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "BUFFER",
+    "name": "Amortiguador",
+    "description": "Evita perder PV las siguientes [blue]2[/blue] veces que recibas daño.",
+    "description_raw": "Evita perder PV {Amount:plural:la siguiente vez|las siguientes [blue]{}[/blue] veces} que recibas daño.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "BURROWED",
+    "name": "Excavar",
+    "description": "El [gold]this creature[/gold] no pierde [gold]Bloqueo[/gold] al comienzo de su siguiente turno. Si pierde todo el [gold]Bloqueo,[/gold] queda [gold]Aturdido[/gold].",
+    "description_raw": "El [gold]{OwnerName}[/gold] no pierde [gold]Bloqueo[/gold] al comienzo de su siguiente turno. Si pierde todo el [gold]Bloqueo,[/gold] queda [gold]Aturdido[/gold].",
+    "type": "Buff",
+    "stack_type": "Single",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "BURST",
+    "name": "Ráfaga",
+    "description": "Las siguientes [blue]2[/blue] Habilidades que juegues este turno se juegan una vez más.",
+    "description_raw": "{Amount:plural:La siguiente Habilidad que juegues este turno se juega|Las siguientes [blue]{}[/blue] Habilidades que juegues este turno se juegan} una vez más.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "CACOPHONY",
+    "name": "Cacofonía",
+    "description": "Cuando los jugadores roben [blue]33[/blue] cartas entre TODOS, inflige [blue][Amount][/blue] de daño a un enemigo aleatorio.",
+    "description_raw": "Cuando los jugadores roben [blue]{Cards}[/blue] {Cards:plural:carta|cartas} entre TODOS, inflige [blue]{Amount}[/blue] de daño a un enemigo aleatorio.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "CALAMITY",
+    "name": "Calamidad",
+    "description": "Cuando juegues un Ataque, añade [blue]2[/blue] Ataques aleatorios a tu [gold]Mano[/gold].",
+    "description_raw": "Cuando juegues un Ataque, añade {Amount:plural:un Ataque aleatorio|[blue]{}[/blue] Ataques aleatorios} a tu [gold]Mano[/gold].",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "CALCIFY",
+    "name": "Calcificación",
+    "description": "Los ataques de [gold]Nudillos[/gold] infligen daño adicional.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "CALL_OF_THE_VOID",
+    "name": "Llamada del Vacío",
+    "description": "Al comienzo de tu turno, añade [blue]1[/blue] carta aleatoria a tu [gold]Mano[/gold]. Esta carta gana [gold]Etérea[/gold].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "CHAINS_OF_BINDING",
+    "name": "Cadenas vinculantes",
+    "description": "Las primeras [blue]3[/blue] cartas que robes cada turno estarán [gold]Ligadas[/gold].",
+    "description_raw": null,
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "CHILD_OF_THE_STARS",
+    "name": "Vástago de las estrellas",
+    "description": "Gana [blue]1[/blue] de [gold]Bloqueo[/gold] por cada [star:1] gastado.",
+    "description_raw": "Gana [blue]1[/blue] de [gold]Bloqueo[/gold] por cada {singleStarIcon} gastado.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "CLARITY",
+    "name": "Claridad",
+    "description": "Al comienzo de tus siguientes [blue]2[/blue] turnos, roba [blue]1[/blue] carta adicional.",
+    "description_raw": "Al comienzo de {Amount:plural:tu siguiente turno|tus siguientes [blue]{}[/blue] turnos}, roba [blue]1[/blue] carta adicional.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "COLOSSUS",
+    "name": "Colosal",
+    "description": "Recibes un [blue]50 %[/blue] menos de daño de enemigos [gold]Vulnerables[/gold] durante los siguientes [blue]2[/blue] turnos.",
+    "description_raw": "Recibes un [blue]{DamageDecrease:percentLess()} %[/blue] menos de daño de enemigos [gold]Vulnerables[/gold] durante {Amount:plural:este turno|los siguientes [blue]{}[/blue] turnos}.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "CONCOCT",
+    "name": "Toxicología",
+    "description": "Cuando inflijas daño de ataque no bloqueado durante este turno, aplica [blue]3[/blue] de [gold]Veneno[/gold].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "CONFUSED",
+    "name": "Confusión",
+    "description": "El coste de tus cartas se aleatoriza al robar, desde [blue]0[/blue] a [blue]3[/blue].",
+    "description_raw": null,
+    "type": "Debuff",
+    "stack_type": "Single",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "CONQUEROR",
+    "name": "Conquistador",
+    "description": "[gold]Espada del soberano[/gold] inflige el doble de daño a [gold]this creature[/gold] durante los siguientes [blue]2[/blue] turnos.",
+    "description_raw": "[gold]Espada del soberano[/gold] inflige el doble de daño a [gold]{OwnerName}[/gold] {Amount:plural:este turno|durante los siguientes [blue]{}[/blue] turnos}.",
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "CONSTRICT",
+    "name": "Opresión",
+    "description": "Si el Estrangulador reptante está vivo al final de tu turno, recibes [blue]1[/blue] de daño.",
+    "description_raw": null,
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "CONSUMING_SHADOW",
+    "name": "Sombra devoradora",
+    "description": "Al final de tu turno, [gold]Descarga[/gold] los [blue]2[/blue] Orbes situados más a la izquierda.",
+    "description_raw": "Al final de tu turno, [gold]Descarga[/gold] {Amount:plural:el Orbe situado más la izquierda|los [blue]{}[/blue] Orbes situados más a la izquierda}.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "COOLANT",
+    "name": "Refrigeración",
+    "description": "Al comienzo de tu siguiente turno, gana [blue]3[/blue] de [gold]Block[/gold] por cada Orbe único que tengas.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "COORDINATE",
+    "name": "Temporary Strength",
+    "description": "Gana [gold]Fuerza[/gold] hasta el final del turno.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "CORROSIVE_WAVE",
+    "name": "Ola corrosiva",
+    "description": "Cuando robes una carta este turno, aplica [blue]2[/blue] de [gold]Veneno[/gold] a TODOS los enemigos.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "CORRUPTION",
+    "name": "Corrupción",
+    "description": "Las Habilidades cuestan [blue]0[/blue].\nCuando juegues una Habilidad, [gold]Agótala[/gold].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Single",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "COUNTDOWN",
+    "name": "Cuenta atrás",
+    "description": "Al comienzo de tu turno, aplica [blue]6[/blue] de [gold]Condena[/gold] a un enemigo aleatorio.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "COVERED",
+    "name": "Protección",
+    "description": "Un aliado te está protegiendo. Recibirá todos los ataques dirigidos hacia ti.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Single",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "CRAB_RAGE",
+    "name": "Cólera crustácea",
+    "description": "Cuando un aliado muere, [gold]this creature[/gold] gana [blue]6[/blue] de [gold]Fuerza[/gold] y [blue]99[/blue] de [gold]Bloqueo[/gold].",
+    "description_raw": "Cuando un aliado muere, [gold]{OwnerName}[/gold] gana [blue]{StrengthPower}[/blue] de [gold]Fuerza[/gold] y [blue]{Block}[/blue] de [gold]Bloqueo[/gold].",
+    "type": "Buff",
+    "stack_type": "Single",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "CREATIVE_AI",
+    "name": "IA creativa",
+    "description": "Al comienzo de tu turno, añade [blue]2[/blue] Poderes aleatorios a tu [gold]Mano[/gold].",
+    "description_raw": "Al comienzo de tu turno, añade {Amount:plural:un Poder aleatorio|[blue]{}[/blue] Poderes aleatorios} a tu [gold]Mano[/gold].",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "CRIMSON_MANTLE",
+    "name": "Manto carmesí",
+    "description": "Al comienzo de tu turno, pierde [blue]0[/blue] PV y gana [blue][Amount][/blue] de [gold]Bloqueo[/gold].",
+    "description_raw": "Al comienzo de tu turno, pierde [blue]{SelfDamage}[/blue] PV y gana [blue]{Amount}[/blue] de [gold]Bloqueo[/gold].",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "CRUELTY",
+    "name": "Crueldad",
+    "description": "Los enemigos Vulnerables reciben daño adicional.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "CRUSH_UNDER",
+    "name": "Temporary Strength Down",
+    "description": "Pierde [gold]Fuerza[/gold] hasta el final del turno.",
+    "description_raw": null,
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "CURIOUS",
+    "name": "Curiosidad",
+    "description": "Los Poderes cuestan [blue]1[/blue] [energy:1] menos.",
+    "description_raw": "Los Poderes cuestan [blue]1[/blue] {energyPrefix:energyIcons(1)} menos.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "CURL_UP",
+    "name": "Enroscarse",
+    "description": "Cuando recibe daño, se enrosca y gana Bloqueo (una vez por combate).",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "DAMPEN",
+    "name": "Desmotivación",
+    "description": "Mientras el Caballero magi esté vivo, elimina las [gold]Mejoras[/gold] de TODAS tus cartas.",
+    "description_raw": null,
+    "type": "Debuff",
+    "stack_type": "None",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "DANSE_MACABRE",
+    "name": "Danza macabra",
+    "description": "Cuando juegues una carta que cueste [energy:2] o más, gana [blue][Amount][/blue] de [gold]Bloqueo[/gold].",
+    "description_raw": "Cuando juegues una carta que cueste {Energy:energyIcons()} o más, gana [blue]{Amount}[/blue] de [gold]Bloqueo[/gold].",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "DARK_EMBRACE",
+    "name": "Abrazo oscuro",
+    "description": "Cuando una carta sea [gold]Agotada[/gold], roba [blue]1[/blue] carta.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "DARK_SHACKLES",
+    "name": "Temporary Strength Down",
+    "description": "Pierde [gold]Fuerza[/gold] hasta el final del turno.",
+    "description_raw": null,
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "DEBILITATE",
+    "name": "Debilitar",
+    "description": "[gold]Vulnerabilidad[/gold] y [gold]Debilidad[/gold] son el doble de efectivos durante durante los siguientes [blue]2[/blue] turns.",
+    "description_raw": "[gold]Vulnerabilidad[/gold] y [gold]Debilidad[/gold] son el doble de efectivos durante {Amount:plural:este turno|durante los siguientes [blue]{}[/blue] turns}.",
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "DEMESNE",
+    "name": "Dominio",
+    "description": "Al comienzo de tu turno, gana [blue]1[/blue] de [gold]Energía[/gold] y roba [blue]1[/blue] carta adicional.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "DEMISE",
+    "name": "Defunción",
+    "description": "[gold]This creature[/gold] pierde [blue][Amount][/blue] PV al final de su turno.",
+    "description_raw": "[gold]{OwnerName}[/gold] pierde [blue]{Amount}[/blue] PV al final de su turno.",
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "DEMON_FORM",
+    "name": "Forma demoniaca",
+    "description": "Al comienzo de tu turno, gana [blue]3[/blue] de [gold]Fuerza[/gold].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "DEVOUR_LIFE",
+    "name": "Apetito vital",
+    "description": "Cuando juegues un [gold]Alma[/gold], [gold]Vincula[/gold] [blue]1[/blue].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "DEXTERITY",
+    "name": "Destreza",
+    "description": "Aumenta el [gold]Bloqueo[/gold] obtenido mediante cartas en [blue][/blue].",
+    "description_raw": "{Amount:cond:<0?Disminuye|Aumenta} el [gold]Bloqueo[/gold] obtenido mediante cartas en [blue]{Amount:abs()}[/blue].",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": true,
+    "image_url": null
+  },
+  {
+    "id": "DIE_FOR_YOU",
+    "name": "Morirá por ti",
+    "description": "[gold]Nudillos[/gold] absorbe todo el daño de ataque no bloqueado.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Single",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "DISINTEGRATION",
+    "name": "Desintegración",
+    "description": "Al final de tu turno, recibe [blue]5[/blue] de daño.",
+    "description_raw": null,
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "DOOM",
+    "name": "Condena",
+    "description": "Al final del turno del enemigo, si [gold]this creature[/gold] tiene [blue][Amount][/blue] PV o menos, muere.",
+    "description_raw": "Al final del turno del {OnPlayer:jugador|enemigo}, si [gold]{OwnerName}[/gold] tiene [blue]{Amount}[/blue] PV o menos, muere.",
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "DOUBLE_DAMAGE",
+    "name": "Daño doble",
+    "description": "Los Ataques infligen el doble de daño durante los siguientes [blue]2[/blue] turnos.",
+    "description_raw": "Los Ataques infligen el doble de daño {Amount:plural:durante este turno|durante los siguientes [blue]{}[/blue] turnos}.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "DRAW_CARDS_NEXT_TURN",
+    "name": "Robo de cartas inminente",
+    "description": "Al comienzo de tu siguiente turno, roba [blue]1[/blue] carta adicional.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "DUPLICATION",
+    "name": "Duplicar",
+    "description": "Las siguientes [blue]2[/blue] cartas que juegues se juegan una vez más.",
+    "description_raw": "{Amount:plural:La siguiente carta que juegues se juega|Las siguientes [blue]{}[/blue] cartas que juegues se juegan} una vez más.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "DYING_STAR",
+    "name": "Temporary Strength Down",
+    "description": "Pierde [gold]Fuerza[/gold] hasta el final del turno.",
+    "description_raw": null,
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "ECHO_FORM",
+    "name": "Forma resonante",
+    "description": "Las primeras [blue]2[/blue] cartas que juegues cada turno se juegan una vez más.",
+    "description_raw": "{Amount:plural:La primera carta que juegues cada turno se juega|Las primeras [blue]{}[/blue] cartas que juegues cada turno se juegan} una vez más.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "ENERGY_NEXT_TURN",
+    "name": "Energía inminente",
+    "description": "Gana [gold]Energía[/gold] adicional al siguiente turno.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "ENFEEBLING_TOUCH",
+    "name": "Temporary Strength Down",
+    "description": "Pierde [gold]Fuerza[/gold] hasta el final del turno.",
+    "description_raw": null,
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "ENRAGE",
+    "name": "Ira",
+    "description": "Cuando juegues una Habilidad, gana [blue]2[/blue] de [gold]Fuerza[/gold].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "ENTROPY",
+    "name": "Entropía",
+    "description": "Al comienzo de tu turno, [gold]Transforma[/gold] [blue]1[/blue] carta de tu [gold]Mano[/gold].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "ENVENOM",
+    "name": "Envenenar",
+    "description": "Cuando inflijas daño de ataque no bloqueado, aplica [blue]1[/blue] de [gold]Veneno[/gold].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "ESCAPE_ARTIST",
+    "name": "Escapismo",
+    "description": "Intenta escapar del combate tras [blue]2[/blue] turnos.",
+    "description_raw": "Intenta escapar del combate {Amount:plural:este turno|tras [blue]{}[/blue] turnos}.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "FADE",
+    "name": "Temporary Dexterity",
+    "description": "Gana [gold]Destreza[/gold] hasta el final del turno.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "FAN_OF_KNIVES",
+    "name": "Abanico de cuchillas",
+    "description": "Las [gold]Navajas[/gold] golpean a TODOS los enemigos.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Single",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "FASTEN",
+    "name": "Atadura",
+    "description": "La cartas de Defender otorgan [blue]4[/blue] de [gold]Bloqueo[/gold] adicional.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "FEEDING_FRENZY",
+    "name": "Temporary Strength",
+    "description": "Gana [gold]Fuerza[/gold] hasta el final del turno.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "FEEL_NO_PAIN",
+    "name": "No hay dolor",
+    "description": "Cuando una carta sea Agotada, gana [blue]3[/blue] de [gold]Bloqueo[/gold].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "FERAL",
+    "name": "Salvaje",
+    "description": "Las primeras [blue]2[/blue] veces que jueges un Ataque de coste 0 [energy:1] cada turno, devuélvelo a tu [gold]Mano[/gold].",
+    "description_raw": "{Amount:plural:La primera vez|Las primeras [blue]{}[/blue] veces} que jueges un Ataque de coste 0 {energyPrefix:energyIcons(1)} cada turno, devuélvelo a tu [gold]Mano[/gold].",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "FLAME_BARRIER",
+    "name": "Barrera de llamas",
+    "description": "Cuando te ataquen durante este turno, inflige [blue]4[/blue] de daño al atacante.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "FLANKING",
+    "name": "Flanquear",
+    "description": "Durante este turno, los ataques de tus aliados infligen [blue]el doble[/blue] de daño a este enemigo.",
+    "description_raw": null,
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "FLEX_POTION",
+    "name": "Temporary Strength",
+    "description": "Gana [gold]Fuerza[/gold] hasta el final del turno.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "FLUTTER",
+    "name": "Aleteo",
+    "description": "Recibe un [blue]50 %[/blue] menos de daño de Ataques. Si recibe daño [blue][Amount][/blue] veces, se [gold]Aturde[/gold].",
+    "description_raw": "Recibe un [blue]{DamageDecrease} %[/blue] menos de daño de Ataques. Si recibe daño [blue]{Amount}[/blue] {Amount:plural:vez|veces}, se [gold]Aturde[/gold].",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "FOCUS",
+    "name": "Concentración",
+    "description": "Aumenta la efectividad de los Orbes en [blue][/blue].",
+    "description_raw": "{Amount:cond:<0?Disminuye|Aumenta} la efectividad de los Orbes en [blue]{Amount:abs()}[/blue].",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": true,
+    "image_url": null
+  },
+  {
+    "id": "FOCUSED_STRIKE",
+    "name": "Temporary Focus",
+    "description": "Gana [gold]Concentración[/gold] hasta el final del turno.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "FORBIDDEN_GRIMOIRE",
+    "name": "Grimorio prohibido",
+    "description": "Al final del combate, elimina una carta de tu [gold]Mazo[/gold].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "FOREGONE_CONCLUSION",
+    "name": "Conclusión inevitable",
+    "description": "Al siguiente turno, coloca [blue]3[/blue] cartas de tu [gold]Pila de robo[/gold] en tu [gold]Mano[/gold].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "FRAIL",
+    "name": "Fragilidad",
+    "description": "Fragilidad reduce la cantidad de [gold]Bloqueo[/gold] obtenido mediante cartas un [blue]25 %[/blue].",
+    "description_raw": null,
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "FREE_ATTACK",
+    "name": "Ataque gratuito",
+    "description": "Los siguientes [blue]2[/blue] Ataques que juegues cuestan [blue]0[/blue] [energy:1].",
+    "description_raw": "{Amount:plural:El siguiente Ataque que juegues cuesta|Los siguientes [blue]{}[/blue] Ataques que juegues cuestan} [blue]0[/blue] {energyPrefix:energyIcons(1)}.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "FREE_POWER",
+    "name": "Poder gratuito",
+    "description": "Los siguientes [blue]2[/blue] Poderes que juegues cuestan [blue]0[/blue] [energy:1].",
+    "description_raw": "{Amount:plural:El siguiente Poder que juegues cuesta|Los siguientes [blue]{}[/blue] Poderes que juegues cuestan} [blue]0[/blue] {energyPrefix:energyIcons(1)}.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "FREE_SKILL",
+    "name": "Habilidad gratuita",
+    "description": "Las siguientes [blue]2[/blue] Habilidades que juegues cuestan [blue]0[/blue] [energy:1].",
+    "description_raw": "{Amount:plural:La siguiente Habilidad que juegues cuesta|Las siguientes [blue]{}[/blue] Habilidades que juegues cuestan} [blue]0[/blue] {energyPrefix:energyIcons(1)}.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "FRIENDSHIP",
+    "name": "Amistad",
+    "description": "Gana [energy:1] al comienzo de cada turno.",
+    "description_raw": "Gana {Amount:energyIcons()} al comienzo de cada turno.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "FURNACE",
+    "name": "Fragua",
+    "description": "Al comienzo de tu turno, [gold]Forja[/gold] [blue]5[/blue].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "GALVANIC",
+    "name": "Galvanismo",
+    "description": "Los cartas de Poder obtienen la aflicción [gold]Galvanismo[/gold].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "GENESIS",
+    "name": "Génesis",
+    "description": "Al comienzo de tu turno, gana [star:1].",
+    "description_raw": "Al comienzo de tu turno, gana {Amount:starIcons()}.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "GIGANTIFICATION",
+    "name": "Gigantificación",
+    "description": "Los siguientes [blue]2[/blue] Ataques que juegues infligen el triple de daño.",
+    "description_raw": "{Amount:plural:El siguiente Ataque que juegues inflige|Los siguientes [blue]{}[/blue] Ataques que juegues infligen} el triple de daño.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "GRAVITY",
+    "name": "Gravedad",
+    "description": "Cuando juegues una carta durante este turno, inflige [blue]2[/blue] de daño a TODOS los enemigos.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "GUARDED",
+    "name": "A cubierto",
+    "description": "Recibe un [blue]50 %[/blue] menos de daño de los enemigos. Termina si [gold][Applier.StringValue][/gold] muere.",
+    "description_raw": "Recibe un [blue]{DamageDecrease:percentLess()} %[/blue] menos de daño de los enemigos. Termina si [gold]{Applier.StringValue}[/gold] muere.",
+    "type": "Buff",
+    "stack_type": "Single",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "HAILSTORM",
+    "name": "Granizada",
+    "description": "Si tienes [gold]Escarcha[/gold] al final de tu turno, inflige [blue]6[/blue] de daño a TODOS los enemigos.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "HAMMER_TIME",
+    "name": "A martillazos",
+    "description": "Cuando [gold]Forjas[/gold], todos los aliados también [gold]Forjan[/gold].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Single",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "HANG",
+    "name": "Colgar",
+    "description": "Todos los [gold]Colgar[/gold] infligen [blue]el doble[/blue] de daño a este enemigo.",
+    "description_raw": null,
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "HARD_TO_KILL",
+    "name": "Duro de roer",
+    "description": "Reduce todo el daño recibido y los PV perdidos por [gold]this creature[/gold] a [blue][Amount][/blue].",
+    "description_raw": "Reduce todo el daño recibido y los PV perdidos por [gold]{OwnerName}[/gold] a [blue]{Amount}[/blue].",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "HARDENED_SHELL",
+    "name": "Endurecimiento",
+    "description": "[gold]This creature[/gold] no puede perder más de [blue][Amount][/blue] PV por turno.",
+    "description_raw": "[gold]{OwnerName}[/gold] no puede perder más de [blue]{Amount}[/blue] PV por turno.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "HATCH",
+    "name": "Eclosión",
+    "description": "Eclosiona tras [blue]X[/blue] turnos.",
+    "description_raw": "Eclosiona tras X turnos.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "HAUNT",
+    "name": "Aparición",
+    "description": "Cuando juegues un [gold]Alma[/gold], un enemigo aleatorio pierde [blue]3[/blue] de PV.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "HEIST",
+    "name": "Atraco",
+    "description": "Al morir, devuelve todo el [gold]Oro[/gold] robado.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "HELICAL_DART",
+    "name": "Temporary Dexterity",
+    "description": "Gana [gold]Destreza[/gold] hasta el final del turno.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "HELLO_WORLD",
+    "name": "Hola mundo",
+    "description": "Al comienzo de tu turno, añade [blue]1[/blue] carta Común aleatoria a tu [gold]Mano[/gold].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "HELLRAISER",
+    "name": "Agitador",
+    "description": "Cuando robes una carta que contenga «Golpe», se juega contra un enemigo aleatorio.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Single",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "HEX",
+    "name": "Maleficio",
+    "description": "Mientras el Caballero espectral esté vivo, TODAS tus cartas son [gold]Etéreas[/gold].",
+    "description_raw": null,
+    "type": "Debuff",
+    "stack_type": "Single",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "HIBERNATE",
+    "name": "Hibernar",
+    "description": "Durante los próximos [blue]2[/blue] turnos, tus orbes de [gold]Escarcha[/gold] otorgan [gold]Bloqueo[/gold] a TODOS los aliados.",
+    "description_raw": "{Amount:plural:Durante este turno|Durante los próximos [blue]{}[/blue] turnos}, tus orbes de [gold]Escarcha[/gold] otorgan [gold]Bloqueo[/gold] a TODOS los aliados.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "HIGH_VOLTAGE",
+    "name": "Alto voltaje",
+    "description": "Al final de su turno, [gold]this creature[/gold] gana [blue][Amount][/blue] de [gold]Fuerza[/gold].",
+    "description_raw": "Al final de su turno, [gold]{OwnerName}[/gold] gana [blue]{Amount}[/blue] de [gold]Fuerza[/gold].",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "HOTFIX",
+    "name": "Temporary Focus",
+    "description": "Gana [gold]Concentración[/gold] hasta el final del turno.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "ILLUSION",
+    "name": "Ilusión",
+    "description": "Cuando esta criatura muere, revive al siguiente turno con todos los PV.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Single",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "IMBALANCED",
+    "name": "Desequilibrio",
+    "description": "Si cualquier jugador bloquea por completo los ataques de [gold]this creature[/gold], esta criatura queda [gold]Aturdida[/gold].",
+    "description_raw": "Si {IsMultiplayer:bloqueas|cualquier jugador bloquea} por completo los ataques de [gold]{OwnerName}[/gold], esta criatura queda [gold]Aturdida[/gold].",
+    "type": "Debuff",
+    "stack_type": "Single",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "IMITATION_LEARNING",
+    "name": "Aprendizaje por imitación",
+    "description": "Las próximas [blue]2[/blue] veces que [gold][TargetPlayer][/gold] juegue un Poder, juega una copia del mismo.",
+    "description_raw": "{Amount:plural:La próxima vez|Las próximas [blue]{}[/blue] veces} que [gold]{TargetPlayer}[/gold] juegue un Poder, juega una copia del mismo.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "IMPROVEMENT",
+    "name": "Mejora",
+    "description": "Al final del combate, [gold]Mejora[/gold] una carta aleatoria.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "INFERNO",
+    "name": "Infierno",
+    "description": "Al comienzo de tu turno, pierde [blue]0[/blue] PV. Cuando pierdas PV en tu turno, inflige [blue][Amount][/blue] de daño a TODOS los enemigos.",
+    "description_raw": "Al comienzo de tu turno, pierde [blue]{SelfDamage}[/blue] PV. Cuando pierdas PV en tu turno, inflige [blue]{Amount}[/blue] de daño a TODOS los enemigos.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "INFESTED",
+    "name": "Infestación",
+    "description": "Al morir, invoca... algo.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Single",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "INFINITE_BLADES",
+    "name": "Cuchillas infinitas",
+    "description": "Al comienzo de tu turno, añade [blue]2[/blue] [gold]Navajas[/gold] a tu [gold]Mano[/gold].",
+    "description_raw": "Al comienzo de tu turno, añade {Amount:plural:una [gold]Navaja[/gold]|[blue]{}[/blue] [gold]Navajas[/gold]} a tu [gold]Mano[/gold].",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "INTANGIBLE",
+    "name": "Intangible",
+    "description": "Reduce todo el daño recibido y la pérdida de PV a [blue]1[/blue] durante este turno.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "INTERCEPT",
+    "name": "Interceptar",
+    "description": "Estás cubriendo a otro jugador. Todos los ataques dirigidos a ese jugador se redirigen hacia ti.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Single",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "ITERATION",
+    "name": "Iteración",
+    "description": "La primera vez que robes una carta de Estado cada turno, roba más cartas.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "JUGGERNAUT",
+    "name": "Coloso",
+    "description": "Cuando ganes [gold]Bloqueo[/gold], inflige [blue]6[/blue] de daño a un enemigo aleatorio.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "JUGGLING",
+    "name": "Malabares",
+    "description": "Añade una copia del tercer Ataque que juegues cada turno a tu [gold]Mano[/gold].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "KNOCKDOWN",
+    "name": "Mate",
+    "description": "Esta criatura recibe [blue][Amount][/blue] veces más daño del resto de jugadores este turno.",
+    "description_raw": "Esta criatura recibe [blue]{Amount}[/blue] veces más daño del resto de jugadores este turno.",
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "LEADERSHIP",
+    "name": "Liderazgo",
+    "description": "Los otros aliados infligen [blue]1[/blue] de daño adicional.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "LETHALITY",
+    "name": "Letalidad",
+    "description": "El primer Ataque que juegues cada turno inflige un 50 % de daño adicional.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "LIGHTNING_ROD",
+    "name": "Pararrayos",
+    "description": "Al comienzo de los siguientes [blue]2[/blue] turnos, [gold]Invoca[/gold] [blue]1[/blue] [gold]Relámpago[/gold].",
+    "description_raw": "Al comienzo {Amount:plural:del siguiente turno|de los siguientes [blue]{}[/blue] turnos}, [gold]Invoca[/gold] [blue]1[/blue] [gold]Relámpago[/gold].",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "LOOP",
+    "name": "Bucle",
+    "description": "Al comienzo de tu turno, activa la habilidad pasiva de tu siguiente Orbe.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "MACHINE_LEARNING",
+    "name": "Aprendizaje automático",
+    "description": "Al comienzo de tu turno, roba [blue]1[/blue] carta adicional.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "MAGIC_BOMB",
+    "name": "Bomba mágica",
+    "description": "Recibe [blue]20[/blue] de daño al final de tu turno hasta que el Caballero magi muera.",
+    "description_raw": null,
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "MANGLE",
+    "name": "Temporary Strength Down",
+    "description": "Pierde [gold]Fuerza[/gold] hasta el final del turno.",
+    "description_raw": null,
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "MASTER_PLANNER",
+    "name": "Plan maestro",
+    "description": "Cuando juegues una Habilidad, esta gana [gold]Astucia[/gold].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Single",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "MAYHEM",
+    "name": "La ruleta del caos",
+    "description": "Al comienzo de tu turno, juega las [blue]2[/blue] primeras cartas de tu [gold]Pila de robo[/gold].",
+    "description_raw": "Al comienzo de tu turno, juega {Amount:plural:la primera carta|las [blue]{}[/blue] primeras cartas} de tu [gold]Pila de robo[/gold].",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "MIND_ROT",
+    "name": "Podredumbre mental",
+    "description": "Roba [blue]1[/blue] carta menos al comienzo de tu turno.",
+    "description_raw": null,
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "MINION",
+    "name": "Esbirro",
+    "description": "Los esbirros abandonan el combate si su líder muere.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Single",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "MONARCHS_GAZE",
+    "name": "Mirada del monarca",
+    "description": "Cuando ataques a un enemigo, este pierde [blue]1[/blue] de [gold]Fuerza[/gold] durante este turno.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "MONARCHS_GAZE_STRENGTH_DOWN",
+    "name": "Temporary Strength Down",
+    "description": "Pierde [gold]Fuerza[/gold] hasta el final del turno.",
+    "description_raw": null,
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "MONOLOGUE",
+    "name": "Soliloquio",
+    "description": "Cuando juegues una carta este turno, gana [blue]1[/blue] de [gold]Fuerza[/gold] durante este turno.\nValor actual: [blue]0[/blue] de [gold]Fuerza[/gold].",
+    "description_raw": "Cuando juegues una carta este turno, gana [blue]{StrengthPower}[/blue] de [gold]Fuerza[/gold] durante este turno.\nValor actual: [blue]{StrengthApplied}[/blue] de [gold]Fuerza[/gold].",
+    "type": "Buff",
+    "stack_type": "None",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "NECRO_MASTERY",
+    "name": "Maestría nigromántica",
+    "description": "Cuando [gold]Nudillos[/gold] pierda PV, TODOS los enemigos pierden la misma cantidad de PV.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "NEMESIS",
+    "name": "Némesis",
+    "description": "Al final de cada 2 turnos, gana [gold]Intangible[/gold] [blue]1[/blue].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Single",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "NEUROSURGE",
+    "name": "Sobrecarga neuronal",
+    "description": "Al comienzo de tu turno, te aplicas [blue]3[/blue] de [gold]Condena[/gold].",
+    "description_raw": null,
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "NIGHTMARE",
+    "name": "Pesadilla",
+    "description": "Añade [blue]2[/blue] copias de [gold][Card][/gold] a tu [gold]Mano[/gold] el siguiente turno.",
+    "description_raw": "Añade {Amount:plural:una copia de|[blue]{}[/blue] copias de} [gold]{Card}[/gold] a tu [gold]Mano[/gold] el siguiente turno.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "NO_BLOCK",
+    "name": "Bloqueo anulado",
+    "description": "No puedes ganar [gold]Bloqueo[/gold] mediante cartas durante [blue]2[/blue] turnos.",
+    "description_raw": "No puedes ganar [gold]Bloqueo[/gold] mediante cartas durante {Amount:plural:[blue]{}[/blue] turno|[blue]{}[/blue] turnos}.",
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "NO_DRAW",
+    "name": "Robar anulado",
+    "description": "No puedes robar más cartas durante este turno.",
+    "description_raw": null,
+    "type": "Debuff",
+    "stack_type": "Single",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "NO_ENERGY_GAIN",
+    "name": "Energía agotada",
+    "description": "No puedes obtener más [energy:1] este turno.",
+    "description_raw": "No puedes obtener más {energyPrefix:energyIcons(1)} este turno.",
+    "type": "Debuff",
+    "stack_type": "Single",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "NOSTALGIA",
+    "name": "Nostalgia",
+    "description": "Los primeros 2 Ataques o Habilidades que juegues cada turno se colocan en la parte superior de tu [gold]Pila de robo[/gold].",
+    "description_raw": "{Amount:plural:El primer Ataque o Habilidad|Los primeros {} Ataques o Habilidades} que juegues cada turno se {Amount:plural:coloca|colocan} en la parte superior de tu [gold]Pila de robo[/gold].",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "NOXIOUS_FUMES",
+    "name": "Gases tóxicos",
+    "description": "Al comienzo de tu turno, aplica [blue]2[/blue] de [gold]Veneno[/gold] a TODOS los enemigos.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "OBLIVION",
+    "name": "Olvido",
+    "description": "Cuando juegues una carta, este enemigo obtiene [blue]1[/blue] de [gold]Condena[/gold].",
+    "description_raw": null,
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "ONE_FOR_ALL",
+    "name": "Uno para todos",
+    "description": "Tus Ataques de coste [blue]0[/blue] [energy:1] infligen más daño.",
+    "description_raw": "Tus Ataques de coste [blue]0[/blue] {energyPrefix:energyIcons(1)} infligen más daño.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "ONE_TWO_PUNCH",
+    "name": "Puñetazo doble",
+    "description": "Los siguientes [blue]2[/blue] Ataques que juegues este turno se juegan una vez más.",
+    "description_raw": "{Amount:plural:El siguiente Ataque que juegues este turno se juega|Los siguientes [blue]{}[/blue] Ataques que juegues este turno se juegan} una vez más.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "ORBIT",
+    "name": "Órbita",
+    "description": "Gana [energy:1] por cada [energy:4] que gastes.",
+    "description_raw": "Gana {Amount:energyIcons()} por cada {Energy:energyIcons()} que gastes.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "OUTBREAK",
+    "name": "Brote",
+    "description": "Cada vez que apliques [gold]Veneno[/gold], inflige daño a TODOS los enemigos.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "PAGESTORM",
+    "name": "Papeleo infernal",
+    "description": "Cuando robes una carta [gold]Etérea[/gold], roba [blue]1[/blue] carta.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "PAINFUL_STABS",
+    "name": "Puñaladas dolorosas",
+    "description": "Baraja [blue]1[/blue] [gold]Herida[/gold] en tu [gold]Pila de descarte[/gold] cada vez que recibas daño no bloqueado de ataques.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "PALE_BLUE_DOT",
+    "name": "Un punto azul pálido",
+    "description": "Si juegas [blue]5[/blue] o más cartas durante un turno, roba [blue][Amount][/blue] cartas adicionales al comienzo de tu siguiente turno.",
+    "description_raw": "Si juegas [blue]{CardPlay}[/blue] o más cartas durante un turno, roba [blue]{Amount}[/blue] {Amount:plural:carta adicional|cartas adicionales} al comienzo de tu siguiente turno.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "PANACHE",
+    "name": "Estilo",
+    "description": "Si juegas [blue]5[/blue] cartas más este turno, inflige [blue][Amount][/blue] de daño a TODOS los enemigos.",
+    "description_raw": "Si juegas [blue]{CardsLeft}[/blue] {CardsLeft:plural:carta|cartas} más este turno, inflige [blue]{Amount}[/blue] de daño a TODOS los enemigos.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "PAPER_CUTS",
+    "name": "Cortes de papel",
+    "description": "Cuando [gold]this creature[/gold] te inflija daño de ataque no bloqueado, pierdes [blue][Amount][/blue] [gold]PV máx[/gold].",
+    "description_raw": "Cuando [gold]{OwnerName}[/gold] te inflija daño de ataque no bloqueado, pierdes [blue]{Amount}[/blue] [gold]PV máx[/gold].",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "PARRY",
+    "name": "Parada",
+    "description": "Ahora [gold]Espara del soberano[/gold] otorga [gold]Bloqueo[/gold].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "PERSONAL_HIVE",
+    "name": "Colmena personal",
+    "description": "Cuando este enemigo sea golpeado por un Ataque, añade [gold]Desorientación[/gold] a tu [gold]Pila de robo[/gold].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "PHANTOM_BLADES",
+    "name": "Hojas fantasmales",
+    "description": "Las [gold]Navajas[/gold] ganan [gold]Retención[/gold].\nLa primera [gold]Navaja[/gold] que juegues cada turno inflige [blue]9[/blue] de daño adicional.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "PIERCING_WAIL",
+    "name": "Temporary Strength Down",
+    "description": "Pierde [gold]Fuerza[/gold] hasta el final del turno.",
+    "description_raw": null,
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "PILLAR_OF_CREATION",
+    "name": "Pilar de la Creación",
+    "description": "La primera que crees una carta cada turno, obtienes [blue][Amount][/blue] de [gold]Bloqueo[/gold].",
+    "description_raw": "La primera que crees una carta cada turno, obtienes [blue]{Amount}[/blue] de [gold]Bloqueo[/gold].",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "PLATING",
+    "name": "Blindaje",
+    "description": "Al final de tu turno, gana [blue][Amount][/blue] de [gold]Bloqueo[/gold]. El [gold]Blindaje[/gold] se reduce en [blue]1[/blue] al comienzo de tu turno.",
+    "description_raw": "Al final de tu turno, gana [blue]{Amount}[/blue] de [gold]Bloqueo[/gold]. El [gold]Blindaje[/gold] se reduce en [blue]{Decrement}[/blue] al comienzo de tu turno.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "PLOW",
+    "name": "Ceremonia",
+    "description": "La primera vez que los PV de [gold]this creature[/gold] lleguen a [blue][Amount][/blue] o menos, queda [gold]Aturdida[/gold] y pierde toda su [gold]Fuerza[/gold].",
+    "description_raw": "La primera vez que los PV de [gold]{OwnerName}[/gold] lleguen a [blue]{Amount}[/blue] o menos, queda [gold]Aturdida[/gold] y pierde toda su [gold]Fuerza[/gold].",
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "POISON",
+    "name": "Veneno",
+    "description": "Las criaturas envenenadas pierden PV al comienzo de su turno. Cada turno, el Veneno se reduce en [blue]1[/blue].",
+    "description_raw": null,
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "POSSESS_SPEED",
+    "name": "Robo de destreza",
+    "description": "Al morir, devuelve toda la [gold]Destreza[/gold] robada.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Single",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "POSSESS_STRENGTH",
+    "name": "Robo de fuerza",
+    "description": "Al morir, devuelve toda la [gold]Fuerza[/gold] robada.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Single",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "PREP_TIME",
+    "name": "Preparativos",
+    "description": "Al comienzo de tu turno, gana [blue]4[/blue] de [gold]Vigor[/gold].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "PYRE",
+    "name": "Pira",
+    "description": "Gana [energy:1] al comienzo de cada turno.",
+    "description_raw": "Gana {Amount:energyIcons()} al comienzo de cada turno.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "RADIANCE",
+    "name": "Resplandor",
+    "description": "Gana [energy:1] adicional en los siguientes [blue]2[/blue] turnos.",
+    "description_raw": "Gana {Energy:energyIcons()} adicional {Amount:plural:al siguiente turno|en los siguientes [blue]{}[/blue] turnos}.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "RAGE",
+    "name": "Furia",
+    "description": "Cuando juegues un Ataque este turno, gana [blue]3[/blue] de [gold]Bloqueo[/gold].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "RAMPART",
+    "name": "Bastión",
+    "description": "Al comienzo de tu turno, el Ametrallador gana [blue]25[/blue] de [gold]Bloqueo[/gold].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "RAVENOUS",
+    "name": "Hambre voraz",
+    "description": "Cuando un enemigo muere, la Babosa Cadavérica se lo come de inmediato, quedando [gold]Aturdida[/gold] y ganando [blue]1[/blue] de [gold]Fuerza[/gold].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "REAPER_FORM",
+    "name": "Forma de Segadora",
+    "description": "Cuando los Ataques infligen daño, aplican [blue]2[/blue] veces esa cantidad de [gold]Condena[/gold].",
+    "description_raw": "Cuando los Ataques infligen daño, aplican {Amount:plural:la misma cantidad|[blue]{}[/blue] veces esa cantidad} de [gold]Condena[/gold].",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "REATTACH",
+    "name": "Reconexión",
+    "description": "Si otro de los segmentos sigue vivo, revive en [blue]2[/blue] turnos con [blue]25[/blue] PV.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Single",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "REBOUND",
+    "name": "Rebote",
+    "description": "Las siguientes [blue]2[/blue] cartas que juegues este turno se colocan en la parte superior de tu [gold]Pila de robo[/gold].",
+    "description_raw": "{Amount:plural:La siguiente carta|Las siguientes [blue]{}[/blue] cartas} que juegues este turno se {Amount:plural:coloca|colocan} en la parte superior de tu [gold]Pila de robo[/gold].",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "REFLECT",
+    "name": "Reflejo",
+    "description": "El daño bloqueado se devuelve al atacante.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "REGEN",
+    "name": "Regeneración",
+    "description": "La [gold]Regeneración[/gold] cura tus PV al final de tu turno. Cada turno, la [gold]Regeneración[/gold] se reduce en [blue]1[/blue].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "REPTILE_TRINKET",
+    "name": "Temporary Strength",
+    "description": "Gana [gold]Fuerza[/gold] hasta el final del turno.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "RETAIN_HAND",
+    "name": "Retener mano",
+    "description": "[gold]Retén[/gold] tu [gold]Mano[/gold] durante los siguientes [blue]2[/blue] turnos.",
+    "description_raw": "[gold]Retén[/gold] tu [gold]Mano[/gold] durante {Amount:plural:este turno|los siguientes [blue]{}[/blue] turnos}.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "RINGING",
+    "name": "Tañido",
+    "description": "Solo puedes jugar [blue]1[/blue] carta durante este turno.",
+    "description_raw": null,
+    "type": "Debuff",
+    "stack_type": "Single",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "RITUAL",
+    "name": "Ritual",
+    "description": "Gana [gold]Fuerza[/gold] al final de tu turno.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "ROLLING_BOULDER",
+    "name": "Canto rodado",
+    "description": "Al comienzo de tu turno, inflige [blue][Amount][/blue] de daño a TODOS los enemigos y aumenta este daño en [blue]5[/blue].",
+    "description_raw": "Al comienzo de tu turno, inflige [blue]{Amount}[/blue] de daño a TODOS los enemigos y aumenta este daño en [blue]{Damage}[/blue].",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "ROYALTIES",
+    "name": "Diezmo",
+    "description": "Al final del combate, gana [blue]25[/blue] de [gold]Oro[/gold].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "RUPTURE",
+    "name": "Ruptura",
+    "description": "Cuando pierdas PV durante tu turno, gana [blue]1[/blue] de [gold]Fuerza[/gold].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "SANDPIT",
+    "name": "Arenas movedizas",
+    "description": "En [blue]2[/blue] turnos, [gold]El Insaciable[/gold] te devorará y morirás.",
+    "description_raw": "{Amount:plural:Cuando llegue su turno|En [blue]{}[/blue] turnos}, [gold]El Insaciable[/gold] te devorará y morirás.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "SEEKING_EDGE",
+    "name": "Filo rastreador",
+    "description": "Ahora [gold]Espada del soberano[/gold] golpea a TODOS los enemigos.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Single",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "SELF_FORMING_CLAY",
+    "name": "Arcilla autoforme",
+    "description": "Gana [blue]3[/blue] de [gold]Bloqueo[/gold] al siguiente turno.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "SENTRY_MODE",
+    "name": "Modo centinela",
+    "description": "Al comienzo de tu turno, añade [blue]1[/blue] [gold]Barrido ocular[/gold] a tu [gold]Mano[/gold].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "SERPENT_FORM",
+    "name": "Forma ofidia",
+    "description": "Cuando juegues una carta, inflige [blue]4[/blue] de daño a un enemigo aleatorio.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "SETUP_STRIKE",
+    "name": "Temporary Strength",
+    "description": "Gana [gold]Fuerza[/gold] hasta el final del turno.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "SHACKLING_POTION",
+    "name": "Temporary Strength Down",
+    "description": "Pierde [gold]Fuerza[/gold] hasta el final del turno.",
+    "description_raw": null,
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "SHADOW_STEP",
+    "name": "Paso sombrío",
+    "description": "Durante los siguientes [blue]2[/blue] turnos (sin contar este), los Ataques infligen el doble de daño.",
+    "description_raw": "{Amount:plural:Durante el siguiente turno|Durante los siguientes [blue]{}[/blue] turnos (sin contar este)}, los Ataques infligen el doble de daño.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "SHADOWMELD",
+    "name": "Fundirse con las sombras",
+    "description": "Duplica el [gold]Bloqueo[/gold] que ganes este turno [blue]2[/blue] veces.",
+    "description_raw": "Duplica el [gold]Bloqueo[/gold] que ganes este turno{Amount:plural:| [blue]{}[/blue] veces}.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "SHRIEK",
+    "name": "Graznido",
+    "description": "La primera vez que los PV de [gold]this creature[/gold] lleguen a [blue][Amount][/blue] o menos, se [gold]Aturde[/gold].",
+    "description_raw": "La primera vez que los PV de [gold]{OwnerName}[/gold] lleguen a [blue]{Amount}[/blue] o menos, se [gold]Aturde[/gold].",
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": true,
+    "image_url": null
+  },
+  {
+    "id": "SHRINK",
+    "name": "Encoger",
+    "description": "Los Ataques de [gold]this creature[/gold] infligen un [blue]30 %[/blue] menos de daño.",
+    "description_raw": "{ApplierName.StringValue:cond:Mientras {} viva, tus Ataques|Los Ataques de [gold]{OwnerName}[/gold]} infligen un [blue]{DamageDecrease} %[/blue] menos de daño{Amount:cond:==1? durante el siguiente turno|>1? durante los siguientes [blue]{}[/blue] turnos|}.",
+    "type": "Debuff",
+    "stack_type": "None",
+    "allow_negative": true,
+    "image_url": null
+  },
+  {
+    "id": "SHROUD",
+    "name": "Mortaja",
+    "description": "Cuando apliques [gold]Condena[/gold], gana [blue]3[/blue] de [gold]Bloqueo[/gold].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "SIC_EM",
+    "name": "¡Ataca!",
+    "description": "Cuando [gold]Nudillos[/gold] golpee al enemigo este turno, [gold]Vincula[/gold] [blue]3[/blue].",
+    "description_raw": null,
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "SIGNAL_BOOST",
+    "name": "Potenciador de señal",
+    "description": "Tus siguientes [blue]2[/blue] Poderes se juegan una vez más.",
+    "description_raw": "{Amount:plural:Tu siguiente Poder se juega|Tus siguientes [blue]{}[/blue] Poderes se juegan} una vez más.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "SKITTISH",
+    "name": "Timidez",
+    "description": "La primera vez que [gold]this creature[/gold] reciba un golpe cada turno, gana [blue][Amount][/blue] de [gold]Bloqueo[/gold].",
+    "description_raw": "La primera vez que [gold]{OwnerName}[/gold] reciba un golpe cada turno, gana [blue]{Amount}[/blue] de [gold]Bloqueo[/gold].",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "SLEIGHT_OF_FLESH",
+    "name": "Perturbación corporal",
+    "description": "Cuando apliques un efecto negativo a un enemigo, este recibe [blue]13[/blue] de daño.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "SLIPPERY",
+    "name": "Escurridizo",
+    "description": "Las siguientes [blue]2[/blue] veces que [gold]this creature[/gold] pierda PV, solo pierde [blue]1[/blue] PV.",
+    "description_raw": "{Amount:plural:La siguiente vez|Las siguientes [blue]{}[/blue] veces} que [gold]{OwnerName}[/gold] pierda PV, solo pierde [blue]1[/blue] PV.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "SLOTH",
+    "name": "Flojera",
+    "description": "No puedes jugar más de [blue]3[/blue] cartas por turno.",
+    "description_raw": null,
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "SLOW",
+    "name": "Lentitud",
+    "description": "Cuando juegues una carta, este enemigo recibe un [blue]10 %[/blue] más de daño de Ataques este turno.",
+    "description_raw": null,
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "SLUMBER",
+    "name": "Letargo",
+    "description": "Se despierta después de varios turnos o al perder PV 3 veces.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "SMOGGY",
+    "name": "Polución",
+    "description": "Solo puedes jugar [blue]1[/blue] Habilidad por turno.",
+    "description_raw": null,
+    "type": "Debuff",
+    "stack_type": "Single",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "SMOKESTACK",
+    "name": "Chimenea",
+    "description": "Cuando crees una carta de Estado, inflige daño a TODOS los enemigos.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "SNEAKY",
+    "name": "Sigilo",
+    "description": "Cuando otro jugador ataque a un enemigo, gana [gold]Bloqueo[/gold].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "SOAR",
+    "name": "Planear",
+    "description": "Recibe un [blue]50 %[/blue] menos de daño hasta que aterriza.",
+    "description_raw": "Recibe un [blue]{DamageDecrease} %[/blue] menos de daño hasta que aterriza.",
+    "type": "Buff",
+    "stack_type": "Single",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "SOULBOUND",
+    "name": "Vínculo anímico",
+    "description": "Cuando [ApplierName] cree un [gold]Alma[/gold], añade otro [gold]Alma[/gold] a tu [gold]Pila de robo[/gold].",
+    "description_raw": "Cuando {ApplierName} cree un [gold]Alma[/gold], añade otro [gold]Alma[/gold] a tu [gold]Pila de robo[/gold].",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "SPECTRUM_SHIFT",
+    "name": "Cambio de espectro",
+    "description": "Al comienzo de tu turno, añade [blue]1[/blue] carta incolora aleatoria a tu[gold]Mano[/gold].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "SPEED_POTION",
+    "name": "Temporary Dexterity",
+    "description": "Gana [gold]Destreza[/gold] hasta el final del turno.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "SPEEDSTER",
+    "name": "Velocista",
+    "description": "Cuando robes una carta durante tu turno, inflige [blue]1[/blue] de daño a TODOS los enemigos.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "SPINNER",
+    "name": "Spinner",
+    "description": "Al comienzo de tu turno, [gold]Invoca[/gold] [blue]1[/blue] [gold]Cristal[/gold].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "SPIRIT_OF_ASH",
+    "name": "Espíritu de ceniza",
+    "description": "Cuando juegues una carta [gold]Etérea[/gold], gana [blue]4[/blue] de [gold]Bloqueo[/gold].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "STAMPEDE",
+    "name": "Estampida",
+    "description": "Al final de tu turno, [blue]1[/blue] Ataque aleatorio de tu [gold]Mano[/gold] se juega contra un enemigo aleatorio.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "STAR_NEXT_TURN",
+    "name": "Estrella inminente",
+    "description": "Gana 1 [star:1] al siguiente turno.",
+    "description_raw": "Gana 1 {singleStarIcon} al siguiente turno.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "STEAM_ERUPTION",
+    "name": "Erupción de vapor",
+    "description": "Al morir, inflige daño al final de tu siguiente turno.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "STOCK",
+    "name": "Refuerzos",
+    "description": "Al morir, un nuevo Hachatrón aparece en su lugar.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "STORM",
+    "name": "Tormenta",
+    "description": "Cuando juegues un Poder, [gold]Invoca[/gold] [blue]1[/blue] [gold]Relámpago[/gold].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "STRANGLE",
+    "name": "Estrangular",
+    "description": "Cuando juegues una carta este turno, el enemigo pierde [blue]2[/blue] PV.",
+    "description_raw": null,
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "STRATAGEM",
+    "name": "Estratagema",
+    "description": "Cuando barajes tu [gold]Pila de robo[/gold], elige [blue]1[/blue] carta y colócala en tu [gold]Mano[/gold].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "STRENGTH",
+    "name": "Fuerza",
+    "description": "Aumenta el daño de ataque en [blue][/blue].",
+    "description_raw": "{Amount:cond:<0?Disminute|Aumenta} el daño de ataque en [blue]{Amount:abs()}[/blue].",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": true,
+    "image_url": null
+  },
+  {
+    "id": "SUBROUTINE",
+    "name": "Subrutina",
+    "description": "Cuando juegues un Poder, gana [energy:1].",
+    "description_raw": "Cuando juegues un Poder, gana {Amount:energyIcons()}.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "SUCK",
+    "name": "Succión",
+    "description": "Cuando [gold]this creature[/gold] inflija daño de ataque no bloqueado, gana [blue][Amount][/blue] de [gold]Fuerza[/gold].",
+    "description_raw": "Cuando [gold]{OwnerName}[/gold] inflija daño de ataque no bloqueado, gana [blue]{Amount}[/blue] de [gold]Fuerza[/gold].",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "SUMMON_NEXT_TURN",
+    "name": "Vinculación inminente",
+    "description": "Al comienzo de tu siguiente turno, [gold]Vincula[/gold] [blue]2[/blue].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "SURPRISE",
+    "name": "Sorpresa",
+    "description": "Esta criatura tiene algo que no me cuadra...",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Single",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "SURROUNDED",
+    "name": "Vigila tu espalda",
+    "description": "Recibes un [blue]50 %[/blue] más de daño si te atacan por la espalda. Usa cartas con apuntado o pociones para cambiar tu orientación.",
+    "description_raw": null,
+    "type": "Debuff",
+    "stack_type": "Single",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "SWIPE",
+    "name": "Mangar",
+    "description": "Al matar a este enemigo, devuelve la carta robada.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Single",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "SWORD_SAGE",
+    "name": "Maestro espadachín",
+    "description": "[gold]Espada del soberano[/gold] obtiene [gold]Repetición[/gold] [blue]1[/blue].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "SYNCHRONIZE",
+    "name": "Temporary Focus",
+    "description": "Gana [gold]Concentración[/gold] hasta el final del turno.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "TAG_TEAM",
+    "name": "Maniobra coordinada",
+    "description": "El siguiente Ataque que otro jugador juegue contra el enemigo se juega una vez más.",
+    "description_raw": null,
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "TAINTED",
+    "name": "Impureza",
+    "description": "Recibes daño adicional de Ataques durante este turno.",
+    "description_raw": null,
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "TANGLED",
+    "name": "Enredo",
+    "description": "Los Ataques cuestan [energy:1] más durante 2 turnos.",
+    "description_raw": "Los Ataques cuestan {Amount:energyIcons()} más {Amount:plural:este turno|durante {} turnos}.",
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "TANK",
+    "name": "Tanque",
+    "description": "Recibe un [blue]50 %[/blue] más de daño de los enemigos. Los aliados reciben un [blue]50 %[/blue] menos daño de los enemigos.",
+    "description_raw": "Recibe un [blue]{DamageIncrease:percentMore()} %[/blue] más de daño de los enemigos. Los aliados reciben un [blue]{DamageDecrease:percentLess()} %[/blue] menos daño de los enemigos.",
+    "type": "Buff",
+    "stack_type": "Single",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "TENDER",
+    "name": "Sensible",
+    "description": "Cuando juegues una carta, pierdes [blue]1[/blue] de [gold]Fuerza[/gold] y [blue]1[/blue] de [gold]Destreza[/gold] este turno.",
+    "description_raw": null,
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "TERRITORIAL",
+    "name": "Territorial",
+    "description": "Al final de su turno, [gold]this creature[/gold] gana [blue][Amount][/blue] de [gold]Fuerza[/gold].",
+    "description_raw": "Al final de su turno, [gold]{OwnerName}[/gold] gana [blue]{Amount}[/blue] de [gold]Fuerza[/gold].",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "THE_BOMB",
+    "name": "La bomba",
+    "description": "Tras [blue]3[/blue] turnos, inflige [blue]40[/blue] de daño a TODOS los enemigos.",
+    "description_raw": "Tras {Amount:plural:este turno|[blue]{}[/blue] turnos}, inflige [blue]{Damage}[/blue] de daño a TODOS los enemigos.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "THE_GAMBIT",
+    "name": "Jugada arriesgada",
+    "description": "Si recibes daño de ataque no bloqueado durante este combate, mueres.",
+    "description_raw": null,
+    "type": "Debuff",
+    "stack_type": "Single",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "THE_HUNT",
+    "name": "La Cacería",
+    "description": "Gana [blue]1[/blue] recompensa de cartas adicional al final del combate.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "THE_SEALED_THRONE",
+    "name": "El Trono Sellado",
+    "description": "Cuando juegues una carta, gana [star:1].",
+    "description_raw": "Cuando juegues una carta, gana {Amount:starIcons()}.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "THIEVERY",
+    "name": "Desvalijar",
+    "description": "Roba [gold]Oro[/gold] al atacar.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "THORNS",
+    "name": "Espinas",
+    "description": "Cuando un ataque te golpee, inflige daño en respuesta.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "THUNDER",
+    "name": "Trueno",
+    "description": "Cuando [gold]Descargues Relámpago[/gold], inflige [blue]8[/blue] de daño a cada enemigo golpeado.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "TOOLS_OF_THE_TRADE",
+    "name": "Útiles del oficio",
+    "description": "Al comienzo de tu turno, roba [blue]1[/blue] carta y descarta [blue]1[/blue] carta.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "TORIC_TOUGHNESS",
+    "name": "Resistencia tórica",
+    "description": "Gana [blue]5[/blue] de [gold]Bloqueo[/gold] al comienzo de tus siguientes [blue]2[/blue] turnos.",
+    "description_raw": "Gana [blue]{Block:diff()}[/blue] de [gold]Bloqueo[/gold] al comienzo de {Amount:plural:tu siguiente turno|tus siguientes [blue]{Amount}[/blue] turnos}.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "TRACKING",
+    "name": "Rastrear",
+    "description": "Los enemigos [gold]Débiles[/gold] reciben un [blue]50 %[/blue] más de daño de Ataques.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "TRASH_TO_TREASURE",
+    "name": "Reutilización",
+    "description": "Cuando crees una carta de Estado, [gold]Invoca[/gold] [blue]2[/blue] Orbes aleatorios.",
+    "description_raw": "Cuando crees una carta de Estado, [gold]Invoca[/gold] {Amount:plural:[blue]{}[/blue] Orbe aleatorio|[blue]{}[/blue] Orbes aleatorios}.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "TYRANNY",
+    "name": "Tiranía",
+    "description": "Al comienzo de tu turno, roba [blue]2[/blue] cartas y [gold]Agota[/gold] [blue]2[/blue] cartas de tu [gold]Mano[/gold].",
+    "description_raw": "Al comienzo de tu turno, roba {Amount:plural:[blue]{}[/blue] carta|[blue]{}[/blue] cartas} y [gold]Agota[/gold] {Amount:plural:[blue]{}[/blue] carta|[blue]{}[/blue] cartas} de tu [gold]Mano[/gold].",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "UNDERWORLD",
+    "name": "Inframundo",
+    "description": "Cuando otros jugadores inflijan daño mediante ataques este turno, aplica [blue]2[/blue] veces esa cantidad de [gold]Condena[/gold].",
+    "description_raw": "Cuando otros jugadores inflijan daño mediante ataques este turno, aplica {Amount:plural:la misma cantidad|[blue]{}[/blue] veces esa cantidad} de [gold]Condena[/gold].",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "UNMOVABLE",
+    "name": "Inamovible",
+    "description": "Las primeras [blue]2[/blue] veces que ganes [gold]Bloqueo[/gold] mediante una carta cada turno, duplica la cantidad obtenida.",
+    "description_raw": "{Amount:plural:La primera vez|Las primeras [blue]{}[/blue] veces} que ganes [gold]Bloqueo[/gold] mediante una carta cada turno, duplica la cantidad obtenida.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "VEILPIERCER",
+    "name": "Perforavelos",
+    "description": "La siguiente carta [gold]Etérea[/gold] que juegues cuesta [blue]0[/blue].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "VICIOUS",
+    "name": "Despiadado",
+    "description": "Cuando apliques [gold]Vulnerabilidad[/gold], roba [blue]1[/blue] carta.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "VIGOR",
+    "name": "Vigor",
+    "description": "El siguiente Ataque de [gold]this creature[/gold] inflige [blue][Amount][/blue] de daño adicional.",
+    "description_raw": "{OnPlayer:Tu siguiente Ataque|El siguiente Ataque de [gold]{OwnerName}[/gold]} inflige [blue]{Amount}[/blue] de daño adicional.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "VITAL_SPARK",
+    "name": "Chispa vital",
+    "description": "TODAS las [gold]Habilidades[/gold] obtienen [gold]Impureza[/gold] [blue]2[/blue].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "VOID_FORM",
+    "name": "Forma del Vacío",
+    "description": "Las primeras [blue]2[/blue] cartas que juegues cada turno son gratis.",
+    "description_raw": "{Amount:plural:La primera carta|Las primeras [blue]{}[/blue] cartas} que juegues cada turno {Amount:plural:es|son} gratis.",
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "VULNERABLE",
+    "name": "Vulnerabilidad",
+    "description": "Recibe [blue]50 %[/blue] más de daño de Ataques durante [blue][Amount][/blue] turnos.",
+    "description_raw": "Recibe [blue]{DamageIncrease:percentMore()} %[/blue] más de daño de Ataques durante [blue]{Amount}[/blue] {Amount:plural:turno|turnos}.",
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "WASTE_AWAY",
+    "name": "Consumirse",
+    "description": "Gana [blue]1[/blue] menos de [gold]Energía[/gold] por turno.",
+    "description_raw": null,
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "WEAK",
+    "name": "Debilidad",
+    "description": "Las criaturas Débiles infligen un [blue]25 %[/blue] menos de daño con Ataques.",
+    "description_raw": null,
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "WELL_LAID_PLANS",
+    "name": "Planificar",
+    "description": "Ya no descartas tu [gold]Mano[/gold] al final de tu turno.",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Single",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "WITHERING_PRESENCE",
+    "name": "Presencia debilitante",
+    "description": "Por cada [blue]6[/blue] cartas que juegues, añade 1 [gold]Deteriorar[/gold] a tu [gold]Mano[/gold].",
+    "description_raw": null,
+    "type": "Buff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  },
+  {
+    "id": "WRAITH_FORM",
+    "name": "Forma espectral",
+    "description": "Al comienzo de tu turno, pierde [blue]1[/blue] de [gold]Destreza[/gold].",
+    "description_raw": null,
+    "type": "Debuff",
+    "stack_type": "Counter",
+    "allow_negative": null,
+    "image_url": null
+  }
+]

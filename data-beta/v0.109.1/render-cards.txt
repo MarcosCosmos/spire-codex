@@ -1,0 +1,1 @@
+# No card text or art changed in v0.109.1; no re-renders needed.
