@@ -1,3 +1,14 @@
+---
+title: "Patch Recap: Beta v0.109.0"
+author: Spire Codex
+date: 2026-07-17
+updated: 2026-07-27
+channel: beta
+category: general
+tags: ["patch notes", "balance", "v0.109.0", "v0.109.1"]
+summary: "Everything in the July 16 beta patch, pulled from the game files: two new Neow relics, the reworks, the rarity shuffle, and the changes the patch notes left out. Updated with the v0.109.1 hotfix and its unannounced staged content."
+---
+
 # Patch Recap: Beta v0.109.0
 
 The July 16 beta patch is a big one: two new Neow relics with exclusive rewards, a stack of reworks, a rarity shuffle across three characters, and the start of Traditional Chinese support. Here is everything that matters, pulled straight from the game files rather than the patch notes, which means it includes a couple of things the notes did not mention.
@@ -66,3 +77,33 @@ The co-op damage kings all got taxed: [[Midnight]] drops from 99 (120) to 60 (72
 The game started translating into Traditional Chinese this patch, and Spire Codex supports it already: the whole site runs in 繁體中文 on the beta channel, including the full set of game-rendered card images in Traditional Chinese. Pick it from the language menu.
 
 Every change above is live in our beta channel data, and you can compare any card's stats across patches with the version filter on the stats pages. The full machine-generated diff is on the changelog page.
+
+## Update: v0.109.1 (July 25)
+
+The official notes for this hotfix are one line: corrected Traditional Chinese translations to fix broken plural evaluation. The game files tell a longer story. None of what follows made the notes.
+
+### Staged content: The Adversary
+
+Three new monsters are sitting in the files: The Adversary Mk 1, Mk 2, and Mk 3. Each is an escalating version of the same kit (Smash becomes Bash becomes Crash, a Beam that grows from 15 to 18 damage, and a multi-hit Barrage), but none of them have HP values or an encounter wired up yet. A new Battleworn Dummy Event Encounter shipped alongside them, also unwired. It reads like an upcoming event where the training dummy fights back, getting tougher each round. Nothing here is reachable in normal play yet.
+
+### Four new powers
+
+- Gravity: whenever you play a card this turn, deal 2 damage to ALL enemies.
+- Leadership: all other allies deal 1 additional damage.
+- Magic Bomb: take 20 damage at the end of your turn, cleared if the Magi Knight dies. There is no Magi Knight anywhere in the game files yet, which is its own teaser.
+- No Energy Gain: you cannot gain additional energy this turn.
+
+### One new enchantment
+
+Slumbering Essence: if the card is in your hand at the end of turn, its cost drops by 1 until it is played.
+
+### Quietly wired in
+
+- Chomper and Tunneler now share a new encounter, the Tunneling Twosome. No act is assigned to it in the files yet.
+- Byrdonis, Haunted Ship, and Leaf Slime (M) got real attack patterns defined (Swoop then Peck, Haunt then Swipe then Stomp, Sticky Shot then Clump Shot). Our monster pages now show the cycles instead of a blank pattern.
+
+### The official fix
+
+The Traditional Chinese corrections are real and already flowing through the site: the beta channel's 繁體中文 data updated with this ingest.
+
+No card text, values, or art changed, so every existing card render stays current. The full machine diff is on the changelog page under v0.109.1.

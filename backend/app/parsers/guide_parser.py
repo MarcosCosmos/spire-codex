@@ -24,6 +24,11 @@ def parse_guides() -> list[dict]:
             "date": str(post.get("date", "")),
             "updated": str(post.get("updated", "")) if post.get("updated") else None,
             "category": post.get("category", "general"),
+            # Beta-content guides set channel: beta so hovertips resolve
+            # against the beta catalog. Passed through here — it used to be
+            # hand-edited into guides.json after compilation, which a
+            # recompile silently wiped.
+            "channel": post.get("channel"),
             "tags": post.get("tags", []),
             "summary": post.get("summary", ""),
             "difficulty": post.get("difficulty", "beginner"),
