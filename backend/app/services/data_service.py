@@ -49,6 +49,29 @@ def get_beta_version() -> str | None:
         return None
 
 
+def get_beta_render_version() -> str | None:
+    """The version whose full-card render set on the CDN serves the current
+    beta. A hotfix that changes no card art ships no new render archive; its
+    version dir carries a `render-version` pointer file naming the set to
+    reuse (flipping `latest` to v0.109.1 without this 404'd every beta
+    render). Falls back to the beta version itself for versions that own a
+    render archive."""
+    version = get_beta_version()
+    if not version:
+        return None
+    try:
+        text = (
+            (BETA_DATA_DIR / version / "render-version")
+            .read_text(encoding="utf-8")
+            .strip()
+        )
+        if text:
+            return text if text.startswith("v") else f"v{text}"
+    except OSError:
+        pass
+    return version
+
+
 def _resolve_base(version: str | None = None) -> Path:
     """Resolve the base data directory for a given version.
 

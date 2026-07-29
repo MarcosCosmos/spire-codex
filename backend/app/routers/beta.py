@@ -10,7 +10,7 @@ from ..dependencies import shared_limiter
 from ..services import rate_limit_config
 
 from ..services.beta_diff import get_beta_diff
-from ..services.data_service import get_beta_version
+from ..services.data_service import get_beta_render_version, get_beta_version
 
 router = APIRouter(prefix="/api/beta", tags=["Beta"])
 # client_ip, not slowapi's get_remote_address: behind Cloudflare -> nginx
@@ -36,4 +36,7 @@ def beta_diff(request: Request):
 @limiter.limit(rate_limit_config.endpoint_limit("beta.beta_version", "120/minute"))
 def beta_version(request: Request):
     """The current beta version (from the data-beta latest pointer)."""
-    return {"beta_version": get_beta_version()}
+    return {
+        "beta_version": get_beta_version(),
+        "render_version": get_beta_render_version(),
+    }

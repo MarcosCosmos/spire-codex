@@ -23,10 +23,10 @@ def _full_render_base() -> str:
     if not CARD_FULL_BASE.endswith("/stable"):
         return CARD_FULL_BASE
     try:
-        from ..services.data_service import get_beta_version, get_channel
+        from ..services.data_service import get_beta_render_version, get_channel
 
         if get_channel() == "beta":
-            version = (get_beta_version() or "").lstrip("v")
+            version = (get_beta_render_version() or "").lstrip("v")
             if version:
                 root = CARD_FULL_BASE[: -len("/stable")]
                 return f"{root}/beta/{version}"
