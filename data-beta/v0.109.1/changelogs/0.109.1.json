@@ -8,33 +8,16 @@
   "from_ref": "/tmp/claude-1000/-mnt-c-Users-peter-Documents-prima-codex-spire-codex/fe7248d4-d6f7-4489-a6e2-4ea989d7103f/scratchpad/data-beta-0109-reparse/eng",
   "to_ref": "/tmp/claude-1000/-mnt-c-Users-peter-Documents-prima-codex-spire-codex/fe7248d4-d6f7-4489-a6e2-4ea989d7103f/scratchpad/data-beta-new/eng",
   "summary": {
-    "added": 10,
+    "added": 0,
     "removed": 0,
-    "changed": 5
+    "changed": 3
   },
   "categories": [
     {
       "id": "monsters",
       "name": "Monsters",
-      "old_count": 112,
+      "old_count": 115,
       "new_count": 115,
-      "added": [
-        {
-          "id": "THE_ADVERSARY_MK_ONE",
-          "name": "The Adversary Mk 1",
-          "min_hp": 100
-        },
-        {
-          "id": "THE_ADVERSARY_MK_THREE",
-          "name": "The Adversary Mk 3",
-          "min_hp": 300
-        },
-        {
-          "id": "THE_ADVERSARY_MK_TWO",
-          "name": "The Adversary Mk 2",
-          "min_hp": 200
-        }
-      ],
       "changed": [
         {
           "id": "BYRDONIS",
@@ -59,32 +42,6 @@
               "field": "attack_pattern.states[SWOOP_MOVE].next",
               "old": "none",
               "new": "PECK_MOVE"
-            }
-          ]
-        },
-        {
-          "id": "CHOMPER",
-          "name": "Chomper",
-          "changes": [
-            {
-              "field": "encounters[1].encounter_id",
-              "old": "none",
-              "new": "TUNNELER_NORMAL"
-            },
-            {
-              "field": "encounters[1].encounter_name",
-              "old": "none",
-              "new": "Tunneling Twosome"
-            },
-            {
-              "field": "encounters[1].is_weak",
-              "old": "none",
-              "new": "no"
-            },
-            {
-              "field": "encounters[1].room_type",
-              "old": "none",
-              "new": "Monster"
             }
           ]
         },
@@ -129,113 +86,6 @@
               "new": "CLUMP_SHOT"
             }
           ]
-        },
-        {
-          "id": "TUNNELER",
-          "name": "Tunneler",
-          "changes": [
-            {
-              "field": "encounters[0].act",
-              "old": "Act 2 - Hive",
-              "new": "none"
-            },
-            {
-              "field": "encounters[0].encounter_id",
-              "old": "TUNNELER_WEAK",
-              "new": "TUNNELER_NORMAL"
-            },
-            {
-              "field": "encounters[0].encounter_name",
-              "old": "Tunneler",
-              "new": "Tunneling Twosome"
-            },
-            {
-              "field": "encounters[0].is_weak",
-              "old": "yes",
-              "new": "no"
-            },
-            {
-              "field": "encounters[1].act",
-              "old": "none",
-              "new": "Act 2 - Hive"
-            },
-            {
-              "field": "encounters[1].encounter_id",
-              "old": "none",
-              "new": "TUNNELER_WEAK"
-            },
-            {
-              "field": "encounters[1].encounter_name",
-              "old": "none",
-              "new": "Tunneler"
-            },
-            {
-              "field": "encounters[1].is_weak",
-              "old": "none",
-              "new": "yes"
-            },
-            {
-              "field": "encounters[1].room_type",
-              "old": "none",
-              "new": "Monster"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "enchantments",
-      "name": "Enchantments",
-      "old_count": 21,
-      "new_count": 22,
-      "added": [
-        {
-          "id": "SLUMBERING_ESSENCE",
-          "name": "Slumbering Essence"
-        }
-      ]
-    },
-    {
-      "id": "encounters",
-      "name": "Encounters",
-      "old_count": 88,
-      "new_count": 90,
-      "added": [
-        {
-          "id": "BATTLEWORN_DUMMY_EVENT_ENCOUNTER",
-          "name": "Battleworn Dummy Event Encounter"
-        },
-        {
-          "id": "TUNNELER_NORMAL",
-          "name": "Tunneling Twosome"
-        }
-      ]
-    },
-    {
-      "id": "powers",
-      "name": "Powers",
-      "old_count": 261,
-      "new_count": 265,
-      "added": [
-        {
-          "id": "GRAVITY",
-          "name": "Gravity",
-          "type": "Buff"
-        },
-        {
-          "id": "LEADERSHIP",
-          "name": "Leadership",
-          "type": "Buff"
-        },
-        {
-          "id": "MAGIC_BOMB",
-          "name": "Magic Bomb",
-          "type": "Debuff"
-        },
-        {
-          "id": "NO_ENERGY_GAIN",
-          "name": "No Energy Gain",
-          "type": "Debuff"
         }
       ]
     }

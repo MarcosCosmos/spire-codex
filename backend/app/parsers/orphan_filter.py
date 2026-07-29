@@ -50,6 +50,13 @@ def _scan() -> tuple[frozenset[str], float]:
     referenced: set[str] = set()
     newest_mtime = 0.0
     for cs_file in DECOMPILED.rglob("*.cs"):
+        # Toolchain artifacts must not steer the staleness clock: opening the
+        # decompiled csproj in an IDE writes obj/**/AssemblyAttributes.cs with
+        # a fresh mtime, which made every REAL file look >24h stale and
+        # orphan-filtered fully-implemented unreferenced classes (the whole
+        # Adversary/Gravity batch vanished from a reparse this way).
+        if any(part in ("obj", "bin", "Properties") for part in cs_file.parts):
+            continue
         try:
             text = cs_file.read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError):
