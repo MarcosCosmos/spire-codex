@@ -28,12 +28,14 @@ export default function SiteSwitcher() {
   const onBeta = pathname === "/beta" || pathname.startsWith("/beta/");
 
   useEffect(() => {
-    cachedFetch<{ beta_version: string | null }>(`${API}/api/beta/version`)
+    cachedFetch<{ beta_version: string | null; render_version?: string | null }>(`${API}/api/beta/version`)
       .then((d) => {
         setBetaVersion(d.beta_version);
         // Keep beta card-render URLs (cards-full/beta/<ver>/) on the right
         // version; the navbar mounts on every page so this runs everywhere.
-        setBetaRenderVersion(d.beta_version);
+        // render_version diverges from beta_version on hotfixes that ship
+        // no new render archive (v0.109.1 reuses v0.109.0's renders).
+        setBetaRenderVersion(d.render_version || d.beta_version);
       })
       .catch(() => {});
   }, []);
