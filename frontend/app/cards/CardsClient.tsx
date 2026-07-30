@@ -221,7 +221,12 @@ function CardsClientInner({ initialCards }: { initialCards: Card[] }) {
         resultCount={sortedCards.length}
         sortOptions={sortOptions}
         sortValue={sort}
-        onSortChange={(v) => setFilterAndUrl("sort", v, setSort)}
+        onSortChange={(v) => {
+          setFilterAndUrl("sort", v, setSort);
+          // Score sort is designed around the full card renders; switch the
+          // view WITH the dropdown instead of silently overriding it below.
+          if (v === "score" && view !== "card") pickView("card");
+        }}
         filters={[
           {
             label: "View",
@@ -266,8 +271,7 @@ function CardsClientInner({ initialCards }: { initialCards: Card[] }) {
         ]}
       />
 
-      {view === "card" || sort === "score" ? (
-        // Score sort always uses the card view and shows WR / picks per card.
+      {view === "card" ? (
         // Sit the transparent card renders on a subtle panel so the grid reads
         // as a contained module instead of floating on the page background.
         <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)]/40 p-3 sm:p-5">
