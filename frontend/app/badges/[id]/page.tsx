@@ -167,6 +167,7 @@ export default async function BadgePage({ params }: Props) {
           {/* Table of contents (static: server-rendered page) */}
           {badge.tiered && (
             <nav className="toc" aria-label="On this page">
+              <span className="toc-label">On this page</span>
               <a href="#description">Description</a>
               <a href="#tiers">Tiers</a>
             </nav>

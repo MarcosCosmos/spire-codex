@@ -122,6 +122,7 @@ export default function AscensionDetail({ initialAscension }: { initialAscension
 
           {/* Sticky ToC */}
           <nav className="toc" aria-label="On this page">
+            <span className="toc-label">On this page</span>
             {tocItems.map((it) => (
               <a
                 key={it.id}
