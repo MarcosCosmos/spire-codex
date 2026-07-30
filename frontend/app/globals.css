@@ -197,6 +197,13 @@ select.filter-select optgroup {
   padding-block: 3px;
 }
 
+/* Kreon sets tight below ~14px; a touch of tracking keeps dense UI text
+   readable. :where() keeps specificity at zero so any explicit tracking-*
+   utility on the same element still wins. */
+:where(.text-xs, .text-sm) {
+  letter-spacing: 0.015em;
+}
+
 /* Site-wide atmospheric background: the main-menu art, fixed to the viewport
    and kept faint so it reads as a textured ground behind every page. It paints
    above the body's base color (var(--bg-primary)) but behind all content, so it

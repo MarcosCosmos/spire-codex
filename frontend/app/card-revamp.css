@@ -291,3 +291,15 @@ a.kw { text-decoration: none; }
   font-variant-numeric: tabular-nums;
 }
 .card-rvmp .draft-lift { color: var(--accent-gold); font-weight: 600; }
+
+/* Kreon tracks tight at these small sizes; open the non-mono small text up
+   slightly (the mono labels carry their own wider tracking already). */
+.card-rvmp .toc a,
+.card-rvmp .h-note,
+.card-rvmp .frow,
+.card-rvmp .kw,
+.card-rvmp .mini .ml,
+.card-rvmp .brkt-pill,
+.card-rvmp .ench-desc {
+  letter-spacing: 0.015em;
+}
