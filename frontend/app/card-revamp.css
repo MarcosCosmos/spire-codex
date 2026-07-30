@@ -57,6 +57,15 @@
 .card-rvmp .hero h1 { font-family: var(--serif); font-weight: 600; font-size: clamp(32px, 5vw, 50px);
   line-height: 1.04; margin: 12px 0 0; text-wrap: balance; color: var(--text); }
 .card-rvmp .hero h1 .up { color: var(--good); }
+/* Title row: the Normal/Upgraded toggle sits inline with the name, middle
+   aligned, and wraps under it on narrow screens. */
+.card-rvmp .hero-head { display: flex; align-items: center; gap: 8px 16px; flex-wrap: wrap; margin-top: 12px; }
+.card-rvmp .hero-head h1 { margin: 0; }
+.card-rvmp .hero-seg { flex: none; }
+.card-rvmp .hero-seg .segbtn { flex: none; padding: 7px 14px; }
+/* The star span's ★ falls back to a system font with a taller line box than
+   the digits around it; pin the line height so the row stays even. */
+.card-rvmp .eyebrow span { line-height: 1.2; }
 .card-rvmp .lede { color: var(--text-2); font-size: 18px; margin: 14px 0 0; max-width: 60ch; }
 /* Programmatic overview prose rendered as a hero lead (EntityProse lead mode).
    Sits under the H1 in place of the old token-stripped description lede. */
