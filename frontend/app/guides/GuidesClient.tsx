@@ -107,13 +107,13 @@ function GuidesClientInner({ initialGuides }: { initialGuides: GuideSummary[] })
         onSortChange={(v) => setFilterAndUrl("sort", v, setSort)}
         filters={[
           {
-            label: "All Categories",
+            label: "Any Category",
             value: category,
             options: categoryOptions,
             onChange: (v) => setFilterAndUrl("category", v, setCategory),
           },
           {
-            label: "All Difficulties",
+            label: "Any Difficulty",
             value: difficulty,
             options: difficultyOptions,
             onChange: (v) => setFilterAndUrl("difficulty", v, setDifficulty),
