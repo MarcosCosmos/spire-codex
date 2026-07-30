@@ -28,9 +28,6 @@ const colorOptions = [
   { label: "Necrobinder", value: "necrobinder" },
   { label: "Regent", value: "regent" },
   { label: "Colorless", value: "colorless" },
-  { label: "Event", value: "event" },
-  { label: "Token", value: "token" },
-  { label: "Curse", value: "curse" },
 ];
 
 const typeOptions = [
@@ -48,7 +45,11 @@ const rarityOptions = [
   { label: "Uncommon", value: "Uncommon" },
   { label: "Rare", value: "Rare" },
   { label: "Ancient", value: "Ancient" },
+  { label: "Event", value: "Event" },
+  { label: "Status", value: "Status" },
+  { label: "Curse", value: "Curse" },
   { label: "Token", value: "Token" },
+  { label: "Quest", value: "Quest" },
 ];
 
 const costOptions = [

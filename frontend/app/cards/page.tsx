@@ -129,7 +129,7 @@ export default async function CardsPage() {
     {
       question: t("What are the card rarities in sts2?", lang),
       answer:
-        "Cards come in four rarities, Common, Uncommon, Rare, and Boss, plus Starter cards in each character's opening deck. Rarity affects merchant pricing, card-reward drop odds, and tier-list balance: Boss cards can swing a run, while Common pickability matters more in long campaigns.",
+        "Draftable cards come in Common, Uncommon, and Rare, alongside the Basic cards in each character's opening deck and the star-cost Ancient cards. Event, Status, Curse, Token, and Quest cards round out the special categories. Rarity affects merchant pricing, card-reward drop odds, and tier-list balance: Ancient cards can swing a run, while Common pickability matters more in long campaigns.",
     },
     {
       question: t("Where does the card data come from?", lang),
