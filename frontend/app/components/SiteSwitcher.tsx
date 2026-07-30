@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { cachedFetch } from "@/lib/fetch-cache";
 import { setBetaRenderVersion } from "@/lib/image-url";
+import { useChannel } from "@/lib/use-lang-prefix";
+import { LANG_PREFIXES } from "@/lib/languages";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -25,7 +27,23 @@ export default function SiteSwitcher() {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const onBeta = pathname === "/beta" || pathname.startsWith("/beta/");
+  // useChannel also catches localized beta paths (/jpn/beta/...), which the
+  // old startsWith("/beta") check missed: there the pill claimed "main" and
+  // the menu offered a beta link that led right back into beta, so the
+  // switch looked like it did nothing.
+  const onBeta = useChannel() === "beta";
+
+  // Path-preserving counterparts, keeping the language prefix: /jpn/cards/x
+  // <-> /jpn/beta/cards/x. The middleware serves any /beta/<page> via
+  // rewrite, and entity pages missing on the other channel already bounce
+  // to their hub, so switching never has to dump the visitor on the root.
+  const parts = pathname.split("/");
+  const langSeg = LANG_PREFIXES.has(parts[1]) ? parts[1] : "";
+  const restStart = (langSeg ? 2 : 1) + (onBeta ? 1 : 0);
+  const rest = parts.slice(restStart).filter(Boolean).join("/");
+  const langPrefix = langSeg ? `/${langSeg}` : "";
+  const mainHref = `${langPrefix}${rest ? `/${rest}` : ""}` || "/";
+  const betaHref = `${langPrefix}/beta${rest ? `/${rest}` : ""}`;
 
   useEffect(() => {
     cachedFetch<{ beta_version: string | null; render_version?: string | null }>(`${API}/api/beta/version`)
@@ -94,7 +112,7 @@ export default function SiteSwitcher() {
           <div className="py-1">
             {onBeta ? (
               <Link
-                href="/"
+                href={mainHref}
                 onClick={() => setOpen(false)}
                 className="flex items-center justify-between gap-3 px-4 py-2 text-sm font-medium text-[var(--accent-gold)] transition-colors hover:bg-[var(--bg-card)]"
               >
@@ -102,7 +120,7 @@ export default function SiteSwitcher() {
               </Link>
             ) : (
               <Link
-                href="/beta"
+                href={betaHref}
                 onClick={() => setOpen(false)}
                 className="flex items-center justify-between gap-3 px-4 py-2 text-sm font-medium text-emerald-400 transition-colors hover:bg-[var(--bg-card)] hover:text-emerald-300"
               >
