@@ -185,6 +185,18 @@ body {
   font-family: var(--font-kreon), var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 
+/* Kreon's deep descenders (g, y, p) get cut off by the default line boxes
+   native selects give their options at small sizes, so the compendium
+   filter/sort selects carry explicit classes with roomier line-height. */
+select.filter-select {
+  line-height: 1.5;
+}
+select.filter-select option,
+select.filter-select optgroup {
+  line-height: 1.6;
+  padding-block: 3px;
+}
+
 /* Site-wide atmospheric background: the main-menu art, fixed to the viewport
    and kept faint so it reads as a textured ground behind every page. It paints
    above the body's base color (var(--bg-primary)) but behind all content, so it
