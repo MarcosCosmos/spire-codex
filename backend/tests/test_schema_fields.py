@@ -12,6 +12,10 @@ from app.models.schemas import Act, Card, Character, Epoch
 DATA = Path(__file__).resolve().parents[2] / "data" / "eng"
 
 
+def test_trivia_stays_removed():
+    assert "trivia" not in Card.model_fields
+
+
 def _first_with(entities, key):
     entity = next((e for e in entities if key in e), None)
     if entity is None:
