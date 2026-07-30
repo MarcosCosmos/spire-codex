@@ -15,6 +15,9 @@ interface SortOption {
   value: string;
 }
 
+const selectClass =
+  "filter-select px-3 py-2.5 bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-lg text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-gold)]/50 cursor-pointer text-sm";
+
 function groupOptions(options: FilterOption[]): { group?: string; opts: FilterOption[] }[] {
   const segments: { group?: string; opts: FilterOption[] }[] = [];
   for (const opt of options) {
@@ -94,21 +97,25 @@ export default function SearchFilter({
           key={filter.label}
           value={filter.value}
           onChange={(e) => filter.onChange(e.target.value)}
-          className="px-3 py-2.5 bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-lg text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-gold)]/50 cursor-pointer text-sm"
+          className={selectClass}
         >
-          {!filter.noEmptyOption && <option value="">{filter.label}</option>}
+          {!filter.noEmptyOption && (
+            <option className="filter-option" value="">
+              {filter.label}
+            </option>
+          )}
           {groupOptions(filter.options).map((seg, i) =>
             seg.group ? (
               <optgroup key={`${seg.group}-${i}`} label={seg.group}>
                 {seg.opts.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
+                  <option className="filter-option" key={opt.value} value={opt.value}>
                     {opt.label}
                   </option>
                 ))}
               </optgroup>
             ) : (
               seg.opts.map((opt) => (
-                <option key={opt.value} value={opt.value}>
+                <option className="filter-option" key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>
               ))
@@ -120,10 +127,10 @@ export default function SearchFilter({
         <select
           value={sortValue}
           onChange={(e) => onSortChange(e.target.value)}
-          className="px-3 py-2.5 bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-lg text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-gold)]/50 cursor-pointer text-sm"
+          className={selectClass}
         >
           {sortOptions.map((opt) => (
-            <option key={opt.value} value={opt.value}>
+            <option className="filter-option" key={opt.value} value={opt.value}>
               {opt.label}
             </option>
           ))}
