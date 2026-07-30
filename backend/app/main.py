@@ -43,6 +43,7 @@ from .routers import (
     names,
     exports,
     entity_history,
+    update_history,
     ancient_pools,
     runs,
     pairings,
@@ -660,6 +661,7 @@ app.include_router(ascensions.router)
 app.include_router(names.router)
 app.include_router(exports.router)
 app.include_router(entity_history.router)
+app.include_router(update_history.router)
 app.include_router(ancient_pools.router)
 app.include_router(runs.router)
 app.include_router(pairings.router)

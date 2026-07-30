@@ -9,7 +9,7 @@ import { cachedFetch } from "@/lib/fetch-cache";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { t } from "@/lib/ui-translations";
 import LocalizedNames from "@/app/components/LocalizedNames";
-import EntityHistory from "@/app/components/EntityHistory";
+import EntityUpdateHistory from "@/app/components/EntityUpdateHistory";
 import EntityProse from "@/app/components/EntityProse";
 import { useLangPrefix } from "@/lib/use-lang-prefix";
 import "../../card-revamp.css";
@@ -131,7 +131,7 @@ export default function AchievementDetail({ initialAchievement }: { initialAchie
 
           {/* Version history + localized names */}
           <LocalizedNames entityType="achievements" entityId={id} />
-          <EntityHistory entityType="achievements" entityId={id} />
+          <EntityUpdateHistory entityType="achievements" entityId={id} />
         </main>
       </div>
     </div>
