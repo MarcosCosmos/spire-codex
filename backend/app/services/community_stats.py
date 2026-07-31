@@ -458,8 +458,10 @@ def _name_maps() -> dict[str, dict[str, str]]:
     out["characters"] = {
         k.lower(): v for k, v in _index(data_service.load_characters).items()
     }
-    # Per-event option id -> title ("TAKE" -> "Take the Egg").
+    # Per-event option id -> title ("TAKE" -> "Take the Egg"), plus the full
+    # option-id allowlist per event (see _harvest_option_ids).
     event_opts: dict[str, dict[str, str]] = {}
+    event_opt_ids: dict[str, set[str]] = {}
     try:
         for e in data_service.load_events():
             eid = e.get("id")
@@ -470,10 +472,31 @@ def _name_maps() -> dict[str, dict[str, str]]:
                 if opt.get("id"):
                     labels[opt["id"]] = opt.get("title") or _prettify(opt["id"])
             event_opts[eid] = labels
+            event_opt_ids[eid] = _harvest_option_ids(
+                {"options": e.get("options"), "pages": e.get("pages")}
+            )
     except Exception:
         logger.warning("community-stats event options load failed", exc_info=True)
     out["_event_options"] = event_opts  # type: ignore[assignment]
+    out["_event_option_ids"] = event_opt_ids  # type: ignore[assignment]
     return out
+
+
+def _harvest_option_ids(node: Any) -> set[str]:
+    """Every id in an event's options/pages tree, uppercase. The top-level
+    options list alone misses the multi-stage picks (HOLD_ON_1..6, LINGER,
+    ...), so the official-option allowlist walks the whole tree."""
+    ids: set[str] = set()
+    if isinstance(node, dict):
+        oid = node.get("id")
+        if isinstance(oid, str):
+            ids.add(oid.upper())
+        for value in node.values():
+            ids |= _harvest_option_ids(value)
+    elif isinstance(node, list):
+        for item in node:
+            ids |= _harvest_option_ids(item)
+    return ids
 
 
 def _quest_card_ids() -> frozenset[str]:
@@ -549,6 +572,7 @@ def _finalize_one(acc: dict[str, Any]) -> dict[str, Any]:
     names = _name_maps()
     ev_names = names["events"]
     ev_opts = names["_event_options"]  # type: ignore[index]
+    ev_opt_ids = names["_event_option_ids"]  # type: ignore[index]
 
     total_runs = acc["total_runs"]
     total_wins = acc["total_wins"]
@@ -581,6 +605,13 @@ def _finalize_one(acc: dict[str, Any]) -> dict[str, Any]:
         # Skip modded events (not in the official events catalog).
         if ev_names and eid not in ev_names:
             continue
+        # Official options only: mods inject extra picks into official events
+        # (every installed card-pool mod shows up as a Colorful Philosophers
+        # option), so anything outside the event's own option tree is dropped
+        # and the percentages are computed over the real options.
+        allowed = ev_opt_ids.get(eid) or set()
+        if allowed:
+            opts = {oid: n for oid, n in opts.items() if oid.upper() in allowed}
         total = sum(opts.values())
         if total <= 0:
             continue
