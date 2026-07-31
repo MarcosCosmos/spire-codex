@@ -1,0 +1,23 @@
+# v0.110.0 changed card text/cost/type; these need re-renders before a
+# dedicated render session (render-version points at v0.109.0 until then).
+sidestep  # new card (replaces scare)
+abundance
+biased_cognition
+blade_symphony
+crush_under
+echoing_slash
+haze
+mangle
+maul
+mirage
+outbreak
+pacts_end
+pillar_of_creation
+refract
+relax
+rocket_punch
+sacrifice
+terraforming
+the_scythe
+well_laid_plans
+whistle
