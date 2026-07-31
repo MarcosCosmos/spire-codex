@@ -11,7 +11,7 @@ import { useLangPrefix } from "@/lib/use-lang-prefix";
 import { t } from "@/lib/ui-translations";
 import RichDescription from "@/app/components/RichDescription";
 import LocalizedNames from "@/app/components/LocalizedNames";
-import EntityHistory from "@/app/components/EntityHistory";
+import EntityUpdateHistory from "@/app/components/EntityUpdateHistory";
 import EntityProse from "@/app/components/EntityProse";
 import { imageUrl } from "@/lib/image-url";
 import "../../card-revamp.css";
@@ -762,7 +762,7 @@ export default function MonsterDetail({
 
           {/* Version history + localized names */}
           <LocalizedNames entityType="monsters" entityId={id} />
-          <EntityHistory entityType="monsters" entityId={id} />
+          <EntityUpdateHistory entityType="monsters" entityId={id} />
         </main>
 
         {/* ===== INFOBOX column (sticky) ===== */}

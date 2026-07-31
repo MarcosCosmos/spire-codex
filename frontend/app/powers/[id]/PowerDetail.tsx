@@ -15,7 +15,7 @@ import { cachedFetch } from "@/lib/fetch-cache";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { t } from "@/lib/ui-translations";
 import LocalizedNames from "@/app/components/LocalizedNames";
-import EntityHistory from "@/app/components/EntityHistory";
+import EntityUpdateHistory from "@/app/components/EntityUpdateHistory";
 import EntityProse from "@/app/components/EntityProse";
 import { useLangPrefix } from "@/lib/use-lang-prefix";
 import { imageUrl } from "@/lib/image-url";
@@ -231,7 +231,7 @@ export default function PowerDetail({ initialPower }: { initialPower?: Power | n
 
           {/* Version history + localized names */}
           <LocalizedNames entityType="powers" entityId={id} />
-          <EntityHistory entityType="powers" entityId={id} />
+          <EntityUpdateHistory entityType="powers" entityId={id} />
         </main>
 
         {/* ===== INFOBOX column (sticky) ===== */}

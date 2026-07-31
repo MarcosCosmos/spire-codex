@@ -9,7 +9,7 @@ import { cachedFetch } from "@/lib/fetch-cache";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { t } from "@/lib/ui-translations";
 import LocalizedNames from "@/app/components/LocalizedNames";
-import EntityHistory from "@/app/components/EntityHistory";
+import EntityUpdateHistory from "@/app/components/EntityUpdateHistory";
 import RelatedItems from "@/app/components/RelatedItems";
 import EntityProse from "@/app/components/EntityProse";
 import EntityPairings from "@/app/components/EntityPairings";
@@ -260,7 +260,7 @@ export default function PotionDetail({
 
           {/* Version history + localized names */}
           <LocalizedNames entityType="potions" entityId={id} />
-          <EntityHistory entityType="potions" entityId={id} />
+          <EntityUpdateHistory entityType="potions" entityId={id} />
         </main>
 
         {/* ===== INFOBOX column (sticky) ===== */}

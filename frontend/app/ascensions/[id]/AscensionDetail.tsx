@@ -9,7 +9,7 @@ import { cachedFetch } from "@/lib/fetch-cache";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useLangPrefix } from "@/lib/use-lang-prefix";
 import LocalizedNames from "@/app/components/LocalizedNames";
-import EntityHistory from "@/app/components/EntityHistory";
+import EntityUpdateHistory from "@/app/components/EntityUpdateHistory";
 import EntityProse from "@/app/components/EntityProse";
 import "../../card-revamp.css";
 import "../../meta-extra.css";
@@ -167,7 +167,7 @@ export default function AscensionDetail({ initialAscension }: { initialAscension
 
           {/* Version history + localized names */}
           <LocalizedNames entityType="ascensions" entityId={id} />
-          <EntityHistory entityType="ascensions" entityId={id} />
+          <EntityUpdateHistory entityType="ascensions" entityId={id} />
         </main>
       </div>
     </div>

@@ -9,7 +9,7 @@ import { cachedFetch } from "@/lib/fetch-cache";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { t } from "@/lib/ui-translations";
 import LocalizedNames from "@/app/components/LocalizedNames";
-import EntityHistory from "@/app/components/EntityHistory";
+import EntityUpdateHistory from "@/app/components/EntityUpdateHistory";
 import RelatedItems from "@/app/components/RelatedItems";
 import EntityProse from "@/app/components/EntityProse";
 import EntityPairings from "@/app/components/EntityPairings";
@@ -297,7 +297,7 @@ export default function RelicDetail({
 
           {/* Version history + localized names */}
           <LocalizedNames entityType="relics" entityId={id} />
-          <EntityHistory entityType="relics" entityId={id} />
+          <EntityUpdateHistory entityType="relics" entityId={id} />
         </main>
 
         {/* ===== INFOBOX column (sticky) ===== */}

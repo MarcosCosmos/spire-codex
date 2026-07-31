@@ -9,7 +9,7 @@ import { cachedFetch } from "@/lib/fetch-cache";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { t } from "@/lib/ui-translations";
 import LocalizedNames from "@/app/components/LocalizedNames";
-import EntityHistory from "@/app/components/EntityHistory";
+import EntityUpdateHistory from "@/app/components/EntityUpdateHistory";
 import EntityProse from "@/app/components/EntityProse";
 import { useLangPrefix } from "@/lib/use-lang-prefix";
 import { imageUrl } from "@/lib/image-url";
@@ -81,7 +81,7 @@ export default function IntentDetail({ initialIntent }: { initialIntent?: Intent
           </section>
 
           <LocalizedNames entityType="intents" entityId={id} />
-          <EntityHistory entityType="intents" entityId={id} />
+          <EntityUpdateHistory entityType="intents" entityId={id} />
         </main>
 
         {intent.image_url && (

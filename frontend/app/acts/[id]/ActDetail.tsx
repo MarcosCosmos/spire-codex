@@ -8,7 +8,7 @@ import { cachedFetch } from "@/lib/fetch-cache";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useLangPrefix } from "@/lib/use-lang-prefix";
 import LocalizedNames from "@/app/components/LocalizedNames";
-import EntityHistory from "@/app/components/EntityHistory";
+import EntityUpdateHistory from "@/app/components/EntityUpdateHistory";
 import EntityProse from "@/app/components/EntityProse";
 import "../../card-revamp.css";
 import "../../meta-extra.css";
@@ -190,7 +190,7 @@ export default function ActDetail({ initialAct }: { initialAct?: Act | null } = 
 
           {/* Version history + localized names */}
           <LocalizedNames entityType="acts" entityId={id} />
-          <EntityHistory entityType="acts" entityId={id} />
+          <EntityUpdateHistory entityType="acts" entityId={id} />
         </main>
       </div>
     </div>

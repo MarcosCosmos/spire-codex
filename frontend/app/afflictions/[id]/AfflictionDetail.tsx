@@ -9,7 +9,7 @@ import { cachedFetch } from "@/lib/fetch-cache";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { t } from "@/lib/ui-translations";
 import LocalizedNames from "@/app/components/LocalizedNames";
-import EntityHistory from "@/app/components/EntityHistory";
+import EntityUpdateHistory from "@/app/components/EntityUpdateHistory";
 import EntityProse from "@/app/components/EntityProse";
 import { useLangPrefix } from "@/lib/use-lang-prefix";
 import "../../card-revamp.css";
@@ -95,7 +95,7 @@ export default function AfflictionDetail({ initialAffliction }: { initialAfflict
           )}
 
           <LocalizedNames entityType="afflictions" entityId={id} />
-          <EntityHistory entityType="afflictions" entityId={id} />
+          <EntityUpdateHistory entityType="afflictions" entityId={id} />
         </main>
       </div>
     </div>
