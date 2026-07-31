@@ -412,10 +412,30 @@ export default function CardDetail({ initialCard, initialEnchantments, initialSt
                 </>
               )}
             </p>
-            <h1>
-              {card.name}
-              {isUpgraded && <span className="up">+</span>}
-            </h1>
+            <div className="hero-head">
+              <h1>
+                {card.name}
+                {isUpgraded && <span className="up">+</span>}
+              </h1>
+              {hasUpgrade && (
+                <div className="seg hero-seg" role="group" aria-label={t("Card version", lang)}>
+                  <button
+                    type="button"
+                    className={`segbtn${!upgraded ? " on" : ""}`}
+                    onClick={() => setUpgraded(false)}
+                  >
+                    {t("Normal", lang)}
+                  </button>
+                  <button
+                    type="button"
+                    className={`segbtn${upgraded ? " on" : ""}`}
+                    onClick={() => setUpgraded(true)}
+                  >
+                    {t("Upgraded", lang)}
+                  </button>
+                </div>
+              )}
+            </div>
             {/* Overview prose as the hero lead (replaces the old token-stripped
                 description lede, which rendered blanks like "Gain ."). */}
             <EntityProse kind="card" card={card} lead />
@@ -701,27 +721,9 @@ export default function CardDetail({ initialCard, initialEnchantments, initialSt
               }}
             />
 
-            {/* Variant switcher */}
+            {/* Variant switcher (the Normal/Upgraded toggle sits in the hero,
+                inline with the card name) */}
             <div className="variant">
-              {hasUpgrade && (
-                <div className="seg" role="group" aria-label={t("Card version", lang)}>
-                  <button
-                    type="button"
-                    className={`segbtn${!upgraded ? " on" : ""}`}
-                    onClick={() => setUpgraded(false)}
-                  >
-                    {t("Normal", lang)}
-                  </button>
-                  <button
-                    type="button"
-                    className={`segbtn${upgraded ? " on" : ""}`}
-                    onClick={() => setUpgraded(true)}
-                  >
-                    {t("Upgraded", lang)}
-                  </button>
-                </div>
-              )}
-
               {cardEnchantments.length > 0 && (
                 <select
                   className="ench-select"
