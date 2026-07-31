@@ -78,6 +78,7 @@ function EnchantmentsClientInner({ initialEnchantments }: { initialEnchantments:
         filters={[
           {
             label: "Any Card Type",
+            name: "Card Type",
             value: cardType,
             options: cardTypeOptions,
             onChange: (v) => setFilterAndUrl("cardType", v, setCardType),

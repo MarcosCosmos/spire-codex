@@ -108,12 +108,14 @@ function GuidesClientInner({ initialGuides }: { initialGuides: GuideSummary[] })
         filters={[
           {
             label: "Any Category",
+            name: "Category",
             value: category,
             options: categoryOptions,
             onChange: (v) => setFilterAndUrl("category", v, setCategory),
           },
           {
             label: "Any Difficulty",
+            name: "Difficulty",
             value: difficulty,
             options: difficultyOptions,
             onChange: (v) => setFilterAndUrl("difficulty", v, setDifficulty),

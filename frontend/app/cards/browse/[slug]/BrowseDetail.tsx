@@ -101,6 +101,7 @@ export default function BrowseDetail({ initialCards, fixedParams }: BrowseDetail
   if (showColorFilter) {
     filters.push({
       label: "Any Color",
+      name: "Color",
       value: color,
       options: colorOptions,
       onChange: setColor,
@@ -109,6 +110,7 @@ export default function BrowseDetail({ initialCards, fixedParams }: BrowseDetail
   if (showTypeFilter) {
     filters.push({
       label: "Any Type",
+      name: "Type",
       value: type,
       options: typeOptions,
       onChange: setType,
@@ -117,6 +119,7 @@ export default function BrowseDetail({ initialCards, fixedParams }: BrowseDetail
   if (showRarityFilter) {
     filters.push({
       label: "Any Rarity",
+      name: "Rarity",
       value: rarity,
       options: rarityOptions,
       onChange: setRarity,
@@ -125,6 +128,7 @@ export default function BrowseDetail({ initialCards, fixedParams }: BrowseDetail
   if (showKeywordFilter) {
     filters.push({
       label: "Any Keyword",
+      name: "Keyword",
       value: keyword,
       options: keywordOptions,
       onChange: setKeyword,

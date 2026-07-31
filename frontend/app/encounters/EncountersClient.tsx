@@ -115,12 +115,14 @@ function EncountersClientInner({ initialEncounters }: { initialEncounters: Encou
         filters={[
           {
             label: "Any Type",
+            name: "Type",
             value: roomType,
             options: roomTypeOptions,
             onChange: (v) => setFilterAndUrl("roomType", v, setRoomType),
           },
           {
             label: "Any Act",
+            name: "Act",
             value: act,
             options: actOptions,
             onChange: (v) => setFilterAndUrl("act", v, setAct),

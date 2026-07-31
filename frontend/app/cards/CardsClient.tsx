@@ -230,6 +230,7 @@ function CardsClientInner({ initialCards }: { initialCards: Card[] }) {
         filters={[
           {
             label: "View",
+            name: "View",
             value: view,
             options: [
               { value: "card", label: "Card View" },
@@ -240,30 +241,35 @@ function CardsClientInner({ initialCards }: { initialCards: Card[] }) {
           },
           {
             label: "Any Color",
+            name: "Color",
             value: color,
             options: colorOptions,
             onChange: (v) => setFilterAndUrl("color", v, setColor),
           },
           {
             label: "Any Type",
+            name: "Type",
             value: type,
             options: typeOptions,
             onChange: (v) => setFilterAndUrl("type", v, setType),
           },
           {
             label: "Any Rarity",
+            name: "Rarity",
             value: rarity,
             options: rarityOptions,
             onChange: (v) => setFilterAndUrl("rarity", v, setRarity),
           },
           {
             label: "Any Cost",
+            name: "Cost",
             value: cost,
             options: costOptions,
             onChange: (v) => setFilterAndUrl("cost", v, setCost),
           },
           {
             label: "Any Keyword",
+            name: "Keyword",
             value: keyword,
             options: keywordOptions,
             onChange: (v) => setFilterAndUrl("keyword", v, setKeyword),
