@@ -114,13 +114,13 @@ function EncountersClientInner({ initialEncounters }: { initialEncounters: Encou
         resultCount={filtered.length}
         filters={[
           {
-            label: "All Types",
+            label: "Any Type",
             value: roomType,
             options: roomTypeOptions,
             onChange: (v) => setFilterAndUrl("roomType", v, setRoomType),
           },
           {
-            label: "All Acts",
+            label: "Any Act",
             value: act,
             options: actOptions,
             onChange: (v) => setFilterAndUrl("act", v, setAct),

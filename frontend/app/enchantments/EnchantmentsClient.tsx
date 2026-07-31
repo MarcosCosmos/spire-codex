@@ -77,7 +77,7 @@ function EnchantmentsClientInner({ initialEnchantments }: { initialEnchantments:
         resultCount={enchantments.length}
         filters={[
           {
-            label: "All Card Types",
+            label: "Any Card Type",
             value: cardType,
             options: cardTypeOptions,
             onChange: (v) => setFilterAndUrl("cardType", v, setCardType),

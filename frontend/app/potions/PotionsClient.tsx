@@ -121,13 +121,13 @@ function PotionsClientInner({ initialPotions }: { initialPotions: Potion[] }) {
         onSortChange={(v) => setFilterAndUrl("sort", v, setSort)}
         filters={[
           {
-            label: "All Rarities",
+            label: "Any Rarity",
             value: rarity,
             options: rarityOptions,
             onChange: (v) => setFilterAndUrl("rarity", v, setRarity),
           },
           {
-            label: "All Characters",
+            label: "Any Character",
             value: pool,
             options: poolOptions,
             onChange: (v) => setFilterAndUrl("pool", v, setPool),

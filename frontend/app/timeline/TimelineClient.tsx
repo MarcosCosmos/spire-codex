@@ -256,7 +256,7 @@ export default function TimelineClient({
         resultCount={epochs.length}
         filters={[
           {
-            label: "All Stories",
+            label: "Any Story",
             value: storyFilter,
             options: storyOptions,
             onChange: setStoryFilter,

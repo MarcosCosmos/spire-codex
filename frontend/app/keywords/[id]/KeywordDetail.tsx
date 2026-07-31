@@ -180,7 +180,7 @@ export default function KeywordDetail({ initialResult }: { initialResult?: Initi
               resultCount={filtered.length}
               filters={[
                 {
-                  label: "All Characters",
+                  label: "Any Character",
                   value: color,
                   options: colorOptions,
                   onChange: setColor,

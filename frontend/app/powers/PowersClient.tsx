@@ -82,13 +82,13 @@ const [powers, setPowers] = useState<Power[]>(initialPowers);
         resultCount={merged.length}
         filters={[
           {
-            label: "All Types",
+            label: "Any Type",
             value: type,
             options: typeOptions,
             onChange: setType,
           },
           {
-            label: "All Stack Types",
+            label: "Any Stack Type",
             value: stackType,
             options: stackOptions,
             onChange: setStackType,
