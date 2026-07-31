@@ -181,6 +181,7 @@ export default function KeywordDetail({ initialResult }: { initialResult?: Initi
               filters={[
                 {
                   label: "Any Character",
+                  name: "Character",
                   value: color,
                   options: colorOptions,
                   onChange: setColor,

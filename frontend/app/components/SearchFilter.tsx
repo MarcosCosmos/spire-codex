@@ -33,6 +33,9 @@ interface SearchFilterProps {
   onSearchChange: (value: string) => void;
   filters?: {
     label: string;
+    // Short caption rendered above the select so the filter stays identifiable
+    // after a value is picked. Passed through t(); falls back to the raw text.
+    name?: string;
     value: string;
     options: FilterOption[];
     onChange: (value: string) => void;
@@ -81,8 +84,14 @@ export default function SearchFilter({
     return () => clearTimeout(timer);
   }, [draft, search]);
 
+  const caption = (text: string) => (
+    <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+      {t(text, lang)}
+    </span>
+  );
+
   return (
-    <div className="flex flex-wrap gap-2 items-center mb-6">
+    <div className="flex flex-wrap gap-2 items-end mb-6">
       <div className="relative flex-1 min-w-[140px]">
         <input
           type="text"
@@ -93,48 +102,55 @@ export default function SearchFilter({
         />
       </div>
       {filters?.map((filter) => (
-        <select
-          key={filter.label}
-          value={filter.value}
-          onChange={(e) => filter.onChange(e.target.value)}
-          className={selectClass}
-        >
-          {!filter.noEmptyOption && (
-            <option className="filter-option" value="">
-              {filter.label}
-            </option>
-          )}
-          {groupOptions(filter.options).map((seg, i) =>
-            seg.group ? (
-              <optgroup key={`${seg.group}-${i}`} label={seg.group}>
-                {seg.opts.map((opt) => (
+        <label key={filter.label} className="flex flex-col gap-1">
+          {filter.name && caption(filter.name)}
+          <select
+            value={filter.value}
+            onChange={(e) => filter.onChange(e.target.value)}
+            aria-label={t(filter.name ?? filter.label, lang)}
+            className={selectClass}
+          >
+            {!filter.noEmptyOption && (
+              <option className="filter-option" value="">
+                {t(filter.label, lang)}
+              </option>
+            )}
+            {groupOptions(filter.options).map((seg, i) =>
+              seg.group ? (
+                <optgroup key={`${seg.group}-${i}`} label={seg.group}>
+                  {seg.opts.map((opt) => (
+                    <option className="filter-option" key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </optgroup>
+              ) : (
+                seg.opts.map((opt) => (
                   <option className="filter-option" key={opt.value} value={opt.value}>
                     {opt.label}
                   </option>
-                ))}
-              </optgroup>
-            ) : (
-              seg.opts.map((opt) => (
-                <option className="filter-option" key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))
-            ),
-          )}
-        </select>
+                ))
+              ),
+            )}
+          </select>
+        </label>
       ))}
       {sortOptions && onSortChange && (
-        <select
-          value={sortValue}
-          onChange={(e) => onSortChange(e.target.value)}
-          className={selectClass}
-        >
-          {sortOptions.map((opt) => (
-            <option className="filter-option" key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
+        <label className="flex flex-col gap-1">
+          {caption("Sort by")}
+          <select
+            value={sortValue}
+            onChange={(e) => onSortChange(e.target.value)}
+            aria-label={t("Sort by", lang)}
+            className={selectClass}
+          >
+            {sortOptions.map((opt) => (
+              <option className="filter-option" key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </label>
       )}
       {resultCount !== undefined && (
         <span className="text-sm text-[var(--text-muted)] whitespace-nowrap">

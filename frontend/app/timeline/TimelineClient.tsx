@@ -257,6 +257,7 @@ export default function TimelineClient({
         filters={[
           {
             label: "Any Story",
+            name: "Story",
             value: storyFilter,
             options: storyOptions,
             onChange: setStoryFilter,

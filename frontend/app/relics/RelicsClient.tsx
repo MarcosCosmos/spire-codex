@@ -164,18 +164,21 @@ function RelicsClientInner({ initialRelics }: { initialRelics: Relic[] }) {
         filters={[
           {
             label: "Any Rarity",
+            name: "Rarity",
             value: rarity,
             options: rarityOptions,
             onChange: (v) => setFilterAndUrl("rarity", v, setRarity),
           },
           {
             label: "Any Pool",
+            name: "Pool",
             value: pool,
             options: poolOptions,
             onChange: (v) => setFilterAndUrl("pool", v, setPool),
           },
           {
             label: "Any Ancient",
+            name: "Ancient",
             value: ancient,
             options: ancientOptions,
             onChange: (v) => setFilterAndUrl("ancient", v, setAncient),

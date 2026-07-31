@@ -188,12 +188,14 @@ function EventsClientInner({ initialEvents }: { initialEvents: GameEvent[] }) {
         filters={[
           {
             label: "Any Type",
+            name: "Type",
             value: type,
             options: typeOptions,
             onChange: (v) => setFilterAndUrl("type", v, setType),
           },
           {
             label: "Any Act",
+            name: "Act",
             value: act,
             options: actOptions,
             onChange: (v) => setFilterAndUrl("act", v, setAct),

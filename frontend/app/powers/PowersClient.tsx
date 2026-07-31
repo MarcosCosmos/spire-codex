@@ -83,12 +83,14 @@ const [powers, setPowers] = useState<Power[]>(initialPowers);
         filters={[
           {
             label: "Any Type",
+            name: "Type",
             value: type,
             options: typeOptions,
             onChange: setType,
           },
           {
             label: "Any Stack Type",
+            name: "Stack Type",
             value: stackType,
             options: stackOptions,
             onChange: setStackType,
