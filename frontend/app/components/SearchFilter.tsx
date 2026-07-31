@@ -3,11 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "@/app/contexts/LanguageContext";
 import { t } from "@/lib/ui-translations";
+import IconSelect from "./IconSelect";
 
 interface FilterOption {
   label: string;
   value: string;
   group?: string;
+  // Game-asset icon URL. Options with icons render through IconSelect,
+  // since native <option> elements can't contain images.
+  icon?: string;
 }
 
 interface SortOption {
@@ -104,6 +108,14 @@ export default function SearchFilter({
       {filters?.map((filter) => (
         <label key={filter.label} className="flex flex-col gap-1">
           {filter.name && caption(filter.name)}
+          {filter.options.some((o) => o.icon) ? (
+            <IconSelect
+              label={t(filter.label, lang)}
+              value={filter.value}
+              options={filter.options}
+              onChange={filter.onChange}
+            />
+          ) : (
           <select
             value={filter.value}
             onChange={(e) => filter.onChange(e.target.value)}
@@ -133,6 +145,7 @@ export default function SearchFilter({
               ),
             )}
           </select>
+          )}
         </label>
       ))}
       {sortOptions && onSortChange && (

@@ -8,6 +8,8 @@ import CardGrid from "../components/CardGrid";
 import FullCardGrid from "../components/FullCardGrid";
 import SearchFilter from "../components/SearchFilter";
 import { useLanguage } from "../contexts/LanguageContext";
+import { t } from "@/lib/ui-translations";
+import { CDN_BASE } from "@/lib/image-url";
 import { useChannel, useLangPrefix } from "@/lib/use-lang-prefix";
 import { useEntityScores } from "@/lib/use-entity-scores";
 import { useBetaAdditions } from "@/lib/use-beta-additions";
@@ -52,18 +54,23 @@ const rarityOptions = [
   { label: "Quest", value: "Quest" },
 ];
 
+// The game's blank energy orb marks energy costs and the star icon marks
+// Ancient star costs (served from the CDN), so the two groups can't be
+// confused; the group names are translated at render time.
+const ENERGY_ICON = `${CDN_BASE}/icons/colorless_energy_icon.webp`;
+const STAR_ICON = `${CDN_BASE}/icons/star_icon.webp`;
 const costOptions = [
-  { label: "0", value: "0", group: "Energy" },
-  { label: "1", value: "1", group: "Energy" },
-  { label: "2", value: "2", group: "Energy" },
-  { label: "3", value: "3", group: "Energy" },
-  { label: "4+", value: "4plus", group: "Energy" },
-  { label: "X", value: "x", group: "Energy" },
-  { label: "1", value: "star1", group: "Star" },
-  { label: "2", value: "star2", group: "Star" },
-  { label: "3", value: "star3", group: "Star" },
-  { label: "4+", value: "star4plus", group: "Star" },
-  { label: "X", value: "starx", group: "Star" },
+  { label: "0", value: "0", group: "Energy", icon: ENERGY_ICON },
+  { label: "1", value: "1", group: "Energy", icon: ENERGY_ICON },
+  { label: "2", value: "2", group: "Energy", icon: ENERGY_ICON },
+  { label: "3", value: "3", group: "Energy", icon: ENERGY_ICON },
+  { label: "4+", value: "4plus", group: "Energy", icon: ENERGY_ICON },
+  { label: "X", value: "x", group: "Energy", icon: ENERGY_ICON },
+  { label: "1", value: "star1", group: "Star", icon: STAR_ICON },
+  { label: "2", value: "star2", group: "Star", icon: STAR_ICON },
+  { label: "3", value: "star3", group: "Star", icon: STAR_ICON },
+  { label: "4+", value: "star4plus", group: "Star", icon: STAR_ICON },
+  { label: "X", value: "starx", group: "Star", icon: STAR_ICON },
 ];
 
 function matchesCost(c: Card, want: string): boolean {
@@ -264,7 +271,10 @@ function CardsClientInner({ initialCards }: { initialCards: Card[] }) {
             label: "Any Cost",
             name: "Cost",
             value: cost,
-            options: costOptions,
+            options: costOptions.map((o) => ({
+              ...o,
+              group: o.group === "Energy" ? t("Energy", lang) : t("Star Cost", lang),
+            })),
             onChange: (v) => setFilterAndUrl("cost", v, setCost),
           },
           {
