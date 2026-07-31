@@ -10,7 +10,7 @@ export function imageUrl(path: string | null | undefined): string {
   return `${API}${path}`;
 }
 
-const CDN_BASE = CDN_URL || "https://cdn.spire-codex.com";
+export const CDN_BASE = CDN_URL || "https://cdn.spire-codex.com";
 
 // The current beta version for render paths ("0.107.0" shape, no leading v).
 // The literal here is only a first-paint fallback: SiteSwitcher refreshes it
