@@ -37,6 +37,7 @@ export default function MerchantToc({ items }: { items: { id: string; label: str
 
   return (
     <nav className="toc" aria-label="On this page">
+      <span className="toc-label">On this page</span>
       {items.map((it) => (
         <a
           key={it.id}

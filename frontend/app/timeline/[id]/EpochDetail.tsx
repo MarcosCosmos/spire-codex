@@ -168,6 +168,7 @@ export default function EpochDetail({ initialEpoch }: { initialEpoch?: Epoch | n
           {/* Sticky ToC */}
           {tocItems.length > 0 && (
             <nav className="toc" aria-label="On this page">
+              <span className="toc-label">On this page</span>
               {tocItems.map((it) => (
                 <a
                   key={it.id}

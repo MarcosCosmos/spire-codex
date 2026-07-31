@@ -116,6 +116,7 @@ export default function ActDetail({ initialAct }: { initialAct?: Act | null } = 
 
           {/* Sticky ToC */}
           <nav className="toc" aria-label="On this page">
+            <span className="toc-label">On this page</span>
             {tocItems.map((it) => (
               <a
                 key={it.id}

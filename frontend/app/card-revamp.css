@@ -73,14 +73,20 @@
 .card-rvmp .entity-lead p { margin: 0 0 10px; }
 .card-rvmp .entity-lead p:last-child { margin-bottom: 0; }
 
-/* ── sticky ToC ── */
+/* ── sticky ToC ──
+   Styled as a labeled table of contents (plain anchor links, underlined when
+   active) rather than tab pills: clicking one only scrolls, and the old tab
+   look promised a view switch it never delivered. */
 .card-rvmp .toc { position: sticky; top: 64px; z-index: 20; margin: 28px 0 0; padding: 10px 0;
   background: color-mix(in srgb, var(--bg) 90%, transparent); backdrop-filter: blur(6px);
   border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
-  display: flex; gap: 4px; flex-wrap: wrap; }
-.card-rvmp .toc a { color: var(--text-2); font-size: 13px; padding: 5px 11px; border-radius: 4px; }
-.card-rvmp .toc a:hover { color: var(--text); background: var(--surface); }
-.card-rvmp .toc a.on { color: var(--spine); background: var(--spine-soft); }
+  display: flex; gap: 4px 16px; flex-wrap: wrap; align-items: baseline; }
+.card-rvmp .toc-label { font-family: var(--mono); font-size: 11px; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--text-3); }
+.card-rvmp .toc a { color: var(--text-2); font-size: 13px; padding: 2px 0; }
+.card-rvmp .toc a:hover { color: var(--text); text-decoration: underline; text-underline-offset: 5px; }
+.card-rvmp .toc a.on { color: var(--spine); text-decoration: underline; text-underline-offset: 5px;
+  text-decoration-thickness: 2px; }
 
 /* ── sections ── */
 .card-rvmp section { padding-top: 40px; scroll-margin-top: 128px; }

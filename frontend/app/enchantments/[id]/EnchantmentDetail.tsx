@@ -139,6 +139,7 @@ export default function EnchantmentDetail({
 
           {/* Sticky ToC */}
           <nav className="toc" aria-label={t("On this page", lang)}>
+            <span className="toc-label">{t("On this page", lang)}</span>
             {tocItems.map((it) => (
               <a
                 key={it.id}
