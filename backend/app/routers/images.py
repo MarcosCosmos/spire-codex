@@ -477,12 +477,13 @@ def download_category_zip(
 # (hundreds of thousands of files), so these categories return a preview plus
 # a paged folder-browse endpoint, both backed by the manifest.json.gz the
 # upload pipeline writes next to the assets. data/image_dumps.json registers
-# which dump versions exist (newest first).
+# the dumps and which channel (main/beta) each one mirrors.
 
 import gzip  # noqa: E402
 import json  # noqa: E402
 import logging  # noqa: E402
 import os  # noqa: E402
+import time  # noqa: E402
 import urllib.request  # noqa: E402
 from functools import lru_cache  # noqa: E402
 
@@ -518,8 +519,9 @@ _GAME_PREVIEW_COUNT = 60
 
 
 @lru_cache(maxsize=1)
-def _game_dumps() -> tuple[str, ...]:
-    """Registered dump versions, newest first (data/image_dumps.json)."""
+def _game_dumps() -> tuple[tuple[str, str], ...]:
+    """Registered dumps as (version, channel) pairs, in display order
+    (data/image_dumps.json)."""
     try:
         with open(_REPO_DATA_DIR / "image_dumps.json", encoding="utf-8") as f:
             data = json.load(f)
@@ -528,22 +530,50 @@ def _game_dumps() -> tuple[str, ...]:
     dumps = data.get("dumps") if isinstance(data, dict) else None
     if not isinstance(dumps, list):
         return ()
-    return tuple(v for v in dumps if isinstance(v, str) and VERSION_RE.match(v))
+    out = []
+    for d in dumps:
+        if not isinstance(d, dict):
+            continue
+        version = d.get("version")
+        channel = d.get("channel") or "main"
+        if isinstance(version, str) and VERSION_RE.match(version):
+            out.append((version, channel))
+    return tuple(out)
 
 
-@lru_cache(maxsize=4)
+def _game_dump_versions() -> set[str]:
+    return {v for v, _ in _game_dumps()}
+
+
+_MANIFEST_RETRY_SECONDS = 300.0
+_manifest_cache: dict[str, dict[str, list[str]]] = {}
+_manifest_retry_at: dict[str, float] = {}
+
+
 def _game_manifest(version: str) -> dict[str, list[str]]:
-    """category -> sorted relative file paths, from the CDN-side manifest."""
+    """category -> sorted relative file paths, from the CDN-side manifest.
+    Successes cache for the process lifetime (dumps are immutable); failures
+    only back off briefly, so a dump registered before its upload finishes
+    shows up without a restart."""
+    cached = _manifest_cache.get(version)
+    if cached is not None:
+        return cached
+    if time.monotonic() < _manifest_retry_at.get(version, 0.0):
+        return {}
     url = f"{GAME_CDN}/game/{version}/manifest.json.gz"
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "spire-codex-backend"})
         with urllib.request.urlopen(req, timeout=20) as resp:
             data = json.loads(gzip.decompress(resp.read()))
+        cats = data.get("categories") if isinstance(data, dict) else None
+        if not isinstance(cats, dict):
+            raise ValueError("manifest has no categories mapping")
     except Exception:
         logger.warning("game image manifest fetch failed: %s", url, exc_info=True)
+        _manifest_retry_at[version] = time.monotonic() + _MANIFEST_RETRY_SECONDS
         return {}
-    cats = data.get("categories") if isinstance(data, dict) else None
-    return cats if isinstance(cats, dict) else {}
+    _manifest_cache[version] = cats
+    return cats
 
 
 @lru_cache(maxsize=64)
@@ -569,32 +599,30 @@ def _game_url(version: str, category: str, path: str) -> str:
 
 
 def _game_category_entries() -> list[dict]:
-    """Gallery listing entries for the newest dump's categories: count plus a
-    preview page; the full contents come from the browse endpoint."""
-    dumps = _game_dumps()
-    if not dumps:
-        return []
-    version = dumps[0]
-    manifest = _game_manifest(version)
+    """Gallery listing entries for every registered dump's categories: count
+    plus a preview page; the full contents come from the browse endpoint."""
     entries = []
-    for cat_id, display in GAME_CATEGORIES.items():
-        files = manifest.get(cat_id) or []
-        if not files:
-            continue
-        preview = [
-            {"filename": p.rsplit("/", 1)[-1], "url": _game_url(version, cat_id, p)}
-            for p in files[:_GAME_PREVIEW_COUNT]
-        ]
-        entries.append(
-            {
-                "id": f"game-{cat_id}",
-                "name": display,
-                "count": len(files),
-                "images": preview,
-                "formats": ["webp"],
-                "browse": {"version": version, "category": cat_id},
-            }
-        )
+    for version, channel in _game_dumps():
+        manifest = _game_manifest(version)
+        label = f"{channel.title()} {version}"
+        for cat_id, display in GAME_CATEGORIES.items():
+            files = manifest.get(cat_id) or []
+            if not files:
+                continue
+            preview = [
+                {"filename": p.rsplit("/", 1)[-1], "url": _game_url(version, cat_id, p)}
+                for p in files[:_GAME_PREVIEW_COUNT]
+            ]
+            entries.append(
+                {
+                    "id": f"game-{cat_id}-{version}",
+                    "name": f"{display} ({label})",
+                    "count": len(files),
+                    "images": preview,
+                    "formats": ["webp"],
+                    "browse": {"version": version, "category": cat_id},
+                }
+            )
     return entries
 
 
@@ -607,10 +635,13 @@ def browse_game_category(
     limit: int = 200,
 ):
     """One folder of a dump category: subfolders plus a page of files."""
-    if version not in _game_dumps():
+    if version not in _game_dump_versions():
         raise HTTPException(status_code=404, detail=f"Unknown dump version: {version}")
     if category not in GAME_CATEGORIES:
         raise HTTPException(status_code=404, detail=f"Unknown category: {category}")
+    if not _game_manifest(version):
+        # Don't let a pre-upload browse poison the folder-index cache.
+        raise HTTPException(status_code=404, detail=f"Dump not available: {version}")
     idx = _game_folder_index(version, category)
     clean_path = path.strip("/")
     node = idx.get(clean_path)
@@ -636,36 +667,36 @@ def browse_game_category(
 
 
 def _search_game_images(tokens: list[str], budget: int) -> list[dict]:
-    """Filename matches from the newest dump, same row shape as the legacy
-    search. Cross-products and localized card copies are skipped (see
-    _GAME_SEARCH_SKIP) so results stay one-hit-per-asset."""
-    dumps = _game_dumps()
-    if not dumps or budget <= 0:
+    """Filename matches across the registered dumps, same row shape as the
+    legacy search. Cross-products and localized card copies are skipped (see
+    _GAME_SEARCH_SKIP) so results stay one-hit-per-asset per dump."""
+    if budget <= 0:
         return []
-    version = dumps[0]
-    manifest = _game_manifest(version)
     matches: list[dict] = []
-    for cat_id, display in GAME_CATEGORIES.items():
-        if cat_id in _GAME_SEARCH_SKIP:
-            continue
-        cat_for_match = display.lower()
-        for p in manifest.get(cat_id) or []:
-            if cat_id == "cards" and "/" in p:
-                continue  # language copies repeat every English filename
-            stem = p.rsplit("/", 1)[-1].rsplit(".", 1)[0]
-            haystack = f"{p.rsplit('.', 1)[0].replace('/', ' ').replace('_', ' ').lower()} {cat_for_match}"
-            if not all(tok in haystack for tok in tokens):
+    for version, channel in _game_dumps():
+        manifest = _game_manifest(version)
+        label = f"{channel.title()} {version}"
+        for cat_id, display in GAME_CATEGORIES.items():
+            if cat_id in _GAME_SEARCH_SKIP:
                 continue
-            matches.append(
-                {
-                    "id": f"game-{cat_id}/{p}",
-                    "name": stem.replace("_", " "),
-                    "filename": p.rsplit("/", 1)[-1],
-                    "url": _game_url(version, cat_id, p),
-                    "category_id": f"game-{cat_id}",
-                    "category_name": display,
-                }
-            )
-            if len(matches) >= budget:
-                return matches
+            cat_for_match = display.lower()
+            for p in manifest.get(cat_id) or []:
+                if cat_id == "cards" and "/" in p:
+                    continue  # language copies repeat every English filename
+                stem = p.rsplit("/", 1)[-1].rsplit(".", 1)[0]
+                haystack = f"{p.rsplit('.', 1)[0].replace('/', ' ').replace('_', ' ').lower()} {cat_for_match}"
+                if not all(tok in haystack for tok in tokens):
+                    continue
+                matches.append(
+                    {
+                        "id": f"game-{cat_id}-{version}/{p}",
+                        "name": stem.replace("_", " "),
+                        "filename": p.rsplit("/", 1)[-1],
+                        "url": _game_url(version, cat_id, p),
+                        "category_id": f"game-{cat_id}-{version}",
+                        "category_name": f"{display} ({label})",
+                    }
+                )
+                if len(matches) >= budget:
+                    return matches
     return matches
