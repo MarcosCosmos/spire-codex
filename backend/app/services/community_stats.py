@@ -615,9 +615,13 @@ def _finalize_one(acc: dict[str, Any]) -> dict[str, Any]:
         # Official options only: mods inject extra picks into official events
         # (every installed card-pool mod shows up as a Colorful Philosophers
         # option), so anything outside the event's own option tree is dropped
-        # and the percentages are computed over the real options.
-        allowed = ev_opt_ids.get(eid) or set()
-        if allowed:
+        # and the percentages are computed over the real options. Events whose
+        # catalog tree has no options at all (the Ancient dialogues, Neow, ...)
+        # never record choices in vanilla runs, so an empty allowlist drops
+        # everything rather than letting a modded response through unfiltered.
+        # Only skipped when the catalog itself failed to load.
+        if ev_opt_ids:
+            allowed = ev_opt_ids.get(eid) or set()
             opts = {oid: n for oid, n in opts.items() if oid.upper() in allowed}
         total = sum(opts.values())
         if total <= 0:
