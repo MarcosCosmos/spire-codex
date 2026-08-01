@@ -263,17 +263,24 @@ def _accumulate_one(
         if kev:
             _bump(acc["deaths_event"], kev)
 
-    # Records.
-    run_time = blob.get("run_time")
-    if isinstance(run_time, (int, float)) and run_time > 0:
-        if is_win and (acc["fastest_win"] is None or run_time < acc["fastest_win"][0]):
-            acc["fastest_win"] = (int(run_time), run_hash)
-        if acc["longest_run"] is None or run_time > acc["longest_run"][0]:
-            acc["longest_run"] = (int(run_time), run_hash)
-    for player in blob.get("players") or []:
-        size = len(player.get("deck") or [])
-        if size and (acc["biggest_deck"] is None or size > acc["biggest_deck"][0]):
-            acc["biggest_deck"] = (size, run_hash)
+    # Records. Standard, modifier-free runs only: custom games (Sealed Deck,
+    # Hoarder, ...) produce absurd decks and times that would hold the
+    # record forever.
+    if (blob.get("game_mode") or "standard").lower() == "standard" and not blob.get(
+        "modifiers"
+    ):
+        run_time = blob.get("run_time")
+        if isinstance(run_time, (int, float)) and run_time > 0:
+            if is_win and (
+                acc["fastest_win"] is None or run_time < acc["fastest_win"][0]
+            ):
+                acc["fastest_win"] = (int(run_time), run_hash)
+            if acc["longest_run"] is None or run_time > acc["longest_run"][0]:
+                acc["longest_run"] = (int(run_time), run_hash)
+        for player in blob.get("players") or []:
+            size = len(player.get("deck") or [])
+            if size and (acc["biggest_deck"] is None or size > acc["biggest_deck"][0]):
+                acc["biggest_deck"] = (size, run_hash)
 
     # Map danger: per (act, node type), tally visits, HP% lost, and deaths. The death is
     # attributed to the run's final visited node, but only when the blob says the player
