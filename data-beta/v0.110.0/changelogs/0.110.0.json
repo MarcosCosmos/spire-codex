@@ -1,0 +1,1310 @@
+{
+  "app_id": 2868840,
+  "game_version": "0.110.0",
+  "build_id": "24485066",
+  "tag": "0.110.0",
+  "date": "2026-07-30",
+  "title": "Beta v0.110.0",
+  "from_ref": "/tmp/claude-1000/-mnt-c-Users-peter-Documents-prima-codex-spire-codex/fe7248d4-d6f7-4489-a6e2-4ea989d7103f/scratchpad/reparse-v01091/eng",
+  "to_ref": "/tmp/claude-1000/-mnt-c-Users-peter-Documents-prima-codex-spire-codex/fe7248d4-d6f7-4489-a6e2-4ea989d7103f/scratchpad/parse-v0110/eng",
+  "summary": {
+    "added": 1,
+    "removed": 2,
+    "changed": 65
+  },
+  "categories": [
+    {
+      "id": "cards",
+      "name": "Cards",
+      "old_count": 595,
+      "new_count": 595,
+      "added": [
+        {
+          "id": "SIDESTEP",
+          "name": "Sidestep",
+          "cost": 0,
+          "type": "Skill",
+          "rarity": "Uncommon"
+        }
+      ],
+      "removed": [
+        {
+          "id": "SCARE",
+          "name": "Scare"
+        }
+      ],
+      "changed": [
+        {
+          "id": "ABUNDANCE",
+          "name": "Abundance",
+          "changes": [
+            {
+              "field": "description",
+              "old": "Choose 1 of 3 [gold]Powers[/gold] to add into your [gold]Hand[/gold]. It's fr...",
+              "new": "Choose 1 of 3 [gold]Upgraded[/gold] [gold]Powers[/gold] to add into your [gol..."
+            },
+            {
+              "field": "description_raw",
+              "old": "Choose 1 of 3 {IfUpgraded:show:upgraded |}[gold]Powers[/gold] to add into you...",
+              "new": "Choose 1 of 3 [gold]Upgraded[/gold] [gold]Powers[/gold] to add into your [gol..."
+            },
+            {
+              "field": "upgrade.cost",
+              "old": "none",
+              "new": "0"
+            },
+            {
+              "field": "upgrade.description_changed",
+              "old": "yes",
+              "new": "none"
+            },
+            {
+              "field": "upgrade_description",
+              "old": "Choose 1 of 3 upgraded [gold]Powers[/gold] to add into your [gold]Hand[/gold]...",
+              "new": "none"
+            }
+          ]
+        },
+        {
+          "id": "BIASED_COGNITION",
+          "name": "Biased Cognition",
+          "changes": [
+            {
+              "field": "description",
+              "old": "Gain 4 [gold]Focus[/gold].\nAt the start of your turn, lose 1 [gold]Focus[/gold].",
+              "new": "Gain 5 [gold]Focus[/gold].\nAt the start of your turn, lose 1 [gold]Focus[/gold]."
+            },
+            {
+              "field": "powers_applied[0].amount",
+              "old": "4",
+              "new": "5"
+            },
+            {
+              "field": "upgrade_description",
+              "old": "Gain 5 [gold]Focus[/gold].\nAt the start of your turn, lose 1 [gold]Focus[/gold].",
+              "new": "Gain 6 [gold]Focus[/gold].\nAt the start of your turn, lose 1 [gold]Focus[/gold]."
+            },
+            {
+              "field": "vars.Focus",
+              "old": "4",
+              "new": "5"
+            },
+            {
+              "field": "vars.FocusPower",
+              "old": "4",
+              "new": "5"
+            }
+          ]
+        },
+        {
+          "id": "BLADE_SYMPHONY",
+          "name": "Blade Symphony",
+          "changes": [
+            {
+              "field": "description",
+              "old": "Add 2 [gold]Shivs[/gold] to ALL player's [gold]Hands[/gold].",
+              "new": "Add 2 [gold]Shivs[/gold] to ALL players' [gold]Hands[/gold]."
+            },
+            {
+              "field": "description_raw",
+              "old": "Add {Cards:diff()} [gold]{Cards:plural:Shiv|Shivs}[/gold] to ALL player's [go...",
+              "new": "Add {Cards:diff()} [gold]{Cards:plural:Shiv|Shivs}[/gold] to ALL players' [go..."
+            }
+          ]
+        },
+        {
+          "id": "CRUSH_UNDER",
+          "name": "Crush Under",
+          "changes": [
+            {
+              "field": "damage",
+              "old": "7",
+              "new": "8"
+            },
+            {
+              "field": "description",
+              "old": "Deal 7 damage to ALL enemies. All enemies lose 1 [gold]Strength[/gold] this t...",
+              "new": "Deal 8 damage to ALL enemies. All enemies lose 1 [gold]Strength[/gold] this t..."
+            },
+            {
+              "field": "upgrade_description",
+              "old": "Deal 8 damage to ALL enemies. All enemies lose 2 [gold]Strength[/gold] this t...",
+              "new": "Deal 9 damage to ALL enemies. All enemies lose 2 [gold]Strength[/gold] this t..."
+            },
+            {
+              "field": "vars.Damage",
+              "old": "7",
+              "new": "8"
+            }
+          ]
+        },
+        {
+          "id": "DOWSING",
+          "name": "Dowsing",
+          "changes": [
+            {
+              "field": "spawns_cards[0]",
+              "old": "none",
+              "new": "ABUNDANCE"
+            }
+          ]
+        },
+        {
+          "id": "ECHOING_SLASH",
+          "name": "Echoing Slash",
+          "changes": [
+            {
+              "field": "compendium_order",
+              "old": "160",
+              "new": "125"
+            },
+            {
+              "field": "rarity",
+              "old": "Rare",
+              "new": "Uncommon"
+            },
+            {
+              "field": "rarity_key",
+              "old": "Rare",
+              "new": "Uncommon"
+            }
+          ]
+        },
+        {
+          "id": "EIDOLON",
+          "name": "Eidolon",
+          "changes": [
+            {
+              "field": "can_be_generated_in_combat",
+              "old": "none",
+              "new": "no"
+            }
+          ]
+        },
+        {
+          "id": "ENVENOM",
+          "name": "Envenom",
+          "changes": [
+            {
+              "field": "compendium_order",
+              "old": "161",
+              "new": "160"
+            }
+          ]
+        },
+        {
+          "id": "ESCAPE_PLAN",
+          "name": "Escape Plan",
+          "changes": [
+            {
+              "field": "compendium_order",
+              "old": "125",
+              "new": "126"
+            }
+          ]
+        },
+        {
+          "id": "EXPERTISE",
+          "name": "Expertise",
+          "changes": [
+            {
+              "field": "compendium_order",
+              "old": "126",
+              "new": "127"
+            }
+          ]
+        },
+        {
+          "id": "EXPOSE",
+          "name": "Expose",
+          "changes": [
+            {
+              "field": "compendium_order",
+              "old": "127",
+              "new": "128"
+            }
+          ]
+        },
+        {
+          "id": "FADE",
+          "name": "Fade",
+          "changes": [
+            {
+              "field": "compendium_order",
+              "old": "128",
+              "new": "129"
+            }
+          ]
+        },
+        {
+          "id": "FAN_OF_KNIVES",
+          "name": "Fan of Knives",
+          "changes": [
+            {
+              "field": "compendium_order",
+              "old": "162",
+              "new": "161"
+            }
+          ]
+        },
+        {
+          "id": "FINISHER",
+          "name": "Finisher",
+          "changes": [
+            {
+              "field": "compendium_order",
+              "old": "129",
+              "new": "130"
+            }
+          ]
+        },
+        {
+          "id": "FLANKING",
+          "name": "Flanking",
+          "changes": [
+            {
+              "field": "compendium_order",
+              "old": "163",
+              "new": "162"
+            }
+          ]
+        },
+        {
+          "id": "FLECHETTES",
+          "name": "Flechettes",
+          "changes": [
+            {
+              "field": "compendium_order",
+              "old": "130",
+              "new": "131"
+            }
+          ]
+        },
+        {
+          "id": "FOOTWORK",
+          "name": "Footwork",
+          "changes": [
+            {
+              "field": "compendium_order",
+              "old": "131",
+              "new": "132"
+            }
+          ]
+        },
+        {
+          "id": "GRAND_FINALE",
+          "name": "Grand Finale",
+          "changes": [
+            {
+              "field": "compendium_order",
+              "old": "164",
+              "new": "163"
+            }
+          ]
+        },
+        {
+          "id": "HAND_TRICK",
+          "name": "Hand Trick",
+          "changes": [
+            {
+              "field": "compendium_order",
+              "old": "132",
+              "new": "133"
+            }
+          ]
+        },
+        {
+          "id": "HAZE",
+          "name": "Haze",
+          "changes": [
+            {
+              "field": "compendium_order",
+              "old": "133",
+              "new": "134"
+            },
+            {
+              "field": "cost",
+              "old": "3",
+              "new": "2"
+            },
+            {
+              "field": "description",
+              "old": "Apply 4 [gold]Poison[/gold] to ALL enemies.",
+              "new": "Apply 4 [gold]Poison[/gold] and 1 [gold]Weak[/gold] to ALL enemies."
+            },
+            {
+              "field": "description_raw",
+              "old": "Apply {PoisonPower:diff()} [gold]Poison[/gold] to ALL enemies.",
+              "new": "Apply {PoisonPower:diff()} [gold]Poison[/gold] and {WeakPower:diff()} [gold]W..."
+            },
+            {
+              "field": "keywords[0]",
+              "old": "Sly",
+              "new": "none"
+            },
+            {
+              "field": "keywords_key[0]",
+              "old": "Sly",
+              "new": "none"
+            },
+            {
+              "field": "powers_applied[1].amount",
+              "old": "none",
+              "new": "1"
+            },
+            {
+              "field": "powers_applied[1].power",
+              "old": "none",
+              "new": "Weak"
+            },
+            {
+              "field": "powers_applied[1].power_key",
+              "old": "none",
+              "new": "Weak"
+            },
+            {
+              "field": "upgrade.weak",
+              "old": "none",
+              "new": "+1"
+            },
+            {
+              "field": "upgrade_description",
+              "old": "Apply 6 [gold]Poison[/gold] to ALL enemies.",
+              "new": "Apply 6 [gold]Poison[/gold] and 2 [gold]Weak[/gold] to ALL enemies."
+            },
+            {
+              "field": "vars.Weak",
+              "old": "none",
+              "new": "1"
+            },
+            {
+              "field": "vars.WeakPower",
+              "old": "none",
+              "new": "1"
+            }
+          ]
+        },
+        {
+          "id": "HIDDEN_DAGGERS",
+          "name": "Hidden Daggers",
+          "changes": [
+            {
+              "field": "compendium_order",
+              "old": "134",
+              "new": "135"
+            }
+          ]
+        },
+        {
+          "id": "INFINITE_BLADES",
+          "name": "Infinite Blades",
+          "changes": [
+            {
+              "field": "compendium_order",
+              "old": "135",
+              "new": "136"
+            }
+          ]
+        },
+        {
+          "id": "KNIFE_TRAP",
+          "name": "Knife Trap",
+          "changes": [
+            {
+              "field": "compendium_order",
+              "old": "165",
+              "new": "164"
+            }
+          ]
+        },
+        {
+          "id": "LEG_SWEEP",
+          "name": "Leg Sweep",
+          "changes": [
+            {
+              "field": "compendium_order",
+              "old": "136",
+              "new": "137"
+            }
+          ]
+        },
+        {
+          "id": "MALAISE",
+          "name": "Malaise",
+          "changes": [
+            {
+              "field": "compendium_order",
+              "old": "166",
+              "new": "165"
+            }
+          ]
+        },
+        {
+          "id": "MANGLE",
+          "name": "Mangle",
+          "changes": [
+            {
+              "field": "damage",
+              "old": "15",
+              "new": "20"
+            },
+            {
+              "field": "description",
+              "old": "Deal 15 damage.\nEnemy loses 10 [gold]Strength[/gold] this turn.",
+              "new": "Deal 20 damage.\nEnemy loses 10 [gold]Strength[/gold] this turn."
+            },
+            {
+              "field": "upgrade.damage",
+              "old": "+5",
+              "new": "+6"
+            },
+            {
+              "field": "upgrade_description",
+              "old": "Deal 20 damage.\nEnemy loses 15 [gold]Strength[/gold] this turn.",
+              "new": "Deal 26 damage.\nEnemy loses 15 [gold]Strength[/gold] this turn."
+            },
+            {
+              "field": "vars.Damage",
+              "old": "15",
+              "new": "20"
+            }
+          ]
+        },
+        {
+          "id": "MASTER_PLANNER",
+          "name": "Master Planner",
+          "changes": [
+            {
+              "field": "compendium_order",
+              "old": "167",
+              "new": "166"
+            }
+          ]
+        },
+        {
+          "id": "MAUL",
+          "name": "Maul",
+          "changes": [
+            {
+              "field": "description",
+              "old": "Deal 5 damage twice.\nIncrease the damage of ALL Maul cards by 1 this combat.",
+              "new": "Deal 5 damage twice.\nIncrease the damage of ALL Maul cards by 2 this combat."
+            },
+            {
+              "field": "upgrade_description",
+              "old": "Deal 6 damage twice.\nIncrease the damage of ALL Maul cards by 2 this combat.",
+              "new": "Deal 6 damage twice.\nIncrease the damage of ALL Maul cards by 3 this combat."
+            },
+            {
+              "field": "vars.Increase",
+              "old": "1",
+              "new": "2"
+            }
+          ]
+        },
+        {
+          "id": "MEMENTO_MORI",
+          "name": "Memento Mori",
+          "changes": [
+            {
+              "field": "compendium_order",
+              "old": "137",
+              "new": "138"
+            }
+          ]
+        },
+        {
+          "id": "MIRAGE",
+          "name": "Mirage",
+          "changes": [
+            {
+              "field": "compendium_order",
+              "old": "138",
+              "new": "139"
+            },
+            {
+              "field": "cost",
+              "old": "0",
+              "new": "1"
+            },
+            {
+              "field": "damage",
+              "old": "none",
+              "new": "0"
+            },
+            {
+              "field": "description",
+              "old": "Next turn, gain [energy:1].",
+              "new": "Gain [gold]Block[/gold] equal to [gold]Poison[/gold] on ALL enemies."
+            },
+            {
+              "field": "description_raw",
+              "old": "Next turn, gain {Energy:energyIcons()}.",
+              "new": "Gain [gold]Block[/gold] equal to [gold]Poison[/gold] on ALL enemies.{InCombat..."
+            },
+            {
+              "field": "energy_gain",
+              "old": "1",
+              "new": "none"
+            },
+            {
+              "field": "upgrade.cost",
+              "old": "none",
+              "new": "0"
+            },
+            {
+              "field": "upgrade.energy",
+              "old": "+1",
+              "new": "none"
+            },
+            {
+              "field": "upgrade_description",
+              "old": "Next turn, gain [energy:2].",
+              "new": "none"
+            },
+            {
+              "field": "vars.CalculationBase",
+              "old": "none",
+              "new": "0"
+            },
+            {
+              "field": "vars.CalculationExtra",
+              "old": "none",
+              "new": "1"
+            },
+            {
+              "field": "vars.Energy",
+              "old": "1",
+              "new": "none"
+            }
+          ]
+        },
+        {
+          "id": "MURDER",
+          "name": "Murder",
+          "changes": [
+            {
+              "field": "compendium_order",
+              "old": "168",
+              "new": "167"
+            }
+          ]
+        },
+        {
+          "id": "NIGHTMARE",
+          "name": "Nightmare",
+          "changes": [
+            {
+              "field": "compendium_order",
+              "old": "169",
+              "new": "168"
+            }
+          ]
+        },
+        {
+          "id": "NOXIOUS_FUMES",
+          "name": "Noxious Fumes",
+          "changes": [
+            {
+              "field": "compendium_order",
+              "old": "139",
+              "new": "140"
+            }
+          ]
+        },
+        {
+          "id": "OUTBREAK",
+          "name": "Outbreak",
+          "changes": [
+            {
+              "field": "compendium_order",
+              "old": "140",
+              "new": "169"
+            },
+            {
+              "field": "cost",
+              "old": "1",
+              "new": "3"
+            },
+            {
+              "field": "description",
+              "old": "Whenever you apply [gold]Poison[/gold], deal 4 damage to ALL enemies.",
+              "new": "Apply 9 [gold]Poison[/gold] to ALL enemies.\n[gold]Poison[/gold] triggers imme..."
+            },
+            {
+              "field": "description_raw",
+              "old": "Whenever you apply [gold]Poison[/gold], deal {OutbreakPower:diff()} damage to...",
+              "new": "Apply {PoisonPower:diff()} [gold]Poison[/gold] to ALL enemies.\n[gold]Poison[/..."
+            },
+            {
+              "field": "powers_applied[0].amount",
+              "old": "4",
+              "new": "9"
+            },
+            {
+              "field": "powers_applied[0].power",
+              "old": "Outbreak",
+              "new": "Poison"
+            },
+            {
+              "field": "powers_applied[0].power_key",
+              "old": "Outbreak",
+              "new": "Poison"
+            },
+            {
+              "field": "rarity",
+              "old": "Uncommon",
+              "new": "Rare"
+            },
+            {
+              "field": "rarity_key",
+              "old": "Uncommon",
+              "new": "Rare"
+            },
+            {
+              "field": "target",
+              "old": "Self",
+              "new": "AllEnemies"
+            },
+            {
+              "field": "type",
+              "old": "Power",
+              "new": "Skill"
+            },
+            {
+              "field": "type_key",
+              "old": "Power",
+              "new": "Skill"
+            },
+            {
+              "field": "upgrade.outbreakpower",
+              "old": "+1",
+              "new": "none"
+            },
+            {
+              "field": "upgrade.poison",
+              "old": "none",
+              "new": "+3"
+            },
+            {
+              "field": "upgrade_description",
+              "old": "Whenever you apply [gold]Poison[/gold], deal 5 damage to ALL enemies.",
+              "new": "Apply 12 [gold]Poison[/gold] to ALL enemies.\n[gold]Poison[/gold] triggers imm..."
+            },
+            {
+              "field": "vars.Outbreak",
+              "old": "4",
+              "new": "none"
+            },
+            {
+              "field": "vars.OutbreakPower",
+              "old": "4",
+              "new": "none"
+            },
+            {
+              "field": "vars.Poison",
+              "old": "none",
+              "new": "9"
+            },
+            {
+              "field": "vars.PoisonPower",
+              "old": "none",
+              "new": "9"
+            }
+          ]
+        },
+        {
+          "id": "PACTS_END",
+          "name": "Pact's End",
+          "changes": [
+            {
+              "field": "damage",
+              "old": "17",
+              "new": "18"
+            },
+            {
+              "field": "description",
+              "old": "If you have 3 or more cards in your [gold]Exhaust Pile[/gold],\ndeal 17 damage...",
+              "new": "If you have 3 or more cards in your [gold]Exhaust Pile[/gold],\ndeal 18 damage..."
+            },
+            {
+              "field": "upgrade_description",
+              "old": "If you have 3 or more cards in your [gold]Exhaust Pile[/gold],\ndeal 23 damage...",
+              "new": "If you have 3 or more cards in your [gold]Exhaust Pile[/gold],\ndeal 24 damage..."
+            },
+            {
+              "field": "vars.Damage",
+              "old": "17",
+              "new": "18"
+            }
+          ]
+        },
+        {
+          "id": "PILLAR_OF_CREATION",
+          "name": "Pillar of Creation",
+          "changes": [
+            {
+              "field": "block",
+              "old": "5",
+              "new": "2"
+            },
+            {
+              "field": "description",
+              "old": "The first time you create a card each turn, gain 5 [gold]Block[/gold].",
+              "new": "Whenever you create a card, gain 2 [gold]Block[/gold]."
+            },
+            {
+              "field": "description_raw",
+              "old": "The first time you create a card each turn, gain {Block:diff()} [gold]Block[/...",
+              "new": "Whenever you create a card, gain {Block:diff()} [gold]Block[/gold]."
+            },
+            {
+              "field": "upgrade.block",
+              "old": "+2",
+              "new": "+1"
+            },
+            {
+              "field": "upgrade_description",
+              "old": "The first time you create a card each turn, gain 7 [gold]Block[/gold].",
+              "new": "Whenever you create a card, gain 3 [gold]Block[/gold]."
+            },
+            {
+              "field": "vars.Block",
+              "old": "5",
+              "new": "2"
+            }
+          ]
+        },
+        {
+          "id": "REFRACT",
+          "name": "Refract",
+          "changes": [
+            {
+              "field": "damage",
+              "old": "9",
+              "new": "10"
+            },
+            {
+              "field": "description",
+              "old": "Deal 9 damage twice.\n[gold]Channel[/gold] 2 [gold]Glass[/gold].",
+              "new": "Deal 10 damage twice.\n[gold]Channel[/gold] 2 [gold]Glass[/gold]."
+            },
+            {
+              "field": "upgrade_description",
+              "old": "Deal 12 damage twice.\n[gold]Channel[/gold] 2 [gold]Glass[/gold].",
+              "new": "Deal 13 damage twice.\n[gold]Channel[/gold] 2 [gold]Glass[/gold]."
+            },
+            {
+              "field": "vars.Damage",
+              "old": "9",
+              "new": "10"
+            }
+          ]
+        },
+        {
+          "id": "RELAX",
+          "name": "Relax",
+          "changes": [
+            {
+              "field": "block",
+              "old": "15",
+              "new": "16"
+            },
+            {
+              "field": "description",
+              "old": "Gain 15 [gold]Block[/gold].\nNext turn, draw 2 cards and gain [energy:2].",
+              "new": "Gain 16 [gold]Block[/gold].\nNext turn, draw 2 cards and gain [energy:2]."
+            },
+            {
+              "field": "upgrade_description",
+              "old": "Gain 17 [gold]Block[/gold].\nNext turn, draw 3 cards and gain [energy:3].",
+              "new": "Gain 18 [gold]Block[/gold].\nNext turn, draw 3 cards and gain [energy:3]."
+            },
+            {
+              "field": "vars.Block",
+              "old": "15",
+              "new": "16"
+            }
+          ]
+        },
+        {
+          "id": "ROCKET_PUNCH",
+          "name": "Rocket Punch",
+          "changes": [
+            {
+              "field": "description",
+              "old": "Deal 13 damage.\nDraw 1 card.\nWhenever you create a Status, reduce this card's...",
+              "new": "Deal 13 damage.\nDraw 1 card.\nWhenever you create a Status, reduce this card's..."
+            },
+            {
+              "field": "description_raw",
+              "old": "Deal {Damage:diff()} damage.\nDraw {Cards:diff()} {Cards:plural:card|cards}.\nW...",
+              "new": "Deal {Damage:diff()} damage.\nDraw {Cards:diff()} {Cards:plural:card|cards}.\nW..."
+            },
+            {
+              "field": "upgrade_description",
+              "old": "Deal 14 damage.\nDraw 2 cards.\nWhenever you create a Status, reduce this card'...",
+              "new": "Deal 14 damage.\nDraw 2 cards.\nWhenever you create a Status, reduce this card'..."
+            }
+          ]
+        },
+        {
+          "id": "SACRIFICE",
+          "name": "Sacrifice",
+          "changes": [
+            {
+              "field": "description",
+              "old": "If [gold]Osty[/gold] is alive, he dies and you gain [gold]Block[/gold] equal ...",
+              "new": "If [gold]Osty[/gold] is alive, he dies and you gain [gold]Block[/gold] equal ..."
+            },
+            {
+              "field": "description_raw",
+              "old": "If [gold]Osty[/gold] is alive, he dies and you gain [gold]Block[/gold] equal ...",
+              "new": "If [gold]Osty[/gold] is alive, he dies and you gain [gold]Block[/gold] equal ..."
+            }
+          ]
+        },
+        {
+          "id": "SYNCHRONIZE",
+          "name": "Synchronize",
+          "changes": [
+            {
+              "field": "keywords[0]",
+              "old": "Exhaust",
+              "new": "none"
+            },
+            {
+              "field": "keywords_key[0]",
+              "old": "Exhaust",
+              "new": "none"
+            },
+            {
+              "field": "upgrade.calculationextra",
+              "old": "none",
+              "new": "+1"
+            },
+            {
+              "field": "upgrade.remove_exhaust",
+              "old": "yes",
+              "new": "none"
+            },
+            {
+              "field": "upgrade_description",
+              "old": "none",
+              "new": "Gain 3 [gold]Focus[/gold] this turn for each unique Orb you have."
+            }
+          ]
+        },
+        {
+          "id": "TERRAFORMING",
+          "name": "Terraforming",
+          "changes": [
+            {
+              "field": "description",
+              "old": "Gain 6 [gold]Vigor[/gold].",
+              "new": "Gain 7 [gold]Vigor[/gold]."
+            },
+            {
+              "field": "powers_applied[0].amount",
+              "old": "6",
+              "new": "7"
+            },
+            {
+              "field": "upgrade.vigorpower",
+              "old": "+2",
+              "new": "+3"
+            },
+            {
+              "field": "upgrade_description",
+              "old": "Gain 8 [gold]Vigor[/gold].",
+              "new": "Gain 10 [gold]Vigor[/gold]."
+            },
+            {
+              "field": "vars.Vigor",
+              "old": "6",
+              "new": "7"
+            },
+            {
+              "field": "vars.VigorPower",
+              "old": "6",
+              "new": "7"
+            }
+          ]
+        },
+        {
+          "id": "THE_SCYTHE",
+          "name": "The Scythe",
+          "changes": [
+            {
+              "field": "description",
+              "old": "Deal 13 damage.\nPermanently increase this card's damage by 4.",
+              "new": "Deal 13 damage.\nPermanently increase this card's damage by 5."
+            },
+            {
+              "field": "upgrade.increase",
+              "old": "+1",
+              "new": "+2"
+            },
+            {
+              "field": "upgrade_description",
+              "old": "Deal 13 damage.\nPermanently increase this card's damage by 5.",
+              "new": "Deal 13 damage.\nPermanently increase this card's damage by 7."
+            },
+            {
+              "field": "vars.Increase",
+              "old": "4",
+              "new": "5"
+            }
+          ]
+        },
+        {
+          "id": "WELL_LAID_PLANS",
+          "name": "Well-Laid Plans",
+          "changes": [
+            {
+              "field": "cost",
+              "old": "1",
+              "new": "2"
+            },
+            {
+              "field": "upgrade.cost",
+              "old": "0",
+              "new": "1"
+            }
+          ]
+        },
+        {
+          "id": "WHISTLE",
+          "name": "Whistle",
+          "changes": [
+            {
+              "field": "cost",
+              "old": "3",
+              "new": "2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "relics",
+      "name": "Relics",
+      "old_count": 298,
+      "new_count": 298,
+      "changed": [
+        {
+          "id": "ALCHEMICAL_COFFER",
+          "name": "Alchemical Coffer",
+          "changes": [
+            {
+              "field": "description",
+              "old": "Upon pickup, gain [blue]4[/blue] potion slots filled with random potions.",
+              "new": "Upon pickup, gain [blue]4[/blue] potion slots filled with random [gold]Potion..."
+            },
+            {
+              "field": "description_raw",
+              "old": "Upon pickup, gain [blue]{PotionSlots}[/blue] potion slots filled with random ...",
+              "new": "Upon pickup, gain [blue]{PotionSlots}[/blue] potion slots filled with random ..."
+            }
+          ]
+        },
+        {
+          "id": "BEAUTIFUL_BRACELET",
+          "name": "Beautiful Bracelet",
+          "changes": [
+            {
+              "field": "description",
+              "old": "Upon pickup, choose [blue]3[/blue] cards in your [gold]Deck[/gold]. [gold]Enc...",
+              "new": "Upon pickup, choose [blue]4[/blue] cards in your [gold]Deck[/gold]. [gold]Enc..."
+            },
+            {
+              "field": "description_raw",
+              "old": "Upon pickup, choose [blue]{Cards}[/blue] {Cards:plural:card|cards} in your [g...",
+              "new": "Upon pickup, choose [blue]{Cards}[/blue] {Cards:plural:card|cards} in your [g..."
+            }
+          ]
+        },
+        {
+          "id": "BELT_BUCKLE",
+          "name": "Belt Buckle",
+          "changes": [
+            {
+              "field": "description",
+              "old": "While you have no potions, you have [blue]2[/blue] additional [gold]Dexterity...",
+              "new": "While you have no [gold]Potions[/gold], you have [blue]2[/blue] additional [g..."
+            },
+            {
+              "field": "description_raw",
+              "old": "While you have no potions, you have [blue]{DexterityPower}[/blue] additional ...",
+              "new": "While you have no [gold]Potions[/gold], you have [blue]{DexterityPower}[/blue..."
+            }
+          ]
+        },
+        {
+          "id": "CAULDRON",
+          "name": "Cauldron",
+          "changes": [
+            {
+              "field": "description",
+              "old": "Upon pickup, brews [blue]5[/blue] random potions.",
+              "new": "Upon pickup, brews [blue]5[/blue] random [gold]Potions[/gold]."
+            },
+            {
+              "field": "description_raw",
+              "old": "Upon pickup, brews [blue]{Potions}[/blue] random {Potions:plural:potion|potio...",
+              "new": "Upon pickup, brews [blue]{Potions}[/blue] random [gold]{Potions:plural:Potion..."
+            }
+          ]
+        },
+        {
+          "id": "DELICATE_FROND",
+          "name": "Delicate Frond",
+          "changes": [
+            {
+              "field": "description",
+              "old": "At the start of each combat, fill all empty potion slots with random potions.",
+              "new": "At the start of each combat, fill all empty potion slots with random [gold]Po..."
+            },
+            {
+              "field": "description_raw",
+              "old": "At the start of each combat, fill all empty potion slots with random potions.",
+              "new": "At the start of each combat, fill all empty potion slots with random [gold]Po..."
+            }
+          ]
+        },
+        {
+          "id": "DIAMOND_DIADEM",
+          "name": "Diamond Diadem",
+          "changes": [
+            {
+              "field": "description",
+              "old": "Start combat with [blue]20[/blue] [gold]Block[/gold]. Your [gold]Block[/gold]...",
+              "new": "Start combat with [blue]20[/blue] [gold]Block[/gold]. Your [gold]Block[/gold]..."
+            },
+            {
+              "field": "description_raw",
+              "old": "Start combat with [blue]{Block}[/blue] [gold]Block[/gold]. Your [gold]Block[/...",
+              "new": "Start combat with [blue]{Block}[/blue] [gold]Block[/gold]. Your [gold]Block[/..."
+            }
+          ]
+        },
+        {
+          "id": "FIDDLE",
+          "name": "Fiddle",
+          "changes": [
+            {
+              "field": "description",
+              "old": "At the start of each turn, draw [blue]3[/blue] additional cards. You may not ...",
+              "new": "At the start of each turn, draw [blue]2[/blue] additional cards. You may not ..."
+            }
+          ]
+        },
+        {
+          "id": "FUR_COAT",
+          "name": "Fur Coat",
+          "changes": [
+            {
+              "field": "description",
+              "old": "Upon pickup, mark [blue]7[/blue] random combats. Enemies in those rooms have ...",
+              "new": "Upon pickup, mark [blue]8[/blue] random combats. Enemies in those rooms have ..."
+            }
+          ]
+        },
+        {
+          "id": "PHIAL_HOLSTER",
+          "name": "Phial Holster",
+          "changes": [
+            {
+              "field": "description",
+              "old": "Upon pickup, gain [blue]1[/blue] potion slot and procure [blue]2[/blue] rando...",
+              "new": "Upon pickup, gain [blue]1[/blue] potion slot and procure [blue]2[/blue] rando..."
+            },
+            {
+              "field": "description_raw",
+              "old": "Upon pickup, gain [blue]{PotionSlots}[/blue] potion {PotionSlots:plural:slot|...",
+              "new": "Upon pickup, gain [blue]{PotionSlots}[/blue] potion {PotionSlots:plural:slot|..."
+            }
+          ]
+        },
+        {
+          "id": "REGALITE",
+          "name": "Regalite",
+          "changes": [
+            {
+              "field": "description",
+              "old": "Whenever you create a card, gain [blue]2[/blue] [gold]Block[/gold].",
+              "new": "The first time you create a card each turn, gain [blue]6[/blue] [gold]Block[/..."
+            },
+            {
+              "field": "description_raw",
+              "old": "Whenever you create a card, gain [blue]{Block}[/blue] [gold]Block[/gold].",
+              "new": "The first time you create a card each turn, gain [blue]{Block}[/blue] [gold]B..."
+            }
+          ]
+        },
+        {
+          "id": "SEAL_OF_GOLD",
+          "name": "Seal of Gold",
+          "changes": [
+            {
+              "field": "description",
+              "old": "At the start of your turn, spend [blue]5[/blue] [gold]Gold[/gold] to gain [en...",
+              "new": "At the start of your turn, spend [blue]3[/blue] [gold]Gold[/gold] to gain [en..."
+            }
+          ]
+        },
+        {
+          "id": "SIGNET_RING",
+          "name": "Signet Ring",
+          "changes": [
+            {
+              "field": "description",
+              "old": "Upon pickup, gain [blue]999[/blue] [gold]Gold[/gold].",
+              "new": "Upon pickup, gain [blue]888[/blue] [gold]Gold[/gold]."
+            }
+          ]
+        },
+        {
+          "id": "SOZU",
+          "name": "Sozu",
+          "changes": [
+            {
+              "field": "description",
+              "old": "Gain [energy:1] at the start of each turn. You can no longer obtain potions.",
+              "new": "Gain [energy:1] at the start of each turn. You can no longer obtain [gold]Pot..."
+            },
+            {
+              "field": "description_raw",
+              "old": "Gain {Energy:energyIcons()} at the start of each turn. You can no longer obta...",
+              "new": "Gain {Energy:energyIcons()} at the start of each turn. You can no longer obta..."
+            }
+          ]
+        },
+        {
+          "id": "TINY_MAILBOX",
+          "name": "Tiny Mailbox",
+          "changes": [
+            {
+              "field": "description",
+              "old": "Whenever you [gold]Rest[/gold], procure [blue]2[/blue] random potions.",
+              "new": "Whenever you [gold]Rest[/gold], procure [blue]2[/blue] random [gold]Potions[/..."
+            },
+            {
+              "field": "description_raw",
+              "old": "Whenever you [gold]Rest[/gold], procure [blue]2[/blue] random potions.",
+              "new": "Whenever you [gold]Rest[/gold], procure [blue]2[/blue] random [gold]Potions[/..."
+            }
+          ]
+        },
+        {
+          "id": "TOASTY_MITTENS",
+          "name": "Toasty Mittens",
+          "changes": [
+            {
+              "field": "description",
+              "old": "At the start of your turn, [gold]Exhaust[/gold] the top card of your [gold]Dr...",
+              "new": "At the start of your turn, [gold]Exhaust[/gold] [blue]1[/blue] card from your..."
+            },
+            {
+              "field": "description_raw",
+              "old": "At the start of your turn, [gold]Exhaust[/gold] the top card of your [gold]Dr...",
+              "new": "At the start of your turn, [gold]Exhaust[/gold] [blue]1[/blue] card from your..."
+            }
+          ]
+        },
+        {
+          "id": "WHITE_BEAST_STATUE",
+          "name": "White Beast Statue",
+          "changes": [
+            {
+              "field": "description",
+              "old": "Potions always appear in combat rewards.",
+              "new": "[gold]Potions[/gold] always appear in combat rewards."
+            },
+            {
+              "field": "description_raw",
+              "old": "Potions always appear in combat rewards.",
+              "new": "[gold]Potions[/gold] always appear in combat rewards."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "events",
+      "name": "Events",
+      "old_count": 66,
+      "new_count": 66,
+      "changed": [
+        {
+          "id": "BRAIN_LEECH",
+          "name": "Brain Leech",
+          "changes": [
+            {
+              "field": "pages[RIP].description",
+              "old": "You violently [jitter]rip the leech off your head[/jitter] and chuck it far f...",
+              "new": "You violently [jitter]rip the leech off your head[/jitter] and chuck it far f..."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "powers",
+      "name": "Powers",
+      "old_count": 265,
+      "new_count": 264,
+      "removed": [
+        {
+          "id": "OUTBREAK",
+          "name": "Outbreak"
+        }
+      ],
+      "changed": [
+        {
+          "id": "CHILD_OF_THE_STARS",
+          "name": "Child of the Stars",
+          "changes": [
+            {
+              "field": "description",
+              "old": "Gain [blue]1[/blue] [gold]Block[/gold] for each [star:1] spent.",
+              "new": "Gain [blue]2[/blue] [gold]Block[/gold] for each [star:1] spent."
+            },
+            {
+              "field": "description_raw",
+              "old": "Gain [blue]1[/blue] [gold]Block[/gold] for each {singleStarIcon} spent.",
+              "new": "Gain [blue]2[/blue] [gold]Block[/gold] for each {singleStarIcon} spent."
+            }
+          ]
+        },
+        {
+          "id": "PILLAR_OF_CREATION",
+          "name": "Pillar of Creation",
+          "changes": [
+            {
+              "field": "description",
+              "old": "The first time you create a card each turn, gain [blue][Amount][/blue] [gold]...",
+              "new": "Whenever you create a card, gain [blue][Amount][/blue] [gold]Block[/gold]."
+            },
+            {
+              "field": "description_raw",
+              "old": "The first time you create a card each turn, gain [blue]{Amount}[/blue] [gold]...",
+              "new": "Whenever you create a card, gain [blue]{Amount}[/blue] [gold]Block[/gold]."
+            }
+          ]
+        },
+        {
+          "id": "SLOW",
+          "name": "Slow",
+          "changes": [
+            {
+              "field": "description_raw",
+              "old": "none",
+              "new": "Whenever you play a card, {OnPlayer:you receive|this enemy receives} [blue]10..."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
