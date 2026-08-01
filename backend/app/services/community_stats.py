@@ -711,20 +711,35 @@ def _finalize_one(acc: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+# The game's campfire options, one per *RestSiteOption class in the decompiled
+# MegaCrit.Sts2.Core.Entities.RestSite namespace (identical on main and beta as
+# of v0.110.0). Mods register their own options (AUTOTHESPIRE-MERGE, TRADE,
+# GODREMOVE, ...) which land in run files like any other choice, so anything
+# outside this set must be dropped at finalize.
+_OFFICIAL_REST_OPTIONS = frozenset(
+    ("SMITH", "HEAL", "MEND", "DIG", "CLONE", "COOK", "LIFT", "HATCH", "KINDLE")
+)
+
+
 def _rest_sites(acc: dict[str, Any]) -> list[dict]:
     """Campfire choices with win correlation and HP-band shares.
 
     pct = share of all campfire decisions; pct_low_hp / pct_high_hp = share of
     decisions made while below / at-or-above 50% max HP (walking in); win_rate
     = how often runs that made this choice won. Keeps the original
-    id/label/count/pct keys so the site page is unaffected.
+    id/label/count/pct keys so the site page is unaffected. Official options
+    only, and the percentages are over the official total so dropped modded
+    picks don't dilute them.
     """
-    total = sum(rec[0] for rec in acc["rest"].values())
-    low_total = sum(rec[2] for rec in acc["rest"].values())
+    rest = {
+        c: rec for c, rec in acc["rest"].items() if c.upper() in _OFFICIAL_REST_OPTIONS
+    }
+    total = sum(rec[0] for rec in rest.values())
+    low_total = sum(rec[2] for rec in rest.values())
     high_total = total - low_total
     out = []
     for c, (count, wins, low) in sorted(
-        acc["rest"].items(), key=lambda kv: kv[1][0], reverse=True
+        rest.items(), key=lambda kv: kv[1][0], reverse=True
     ):
         out.append(
             {
