@@ -16,6 +16,18 @@ interface Category {
   count: number;
   images: ImageEntry[];
   formats?: string[];
+  // Present on the full-dump categories (game/<version>/ on the CDN):
+  // `images` is only a preview and the contents page through /browse.
+  browse?: { version: string; category: string };
+}
+
+interface BrowsePage {
+  path: string;
+  folders: string[];
+  total: number;
+  offset: number;
+  limit: number;
+  images: ImageEntry[];
 }
 
 const FORMAT_LABELS: Record<string, string> = {
@@ -103,6 +115,129 @@ function DownloadSplitButton({
             </div>
           )}
         </>
+      )}
+    </div>
+  );
+}
+
+function ImageTile({ img }: { img: ImageEntry }) {
+  const label = img.filename.replace(/\.(png|webp|gif|jpe?g)$/i, "").replace(/_/g, " ");
+  return (
+    <div className="group rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:border-[var(--border-accent)] transition-all overflow-hidden">
+      <div className="flex items-center justify-center p-2">
+        <img
+          src={imageUrl(img.url)}
+          alt={label}
+          crossOrigin="anonymous"
+          loading="lazy"
+          className="max-w-full object-contain group-hover:scale-105 transition-transform duration-300"
+        />
+      </div>
+      <div className="px-1.5 pb-1.5 text-center">
+        <span className="text-[10px] text-[var(--text-muted)] truncate block" title={img.filename}>
+          {label}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// Folder-aware pager for the full-dump categories: the contents live on the
+// CDN and page through /api/images/game/<version>/<category>/browse, so even
+// the six-figure card cross-product trees stay navigable.
+function GameBrowser({ version, category }: { version: string; category: string }) {
+  const [path, setPath] = useState("");
+  const [page, setPage] = useState<BrowsePage | null>(null);
+  const [images, setImages] = useState<ImageEntry[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setLoading(true);
+    setImages([]);
+    fetch(
+      `${API}/api/images/game/${version}/${category}/browse?path=${encodeURIComponent(path)}&offset=0&limit=200`
+    )
+      .then((r) => r.json())
+      .then((data: BrowsePage) => {
+        setPage(data);
+        setImages(data.images ?? []);
+      })
+      .finally(() => setLoading(false));
+  }, [version, category, path]);
+
+  function loadMore() {
+    if (!page) return;
+    setLoading(true);
+    fetch(
+      `${API}/api/images/game/${version}/${category}/browse?path=${encodeURIComponent(path)}&offset=${images.length}&limit=200`
+    )
+      .then((r) => r.json())
+      .then((data: BrowsePage) => setImages((prev) => [...prev, ...(data.images ?? [])]))
+      .finally(() => setLoading(false));
+  }
+
+  const crumbs = path ? path.split("/") : [];
+  return (
+    <div>
+      <div className="flex flex-wrap items-center gap-1.5 mb-3 text-xs">
+        <button
+          type="button"
+          onClick={() => setPath("")}
+          className={`px-2 py-0.5 rounded ${path === "" ? "text-[var(--accent-gold)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"}`}
+        >
+          {category}
+        </button>
+        {crumbs.map((seg, i) => (
+          <span key={i} className="flex items-center gap-1.5">
+            <span className="text-[var(--text-muted)]">/</span>
+            <button
+              type="button"
+              onClick={() => setPath(crumbs.slice(0, i + 1).join("/"))}
+              className={`px-1 py-0.5 rounded ${i === crumbs.length - 1 ? "text-[var(--accent-gold)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"}`}
+            >
+              {seg}
+            </button>
+          </span>
+        ))}
+        {page && (
+          <span className="ml-auto text-[var(--text-muted)]">
+            {page.total} files{page.folders.length > 0 ? `, ${page.folders.length} folders` : ""}
+          </span>
+        )}
+      </div>
+
+      {page && page.folders.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-3">
+          {page.folders.map((f) => (
+            <button
+              key={f}
+              type="button"
+              onClick={() => setPath(path ? `${path}/${f}` : f)}
+              className="px-2.5 py-1 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-xs text-[var(--text-secondary)] hover:border-[var(--border-accent)] hover:text-[var(--text-primary)] transition-colors"
+            >
+              {f}/
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+        {images.map((img) => (
+          <ImageTile key={img.url} img={img} />
+        ))}
+      </div>
+
+      {loading && <div className="text-center py-4 text-xs text-[var(--text-muted)]">Loading...</div>}
+      {!loading && page && images.length < page.total && (
+        <div className="text-center mt-4">
+          <button
+            type="button"
+            onClick={loadMore}
+            className="px-4 py-1.5 rounded-full text-xs font-medium border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:border-[var(--accent-gold)]/50 hover:text-[var(--text-primary)] transition-colors"
+          >
+            Load more ({images.length} of {page.total})
+          </button>
+        </div>
       )}
     </div>
   );
@@ -234,47 +369,39 @@ export default function ImagesPage() {
                     </span>
                   </div>
 
-                  <DownloadSplitButton
-                    categoryId={cat.id}
-                    betaVersion={selectedBetaVersion}
-                    formats={
-                      cat.formats ??
-                      Array.from(
-                        new Set(
-                          cat.images
-                            .map((img) => img.filename.split(".").pop()?.toLowerCase())
-                            .filter((ext): ext is string => Boolean(ext))
-                        )
-                      ).sort()
-                    }
-                  />
+                  {cat.browse ? (
+                    <span className="text-[10px] uppercase tracking-wider text-[var(--text-muted)]">
+                      {cat.browse.version}
+                    </span>
+                  ) : (
+                    <DownloadSplitButton
+                      categoryId={cat.id}
+                      betaVersion={selectedBetaVersion}
+                      formats={
+                        cat.formats ??
+                        Array.from(
+                          new Set(
+                            cat.images
+                              .map((img) => img.filename.split(".").pop()?.toLowerCase())
+                              .filter((ext): ext is string => Boolean(ext))
+                          )
+                        ).sort()
+                      }
+                    />
+                  )}
                 </div>
 
                 {isOpen && (
                   <div className="border-t border-[var(--border-subtle)] px-4 pb-4 pt-3">
-                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
-                      {cat.images.map((img) => (
-                        <div
-                          key={img.filename}
-                          className="group rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:border-[var(--border-accent)] transition-all overflow-hidden"
-                        >
-                          <div className="flex items-center justify-center p-2">
-                            <img
-                              src={imageUrl(img.url)}
-                              alt={img.filename.replace(/\.(png|webp|gif|jpe?g)$/i, "").replace(/_/g, " ")}
-                              crossOrigin="anonymous"
-                              loading="lazy"
-                              className="max-w-full object-contain group-hover:scale-105 transition-transform duration-300"
-                            />
-                          </div>
-                          <div className="px-1.5 pb-1.5 text-center">
-                            <span className="text-[10px] text-[var(--text-muted)] truncate block" title={img.filename}>
-                              {img.filename.replace(/\.(png|webp|gif|jpe?g)$/i, "").replace(/_/g, " ")}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                    {cat.browse ? (
+                      <GameBrowser version={cat.browse.version} category={cat.browse.category} />
+                    ) : (
+                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+                        {cat.images.map((img) => (
+                          <ImageTile key={img.filename} img={img} />
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

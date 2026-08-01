@@ -324,6 +324,7 @@ export default async function DevelopersPage() {
                 { method: "GET", path: "/api/exports/{lang}", desc: "ZIP of all entity JSON for one language" },
                 { method: "GET", path: "/api/images", desc: "Image gallery categories" },
                 { method: "GET", path: "/api/images/search", desc: "Search images by filename" },
+                { method: "GET", path: "/api/images/game/{version}/{category}/browse", desc: "Paged folder browsing of a full asset dump (path, offset, limit)" },
                 { method: "GET", path: "/api/images/{category}/download", desc: "ZIP download of an image category" },
               ],
             },
