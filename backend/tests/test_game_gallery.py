@@ -97,3 +97,37 @@ def test_search_skips_cross_products_and_language_copies(game_dump):
 
 def test_search_budget_zero(game_dump):
     assert images._search_game_images(["bash"], budget=0) == []
+
+
+def test_download_zips_one_folder(game_dump, monkeypatch):
+    monkeypatch.setattr(
+        images, "_fetch_game_file", lambda url: b"bytes:" + url.encode()
+    )
+    data, name = images._build_game_zip("v9.9.9", "cards", "deu")
+    assert name == "spire-codex-v9.9.9-cards-deu.zip"
+    import io as _io
+    import zipfile as _zipfile
+
+    with _zipfile.ZipFile(_io.BytesIO(data)) as zf:
+        assert sorted(zf.namelist()) == ["bash.webp", "zap.webp"]
+        assert (
+            zf.read("bash.webp").decode().endswith("/game/v9.9.9/cards/deu/bash.webp")
+        )
+
+
+def test_download_refuses_oversized_folders(game_dump, monkeypatch):
+    monkeypatch.setattr(images, "_ZIP_MAX_FILES", 1)
+    with pytest.raises(HTTPException) as exc:
+        images._build_game_zip("v9.9.9", "cards", "")
+    assert exc.value.status_code == 400
+
+
+def test_download_404s_like_browse(game_dump):
+    for args in (
+        ("v0.0.0", "cards", ""),
+        ("v9.9.9", "nope", ""),
+        ("v9.9.9", "cards", "missing"),
+    ):
+        with pytest.raises(HTTPException) as exc:
+            images._build_game_zip(*args)
+        assert exc.value.status_code == 404
