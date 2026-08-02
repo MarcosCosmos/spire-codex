@@ -102,7 +102,7 @@ const NAV_GROUPS: NavGroup[] = [
     links: [
       { href: "/tier-list-maker", label: "Tier List Maker" },
       { href: "/mod", label: "Steam Mod" },
-      { href: "https://steamcommunity.com/sharedfiles/filedetails/?id=3776092288", label: "Art Exporter" },
+      { href: "/exporter", label: "Art Exporter" },
       { href: "/overlay", label: "Overlay (Overwolf)" },
       { href: "/showcase", label: "Showcase" },
       { href: "/knowledge-demon", label: "Knowledge Demon", badge: "discord-bot" },

@@ -62,6 +62,7 @@ const LANG_LIST_ROUTES = [
   "images",
   "about",
   "mod",
+  "exporter",
   "overlay",
   "knowledge-demon",
   "giveaway",
