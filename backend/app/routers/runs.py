@@ -1251,6 +1251,10 @@ def get_entity_metrics(
     `character` (e.g. IRONCLAD) combines with any bracket, including the
     player x skill composites: `?bracket=solo:a10&character=IRONCLAD` is
     Ironclad's solo A10 table. Character rows carry Score and Win% only.
+    Character views also return `character_runs` / `character_wins`, that
+    character's own run count inside the bracket, next to the bracket-wide
+    `total_runs`, so clients can show the character's real share. Null when
+    the bracket carries no per-character split (daily/custom).
     """
     # Back-compat: ?cohort= was renamed to ?bracket=; honor the old name.
     if cohort is not None and bracket == "all":
