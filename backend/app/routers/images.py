@@ -1,493 +1,35 @@
-"""Image browsing and download API endpoints."""
+"""Image gallery API: the game's full asset dumps, served from the CDN.
 
+Each patch's complete asset dump lives on the CDN under
+game/<version>/<category>/. Far too big to inline in the category listing
+(hundreds of thousands of files), so categories return a preview plus a paged
+folder-browse endpoint and a per-folder zip download, all backed by the
+manifest.json.gz the upload pipeline writes next to the assets.
+data/image_dumps.json registers the dumps and which channel (main/beta) each
+one mirrors. The old backend/static gallery (and its per-category zips) is
+gone: the CDN is the only image source.
+"""
+
+import gzip
 import io
+import json
+import logging
+import os
 import re
+import time
+import urllib.request
 import zipfile
+from concurrent.futures import ThreadPoolExecutor
+from functools import lru_cache
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 router = APIRouter(prefix="/api/images", tags=["Images"])
-
-STATIC_DIR = Path(__file__).resolve().parents[2] / "static"
-IMAGES_DIR = STATIC_DIR / "images"
-BETA_DIR = IMAGES_DIR / "beta"
-VERSION_RE = re.compile(r"^v\d+\.\d+\.\d+(?:-beta)?$")
-
-
-def _available_beta_versions() -> list[str]:
-    """All selectable values for the /images version dropdown.
-
-    `main` is always offered as the first option — it maps to the stable
-    image tree (`static/images/cards/`, etc.) so users can grab whatever
-    is currently in the production game alongside any archived beta.
-    """
-    options = ["main"]
-    if not BETA_DIR.is_dir():
-        return options
-    versions = [
-        p.name for p in BETA_DIR.iterdir() if p.is_dir() and VERSION_RE.match(p.name)
-    ]
-    # Newest first so the dropdown defaults sensibly.
-    options.extend(
-        sorted(
-            versions,
-            key=lambda v: [int(x) for x in v.lstrip("v").split("-")[0].split(".")],
-            reverse=True,
-        )
-    )
-    return options
-
-
-def _resolve_beta_version(version: str | None) -> str | None:
-    """Validate `version` if given; otherwise resolve to whatever `latest` points at.
-
-    Returns "main" when the caller explicitly asked for the stable tree,
-    a `vX.Y.Z` string when asking for a specific beta archive, or None
-    if there's no beta tree at all (fresh install).
-    """
-    if version == "main":
-        return "main"
-    if version:
-        if not VERSION_RE.match(version):
-            raise HTTPException(
-                status_code=400, detail=f"Invalid version format: {version}"
-            )
-        if not (BETA_DIR / version).is_dir():
-            raise HTTPException(
-                status_code=404, detail=f"Beta version not found: {version}"
-            )
-        return version
-    latest = BETA_DIR / "latest"
-    if latest.is_symlink():
-        # readlink returns just the target (e.g. "v0.106.0"), not an absolute path.
-        return latest.readlink().name
-    # Fallback: pick the highest version directory if `latest` symlink is missing.
-    versions = [v for v in _available_beta_versions() if v != "main"]
-    return versions[0] if versions else None
-
-
-# Category definitions: id -> (display name, path relative to images/, recursive)
-CATEGORIES: dict[str, tuple[str, str, bool, list[str] | None]] = {
-    # id: (display_name, base_path, recursive, explicit_files_or_None)
-    "cards": ("Cards", "cards", False, None),
-    "characters": ("Characters", "characters", False, None),
-    "monsters": ("Monsters", "monsters", False, None),
-    "relics": ("Relics", "relics", False, None),
-    "potions": ("Potions", "potions", False, None),
-    "icons": ("Icons", "icons", False, None),
-    "ancients": ("Ancients", "misc/ancients", False, None),
-    "bosses": ("Bosses", "misc/bosses", False, None),
-    "badges": ("Badges", "badges", False, None),
-    "npcs": (
-        "NPCs",
-        "misc",
-        False,
-        ["neow-only.png", "tezcatara.png", "merchant.png", "fake_merchant.png"],
-    ),
-    "renders": ("Spine Renders", "renders", True, None),
-    "cards-beta": ("Cards (Beta Art)", "cards/beta", False, None),
-    "relics-beta": ("Relics (Beta Art)", "relics/beta", False, None),
-    "monsters-beta": ("Monsters (Beta Art)", "monsters/beta", False, None),
-    # ── Steam-beta-branch art (v0.104.0 and onward) ──────────────
-    # Mirrors the main image tree under a `beta/` prefix. Separate from
-    # Mega Crit's per-category `cards/beta/`, `relics/beta/`,
-    # `monsters/beta/` placeholder-art convention — those are their
-    # internal "art not yet done" fallbacks, unrelated to which game
-    # branch the image shipped on. Files here come from the Steam beta
-    # extraction and only match what's currently in-game on the beta
-    # branch; stable paths intentionally keep the previous art until
-    # Mega Crit promotes the patch.
-    "beta-cards": ("Cards (Steam Beta)", "beta/cards", False, None),
-    "beta-backgrounds": ("Backgrounds (Steam Beta)", "beta/misc", False, None),
-    "beta-monsters": (
-        "Monsters (Steam Beta)",
-        "beta/monsters",
-        True,
-        None,
-    ),
-    "beta-ui": ("UI (Steam Beta)", "beta/ui", True, None),
-    "beta-vfx": ("VFX (Steam Beta)", "beta/vfx", True, None),
-    "backgrounds": (
-        "Backgrounds",
-        "misc",
-        False,
-        [
-            "main_menu.png",
-            "main_menu_bg.png",
-            "sts2_logo.png",
-            "merchant.png",
-            # Ancient room backgrounds. Mega Crit labels Darv / Orobas /
-            # Tanx / Vakuu / Nonupeipe / Pael as `_placeholder.png` in
-            # `images/ancients/` since the final polished art isn't done,
-            # but the placeholders are what actually renders in-game today
-            # and players see them, so they're shippable. The Neow + room
-            # composite is freshly rendered from the
-            # `extraction/raw/animations/backgrounds/neow_room/` Spine
-            # scene at 2048x2048; the character-only render still lives
-            # at `misc/neow-only.png` and stays in the NPCs category.
-            "neow.png",
-            "tezcatara.png",
-            "darv.png",
-            "orobas.png",
-            "tanx.png",
-            "vakuu.png",
-            "nonupeipe.png",
-            "pael.png",
-            # Relic-inspect popup assets. `reward_panel.png` is the
-            # parchment background (reused from `images/ui/reward_screen/`),
-            # `relic_inspect_frame.png` is the gold corner ornaments
-            # (`images/packed/inspect_relic_screen/`), and
-            # `relic_inspect_inner.png` is a synthesized 340x340 fill
-            # matching the FrameBg modulate color from
-            # `inspect_relic_screen.tscn` — the game draws that surface
-            # procedurally (no asset file exists), this convenience PNG
-            # lets re-creations skip the alpha-blend step.
-            "reward_panel.png",
-            "relic_inspect_frame.png",
-            "relic_inspect_inner.png",
-        ],
-    ),
-    "character-backgrounds": (
-        "Character Backgrounds",
-        "misc/character_bg",
-        False,
-        # Clean per-character backdrops from `scenes/screens/char_select/`.
-        # silent + necrobinder come straight from the dedicated bg.png files
-        # in `animations/character_select/{char}/`. ironclad + defect render
-        # the bg-only slots (`bg`, `background*`) from their Spine skeletons.
-        # regent has no bg asset — its scene draws a flat ColorRect, so we
-        # generate a solid PNG matching the Color() value in the tscn.
-        ["ironclad.png", "silent.png", "defect.png", "necrobinder.png", "regent.png"],
-    ),
-    "intents": ("Intent Icons", "intents", False, None),
-    "ui-icons": ("UI Icons", "ui/icons", False, None),
-    "ui-energy": ("Energy Icons", "ui/energy", False, None),
-    "ui-boss": ("Boss Icons", "ui/boss", False, None),
-    "ui-characters": ("Character Icons", "ui/characters", False, None),
-    "ui-combat": ("Combat UI", "ui/combat", False, None),
-    "ui-rewards": ("Reward Icons", "ui/rewards", False, None),
-    "ui-map": ("Map Markers", "ui/map", False, None),
-    "ui-map-nodes": ("Map Node Icons", "ui/map_nodes", False, None),
-    "ui-map-rooms": ("Map Room Icons", "ui/map_rooms", False, None),
-    "ui-map-ancients": ("Ancient Node Icons", "ui/map_ancients", False, None),
-    "ui-menu": ("Menu Icons", "ui/menu", False, None),
-    "ui-cursors": ("Cursors", "ui/cursors", False, None),
-    "ui-crystal-sphere": ("Crystal Sphere", "ui/crystal_sphere", False, None),
-    "ui-top-bar": ("Top Bar Icons", "ui/top_bar", False, None),
-    "ui-animations": ("Idle Animations", "ui/animations", True, None),
-    "ui-animations-attack": (
-        "Attack Animations",
-        "ui/animations/monsters_attack",
-        False,
-        None,
-    ),
-    "ui-compendium": ("Compendium UI", "ui/compendium", True, None),
-    "ui-achievements": ("Achievement Icons", "ui/achievements", False, None),
-    "ui-modifiers": ("Custom Mode Modifiers", "ui/modifiers", False, None),
-    "ui-stats": ("Statistics Screen", "ui/stats", False, None),
-    "ui-map-backgrounds": ("Map Backgrounds", "ui/map_backgrounds", False, None),
-    "ui-run-history": ("Run History Icons", "ui/run_history", False, None),
-    "ui-misc": ("Misc UI", "ui/misc", False, None),
-}
-
-# Subdirectories to skip when scanning a category recursively. Keeps the
-# "Idle Animations" gallery from picking up the sibling `monsters_attack`
-# folder, which has its own dedicated "Attack Animations" category.
-EXCLUDED_SUBDIRS: dict[str, tuple[str, ...]] = {
-    "ui-animations": ("monsters_attack",),
-}
-
-
-def _get_images_for_category(
-    category_id: str, version: str | None = None
-) -> list[dict[str, str]]:
-    """Return list of image dicts for a category (all files on disk).
-
-    Beta categories (id starts with `beta-`) are version-aware: the
-    `base_path` from CATEGORIES is `beta/cards`, but on disk the file
-    actually lives at `beta/<version>/cards`. We splice the version
-    segment in here so CATEGORIES itself stays version-agnostic.
-    """
-    if category_id not in CATEGORIES:
-        return []
-
-    _display_name, base_path, recursive, explicit_files = CATEGORIES[category_id]
-
-    # For per-version beta categories, redirect to the right tree.
-    # `version` is resolved upstream; we only swap the path here.
-    # - "main" → drop the `beta/` prefix so we read from the stable tree
-    #   (e.g. `beta/cards` → `cards`). Lets users grab current production
-    #   assets via the same dropdown that lists archived betas.
-    # - "vX.Y.Z" → splice into the versioned beta subdir
-    #   (e.g. `beta/cards` → `beta/v0.106.0/cards`).
-    if category_id.startswith("beta-") and base_path.startswith("beta/"):
-        if version is None:
-            return []  # no beta versions on disk yet
-        rest = base_path[len("beta/") :]
-        if version == "main":
-            base_path = rest
-        else:
-            base_path = f"beta/{version}/{rest}"
-
-    dir_path = IMAGES_DIR / base_path
-
-    if not dir_path.exists():
-        return []
-
-    if explicit_files is not None:
-        # Only specific files from the directory
-        png_files = [dir_path / f for f in explicit_files if (dir_path / f).exists()]
-    elif recursive:
-        excluded = EXCLUDED_SUBDIRS.get(category_id, ())
-        png_files = sorted(
-            f
-            for ext in ("*.png", "*.gif", "*.webp")
-            for f in dir_path.rglob(ext)
-            if not any(part in excluded for part in f.relative_to(dir_path).parts)
-        )
-    else:
-        png_files = sorted(
-            [f for ext in ("*.png", "*.gif", "*.webp") for f in dir_path.glob(ext)]
-        )
-
-    images = []
-    for f in png_files:
-        rel = f.relative_to(STATIC_DIR)
-        images.append(
-            {
-                "filename": f.name,
-                "url": f"/static/{rel}",
-            }
-        )
-    return images
-
-
-# Display preference when an asset exists in multiple formats: prefer webp (smaller),
-# then gif (for animations), then png/jpg. Lower number = higher priority.
-_FORMAT_PRIORITY = {"webp": 0, "gif": 1, "png": 2, "jpg": 3, "jpeg": 3}
-
-
-def _dedupe_for_gallery(images: list[dict[str, str]]) -> list[dict[str, str]]:
-    """Collapse `foo.png` + `foo.webp` into a single entry (preferring webp).
-
-    Keeps the gallery view clean while leaving the underlying file list (used
-    for zip downloads + the `formats` field) untouched.
-    """
-    best: dict[str, dict[str, str]] = {}
-    for img in images:
-        name = img["filename"]
-        if "." not in name:
-            best[name] = img
-            continue
-        stem, ext = name.rsplit(".", 1)
-        ext = ext.lower()
-        # Group by the URL stem so assets in different subdirs don't collide.
-        key = img["url"].rsplit(".", 1)[0]
-        priority = _FORMAT_PRIORITY.get(ext, 99)
-        existing = best.get(key)
-        if existing is None:
-            best[key] = img
-            continue
-        existing_ext = existing["filename"].rsplit(".", 1)[-1].lower()
-        if priority < _FORMAT_PRIORITY.get(existing_ext, 99):
-            best[key] = img
-    return sorted(best.values(), key=lambda i: i["filename"])
-
-
-def _extensions_in(images: list[dict[str, str]]) -> list[str]:
-    """Return sorted unique file extensions (lowercase, no dot) present in the list."""
-    exts: set[str] = set()
-    for img in images:
-        name = img.get("filename", "")
-        if "." in name:
-            exts.add(name.rsplit(".", 1)[-1].lower())
-    return sorted(exts)
-
-
-@router.get("/search", tags=["Images"])
-def search_images(request: Request, search: str = "", limit: int = 10):
-    """Filename substring search across every image category.
-
-    Used by the global search modal so queries like "doormaker" surface image
-    results alongside entity pages. Matches every whitespace-separated token in
-    `search` against the basename (extension stripped, case-insensitive).
-
-    Results prefer the PNG sibling of any asset if one exists on disk — our
-    animated webp exports (monsters, spine renders) can render garbled when
-    opened directly, so search results route users to the static PNG instead.
-    Falls back to the gallery-preferred extension when no PNG is available.
-    Capped at `limit` (max 50).
-    """
-    q = (search or "").strip().lower()
-    if not q:
-        return []
-
-    tokens = [t for t in q.split() if t]
-    capped = max(1, min(limit, 50))
-
-    matches: list[dict[str, str]] = []
-    for cat_id, (display_name, *_) in CATEGORIES.items():
-        all_files = _get_images_for_category(cat_id)
-        # Build a map from url-stem -> png variant if present, so we can rewrite
-        # the deduped entry to point at the png when one exists.
-        png_by_stem: dict[str, dict[str, str]] = {}
-        for img in all_files:
-            if img["filename"].lower().endswith(".png"):
-                png_by_stem[img["url"].rsplit(".", 1)[0]] = img
-        # Include the category display name in the searchable haystack so
-        # queries like `darv background` or `tezcatara background` match
-        # against the Backgrounds gallery — without this, the only thing
-        # we matched against was the filename stem, so users searching for
-        # the kind of asset they wanted (alongside the name) got nothing.
-        cat_for_match = display_name.lower()
-        for img in _dedupe_for_gallery(all_files):
-            stem_name = img["filename"].rsplit(".", 1)[0]
-            stem_for_match = stem_name.replace("_", " ").lower()
-            haystack = f"{stem_for_match} {cat_for_match}"
-            if not all(tok in haystack for tok in tokens):
-                continue
-            url_stem = img["url"].rsplit(".", 1)[0]
-            preferred = png_by_stem.get(url_stem, img)
-            matches.append(
-                {
-                    # `id` + `name` keep the shape consistent with the other
-                    # entity search endpoints so the UI can reuse its row
-                    # rendering pipeline.
-                    "id": f"{cat_id}/{preferred['filename']}",
-                    "name": stem_name.replace("_", " "),
-                    "filename": preferred["filename"],
-                    "url": preferred["url"],
-                    "category_id": cat_id,
-                    "category_name": display_name,
-                }
-            )
-            if len(matches) >= capped:
-                return matches
-    matches.extend(_search_game_images(tokens, capped - len(matches)))
-    return matches
-
-
-@router.get("/beta/versions", tags=["Images"])
-def beta_versions():
-    """List the beta versions available under static/images/beta/.
-
-    Used by the /images version selector. `latest` is the symlink target.
-    """
-    versions = _available_beta_versions()
-    latest = _resolve_beta_version(None)
-    return {"versions": versions, "latest": latest}
-
-
-@router.get("", tags=["Images"])
-def list_image_categories(request: Request, version: str | None = None):
-    """Return all image categories with their contents.
-
-    The gallery listing dedupes `foo.png` + `foo.webp` to a single entry
-    (prefers webp) so the UI isn't noisy. The `formats` field still reflects
-    every extension on disk so the download split-button can offer PNG-only
-    zips.
-
-    `version=v0.106.0` scopes the `beta-*` categories to that ingest;
-    omit to use whatever `beta/latest` points at.
-
-    When `version=main`, the `beta-*` categories are skipped entirely —
-    they'd duplicate the stable categories (Cards, Monsters, etc.) that
-    already render from the same on-disk tree, making the page's total
-    counts misleading.
-    """
-    resolved_version = _resolve_beta_version(version)
-    skip_beta_categories = resolved_version == "main"
-    result = []
-    for cat_id, (display_name, *_) in CATEGORIES.items():
-        if skip_beta_categories and cat_id.startswith("beta-"):
-            continue
-        all_files = _get_images_for_category(cat_id, resolved_version)
-        display_images = _dedupe_for_gallery(all_files)
-        result.append(
-            {
-                "id": cat_id,
-                "name": display_name,
-                "count": len(display_images),
-                "images": display_images,
-                "formats": _extensions_in(all_files),
-            }
-        )
-    # The full-dump categories ride along regardless of the legacy version
-    # dropdown; their preview is capped and the browse endpoint pages the rest.
-    result.extend(_game_category_entries())
-    return result
-
-
-@router.get("/{category}/download", tags=["Images"])
-def download_category_zip(
-    category: str,
-    request: Request,
-    format: str | None = None,
-    version: str | None = None,
-):
-    """Download all images in a category as a zip file.
-
-    Optional `?format=` query param filters to a single extension (e.g. `png`,
-    `webp`, `gif`). Omit to include every file in the category. For beta
-    categories, `?version=v0.106.0` selects which patch's images to bundle.
-    """
-    if category not in CATEGORIES:
-        raise HTTPException(status_code=404, detail=f"Category '{category}' not found")
-
-    resolved_version = (
-        _resolve_beta_version(version) if category.startswith("beta-") else None
-    )
-    images = _get_images_for_category(category, resolved_version)
-    fmt = (format or "").lower().lstrip(".")
-    if fmt:
-        images = [img for img in images if img["filename"].lower().endswith(f".{fmt}")]
-
-    if not images:
-        detail = (
-            f"No {fmt.upper()} images found for category '{category}'"
-            if fmt
-            else f"No images found for category '{category}'"
-        )
-        raise HTTPException(status_code=404, detail=detail)
-
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        for img in images:
-            # Resolve the actual file path from the static URL
-            rel_path = img["url"].removeprefix("/static/")
-            file_path = STATIC_DIR / rel_path
-            if file_path.exists():
-                zf.write(file_path, arcname=img["filename"])
-    buf.seek(0)
-
-    suffix = f"-{fmt}" if fmt else ""
-    filename = f"spire-codex-{category}{suffix}.zip"
-    return StreamingResponse(
-        buf,
-        media_type="application/zip",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-    )
-
-
-# ── Full-dump gallery (game/<version>/ on the CDN, manifest-driven) ─────────
-# Each patch's complete asset dump lives on the CDN under
-# game/<version>/<category>/. Far too big to inline in the category listing
-# (hundreds of thousands of files), so these categories return a preview plus
-# a paged folder-browse endpoint, both backed by the manifest.json.gz the
-# upload pipeline writes next to the assets. data/image_dumps.json registers
-# the dumps and which channel (main/beta) each one mirrors.
-
-import gzip  # noqa: E402
-import json  # noqa: E402
-import logging  # noqa: E402
-import os  # noqa: E402
-import time  # noqa: E402
-import urllib.request  # noqa: E402
-from functools import lru_cache  # noqa: E402
-
 logger = logging.getLogger(__name__)
+
+VERSION_RE = re.compile(r"^v\d+\.\d+\.\d+(?:-beta)?$")
 
 GAME_CDN = os.environ.get("GAME_CDN_BASE", "https://cdn.spire-codex.com").rstrip("/")
 _REPO_DATA_DIR = Path(
@@ -516,6 +58,12 @@ GAME_CATEGORIES: dict[str, str] = {
 _GAME_SEARCH_SKIP = {"enchantments-cards", "afflictions-cards"}
 
 _GAME_PREVIEW_COUNT = 60
+
+# Per-folder zip ceiling: covers the English card renders (~1.2k) and every
+# cross-product subfolder, while keeping the in-memory zip bounded. Bigger
+# folders are downloaded subfolder by subfolder.
+_ZIP_MAX_FILES = 2000
+_ZIP_FETCH_WORKERS = 16
 
 
 @lru_cache(maxsize=1)
@@ -626,6 +174,45 @@ def _game_category_entries() -> list[dict]:
     return entries
 
 
+def _validated_folder(version: str, category: str, path: str) -> tuple[str, list[str]]:
+    """Shared browse/download validation: returns (clean_path, filenames)."""
+    if version not in _game_dump_versions():
+        raise HTTPException(status_code=404, detail=f"Unknown dump version: {version}")
+    if category not in GAME_CATEGORIES:
+        raise HTTPException(status_code=404, detail=f"Unknown category: {category}")
+    if not _game_manifest(version):
+        # Don't let a pre-upload request poison the folder-index cache.
+        raise HTTPException(status_code=404, detail=f"Dump not available: {version}")
+    clean_path = path.strip("/")
+    node = _game_folder_index(version, category).get(clean_path)
+    if node is None:
+        raise HTTPException(status_code=404, detail=f"Folder not found: {path}")
+    return clean_path, node[1]
+
+
+@router.get("", tags=["Images"])
+def list_image_categories(request: Request):
+    """Every registered dump's categories (main and beta channels), each with
+    a capped preview; the full contents page through the browse endpoint."""
+    return _game_category_entries()
+
+
+@router.get("/search", tags=["Images"])
+def search_images(request: Request, search: str = "", limit: int = 10):
+    """Filename substring search across the registered dumps.
+
+    Used by the global search modal so queries like "doormaker" surface image
+    results alongside entity pages. Matches every whitespace-separated token
+    in `search` against the path (extension stripped, case-insensitive).
+    Capped at `limit` (max 50)."""
+    q = (search or "").strip().lower()
+    if not q:
+        return []
+    tokens = [t for t in q.split() if t]
+    capped = max(1, min(limit, 50))
+    return _search_game_images(tokens, capped)
+
+
 @router.get("/game/{version}/{category}/browse", tags=["Images"])
 def browse_game_category(
     version: str,
@@ -635,21 +222,10 @@ def browse_game_category(
     limit: int = 200,
 ):
     """One folder of a dump category: subfolders plus a page of files."""
-    if version not in _game_dump_versions():
-        raise HTTPException(status_code=404, detail=f"Unknown dump version: {version}")
-    if category not in GAME_CATEGORIES:
-        raise HTTPException(status_code=404, detail=f"Unknown category: {category}")
-    if not _game_manifest(version):
-        # Don't let a pre-upload browse poison the folder-index cache.
-        raise HTTPException(status_code=404, detail=f"Dump not available: {version}")
-    idx = _game_folder_index(version, category)
-    clean_path = path.strip("/")
-    node = idx.get(clean_path)
-    if node is None:
-        raise HTTPException(status_code=404, detail=f"Folder not found: {path}")
+    clean_path, files = _validated_folder(version, category, path)
+    dirs = _game_folder_index(version, category)[clean_path][0]
     limit = max(1, min(limit, 500))
     offset = max(0, offset)
-    dirs, files = node
     prefix = f"{clean_path}/" if clean_path else ""
     return {
         "version": version,
@@ -666,10 +242,71 @@ def browse_game_category(
     }
 
 
+def _fetch_game_file(url: str) -> bytes:
+    """One CDN fetch for the zip builder, with a single retry: a transient
+    edge 5xx must not scrap an otherwise-complete archive."""
+    req = urllib.request.Request(url, headers={"User-Agent": "spire-codex-backend"})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return resp.read()
+    except Exception:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return resp.read()
+
+
+def _build_game_zip(version: str, category: str, path: str) -> tuple[bytes, str]:
+    """Validate a folder and zip its files (not its subfolders). Returns
+    (zip bytes, download filename). Folders above the size cap must be
+    downloaded subfolder by subfolder; a failed file fails the request
+    rather than shipping a silently incomplete archive."""
+    clean_path, files = _validated_folder(version, category, path)
+    if not files:
+        raise HTTPException(status_code=404, detail="Folder has no files")
+    if len(files) > _ZIP_MAX_FILES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Folder has {len(files)} files (max {_ZIP_MAX_FILES}); "
+            "download its subfolders individually",
+        )
+    prefix = f"{clean_path}/" if clean_path else ""
+    urls = [(f, _game_url(version, category, f"{prefix}{f}")) for f in files]
+    try:
+        with ThreadPoolExecutor(max_workers=_ZIP_FETCH_WORKERS) as ex:
+            blobs = list(ex.map(lambda fu: _fetch_game_file(fu[1]), urls))
+    except Exception:
+        logger.warning(
+            "game zip fetch failed: %s/%s/%s",
+            version,
+            category,
+            clean_path,
+            exc_info=True,
+        )
+        raise HTTPException(status_code=502, detail="Upstream fetch failed; try again")
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for (fname, _url), blob in zip(urls, blobs):
+            zf.writestr(fname, blob)
+    slug = clean_path.replace("/", "-")
+    zip_name = f"spire-codex-{version}-{category}{f'-{slug}' if slug else ''}.zip"
+    return buf.getvalue(), zip_name
+
+
+@router.get("/game/{version}/{category}/download", tags=["Images"])
+def download_game_folder(version: str, category: str, path: str = ""):
+    """Zip of one dump folder's files (not its subfolders); folders above
+    the size cap are downloaded subfolder by subfolder."""
+    data, zip_name = _build_game_zip(version, category, path)
+    return StreamingResponse(
+        io.BytesIO(data),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{zip_name}"'},
+    )
+
+
 def _search_game_images(tokens: list[str], budget: int) -> list[dict]:
-    """Filename matches across the registered dumps, same row shape as the
-    legacy search. Cross-products and localized card copies are skipped (see
-    _GAME_SEARCH_SKIP) so results stay one-hit-per-asset per dump."""
+    """Filename matches across the registered dumps. Cross-products and
+    localized card copies are skipped (see _GAME_SEARCH_SKIP) so results stay
+    one-hit-per-asset per dump."""
     if budget <= 0:
         return []
     matches: list[dict] = []

@@ -325,7 +325,7 @@ export default async function DevelopersPage() {
                 { method: "GET", path: "/api/images", desc: "Image gallery categories" },
                 { method: "GET", path: "/api/images/search", desc: "Search images by filename" },
                 { method: "GET", path: "/api/images/game/{version}/{category}/browse", desc: "Paged folder browsing of a full asset dump (path, offset, limit)" },
-                { method: "GET", path: "/api/images/{category}/download", desc: "ZIP download of an image category" },
+                { method: "GET", path: "/api/images/game/{version}/{category}/download", desc: "ZIP of one dump folder's files (path; capped at 2000 files)" },
               ],
             },
           ].map((group) => (
