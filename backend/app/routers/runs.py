@@ -1244,13 +1244,29 @@ def get_entity_metrics(
 
     `bracket` slices to a pre-built run bracket: `all` (default), `solo`,
     `2p`, `3p`, `4p`, `a10` (ascension 10), `daily`, `custom`, plus the
-    win-rate skill tiers `wr30`/`wr50`/`wr75`. Every bracket is materialized
-    in the same snapshot, so this stays a single cached read. `cohort` is a
-    deprecated alias for `bracket` (the param was renamed).
+    win-rate skill tiers `wr30`/`wr50`/`wr75`. Brackets also compose with
+    game versions: a bare version is a bracket (`?bracket=v0.110.0`), and
+    any key composes with one (`?bracket=solo:wr30:v0.110.0`); the versions
+    the snapshot carries are listed by `/api/runs/versions`, and without one
+    the table spans every patch. Every bracket is materialized in the same
+    snapshot, so this stays a single cached read. `cohort` is a deprecated
+    alias for `bracket` (the param was renamed).
+
+    Source data: every submitted run at Ascension 0-10 played on an official
+    character, all game modes included unless a mode bracket says otherwise,
+    minus runs hidden by moderation. The win-rate tiers count A10 runs from
+    submitters whose lifetime win rate (5-run minimum, on claimed runs)
+    beats the tier's threshold.
 
     `character` (e.g. IRONCLAD) combines with any bracket, including the
     player x skill composites: `?bracket=solo:a10&character=IRONCLAD` is
-    Ironclad's solo A10 table. Character rows carry Score and Win% only.
+    Ironclad's solo A10 table. Character rows carry Score and Win% only;
+    the reward-preference metrics (Elo, Pick%, offered/picked, per-act)
+    aren't tracked per character. Character views also return
+    `character_runs` / `character_wins`, that character's own run count
+    inside the bracket, next to the bracket-wide `total_runs`, so clients
+    can show the character's real share. Null when the bracket carries no
+    per-character split (daily/custom).
     """
     # Back-compat: ?cohort= was renamed to ?bracket=; honor the old name.
     if cohort is not None and bracket == "all":

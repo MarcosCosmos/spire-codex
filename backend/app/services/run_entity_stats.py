@@ -3205,6 +3205,22 @@ def get_entity_metrics_table(
         _bracket_prior(total_runs) if use_bracket and entity_type == "relics" else None
     )
 
+    # Character views also report that character's own run count within the
+    # bracket, so clients get a real denominator (total_runs stays the whole
+    # bracket). Read from the community blob's by_character split, which the
+    # snapshot already materializes per bracket; daily/custom carry no
+    # community blob, so those honestly return null instead of a guess.
+    character_runs = character_wins = None
+    if character:
+        from . import community_stats
+
+        blob = _pick_bracket_blob(_community_stats, bracket, community_stats.empty_one)
+        for ch in blob.get("by_character") or []:
+            if ch.get("id") == character.lower():
+                character_runs = ch.get("runs")
+                character_wins = ch.get("wins")
+                break
+
     # Player=All rows blend the per-player Elos (equal weight) instead of the
     # pooled fit, so a card's "All players" rating reflects every mode rather
     # than being dominated by solo volume. Maps the requested bracket to the
@@ -3370,6 +3386,8 @@ def get_entity_metrics_table(
         "character": character,
         "baseline_win_rate": round(baseline * 100, 1),
         "total_runs": total_runs,
+        "character_runs": character_runs,
+        "character_wins": character_wins,
         "rows": rows,
     }
 
