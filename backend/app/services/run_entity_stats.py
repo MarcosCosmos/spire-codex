@@ -290,7 +290,10 @@ _HISTORY_RETENTION_DAYS = 90
 # the skill tiers), so ?character= combines with any bracket on the metrics
 # endpoint — e.g. bracket=solo:a10&character=IRONCLAD (additive; the bump
 # forces the rebuild).
-SNAPSHOT_VERSION = 20
+# Version 21: community records (fastest win / longest run / biggest deck) only
+# count standard, modifier-free runs, so custom games can't hold them (the bump
+# forces the rebuild that drops the already-baked custom-run records).
+SNAPSHOT_VERSION = 21
 # Serialized-byte budget per persisted chunk doc. With version-composable
 # brackets a popular entity carries hundreds of per-bracket blocks and
 # entity sizes vary wildly (a card dwarfs an affliction), so chunks are

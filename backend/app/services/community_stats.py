@@ -263,17 +263,24 @@ def _accumulate_one(
         if kev:
             _bump(acc["deaths_event"], kev)
 
-    # Records.
-    run_time = blob.get("run_time")
-    if isinstance(run_time, (int, float)) and run_time > 0:
-        if is_win and (acc["fastest_win"] is None or run_time < acc["fastest_win"][0]):
-            acc["fastest_win"] = (int(run_time), run_hash)
-        if acc["longest_run"] is None or run_time > acc["longest_run"][0]:
-            acc["longest_run"] = (int(run_time), run_hash)
-    for player in blob.get("players") or []:
-        size = len(player.get("deck") or [])
-        if size and (acc["biggest_deck"] is None or size > acc["biggest_deck"][0]):
-            acc["biggest_deck"] = (size, run_hash)
+    # Records. Standard, modifier-free runs only: custom games (Sealed Deck,
+    # Hoarder, ...) produce absurd decks and times that would hold the
+    # record forever.
+    if (blob.get("game_mode") or "standard").lower() == "standard" and not blob.get(
+        "modifiers"
+    ):
+        run_time = blob.get("run_time")
+        if isinstance(run_time, (int, float)) and run_time > 0:
+            if is_win and (
+                acc["fastest_win"] is None or run_time < acc["fastest_win"][0]
+            ):
+                acc["fastest_win"] = (int(run_time), run_hash)
+            if acc["longest_run"] is None or run_time > acc["longest_run"][0]:
+                acc["longest_run"] = (int(run_time), run_hash)
+        for player in blob.get("players") or []:
+            size = len(player.get("deck") or [])
+            if size and (acc["biggest_deck"] is None or size > acc["biggest_deck"][0]):
+                acc["biggest_deck"] = (size, run_hash)
 
     # Map danger: per (act, node type), tally visits, HP% lost, and deaths. The death is
     # attributed to the run's final visited node, but only when the blob says the player
@@ -608,9 +615,13 @@ def _finalize_one(acc: dict[str, Any]) -> dict[str, Any]:
         # Official options only: mods inject extra picks into official events
         # (every installed card-pool mod shows up as a Colorful Philosophers
         # option), so anything outside the event's own option tree is dropped
-        # and the percentages are computed over the real options.
-        allowed = ev_opt_ids.get(eid) or set()
-        if allowed:
+        # and the percentages are computed over the real options. Events whose
+        # catalog tree has no options at all (the Ancient dialogues, Neow, ...)
+        # never record choices in vanilla runs, so an empty allowlist drops
+        # everything rather than letting a modded response through unfiltered.
+        # Only skipped when the catalog itself failed to load.
+        if ev_opt_ids:
+            allowed = ev_opt_ids.get(eid) or set()
             opts = {oid: n for oid, n in opts.items() if oid.upper() in allowed}
         total = sum(opts.values())
         if total <= 0:
@@ -704,20 +715,35 @@ def _finalize_one(acc: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+# The game's campfire options, one per *RestSiteOption class in the decompiled
+# MegaCrit.Sts2.Core.Entities.RestSite namespace (identical on main and beta as
+# of v0.110.0). Mods register their own options (AUTOTHESPIRE-MERGE, TRADE,
+# GODREMOVE, ...) which land in run files like any other choice, so anything
+# outside this set must be dropped at finalize.
+_OFFICIAL_REST_OPTIONS = frozenset(
+    ("SMITH", "HEAL", "MEND", "DIG", "CLONE", "COOK", "LIFT", "HATCH", "KINDLE")
+)
+
+
 def _rest_sites(acc: dict[str, Any]) -> list[dict]:
     """Campfire choices with win correlation and HP-band shares.
 
     pct = share of all campfire decisions; pct_low_hp / pct_high_hp = share of
     decisions made while below / at-or-above 50% max HP (walking in); win_rate
     = how often runs that made this choice won. Keeps the original
-    id/label/count/pct keys so the site page is unaffected.
+    id/label/count/pct keys so the site page is unaffected. Official options
+    only, and the percentages are over the official total so dropped modded
+    picks don't dilute them.
     """
-    total = sum(rec[0] for rec in acc["rest"].values())
-    low_total = sum(rec[2] for rec in acc["rest"].values())
+    rest = {
+        c: rec for c, rec in acc["rest"].items() if c.upper() in _OFFICIAL_REST_OPTIONS
+    }
+    total = sum(rec[0] for rec in rest.values())
+    low_total = sum(rec[2] for rec in rest.values())
     high_total = total - low_total
     out = []
     for c, (count, wins, low) in sorted(
-        acc["rest"].items(), key=lambda kv: kv[1][0], reverse=True
+        rest.items(), key=lambda kv: kv[1][0], reverse=True
     ):
         out.append(
             {

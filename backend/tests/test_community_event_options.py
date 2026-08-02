@@ -54,3 +54,13 @@ def test_finalize_keeps_multi_stage_options():
     ev = next(e for e in out["events"] if e["id"] == "SLIPPERY_BRIDGE")
     assert {o["id"] for o in ev["options"]} == {"OVERCOME", "HOLD_ON_3"}
     assert ev["total"] == 9
+
+
+def test_empty_allowlist_fails_closed():
+    # The Ancient dialogues (NEOW, DARV, ...) have no options in the catalog
+    # tree and vanilla runs never record choices for them, so anything that
+    # shows up there is a modded response and the whole event must drop.
+    acc = community_stats._new_acc_one()
+    acc["events"]["NEOW"] = {"MOD_BLESSING_OF_SPEED": 7}
+    out = community_stats._finalize_one(acc)
+    assert not any(e["id"] == "NEOW" for e in out["events"])
