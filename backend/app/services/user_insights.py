@@ -87,6 +87,18 @@ def _attach_community(mine: dict[str, Any], community: dict[str, Any]) -> None:
             comm = comm_danger.get((act_row.get("act"), ptype))
             cell["community_death_rate"] = (comm or {}).get("death_rate")
 
+    # Characters: the community's win rate and run share per character, so
+    # the merged overview renders "your Silent vs everyone's Silent".
+    comm_chars = {
+        r["id"]: r
+        for r in community.get("by_character") or []
+        if isinstance(r, dict) and r.get("id")
+    }
+    for r in mine.get("by_character") or []:
+        comm = comm_chars.get(r.get("id"))
+        r["community_win_rate"] = (comm or {}).get("win_rate")
+        r["community_share"] = (comm or {}).get("share")
+
     # Deaths: how often the same encounter/event kills everyone else.
     deaths = community.get("deaths") or {}
     for key in ("encounters", "events"):

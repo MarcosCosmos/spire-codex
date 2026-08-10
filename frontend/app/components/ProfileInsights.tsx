@@ -103,8 +103,54 @@ interface ActivityWeek {
   custom: number;
 }
 
+interface CharacterRow {
+  id: string;
+  name?: string;
+  runs: number;
+  wins: number;
+  win_rate: number;
+  share: number;
+  community_win_rate?: number | null;
+  community_share?: number | null;
+}
+
+export interface PersonalBest {
+  run_hash: string;
+  character: string;
+  run_time: number;
+  ascension: number;
+  floors_reached: number;
+}
+
+export interface PersonalBests {
+  fastest_solo?: PersonalBest;
+  fastest_multi?: PersonalBest;
+  highest_ascension?: PersonalBest;
+  todays_daily?: PersonalBest;
+  fastest_daily?: PersonalBest;
+}
+
+export interface DailyEntry {
+  run_hash: string;
+  username: string | null;
+  character: string;
+  run_time: number;
+  ascension: number;
+  is_current_user: boolean;
+}
+
+export interface DailyBoard {
+  runs: DailyEntry[];
+  user_rank: number | null;
+  total_today: number;
+}
+
 export interface Insights {
   total_runs: number;
+  total_wins?: number;
+  total_losses?: number;
+  win_rate?: number;
+  by_character?: CharacterRow[];
   runs_walked: number;
   runs_capped?: boolean;
   deaths?: { encounters?: ComparableRow[]; events?: ComparableRow[] };
@@ -578,9 +624,46 @@ function DeathColumn({ title, rows, lang }: { title: string; rows: ComparableRow
   );
 }
 
-// The full insights layout, shared between the signed-in profile tab and the
-// public /players page (which passes the same payload shape).
-export function InsightsPanels({ data, cards, lang }: { data: Insights; cards: Record<string, EntityInfo>; lang: string }) {
+function displayCharacter(id: string): string {
+  const bare = id.replace(/^CHARACTER\./, "").replace(/_/g, " ").toLowerCase();
+  return bare.charAt(0).toUpperCase() + bare.slice(1);
+}
+
+function BestTile({ href, value, label, sub, rank }: { href: string; value: string; label: string; sub?: string; rank?: { rank: number; total: number } | null }) {
+  return (
+    <Link href={href} className="bg-[var(--bg-primary)] rounded-lg p-3 text-center hover:bg-[var(--bg-card-hover)] transition-colors">
+      <p className="text-lg font-bold text-[var(--text-primary)] tabular-nums">{value}</p>
+      <p className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] mt-0.5">{label}</p>
+      {(sub || rank) && (
+        <p className="text-[10px] text-[var(--text-tertiary)] mt-0.5">
+          {sub}
+          {rank?.rank ? (
+            <span className="text-[var(--accent-gold)]"> #{rank.rank.toLocaleString()}<span className="text-[var(--text-muted)]"> / {rank.total.toLocaleString()}</span></span>
+          ) : null}
+        </p>
+      )}
+    </Link>
+  );
+}
+
+// The full merged overview+insights layout, shared between the signed-in
+// profile tab and the public /players page. `bests`, `personalRanks`, and
+// `daily` are self-only extras; the public page simply omits them.
+export function InsightsPanels({
+  data,
+  cards,
+  lang,
+  bests,
+  personalRanks,
+  daily,
+}: {
+  data: Insights;
+  cards: Record<string, EntityInfo>;
+  lang: string;
+  bests?: PersonalBests | null;
+  personalRanks?: Record<string, { rank: number; total: number } | null>;
+  daily?: DailyBoard | null;
+}) {
   const lp = useLangPrefix();
   const deathsEnc = data.deaths?.encounters || [];
   const bosses = deathsEnc.filter((d) => d.id.endsWith("_BOSS")).slice(0, 5);
@@ -597,9 +680,26 @@ export function InsightsPanels({ data, cards, lang }: { data: Insights; cards: R
   const pct = data.percentiles;
   const streaks = data.streaks;
   const hasRecords = records.fastest_win || records.longest_run || records.biggest_deck;
+  const hasBests = bests && Object.values(bests).some(Boolean);
+  const characters = (data.by_character || []).filter((c) => c.runs > 0);
+  const losses = data.total_losses ?? (data.total_wins != null ? data.total_runs - data.total_wins : null);
 
   return (
     <div className="space-y-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          [t("Runs", lang), data.total_runs],
+          [t("Wins", lang), data.total_wins ?? 0],
+          [t("Losses", lang), losses ?? 0],
+          [t("Win rate", lang), `${data.win_rate ?? 0}%`],
+        ].map(([label, value]) => (
+          <div key={String(label)} className="bg-[var(--bg-card)] rounded-lg border border-[var(--border-subtle)] p-4 text-center">
+            <p className="text-2xl font-bold text-[var(--accent-gold)] tabular-nums">{value}</p>
+            <p className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] mt-1">{label}</p>
+          </div>
+        ))}
+      </div>
+
       {(pct || streaks) && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {pct && (
@@ -627,28 +727,102 @@ export function InsightsPanels({ data, cards, lang }: { data: Insights; cards: R
         </div>
       )}
 
-      {hasRecords && (
-        <Section title={t("Your records", lang)}>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {records.fastest_win && (
-              <Link href={`${lp}/runs/${records.fastest_win.run_hash}`} className="bg-[var(--bg-primary)] rounded-lg p-3 text-center hover:bg-[var(--bg-card-hover)] transition-colors">
-                <p className="text-lg font-bold text-[var(--text-primary)] tabular-nums">{formatTime(records.fastest_win.run_time)}</p>
-                <p className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] mt-0.5">{t("Fastest win", lang)}</p>
-              </Link>
+      {(hasRecords || hasBests) && (
+        <Section title={t("Personal Bests", lang)}>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {bests?.fastest_solo && (
+              <BestTile href={`${lp}/runs/${bests.fastest_solo.run_hash}`} value={formatTime(bests.fastest_solo.run_time)} label={t("Fastest Solo", lang)} sub={`${displayCharacter(bests.fastest_solo.character)} A${bests.fastest_solo.ascension}`} rank={personalRanks?.fastest_solo} />
+            )}
+            {bests?.fastest_multi && (
+              <BestTile href={`${lp}/runs/${bests.fastest_multi.run_hash}`} value={formatTime(bests.fastest_multi.run_time)} label={t("Fastest Co-op", lang)} sub={`${displayCharacter(bests.fastest_multi.character)} A${bests.fastest_multi.ascension}`} rank={personalRanks?.fastest_multi} />
+            )}
+            {bests?.highest_ascension && (
+              <BestTile href={`${lp}/runs/${bests.highest_ascension.run_hash}`} value={`A${bests.highest_ascension.ascension}`} label={t("Highest Ascension", lang)} sub={displayCharacter(bests.highest_ascension.character)} rank={personalRanks?.highest_ascension} />
+            )}
+            {bests?.fastest_daily && (
+              <BestTile href={`${lp}/runs/${bests.fastest_daily.run_hash}`} value={formatTime(bests.fastest_daily.run_time)} label={t("Fastest Daily (All Time)", lang)} sub={displayCharacter(bests.fastest_daily.character)} rank={personalRanks?.fastest_daily} />
+            )}
+            {!bests?.fastest_solo && records.fastest_win && (
+              <BestTile href={`${lp}/runs/${records.fastest_win.run_hash}`} value={formatTime(records.fastest_win.run_time)} label={t("Fastest win", lang)} />
             )}
             {records.longest_run && (
-              <Link href={`${lp}/runs/${records.longest_run.run_hash}`} className="bg-[var(--bg-primary)] rounded-lg p-3 text-center hover:bg-[var(--bg-card-hover)] transition-colors">
-                <p className="text-lg font-bold text-[var(--text-primary)] tabular-nums">{formatTime(records.longest_run.run_time)}</p>
-                <p className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] mt-0.5">{t("Longest run", lang)}</p>
-              </Link>
+              <BestTile href={`${lp}/runs/${records.longest_run.run_hash}`} value={formatTime(records.longest_run.run_time)} label={t("Longest run", lang)} />
             )}
             {records.biggest_deck && (
-              <Link href={`${lp}/runs/${records.biggest_deck.run_hash}`} className="bg-[var(--bg-primary)] rounded-lg p-3 text-center hover:bg-[var(--bg-card-hover)] transition-colors">
-                <p className="text-lg font-bold text-[var(--text-primary)] tabular-nums">
-                  {records.biggest_deck.size} {t("cards", lang)}
-                </p>
-                <p className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] mt-0.5">{t("Biggest deck", lang)}</p>
+              <BestTile href={`${lp}/runs/${records.biggest_deck.run_hash}`} value={`${records.biggest_deck.size} ${t("cards", lang)}`} label={t("Biggest deck", lang)} />
+            )}
+          </div>
+        </Section>
+      )}
+
+      {characters.length > 0 && (
+        <Section title={t("Characters", lang)}>
+          <div className="space-y-3">
+            {characters.map((c) => {
+              const hex = CHARACTER_HEX[c.id.toLowerCase()] || "var(--text-muted)";
+              return (
+                <div key={c.id} className="space-y-1">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium" style={{ color: hex }}>
+                      {c.name || displayCharacter(c.id)}
+                    </span>
+                    <span className="text-xs text-[var(--text-tertiary)] tabular-nums">
+                      {c.runs} {t("runs", lang)} · {c.share}%
+                    </span>
+                  </div>
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="w-16 text-[10px] text-[var(--text-tertiary)]">{t("You", lang)}</span>
+                      <div className="flex-1 h-1.5 rounded-full bg-[var(--bg-primary)] overflow-hidden">
+                        <div className="h-full rounded-full" style={{ width: `${Math.min(c.win_rate, 100)}%`, backgroundColor: hex }} />
+                      </div>
+                      <span className="w-12 text-right text-[10px] tabular-nums text-[var(--text-primary)]">{c.win_rate}%</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-16 text-[10px] text-[var(--text-tertiary)]">{t("Community", lang)}</span>
+                      <div className="flex-1 h-1.5 rounded-full bg-[var(--bg-primary)] overflow-hidden">
+                        <div className="h-full rounded-full opacity-40" style={{ width: `${Math.min(c.community_win_rate ?? 0, 100)}%`, backgroundColor: hex }} />
+                      </div>
+                      <span className="w-12 text-right text-[10px] tabular-nums text-[var(--text-tertiary)]">
+                        {c.community_win_rate != null ? `${c.community_win_rate}%` : "—"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Section>
+      )}
+
+      {daily && daily.runs.length > 0 && (
+        <Section title={t("Today's Daily Climb", lang)}>
+          <div className="space-y-1">
+            {daily.runs.map((entry, i) => (
+              <Link
+                key={entry.run_hash}
+                href={`${lp}/runs/${entry.run_hash}`}
+                className={`flex items-center gap-3 text-sm px-2 -mx-2 py-1.5 rounded transition-colors ${
+                  entry.is_current_user
+                    ? "bg-[var(--accent-gold)]/10 hover:bg-[var(--accent-gold)]/15"
+                    : "hover:bg-[var(--bg-card-hover)]"
+                }`}
+              >
+                <span className="w-5 text-right text-xs text-[var(--text-tertiary)] tabular-nums">{i + 1}</span>
+                <span className={`flex-1 truncate ${entry.is_current_user ? "text-[var(--accent-gold)] font-medium" : "text-[var(--text-primary)]"}`}>
+                  {entry.username || t("Anonymous", lang)}
+                </span>
+                <span className="text-xs tabular-nums" style={{ color: CHARACTER_HEX[entry.character.toLowerCase()] || "var(--text-tertiary)" }}>
+                  {displayCharacter(entry.character)}
+                </span>
+                <span className="text-xs text-[var(--text-primary)] tabular-nums font-medium">{formatTime(entry.run_time)}</span>
               </Link>
+            ))}
+            {daily.user_rank != null && daily.user_rank > 10 && (
+              <div className="flex items-center gap-3 text-sm px-2 -mx-2 py-1.5 rounded bg-[var(--accent-gold)]/10">
+                <span className="w-5 text-right text-xs text-[var(--text-tertiary)] tabular-nums">{daily.user_rank}</span>
+                <span className="flex-1 text-[var(--accent-gold)] font-medium">{t("You", lang)}</span>
+              </div>
             )}
           </div>
         </Section>
@@ -755,7 +929,15 @@ export function useCardMap(): Record<string, EntityInfo> {
   return cards;
 }
 
-export default function ProfileInsights() {
+export default function ProfileInsights({
+  bests,
+  personalRanks,
+  daily,
+}: {
+  bests?: PersonalBests | null;
+  personalRanks?: Record<string, { rank: number; total: number } | null>;
+  daily?: DailyBoard | null;
+} = {}) {
   const { lang } = useLanguage();
   const [data, setData] = useState<Insights | null>(null);
   const [loading, setLoading] = useState(true);
@@ -804,7 +986,14 @@ export default function ProfileInsights() {
         <CharacterPicker value={character} onChange={setCharacter} lang={lang} />
       </div>
       {data && data.runs_walked ? (
-        <InsightsPanels data={data} cards={cards} lang={lang} />
+        <InsightsPanels
+          data={data}
+          cards={cards}
+          lang={lang}
+          bests={character ? undefined : bests}
+          personalRanks={character ? undefined : personalRanks}
+          daily={character ? undefined : daily}
+        />
       ) : (
         <p className="text-sm text-[var(--text-secondary)] py-4">{t("Not enough data yet.", lang)}</p>
       )}
