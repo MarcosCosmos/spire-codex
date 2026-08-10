@@ -146,14 +146,16 @@ def _event_divergence(mine: dict[str, Any]) -> list[dict]:
     return out[:_TOP_EVENT_DELTAS]
 
 
-def _card_pick_deltas(user_id: str) -> dict[str, list[dict]]:
+def _card_pick_deltas(
+    user_id: str, character: str | None = None
+) -> dict[str, list[dict]]:
     """The player's card-reward keep rates vs the community's, split into the
     cards they take notably more / less often. Community side comes from the
     in-memory metrics snapshot, so only cards that pass its catalog and
     non-draftable filters can appear."""
     from .runs_db_mongo import get_user_card_pick_tallies
 
-    picks = get_user_card_pick_tallies(user_id) or {}
+    picks = get_user_card_pick_tallies(user_id, character=character) or {}
     table = get_entity_metrics_table("cards")
     comm = {
         r["id"]: r["pick_rate"]
@@ -282,18 +284,36 @@ def _percentiles(username: str | None) -> dict[str, Any] | None:
     }
 
 
-def get_user_insights(user_id: str, username: str | None = None) -> dict[str, Any]:
+def _bare_character(raw: str | None) -> str:
+    """`CHARACTER.DEFECT` / `defect` -> `DEFECT`."""
+    return (raw or "").rsplit(".", 1)[-1].upper()
+
+
+def get_user_insights(
+    user_id: str, username: str | None = None, character: str | None = None
+) -> dict[str, Any]:
     """The signed-in account's personal community-stats blob plus community
     comparison fields, over its claimed runs. Shape mirrors /community-stats
     with extras: card_picks (over/under-picked vs the crowd) and
-    event_divergence."""
-    cached = _cache_get(user_id)
+    event_divergence.
+
+    `character` scopes the whole walk to that character's runs. The community
+    comparison fields stay all-community (per-character community blobs
+    aren't materialized) except card pick rates, which are inherently
+    character-scoped: a card is only ever offered to its own character.
+    Percentiles are omitted when filtered - the ranking map is overall-only,
+    so showing it against a character slice would mislead."""
+    character = (character or "").strip().upper() or None
+    cache_key = f"{user_id}:{character or ''}"
+    cached = _cache_get(cache_key)
     if cached is not None:
         return cached
 
     from .runs_db_mongo import get_run_blobs, get_user_run_rows
 
     rows = get_user_run_rows(user_id, limit=_MAX_RUNS)
+    if character:
+        rows = [r for r in rows if _bare_character(r.get("character")) == character]
     acc = community_stats._new_acc_one()
     walked = 0
     for i in range(0, len(rows), 300):
@@ -325,19 +345,23 @@ def get_user_insights(user_id: str, username: str | None = None) -> dict[str, An
     _attach_community(mine, community)
     mine["event_divergence"] = _event_divergence(mine)
     try:
-        mine["card_picks"] = _card_pick_deltas(user_id)
+        mine["card_picks"] = _card_pick_deltas(user_id, character)
     except Exception:
         logger.warning("user-insights card deltas failed", exc_info=True)
         mine["card_picks"] = {"over_picked": [], "under_picked": []}
     mine["streaks"] = _streaks(rows)
     mine["activity"] = _activity(rows)
-    try:
-        mine["percentiles"] = _percentiles(username)
-    except Exception:
-        logger.warning("user-insights percentiles failed", exc_info=True)
+    if character:
         mine["percentiles"] = None
+    else:
+        try:
+            mine["percentiles"] = _percentiles(username)
+        except Exception:
+            logger.warning("user-insights percentiles failed", exc_info=True)
+            mine["percentiles"] = None
+    mine["character"] = character
     mine["runs_walked"] = walked
     mine["runs_capped"] = len(rows) >= _MAX_RUNS
 
-    _cache_put(user_id, mine)
+    _cache_put(cache_key, mine)
     return mine

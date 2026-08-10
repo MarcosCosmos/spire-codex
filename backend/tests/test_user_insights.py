@@ -12,7 +12,7 @@ def _fake_backend(monkeypatch, rows, blobs, community, table, tallies):
         runs_db_mongo, "get_run_blobs", lambda hashes: {h: blobs[h] for h in hashes}
     )
     monkeypatch.setattr(
-        runs_db_mongo, "get_user_card_pick_tallies", lambda uid: tallies
+        runs_db_mongo, "get_user_card_pick_tallies", lambda uid, character=None: tallies
     )
     monkeypatch.setattr(user_insights, "get_community_stats", lambda: community)
     monkeypatch.setattr(user_insights, "get_entity_metrics_table", lambda etype: table)
@@ -86,7 +86,9 @@ def test_insights_cached_per_user(monkeypatch):
 
     monkeypatch.setattr(runs_db_mongo, "get_user_run_rows", rows)
     monkeypatch.setattr(runs_db_mongo, "get_run_blobs", lambda h: {})
-    monkeypatch.setattr(runs_db_mongo, "get_user_card_pick_tallies", lambda uid: {})
+    monkeypatch.setattr(
+        runs_db_mongo, "get_user_card_pick_tallies", lambda uid, character=None: {}
+    )
     monkeypatch.setattr(user_insights, "get_community_stats", lambda: {})
     monkeypatch.setattr(
         user_insights, "get_entity_metrics_table", lambda etype: {"rows": []}
@@ -185,3 +187,50 @@ def test_percentiles_use_qualifying_floor(monkeypatch):
     assert out["runs_percentile"] == 33
     assert user_insights._percentiles("tiny") is None
     assert user_insights._percentiles(None) is None
+
+
+def test_character_filter_scopes_walk_and_cache(monkeypatch):
+    rows = [
+        {
+            "run_hash": "r1",
+            "win": True,
+            "character": "CHARACTER.IRONCLAD",
+            "ascension": 10,
+        },
+        {"run_hash": "r2", "win": False, "character": "SILENT", "ascension": 10},
+    ]
+    blobs = {
+        "r1": {"game_mode": "standard", "run_time": 900, "players": [{"deck": []}]},
+        "r2": {"game_mode": "standard", "run_time": 800, "players": [{"deck": []}]},
+    }
+    seen_chars = []
+
+    def tallies(uid, character=None):
+        seen_chars.append(character)
+        return {}
+
+    monkeypatch.setattr(runs_db_mongo, "get_user_run_rows", lambda uid, limit: rows)
+    monkeypatch.setattr(
+        runs_db_mongo, "get_run_blobs", lambda hashes: {h: blobs[h] for h in hashes}
+    )
+    monkeypatch.setattr(runs_db_mongo, "get_user_card_pick_tallies", tallies)
+    monkeypatch.setattr(user_insights, "get_community_stats", lambda: {})
+    monkeypatch.setattr(
+        user_insights, "get_entity_metrics_table", lambda etype: {"rows": []}
+    )
+    monkeypatch.setattr(
+        runs_db_mongo, "get_user_winrates", lambda: {"p": [10, 5], "q": [10, 4]}
+    )
+    user_insights._cache.clear()
+
+    everything = user_insights.get_user_insights("u1", username="p")
+    ironclad = user_insights.get_user_insights("u1", username="p", character="ironclad")
+    assert everything["runs_walked"] == 2
+    assert ironclad["runs_walked"] == 1
+    assert ironclad["character"] == "IRONCLAD"
+    # Card tallies got the same scope; percentiles hide on filtered views.
+    assert seen_chars == [None, "IRONCLAD"]
+    assert everything["percentiles"] is not None
+    assert ironclad["percentiles"] is None
+    # Distinct cache entries per scope.
+    assert user_insights.get_user_insights("u1", username="p")["runs_walked"] == 2

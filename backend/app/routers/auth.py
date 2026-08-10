@@ -323,19 +323,29 @@ def _compute_personal_bests(username: str) -> dict:
 
 @router.get("/insights")
 @limiter.limit(rate_limit_config.endpoint_limit("auth.user_insights", "10/minute"))
-def user_insights(request: Request, response: Response):
+def user_insights(request: Request, response: Response, character: str | None = None):
     """The signed-in player's personal community-stats: their runs walked
     through the same accumulator as /community-stats (deaths, campfires,
     event decisions, boon take rates, records) with the community's numbers
-    attached for comparison, plus card-pick divergence. Self-only."""
+    attached for comparison, plus card-pick divergence. Self-only.
+    `character` (e.g. IRONCLAD) scopes the whole view to that character."""
     user = require_user(request)
     if not os.environ.get("MONGO_URL", "").strip():
         return {"total_runs": 0, "runs_walked": 0}
 
+    from ..services.run_entity_stats import _official_character_ids
     from ..services.user_insights import get_user_insights
 
+    character = (character or "").strip().upper() or None
+    if character:
+        official = _official_character_ids()
+        if official and character not in official:
+            raise HTTPException(status_code=400, detail="Unknown character")
+
     response.headers["Cache-Control"] = "private, max-age=120"
-    return get_user_insights(str(user["_id"]), username=user.get("username"))
+    return get_user_insights(
+        str(user["_id"]), username=user.get("username"), character=character
+    )
 
 
 @router.patch("/profile-privacy")

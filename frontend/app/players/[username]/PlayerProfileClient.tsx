@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useLanguage } from "@/app/contexts/LanguageContext";
 import { t } from "@/lib/ui-translations";
-import { InsightsPanels, useCardMap, type Insights } from "@/app/components/ProfileInsights";
+import { CharacterPicker, InsightsPanels, useCardMap, type Insights } from "@/app/components/ProfileInsights";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -13,22 +13,24 @@ export default function PlayerProfileClient({ username }: { username: string }) 
   const { lang } = useLanguage();
   const [data, setData] = useState<PlayerInsights | null>(null);
   const [status, setStatus] = useState<"loading" | "ok" | "missing">("loading");
+  const [character, setCharacter] = useState<string | null>(null);
   const cards = useCardMap();
 
   useEffect(() => {
     let alive = true;
-    fetch(`${API}/api/players/${encodeURIComponent(username)}/insights`)
+    const q = character ? `?character=${encodeURIComponent(character)}` : "";
+    fetch(`${API}/api/players/${encodeURIComponent(username)}/insights${q}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (!alive) return;
-        setData(d);
+        if (d) setData(d);
         setStatus(d ? "ok" : "missing");
       })
       .catch(() => alive && setStatus("missing"));
     return () => {
       alive = false;
     };
-  }, [username]);
+  }, [username, character]);
 
   if (status === "loading") {
     return (
@@ -52,18 +54,25 @@ export default function PlayerProfileClient({ username }: { username: string }) 
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-1">
-          {data.username || username}
-        </h1>
-        <p className="text-sm text-[var(--text-muted)]">
-          {data.total_runs} {t("runs", lang)}
-          {data.win_rate != null ? ` · ${data.win_rate}% ${t("win rate", lang)}` : ""}
-          {" · "}
-          {t("Compared with all community-submitted runs.", lang)}
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-1">
+            {data.username || username}
+          </h1>
+          <p className="text-sm text-[var(--text-muted)]">
+            {data.total_runs} {t("runs", lang)}
+            {data.win_rate != null ? ` · ${data.win_rate}% ${t("win rate", lang)}` : ""}
+            {" · "}
+            {t("Compared with all community-submitted runs.", lang)}
+          </p>
+        </div>
+        <CharacterPicker value={character} onChange={setCharacter} lang={lang} />
       </div>
-      <InsightsPanels data={data} cards={cards} lang={lang} />
+      {data.runs_walked ? (
+        <InsightsPanels data={data} cards={cards} lang={lang} />
+      ) : (
+        <p className="text-sm text-[var(--text-secondary)] py-4">{t("Not enough data yet.", lang)}</p>
+      )}
     </div>
   );
 }

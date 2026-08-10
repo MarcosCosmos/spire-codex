@@ -144,6 +144,56 @@ const CHARACTER_HEX: Record<string, string> = {
   regent: "#f07c1e",
 };
 
+const CHARACTERS = ["ironclad", "silent", "defect", "necrobinder", "regent"] as const;
+
+// Scope switcher: All + one chip per character. Selecting re-fetches the
+// whole insights payload filtered to that character's runs.
+export function CharacterPicker({ value, onChange, lang }: { value: string | null; onChange: (c: string | null) => void; lang: string }) {
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <button
+        type="button"
+        onClick={() => onChange(null)}
+        className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+          value === null
+            ? "border-[var(--accent-gold)] text-[var(--accent-gold)] bg-[var(--accent-gold)]/10"
+            : "border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+        }`}
+      >
+        {t("All", lang)}
+      </button>
+      {CHARACTERS.map((c) => {
+        const hex = CHARACTER_HEX[c];
+        const active = value === c.toUpperCase();
+        const label = c.charAt(0).toUpperCase() + c.slice(1);
+        return (
+          <button
+            key={c}
+            type="button"
+            onClick={() => onChange(active ? null : c.toUpperCase())}
+            title={label}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors"
+            style={{
+              borderColor: active ? hex : "var(--border-subtle)",
+              color: active ? hex : "var(--text-secondary)",
+              backgroundColor: active ? `${hex}1a` : "transparent",
+            }}
+          >
+            <img
+              src={`${CDN_BASE}/ui/characters/character_icon_${c}.webp`}
+              alt={label}
+              crossOrigin="anonymous"
+              loading="lazy"
+              className="w-3.5 h-3.5 object-contain"
+            />
+            <span className="hidden sm:inline">{label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // Card-pool pill: the character whose pool the card belongs to, so players
 // grinding several characters can tell which one a pick-delta is about.
 function CharacterPill({ color }: { color: string | null | undefined }) {
@@ -709,11 +759,14 @@ export default function ProfileInsights() {
   const { lang } = useLanguage();
   const [data, setData] = useState<Insights | null>(null);
   const [loading, setLoading] = useState(true);
+  const [character, setCharacter] = useState<string | null>(null);
   const cards = useCardMap();
 
   useEffect(() => {
     let alive = true;
-    fetch(`${API}/api/auth/insights`, { credentials: "include" })
+    setLoading(true);
+    const q = character ? `?character=${encodeURIComponent(character)}` : "";
+    fetch(`${API}/api/auth/insights${q}`, { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => alive && setData(d))
       .catch(() => {})
@@ -721,9 +774,9 @@ export default function ProfileInsights() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [character]);
 
-  if (loading) {
+  if (loading && !data) {
     return (
       <div className="space-y-3">
         {[...Array(4)].map((_, i) => (
@@ -733,7 +786,7 @@ export default function ProfileInsights() {
     );
   }
 
-  if (!data || !data.runs_walked) {
+  if (!character && (!data || !data.runs_walked)) {
     return (
       <p className="text-sm text-[var(--text-secondary)] py-4">
         {t("No insights yet. Upload and claim runs to see how you play.", lang)}
@@ -742,12 +795,19 @@ export default function ProfileInsights() {
   }
 
   return (
-    <div className="space-y-4">
-      <p className="text-xs text-[var(--text-muted)]">
-        {t("Your runs through the community lens. Every section compares you with all submitted runs.", lang)}
-        {data.runs_capped ? ` ${t("Based on your most recent runs only.", lang)}` : ""}
-      </p>
-      <InsightsPanels data={data} cards={cards} lang={lang} />
+    <div className={`space-y-4 ${loading ? "opacity-60" : ""}`}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-xs text-[var(--text-muted)]">
+          {t("Your runs through the community lens. Every section compares you with all submitted runs.", lang)}
+          {data?.runs_capped ? ` ${t("Based on your most recent runs only.", lang)}` : ""}
+        </p>
+        <CharacterPicker value={character} onChange={setCharacter} lang={lang} />
+      </div>
+      {data && data.runs_walked ? (
+        <InsightsPanels data={data} cards={cards} lang={lang} />
+      ) : (
+        <p className="text-sm text-[var(--text-secondary)] py-4">{t("Not enough data yet.", lang)}</p>
+      )}
     </div>
   );
 }

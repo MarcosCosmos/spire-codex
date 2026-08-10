@@ -2537,22 +2537,33 @@ def get_user_run_rows(user_id: str, limit: int = 2000) -> list[dict]:
 
 
 @_instrument("get_user_card_pick_tallies")
-def get_user_card_pick_tallies(user_id: str) -> dict[str, dict]:
+def get_user_card_pick_tallies(
+    user_id: str, character: str | None = None
+) -> dict[str, dict]:
     """One account's card-reward offered/picked tallies across its claimed
     runs (the user_id linkage, unlike get_user_picks' submit-time steam_id).
-    Keyed by card id as stored in card_choices."""
+    Keyed by card id as stored in card_choices. `character` narrows to that
+    character's runs (both bare and CHARACTER.-prefixed storage forms)."""
     from bson import ObjectId
 
+    match: dict = {
+        "user_id": ObjectId(user_id),
+        "deleted_at": None,
+        "hidden": {"$ne": True},
+    }
+    if character:
+        match["character"] = {
+            "$in": [
+                character,
+                f"CHARACTER.{character}",
+                character.lower(),
+                f"character.{character.lower()}",
+            ]
+        }
     coll = _get_collection()
     rows = coll.aggregate(
         [
-            {
-                "$match": {
-                    "user_id": ObjectId(user_id),
-                    "deleted_at": None,
-                    "hidden": {"$ne": True},
-                }
-            },
+            {"$match": match},
             {"$unwind": "$card_choices"},
             {
                 "$group": {
