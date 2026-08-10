@@ -1,0 +1,139 @@
+"""Profile insights walk the player's own runs through the community-stats
+accumulator and attach community baselines, so the profile page can show
+"you vs everyone" for deaths, campfires, events, boons, and card picks."""
+
+from app.services import community_stats, user_insights
+from app.services import runs_db_mongo
+
+
+def _fake_backend(monkeypatch, rows, blobs, community, table, tallies):
+    monkeypatch.setattr(runs_db_mongo, "get_user_run_rows", lambda uid, limit: rows)
+    monkeypatch.setattr(
+        runs_db_mongo, "get_run_blobs", lambda hashes: {h: blobs[h] for h in hashes}
+    )
+    monkeypatch.setattr(
+        runs_db_mongo, "get_user_card_pick_tallies", lambda uid: tallies
+    )
+    monkeypatch.setattr(user_insights, "get_community_stats", lambda: community)
+    monkeypatch.setattr(user_insights, "get_entity_metrics_table", lambda etype: table)
+    user_insights._cache.clear()
+
+
+def test_insights_walk_and_compare(monkeypatch):
+    rows = [
+        {"run_hash": "r1", "win": True, "character": "IRONCLAD", "ascension": 10},
+        {"run_hash": "r2", "win": False, "character": "IRONCLAD", "ascension": 10},
+    ]
+    blobs = {
+        "r1": {
+            "game_mode": "standard",
+            "run_time": 900,
+            "players": [{"deck": [{}] * 30}],
+        },
+        "r2": {
+            "game_mode": "standard",
+            "run_time": 1200,
+            "killed_by_encounter": "ENCOUNTER.KNOWLEDGE_DEMON_BOSS",
+            "players": [{"deck": [{}] * 22}],
+        },
+    }
+    community = {
+        "rest_sites": [{"id": "SMITH", "pct": 54.7}],
+        "deaths": {
+            "encounters": [{"id": "KNOWLEDGE_DEMON_BOSS", "pct": 5.5}],
+            "events": [],
+        },
+        "ancient_picks": [],
+        "events": [],
+    }
+    table = {
+        "rows": [
+            {"id": "WHIRLWIND", "upgraded": False, "pick_rate": 30.0},
+            {"id": "FLEX", "upgraded": False, "pick_rate": 45.0},
+        ]
+    }
+    tallies = {
+        "WHIRLWIND": {"picked": 9, "offered": 10},
+        "FLEX": {"picked": 1, "offered": 10},
+        "RARE_SEEN_TWICE": {"picked": 2, "offered": 2},
+    }
+    _fake_backend(monkeypatch, rows, blobs, community, table, tallies)
+
+    out = user_insights.get_user_insights("507f1f77bcf86cd799439011")
+    assert out["total_runs"] == 2
+    assert out["runs_walked"] == 2
+    assert out["records"]["fastest_win"] == {"run_time": 900, "run_hash": "r1"}
+    deaths = out["deaths"]["encounters"]
+    assert deaths and deaths[0]["id"] == "KNOWLEDGE_DEMON_BOSS"
+    # Community share rides along for the comparison UI.
+    assert deaths[0]["community_pct"] == 5.5
+    # Card deltas: 90% vs 30% is over-picked, 10% vs 45% under-picked, and
+    # the 2-offer sample is dropped by the minimum.
+    over = out["card_picks"]["over_picked"]
+    under = out["card_picks"]["under_picked"]
+    assert [d["id"] for d in over] == ["WHIRLWIND"]
+    assert over[0]["gap"] == 60.0
+    assert [d["id"] for d in under] == ["FLEX"]
+    assert all(d["id"] != "RARE_SEEN_TWICE" for d in over + under)
+
+
+def test_insights_cached_per_user(monkeypatch):
+    calls = {"n": 0}
+
+    def rows(uid, limit):
+        calls["n"] += 1
+        return []
+
+    monkeypatch.setattr(runs_db_mongo, "get_user_run_rows", rows)
+    monkeypatch.setattr(runs_db_mongo, "get_run_blobs", lambda h: {})
+    monkeypatch.setattr(runs_db_mongo, "get_user_card_pick_tallies", lambda uid: {})
+    monkeypatch.setattr(user_insights, "get_community_stats", lambda: {})
+    monkeypatch.setattr(
+        user_insights, "get_entity_metrics_table", lambda etype: {"rows": []}
+    )
+    user_insights._cache.clear()
+
+    user_insights.get_user_insights("u1")
+    user_insights.get_user_insights("u1")
+    assert calls["n"] == 1
+
+
+def test_event_divergence_needs_sample_and_gap():
+    mine = {
+        "events": [
+            {
+                "id": "SLIPPERY_BRIDGE",
+                "name": "Slippery Bridge",
+                "total": 20,
+                "options": [
+                    {
+                        "id": "OVERCOME",
+                        "label": "Overcome",
+                        "pct": 80.0,
+                        "community_pct": 39.1,
+                    },
+                ],
+            },
+            # Too few visits: dropped no matter the gap.
+            {
+                "id": "RARE_EVENT",
+                "name": "Rare",
+                "total": 2,
+                "options": [
+                    {"id": "A", "label": "A", "pct": 100.0, "community_pct": 10.0}
+                ],
+            },
+        ]
+    }
+    out = user_insights._event_divergence(mine)
+    assert [r["event_id"] for r in out] == ["SLIPPERY_BRIDGE"]
+    assert out[0]["gap"] == 40.9
+
+
+def test_finalize_shape_matches_community_page():
+    # The personal blob is finalized by the SAME function as /community-stats,
+    # so the modded-content filters apply to profiles too.
+    acc = community_stats._new_acc_one()
+    acc["rest"] = {"SMITH": [3, 2, 1], "AUTOTHESPIRE-MERGE": [50, 50, 0]}
+    out = community_stats._finalize_one(acc)
+    assert [r["id"] for r in out["rest_sites"]] == ["SMITH"]

@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import os
 
-from fastapi import APIRouter, HTTPException, Request, UploadFile, File
+from fastapi import APIRouter, HTTPException, Request, Response, UploadFile, File
 from fastapi.responses import JSONResponse
 
 from ..dependencies import shared_limiter
@@ -318,6 +318,23 @@ def _compute_personal_bests(username: str) -> dict:
     _best("fastest_daily", {"game_mode": "daily"}, [("run_time", 1)])
 
     return results
+
+
+@router.get("/insights")
+@limiter.limit(rate_limit_config.endpoint_limit("auth.user_insights", "10/minute"))
+def user_insights(request: Request, response: Response):
+    """The signed-in player's personal community-stats: their runs walked
+    through the same accumulator as /community-stats (deaths, campfires,
+    event decisions, boon take rates, records) with the community's numbers
+    attached for comparison, plus card-pick divergence. Self-only."""
+    user = require_user(request)
+    if not os.environ.get("MONGO_URL", "").strip():
+        return {"total_runs": 0, "runs_walked": 0}
+
+    from ..services.user_insights import get_user_insights
+
+    response.headers["Cache-Control"] = "private, max-age=120"
+    return get_user_insights(str(user["_id"]))
 
 
 @router.get("/personal-bests")

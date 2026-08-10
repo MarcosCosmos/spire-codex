@@ -6,6 +6,7 @@ import { cachedFetch } from "@/lib/fetch-cache";
 import { imageUrl } from "@/lib/image-url";
 import { useLangPrefix } from "@/lib/use-lang-prefix";
 import MyTierLists from "../tier-list-maker/MyTierLists";
+import ProfileInsights from "./ProfileInsights";
 import { characterHex } from "@/lib/character-colors";
 import { useLanguage } from "@/app/contexts/LanguageContext";
 import { t } from "@/lib/ui-translations";
@@ -143,7 +144,7 @@ interface ProfileStatsProps {
   onDeleteConfirm: (hash: string | null) => void;
 }
 
-type Tab = "overview" | "runs" | "cards" | "relics" | "potions" | "tierlists";
+type Tab = "overview" | "insights" | "runs" | "cards" | "relics" | "potions" | "tierlists";
 
 export default function ProfileStats({
   runs, runsTotal, runsLoading, runsPage, runsTotalPages,
@@ -237,6 +238,7 @@ export default function ProfileStats({
 
   const tabs: { key: Tab; label: string }[] = [
     { key: "overview", label: t("Overview", lang) },
+    { key: "insights", label: t("Insights", lang) },
     { key: "runs", label: t("Runs", lang) },
     { key: "cards", label: t("Cards", lang) },
     { key: "relics", label: t("Relics", lang) },
@@ -437,6 +439,8 @@ export default function ProfileStats({
           )}
         </div>
       )}
+
+      {tab === "insights" && <ProfileInsights />}
 
       {tab === "runs" && (
         <div>
