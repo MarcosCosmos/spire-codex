@@ -139,20 +139,35 @@ def test_finalize_shape_matches_community_page():
     assert [r["id"] for r in out["rest_sites"]] == ["SMITH"]
 
 
-def test_streaks_and_progression():
+def test_streaks_and_weekly_activity():
     rows = [
         {"win": True, "submitted_at": "2026-08-02T10:00:00"},
-        {"win": True, "submitted_at": "2026-08-01T10:00:00"},
-        {"win": False, "submitted_at": "2026-07-20T10:00:00"},
-        {"win": True, "submitted_at": "2026-07-10T10:00:00"},
+        {"win": True, "submitted_at": "2026-08-01T10:00:00", "player_count": 2},
+        {"win": False, "submitted_at": "2026-07-28T10:00:00", "game_mode": "daily"},
+        {"win": True, "submitted_at": "2026-07-27T10:00:00", "game_mode": "custom"},
         {"win": True, "submitted_at": "2026-07-05T10:00:00"},
         {"win": True, "submitted_at": "2026-06-30T10:00:00"},
     ]
     s = user_insights._streaks(rows)
     assert s == {"current_win_streak": 2, "best_win_streak": 3}
-    p = user_insights._progression(rows)
-    assert [m["month"] for m in p] == ["2026-06", "2026-07", "2026-08"]
-    assert p[1] == {"month": "2026-07", "runs": 3, "wins": 2, "win_rate": 66.7}
+    a = user_insights._activity(rows)
+    # Weekly buckets keyed by the Monday of each week, oldest first.
+    assert [w["week"] for w in a] == ["2026-06-29", "2026-07-27"]
+    older, newer = a
+    assert older == {
+        "week": "2026-06-29",
+        "runs": 2,
+        "wins": 2,
+        "solo": 2,
+        "coop": 0,
+        "daily": 0,
+        "custom": 0,
+        "win_rate": 100.0,
+    }
+    assert newer["runs"] == 4
+    assert newer["solo"] == 1 and newer["coop"] == 1
+    assert newer["daily"] == 1 and newer["custom"] == 1
+    assert newer["win_rate"] == 75.0
 
 
 def test_percentiles_use_qualifying_floor(monkeypatch):

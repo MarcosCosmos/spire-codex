@@ -30,6 +30,9 @@ _MIN_CARD_OFFERS = 10
 _MIN_BOON_OFFERS = 5
 _MIN_EVENT_VISITS = 5
 _TOP_DELTAS = 8
+# Event divergence gets more rows than the other delta lists: it's the
+# section players learn the most from, so it earns the space.
+_TOP_EVENT_DELTAS = 12
 
 _CACHE_TTL = 120.0
 _CACHE_MAX = 500
@@ -65,10 +68,13 @@ def _pct_map(rows: list[dict] | None, key: str = "pct") -> dict[str, float]:
 
 def _attach_community(mine: dict[str, Any], community: dict[str, Any]) -> None:
     """Stamp community_* comparison fields onto the personal blob, in place."""
-    # Campfires: same nine official options; add the community share.
+    # Campfires: same nine official options; add the community share, plus
+    # the community's below-half-HP split for the "arriving hurt" bar.
     comm_rest = _pct_map(community.get("rest_sites"))
+    comm_rest_low = _pct_map(community.get("rest_sites"), key="pct_low_hp")
     for r in mine.get("rest_sites") or []:
         r["community_pct"] = comm_rest.get(r["id"])
+        r["community_pct_low_hp"] = comm_rest_low.get(r["id"])
 
     # Map danger: community death rate per (act, node type), so "where you
     # die" renders your rate against everyone's on the same cells.
@@ -137,7 +143,7 @@ def _event_divergence(mine: dict[str, Any]) -> list[dict]:
         if best and abs(best["gap"]) >= 10:
             out.append(best)
     out.sort(key=lambda r: -abs(r["gap"]))
-    return out[:_TOP_DELTAS]
+    return out[:_TOP_EVENT_DELTAS]
 
 
 def _card_pick_deltas(user_id: str) -> dict[str, list[dict]]:
@@ -195,28 +201,57 @@ def _streaks(rows: list[dict]) -> dict[str, int]:
     return {"current_win_streak": current, "best_win_streak": best}
 
 
-def _progression(rows: list[dict]) -> list[dict]:
-    """Monthly runs/wins/win-rate buckets, oldest first, for the trend chart.
-    Months with no runs are simply absent; the chart connects the dots."""
-    buckets: dict[str, list[int]] = {}
+# The activity chart shows this many most-recent weeks at most; beyond that
+# the bars get too thin to read.
+_ACTIVITY_WEEKS = 26
+
+
+def _run_mode(r: dict) -> str:
+    """solo / coop / daily / custom, matching the leaderboard mode split."""
+    gm = (r.get("game_mode") or "standard").lower()
+    if gm == "daily":
+        return "daily"
+    if gm == "custom":
+        return "custom"
+    return "coop" if (r.get("player_count") or 1) > 1 else "solo"
+
+
+def _activity(rows: list[dict]) -> list[dict]:
+    """Weekly run-count buckets split by mode, with the week's win rate,
+    oldest first. Weeks with no runs are absent (the chart skips them);
+    capped to the most recent _ACTIVITY_WEEKS buckets."""
+    from datetime import date
+
+    buckets: dict[str, dict] = {}
     for r in rows:
         ts = r.get("submitted_at")
         if ts is None:
             continue
-        month = str(ts)[:7]
-        b = buckets.setdefault(month, [0, 0])
-        b[0] += 1
+        try:
+            d = date.fromisoformat(str(ts)[:10])
+        except ValueError:
+            continue
+        week = d.fromordinal(d.toordinal() - d.weekday()).isoformat()
+        b = buckets.setdefault(
+            week,
+            {
+                "week": week,
+                "runs": 0,
+                "wins": 0,
+                "solo": 0,
+                "coop": 0,
+                "daily": 0,
+                "custom": 0,
+            },
+        )
+        b["runs"] += 1
+        b[_run_mode(r)] += 1
         if r.get("win"):
-            b[1] += 1
-    return [
-        {
-            "month": m,
-            "runs": n,
-            "wins": w,
-            "win_rate": round(w / n * 100, 1) if n else 0.0,
-        }
-        for m, (n, w) in sorted(buckets.items())
-    ]
+            b["wins"] += 1
+    out = [buckets[k] for k in sorted(buckets)]
+    for b in out:
+        b["win_rate"] = round(b["wins"] / b["runs"] * 100, 1) if b["runs"] else 0.0
+    return out[-_ACTIVITY_WEEKS:]
 
 
 def _percentiles(username: str | None) -> dict[str, Any] | None:
@@ -295,7 +330,7 @@ def get_user_insights(user_id: str, username: str | None = None) -> dict[str, An
         logger.warning("user-insights card deltas failed", exc_info=True)
         mine["card_picks"] = {"over_picked": [], "under_picked": []}
     mine["streaks"] = _streaks(rows)
-    mine["progression"] = _progression(rows)
+    mine["activity"] = _activity(rows)
     try:
         mine["percentiles"] = _percentiles(username)
     except Exception:
