@@ -14,7 +14,7 @@ import {
 } from "chart.js";
 import { Line } from "react-chartjs-2";
 import { cachedFetch } from "@/lib/fetch-cache";
-import { imageUrl } from "@/lib/image-url";
+import { fullCardUrl, imageUrl } from "@/lib/image-url";
 import { useLangPrefix } from "@/lib/use-lang-prefix";
 import { useLanguage } from "@/app/contexts/LanguageContext";
 import { t } from "@/lib/ui-translations";
@@ -205,12 +205,22 @@ function CardDeltaList({ rows, cards, lang }: { rows: CardDelta[]; cards: Record
             href={`${lp}/cards/${d.id.toLowerCase()}`}
             className="flex items-center gap-3 py-1.5 hover:bg-[var(--bg-card-hover)] rounded px-2 -mx-2 transition-colors"
           >
-            <span className="flex-shrink-0 w-8 h-8 rounded bg-[var(--bg-primary)] border border-[var(--border-subtle)] overflow-hidden flex items-center justify-center">
-              {info?.image_url ? (
-                <img src={imageUrl(info.image_url)} alt={info?.name || d.id} className="w-full h-full object-contain p-0.5" crossOrigin="anonymous" loading="lazy" />
-              ) : (
-                <span className="text-[9px] text-[var(--text-muted)]">—</span>
-              )}
+            <span className="flex-shrink-0 w-10 h-[52px] flex items-center justify-center">
+              <img
+                src={fullCardUrl(d.id.toLowerCase(), false, "stable", lang)}
+                alt={info?.name || d.id}
+                crossOrigin="anonymous"
+                loading="lazy"
+                className="max-w-full max-h-full object-contain drop-shadow"
+                onError={(e) => {
+                  // mad_science has no full render; fall back to the portrait.
+                  const el = e.currentTarget;
+                  if (info?.image_url && !el.dataset.fellBack) {
+                    el.dataset.fellBack = "1";
+                    el.src = imageUrl(info.image_url);
+                  }
+                }}
+              />
             </span>
             <span className="flex-1 min-w-0">
               <span className="block truncate text-sm text-[var(--text-primary)]">{info?.name || d.id.replace(/_/g, " ")}</span>
