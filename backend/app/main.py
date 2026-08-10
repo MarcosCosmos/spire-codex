@@ -72,6 +72,7 @@ from .routers import (
     qa_feedback,
     tierlists,
     mod_meta,
+    players,
     presence,
     announcements,
     telemetry,
@@ -693,6 +694,7 @@ app.include_router(auth_patreon.router, include_in_schema=False)
 app.include_router(auth.router, include_in_schema=False)
 app.include_router(tierlists.router)
 app.include_router(mod_meta.router)
+app.include_router(players.router)
 app.include_router(presence.router)
 app.include_router(announcements.router)
 # Hidden from the OpenAPI schema (/docs): the mod's DAU ping is an internal

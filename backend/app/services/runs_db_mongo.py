@@ -2525,6 +2525,7 @@ def get_user_run_rows(user_id: str, limit: int = 2000) -> list[dict]:
                 "win": 1,
                 "character": 1,
                 "ascension": 1,
+                "submitted_at": 1,
             },
         )
         .sort("submitted_at", DESCENDING)

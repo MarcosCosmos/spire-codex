@@ -137,3 +137,36 @@ def test_finalize_shape_matches_community_page():
     acc["rest"] = {"SMITH": [3, 2, 1], "AUTOTHESPIRE-MERGE": [50, 50, 0]}
     out = community_stats._finalize_one(acc)
     assert [r["id"] for r in out["rest_sites"]] == ["SMITH"]
+
+
+def test_streaks_and_progression():
+    rows = [
+        {"win": True, "submitted_at": "2026-08-02T10:00:00"},
+        {"win": True, "submitted_at": "2026-08-01T10:00:00"},
+        {"win": False, "submitted_at": "2026-07-20T10:00:00"},
+        {"win": True, "submitted_at": "2026-07-10T10:00:00"},
+        {"win": True, "submitted_at": "2026-07-05T10:00:00"},
+        {"win": True, "submitted_at": "2026-06-30T10:00:00"},
+    ]
+    s = user_insights._streaks(rows)
+    assert s == {"current_win_streak": 2, "best_win_streak": 3}
+    p = user_insights._progression(rows)
+    assert [m["month"] for m in p] == ["2026-06", "2026-07", "2026-08"]
+    assert p[1] == {"month": "2026-07", "runs": 3, "wins": 2, "win_rate": 66.7}
+
+
+def test_percentiles_use_qualifying_floor(monkeypatch):
+    winrates = {
+        "peter": [20, 12],
+        "alice": [10, 2],
+        "bob": [40, 30],
+        "tiny": [3, 3],
+    }
+    monkeypatch.setattr(runs_db_mongo, "get_user_winrates", lambda: winrates)
+    out = user_insights._percentiles("Peter")
+    assert out["win_rate"] == 60.0
+    assert out["players"] == 3
+    assert out["win_rate_percentile"] == 33
+    assert out["runs_percentile"] == 33
+    assert user_insights._percentiles("tiny") is None
+    assert user_insights._percentiles(None) is None

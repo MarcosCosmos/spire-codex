@@ -17,6 +17,7 @@ interface User {
   is_paid?: boolean;
   needs_email: boolean;
   is_admin?: boolean;
+  profile_private?: boolean;
 }
 
 interface AuthContextType {

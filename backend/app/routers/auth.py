@@ -46,6 +46,7 @@ def me(request: Request):
         "created_at": user.get("created_at"),
         "needs_email": not user.get("email"),
         "is_admin": is_admin(user),
+        "profile_private": bool(user.get("profile_private")),
     }
 
 
@@ -334,7 +335,26 @@ def user_insights(request: Request, response: Response):
     from ..services.user_insights import get_user_insights
 
     response.headers["Cache-Control"] = "private, max-age=120"
-    return get_user_insights(str(user["_id"]))
+    return get_user_insights(str(user["_id"]), username=user.get("username"))
+
+
+@router.patch("/profile-privacy")
+@limiter.limit(rate_limit_config.endpoint_limit("auth.profile_privacy", "10/minute"))
+async def profile_privacy(request: Request):
+    """Toggle the public /players page for this account. Runs stay on the
+    leaderboards either way; this only controls the profile page."""
+    user = require_user(request)
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON body")
+    private = body.get("private")
+    if not isinstance(private, bool):
+        raise HTTPException(status_code=400, detail="private must be a boolean")
+
+    from ..services.users_db import set_profile_private
+
+    return set_profile_private(user["_id"], private)
 
 
 @router.get("/personal-bests")

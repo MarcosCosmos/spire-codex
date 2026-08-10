@@ -44,6 +44,34 @@ export default function ProfileClient() {
   const [uploading, setUploading] = useState(false);
   const [uploadResults, setUploadResults] = useState<UploadResult[] | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [profilePrivate, setProfilePrivate] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (user) setProfilePrivate(Boolean(user.profile_private));
+  }, [user]);
+
+  const togglePrivacy = async (next: boolean) => {
+    const prev = profilePrivate;
+    setProfilePrivate(next);
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/profile-privacy`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ private: next }),
+      });
+      if (!res.ok) throw new Error();
+      toast(
+        next
+          ? t("Your profile is now private.", lang)
+          : t("Your profile is now public.", lang),
+        "success"
+      );
+    } catch {
+      setProfilePrivate(prev);
+      toast(t("Network error", lang), "error");
+    }
+  };
 
   const fetchRuns = useCallback(async (p: number) => {
     setRunsLoading(true);
@@ -196,6 +224,39 @@ export default function ProfileClient() {
           </div>
         )}
       </section>
+
+      {/* Public profile */}
+      {user.username && profilePrivate !== null && (
+        <section className="bg-[var(--bg-card)] rounded-lg border border-[var(--border-subtle)] p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="text-sm font-semibold text-[var(--text-primary)]">{t("Public profile", lang)}</h2>
+              <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                {profilePrivate
+                  ? t("Your profile page is private. Your runs still appear on leaderboards.", lang)
+                  : t("Anyone can view your stats and insights at your player page.", lang)}
+              </p>
+              {!profilePrivate && (
+                <Link
+                  href={`/players/${encodeURIComponent(user.username)}`}
+                  className="inline-block mt-1 text-xs text-[var(--accent-gold)] hover:underline"
+                >
+                  {t("View public profile", lang)}
+                </Link>
+              )}
+            </div>
+            <label className="flex items-center gap-2 cursor-pointer select-none shrink-0">
+              <input
+                type="checkbox"
+                checked={profilePrivate}
+                onChange={(e) => togglePrivacy(e.target.checked)}
+                className="accent-[var(--accent-gold)] w-4 h-4"
+              />
+              <span className="text-sm text-[var(--text-secondary)]">{t("Private profile", lang)}</span>
+            </label>
+          </div>
+        </section>
+      )}
 
     </div>
   );

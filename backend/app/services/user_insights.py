@@ -70,6 +70,17 @@ def _attach_community(mine: dict[str, Any], community: dict[str, Any]) -> None:
     for r in mine.get("rest_sites") or []:
         r["community_pct"] = comm_rest.get(r["id"])
 
+    # Map danger: community death rate per (act, node type), so "where you
+    # die" renders your rate against everyone's on the same cells.
+    comm_danger: dict[tuple, dict] = {}
+    for act_row in community.get("map_danger") or []:
+        for ptype, cell in (act_row.get("types") or {}).items():
+            comm_danger[(act_row.get("act"), ptype)] = cell
+    for act_row in mine.get("map_danger") or []:
+        for ptype, cell in (act_row.get("types") or {}).items():
+            comm = comm_danger.get((act_row.get("act"), ptype))
+            cell["community_death_rate"] = (comm or {}).get("death_rate")
+
     # Deaths: how often the same encounter/event kills everyone else.
     deaths = community.get("deaths") or {}
     for key in ("encounters", "events"):
@@ -169,7 +180,74 @@ def _card_pick_deltas(user_id: str) -> dict[str, list[dict]]:
     }
 
 
-def get_user_insights(user_id: str) -> dict[str, Any]:
+def _streaks(rows: list[dict]) -> dict[str, int]:
+    """Best and current win streaks over the (newest-first) row list."""
+    current = 0
+    for r in rows:
+        if r.get("win"):
+            current += 1
+        else:
+            break
+    best = run = 0
+    for r in reversed(rows):
+        run = run + 1 if r.get("win") else 0
+        best = max(best, run)
+    return {"current_win_streak": current, "best_win_streak": best}
+
+
+def _progression(rows: list[dict]) -> list[dict]:
+    """Monthly runs/wins/win-rate buckets, oldest first, for the trend chart.
+    Months with no runs are simply absent; the chart connects the dots."""
+    buckets: dict[str, list[int]] = {}
+    for r in rows:
+        ts = r.get("submitted_at")
+        if ts is None:
+            continue
+        month = str(ts)[:7]
+        b = buckets.setdefault(month, [0, 0])
+        b[0] += 1
+        if r.get("win"):
+            b[1] += 1
+    return [
+        {
+            "month": m,
+            "runs": n,
+            "wins": w,
+            "win_rate": round(w / n * 100, 1) if n else 0.0,
+        }
+        for m, (n, w) in sorted(buckets.items())
+    ]
+
+
+def _percentiles(username: str | None) -> dict[str, Any] | None:
+    """Where the player sits among every qualifying submitter (the same 5-run
+    floor the skill brackets use): win-rate and volume percentiles. None when
+    the account has no username or too few runs to qualify."""
+    if not username:
+        return None
+    from .runs_db_mongo import get_user_winrates
+
+    winrates = get_user_winrates() or {}
+    me = winrates.get(username.lower())
+    if not me or (me[0] or 0) < 5:
+        return None
+    qualified = [(t, w) for t, w in winrates.values() if t >= 5]
+    if len(qualified) < 2:
+        return None
+    my_rate = me[1] / me[0]
+    below_rate = sum(1 for t, w in qualified if w / t < my_rate)
+    below_runs = sum(1 for t, _ in qualified if t < me[0])
+    n = len(qualified)
+    return {
+        "win_rate": round(my_rate * 100, 1),
+        "win_rate_percentile": round(below_rate / n * 100),
+        "runs": me[0],
+        "runs_percentile": round(below_runs / n * 100),
+        "players": n,
+    }
+
+
+def get_user_insights(user_id: str, username: str | None = None) -> dict[str, Any]:
     """The signed-in account's personal community-stats blob plus community
     comparison fields, over its claimed runs. Shape mirrors /community-stats
     with extras: card_picks (over/under-picked vs the crowd) and
@@ -216,6 +294,13 @@ def get_user_insights(user_id: str) -> dict[str, Any]:
     except Exception:
         logger.warning("user-insights card deltas failed", exc_info=True)
         mine["card_picks"] = {"over_picked": [], "under_picked": []}
+    mine["streaks"] = _streaks(rows)
+    mine["progression"] = _progression(rows)
+    try:
+        mine["percentiles"] = _percentiles(username)
+    except Exception:
+        logger.warning("user-insights percentiles failed", exc_info=True)
+        mine["percentiles"] = None
     mine["runs_walked"] = walked
     mine["runs_capped"] = len(rows) >= _MAX_RUNS
 
