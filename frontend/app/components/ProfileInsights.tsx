@@ -74,6 +74,15 @@ interface CardDelta {
   picked: number;
 }
 
+interface RelicDelta {
+  id: string;
+  your_rate: number;
+  community_rate: number;
+  gap: number;
+  runs_with: number;
+  runs: number;
+}
+
 interface EventDivergence {
   event_id: string;
   event_name: string | null;
@@ -158,6 +167,7 @@ export interface Insights {
   ancient_picks?: BoonRow[];
   event_divergence?: EventDivergence[];
   card_picks?: { over_picked: CardDelta[]; under_picked: CardDelta[] };
+  relic_picks?: { over_carried: RelicDelta[]; under_carried: RelicDelta[] };
   map_danger?: { act: number; types: Record<string, DangerCell> }[];
   streaks?: { current_win_streak: number; best_win_streak: number };
   activity?: ActivityWeek[];
@@ -180,6 +190,7 @@ export interface EntityInfo {
   name: string;
   image_url: string | null;
   color?: string | null;
+  pool?: string | null;
 }
 
 const CHARACTER_HEX: Record<string, string> = {
@@ -388,6 +399,45 @@ function CardDeltaList({ rows, cards, lang }: { rows: CardDelta[]; cards: Record
               </span>
               <span className="block text-[10px] text-[var(--text-muted)] tabular-nums">
                 {t("You", lang)} {d.your_pick_rate}% · {t("Community", lang)} {d.community_pick_rate}% · {d.picked}/{d.offered} {t("offers", lang)}
+              </span>
+            </span>
+            <GapBadge gap={d.gap} />
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
+function RelicDeltaList({ rows, relics, lang }: { rows: RelicDelta[]; relics: Record<string, EntityInfo>; lang: string }) {
+  const lp = useLangPrefix();
+  if (rows.length === 0) {
+    return <p className="text-xs text-[var(--text-muted)]">{t("Not enough data yet.", lang)}</p>;
+  }
+  return (
+    <div className="space-y-1">
+      {rows.map((d) => {
+        const info = relics[d.id];
+        return (
+          <Link
+            key={d.id}
+            href={`${lp}/relics/${d.id.toLowerCase()}`}
+            className="flex items-center gap-3 py-1.5 hover:bg-[var(--bg-card-hover)] rounded px-2 -mx-2 transition-colors"
+          >
+            <span className="flex-shrink-0 w-9 h-9 rounded bg-[var(--bg-primary)] border border-[var(--border-subtle)] overflow-hidden flex items-center justify-center">
+              {info?.image_url ? (
+                <img src={imageUrl(info.image_url)} alt={info?.name || d.id} className="w-full h-full object-contain p-0.5" crossOrigin="anonymous" loading="lazy" />
+              ) : (
+                <span className="text-[9px] text-[var(--text-muted)]">—</span>
+              )}
+            </span>
+            <span className="flex-1 min-w-0">
+              <span className="flex items-center gap-1.5 min-w-0">
+                <span className="truncate text-sm text-[var(--text-primary)]">{info?.name || d.id.replace(/_/g, " ")}</span>
+                <CharacterPill color={info?.pool} />
+              </span>
+              <span className="block text-[10px] text-[var(--text-muted)] tabular-nums">
+                {t("You", lang)} {d.your_rate}% · {t("Community", lang)} {d.community_rate}% · {d.runs_with}/{d.runs} {t("runs", lang)}
               </span>
             </span>
             <GapBadge gap={d.gap} />
@@ -652,6 +702,7 @@ function BestTile({ href, value, label, sub, rank }: { href: string; value: stri
 export function InsightsPanels({
   data,
   cards,
+  relics,
   lang,
   bests,
   personalRanks,
@@ -659,6 +710,7 @@ export function InsightsPanels({
 }: {
   data: Insights;
   cards: Record<string, EntityInfo>;
+  relics: Record<string, EntityInfo>;
   lang: string;
   bests?: PersonalBests | null;
   personalRanks?: Record<string, { rank: number; total: number } | null>;
@@ -868,6 +920,17 @@ export function InsightsPanels({
         </div>
       )}
 
+      {data.relic_picks && (data.relic_picks.over_carried.length > 0 || data.relic_picks.under_carried.length > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Section title={t("Relics you take more than most", lang)}>
+            <RelicDeltaList rows={data.relic_picks.over_carried || []} relics={relics} lang={lang} />
+          </Section>
+          <Section title={t("Relics you take less than most", lang)}>
+            <RelicDeltaList rows={data.relic_picks.under_carried || []} relics={relics} lang={lang} />
+          </Section>
+        </div>
+      )}
+
       {divergence.length > 0 && (
         <Section title={t("Event choices where you differ", lang)}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
@@ -910,23 +973,31 @@ export function InsightsPanels({
   );
 }
 
-export function useCardMap(): Record<string, EntityInfo> {
-  const [cards, setCards] = useState<Record<string, EntityInfo>>({});
+function useEntityMap(path: string): Record<string, EntityInfo> {
+  const [map, setMap] = useState<Record<string, EntityInfo>>({});
   useEffect(() => {
     let alive = true;
-    cachedFetch<EntityInfo[]>(`${API}/api/cards`)
+    cachedFetch<EntityInfo[]>(`${API}${path}`)
       .then((rows) => {
         if (!alive) return;
         const m: Record<string, EntityInfo> = {};
         for (const c of rows) m[c.id.toUpperCase()] = c;
-        setCards(m);
+        setMap(m);
       })
       .catch(() => {});
     return () => {
       alive = false;
     };
-  }, []);
-  return cards;
+  }, [path]);
+  return map;
+}
+
+export function useCardMap(): Record<string, EntityInfo> {
+  return useEntityMap("/api/cards");
+}
+
+export function useRelicMap(): Record<string, EntityInfo> {
+  return useEntityMap("/api/relics");
 }
 
 export default function ProfileInsights({
@@ -943,6 +1014,7 @@ export default function ProfileInsights({
   const [loading, setLoading] = useState(true);
   const [character, setCharacter] = useState<string | null>(null);
   const cards = useCardMap();
+  const relics = useRelicMap();
 
   useEffect(() => {
     let alive = true;
@@ -989,6 +1061,7 @@ export default function ProfileInsights({
         <InsightsPanels
           data={data}
           cards={cards}
+          relics={relics}
           lang={lang}
           bests={character ? undefined : bests}
           personalRanks={character ? undefined : personalRanks}

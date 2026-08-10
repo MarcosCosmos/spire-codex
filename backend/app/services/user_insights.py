@@ -33,6 +33,14 @@ _TOP_DELTAS = 8
 # Event divergence gets more rows than the other delta lists: it's the
 # section players learn the most from, so it earns the space.
 _TOP_EVENT_DELTAS = 12
+# Carry-rate comparisons need the relic to actually show up (or the player
+# to have enough runs for its absence to mean something).
+_MIN_RELIC_RUNS_WITH = 3
+_MIN_RUNS_FOR_UNDER = 10
+# Relic rarities excluded from the carry comparison: starters are forced
+# (their carry rate is the character share, not a preference) and ancient
+# boons already have the take-rate section with real offer denominators.
+_RELIC_RARITIES_SKIPPED = frozenset({"starter", "ancient"})
 
 _CACHE_TTL = 120.0
 _CACHE_MAX = 500
@@ -296,6 +304,75 @@ def _percentiles(username: str | None) -> dict[str, Any] | None:
     }
 
 
+def _skipped_relic_ids() -> frozenset[str]:
+    """Relic ids whose carry rate isn't a preference signal (see
+    _RELIC_RARITIES_SKIPPED). Empty on catalog read failure: fail open."""
+    try:
+        from .data_service import load_relics
+
+        out = set()
+        for r in load_relics():
+            rarity = (r.get("rarity_key") or r.get("rarity") or "").lower()
+            if (
+                r.get("id")
+                and rarity.split()[:1]
+                and rarity.split()[0] in _RELIC_RARITIES_SKIPPED
+            ):
+                out.add(r["id"].upper())
+        return frozenset(out)
+    except Exception:
+        logger.warning("relic rarity catalog read failed", exc_info=True)
+        return frozenset()
+
+
+def _relic_carry_deltas(
+    user_id: str, character: str | None, user_total_runs: int
+) -> dict[str, list[dict]]:
+    """Relics the player ends runs with notably more / less often than the
+    community. Relics have no offered/picked stream like cards, so the
+    comparison is carry rate: the share of runs containing the relic, yours
+    vs the community's (character-scoped on both sides when filtered)."""
+    if user_total_runs < _MIN_RUNS_FOR_UNDER:
+        return {"over_carried": [], "under_carried": []}
+    from .runs_db_mongo import get_user_relic_run_counts
+
+    mine = get_user_relic_run_counts(user_id, character=character) or {}
+    table = get_entity_metrics_table("relics", "all", character)
+    comm_total = (
+        table.get("character_runs") if character else table.get("total_runs")
+    ) or 0
+    if not comm_total:
+        return {"over_carried": [], "under_carried": []}
+    skipped = _skipped_relic_ids()
+    deltas = []
+    for row in table.get("rows") or []:
+        rid = (row.get("id") or "").upper()
+        if not rid or rid in skipped:
+            continue
+        community_rate = round((row.get("picks") or 0) / comm_total * 100, 1)
+        runs_with = mine.get(rid, 0)
+        your_rate = round(runs_with / user_total_runs * 100, 1)
+        if runs_with < _MIN_RELIC_RUNS_WITH and your_rate >= community_rate:
+            continue
+        deltas.append(
+            {
+                "id": rid,
+                "your_rate": your_rate,
+                "community_rate": community_rate,
+                "gap": round(your_rate - community_rate, 1),
+                "runs_with": runs_with,
+                "runs": user_total_runs,
+            }
+        )
+    deltas.sort(key=lambda r: -r["gap"])
+    return {
+        "over_carried": [d for d in deltas if d["gap"] > 0][:_TOP_DELTAS],
+        "under_carried": [
+            d for d in deltas[::-1] if d["gap"] < 0 and d["community_rate"] >= 2
+        ][:_TOP_DELTAS],
+    }
+
+
 def _bare_character(raw: str | None) -> str:
     """`CHARACTER.DEFECT` / `defect` -> `DEFECT`."""
     return (raw or "").rsplit(".", 1)[-1].upper()
@@ -361,6 +438,13 @@ def get_user_insights(
     except Exception:
         logger.warning("user-insights card deltas failed", exc_info=True)
         mine["card_picks"] = {"over_picked": [], "under_picked": []}
+    try:
+        mine["relic_picks"] = _relic_carry_deltas(
+            user_id, character, mine.get("total_runs") or 0
+        )
+    except Exception:
+        logger.warning("user-insights relic deltas failed", exc_info=True)
+        mine["relic_picks"] = {"over_carried": [], "under_carried": []}
     mine["streaks"] = _streaks(rows)
     mine["activity"] = _activity(rows)
     if character:

@@ -2582,6 +2582,42 @@ def get_user_card_pick_tallies(
     }
 
 
+@_instrument("get_user_relic_run_counts")
+def get_user_relic_run_counts(
+    user_id: str, character: str | None = None
+) -> dict[str, int]:
+    """Distinct claimed runs containing each relic, for the profile's
+    relic carry-rate comparison. `character` narrows to that character's
+    runs (both storage forms, like the card tallies)."""
+    from bson import ObjectId
+
+    match: dict = {
+        "user_id": ObjectId(user_id),
+        "deleted_at": None,
+        "hidden": {"$ne": True},
+    }
+    if character:
+        match["character"] = {
+            "$in": [
+                character,
+                f"CHARACTER.{character}",
+                character.lower(),
+                f"character.{character.lower()}",
+            ]
+        }
+    coll = _get_collection()
+    rows = coll.aggregate(
+        [
+            {"$match": match},
+            {"$unwind": "$relics"},
+            {"$group": {"_id": {"run": "$_id", "relic": "$relics.id"}}},
+            {"$group": {"_id": "$_id.relic", "runs": {"$sum": 1}}},
+        ],
+        allowDiskUse=True,
+    )
+    return {r["_id"]: r["runs"] for r in rows if r.get("_id")}
+
+
 @_instrument("get_user_picks")
 def get_user_picks(steam_id: str) -> dict[str, dict]:
     """One player's own pick rates (by steam_id), no min-sample gate:

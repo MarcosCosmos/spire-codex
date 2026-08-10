@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useLanguage } from "@/app/contexts/LanguageContext";
 import { t } from "@/lib/ui-translations";
-import { CharacterPicker, InsightsPanels, useCardMap, type Insights } from "@/app/components/ProfileInsights";
+import { CharacterPicker, InsightsPanels, useCardMap, useRelicMap, type Insights } from "@/app/components/ProfileInsights";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -15,6 +15,7 @@ export default function PlayerProfileClient({ username }: { username: string }) 
   const [status, setStatus] = useState<"loading" | "ok" | "missing">("loading");
   const [character, setCharacter] = useState<string | null>(null);
   const cards = useCardMap();
+  const relics = useRelicMap();
 
   useEffect(() => {
     let alive = true;
@@ -69,7 +70,7 @@ export default function PlayerProfileClient({ username }: { username: string }) 
         <CharacterPicker value={character} onChange={setCharacter} lang={lang} />
       </div>
       {data.runs_walked ? (
-        <InsightsPanels data={data} cards={cards} lang={lang} />
+        <InsightsPanels data={data} cards={cards} relics={relics} lang={lang} />
       ) : (
         <p className="text-sm text-[var(--text-secondary)] py-4">{t("Not enough data yet.", lang)}</p>
       )}

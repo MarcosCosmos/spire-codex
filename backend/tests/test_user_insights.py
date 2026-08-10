@@ -234,3 +234,43 @@ def test_character_filter_scopes_walk_and_cache(monkeypatch):
     assert ironclad["percentiles"] is None
     # Distinct cache entries per scope.
     assert user_insights.get_user_insights("u1", username="p")["runs_walked"] == 2
+
+
+def test_relic_carry_deltas(monkeypatch):
+    monkeypatch.setattr(
+        runs_db_mongo,
+        "get_user_relic_run_counts",
+        lambda uid, character=None: {"KUNAI": 12, "SHOVEL": 1},
+    )
+    monkeypatch.setattr(
+        user_insights,
+        "get_entity_metrics_table",
+        lambda etype, bracket="all", character=None: {
+            "total_runs": 1000,
+            "character_runs": None,
+            "rows": [
+                {"id": "KUNAI", "picks": 100},
+                {"id": "SHOVEL", "picks": 300},
+                {"id": "BURNING_BLOOD", "picks": 900},
+                {"id": "GHOST_RELIC", "picks": 4},
+            ],
+        },
+    )
+    monkeypatch.setattr(
+        user_insights, "_skipped_relic_ids", lambda: frozenset({"BURNING_BLOOD"})
+    )
+    out = user_insights._relic_carry_deltas("u1", None, 20)
+    over = out["over_carried"]
+    under = out["under_carried"]
+    # Kunai: 60% of your runs vs 10% community -> over.
+    assert [d["id"] for d in over] == ["KUNAI"]
+    assert over[0]["gap"] == 50.0
+    # Shovel: 5% vs 30% -> under. Ghost relic (0.4% community) misses the
+    # 2% community floor; Burning Blood is rarity-skipped.
+    assert [d["id"] for d in under] == ["SHOVEL"]
+    assert all(d["id"] not in ("BURNING_BLOOD", "GHOST_RELIC") for d in over + under)
+    # Too few runs -> empty lists, not noise.
+    assert user_insights._relic_carry_deltas("u1", None, 5) == {
+        "over_carried": [],
+        "under_carried": [],
+    }
