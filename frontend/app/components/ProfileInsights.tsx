@@ -15,7 +15,7 @@ import {
 } from "chart.js";
 import { Chart } from "react-chartjs-2";
 import { cachedFetch } from "@/lib/fetch-cache";
-import { fullCardUrl, imageUrl } from "@/lib/image-url";
+import { CDN_BASE, fullCardUrl, imageUrl } from "@/lib/image-url";
 import { useLangPrefix } from "@/lib/use-lang-prefix";
 import { useLanguage } from "@/app/contexts/LanguageContext";
 import { t } from "@/lib/ui-translations";
@@ -133,6 +133,39 @@ export interface EntityInfo {
   id: string;
   name: string;
   image_url: string | null;
+  color?: string | null;
+}
+
+const CHARACTER_HEX: Record<string, string> = {
+  ironclad: "#d53b27",
+  silent: "#23935b",
+  defect: "#3873a9",
+  necrobinder: "#bf5a85",
+  regent: "#f07c1e",
+};
+
+// Card-pool pill: the character whose pool the card belongs to, so players
+// grinding several characters can tell which one a pick-delta is about.
+function CharacterPill({ color }: { color: string | null | undefined }) {
+  const key = (color || "").toLowerCase();
+  const hex = CHARACTER_HEX[key];
+  if (!hex) return null;
+  const label = key.charAt(0).toUpperCase() + key.slice(1);
+  return (
+    <span
+      className="inline-flex items-center justify-center w-5 h-5 rounded-full border shrink-0"
+      style={{ borderColor: hex, backgroundColor: `${hex}26` }}
+      title={label}
+    >
+      <img
+        src={`${CDN_BASE}/ui/characters/character_icon_${key}.webp`}
+        alt={label}
+        crossOrigin="anonymous"
+        loading="lazy"
+        className="w-3.5 h-3.5 object-contain"
+      />
+    </span>
+  );
 }
 
 const DANGER_TYPES = ["monster", "elite", "boss", "unknown"] as const;
@@ -253,7 +286,10 @@ function CardDeltaList({ rows, cards, lang }: { rows: CardDelta[]; cards: Record
               />
             </span>
             <span className="flex-1 min-w-0">
-              <span className="block truncate text-sm text-[var(--text-primary)]">{info?.name || d.id.replace(/_/g, " ")}</span>
+              <span className="flex items-center gap-1.5 min-w-0">
+                <span className="truncate text-sm text-[var(--text-primary)]">{info?.name || d.id.replace(/_/g, " ")}</span>
+                <CharacterPill color={info?.color} />
+              </span>
               <span className="block text-[10px] text-[var(--text-muted)] tabular-nums">
                 {t("You", lang)} {d.your_pick_rate}% · {t("Community", lang)} {d.community_pick_rate}% · {d.picked}/{d.offered} {t("offers", lang)}
               </span>
