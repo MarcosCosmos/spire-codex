@@ -155,7 +155,39 @@ def _load_json_beta(lang: str, entity: str, beta_version: str) -> list[dict]:
     with open(filepath, "r", encoding="utf-8") as f:
         data = json.load(f)
     data_load_duration.labels(entity_type=entity).observe(time.perf_counter() - start)
+    _inherit_stable_image_urls(data, lang, entity)
     return data
+
+
+def _inherit_stable_image_urls(rows: list[dict], lang: str, entity: str) -> None:
+    """Beta catalogs ship image_url null across the board (the beta parsers
+    never stamp it), and the versioned beta portrait tree on the CDN was
+    retired with the flat layout — so clients that guess an old
+    /static/images/beta/v<ver>/ path 404 on every portrait (the Overwolf
+    overlay did exactly that, 2026-08-11). Portrait art is shared across
+    channels, so fill the gap from the stable row with the same id.
+    Beta-only ids with no stable counterpart stay null, same as before.
+    Runs once per (lang, entity, beta_version) thanks to the caller's cache.
+    Full card renders (image_url_card and friends) are left alone: those are
+    channel-specific and clients build the versioned beta paths themselves."""
+    missing = [
+        r
+        for r in rows
+        if isinstance(r, dict) and "image_url" in r and r.get("image_url") is None
+    ]
+    if not missing:
+        return
+    stable_urls = {
+        r.get("id"): r.get("image_url")
+        for r in _load_json_versioned(lang, entity, None)
+        if isinstance(r, dict) and r.get("image_url")
+    }
+    if not stable_urls:
+        return
+    for r in missing:
+        url = stable_urls.get(r.get("id"))
+        if url:
+            r["image_url"] = url
 
 
 def _load_json(lang: str, entity: str) -> list[dict]:
