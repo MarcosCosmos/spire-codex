@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import os
 
-from fastapi import APIRouter, HTTPException, Request, UploadFile, File
+from fastapi import APIRouter, HTTPException, Request, Response, UploadFile, File
 from fastapi.responses import JSONResponse
 
 from ..dependencies import shared_limiter
@@ -46,6 +46,7 @@ def me(request: Request):
         "created_at": user.get("created_at"),
         "needs_email": not user.get("email"),
         "is_admin": is_admin(user),
+        "profile_private": bool(user.get("profile_private")),
     }
 
 
@@ -318,6 +319,52 @@ def _compute_personal_bests(username: str) -> dict:
     _best("fastest_daily", {"game_mode": "daily"}, [("run_time", 1)])
 
     return results
+
+
+@router.get("/insights")
+@limiter.limit(rate_limit_config.endpoint_limit("auth.user_insights", "10/minute"))
+def user_insights(request: Request, response: Response, character: str | None = None):
+    """The signed-in player's personal community-stats: their runs walked
+    through the same accumulator as /community-stats (deaths, campfires,
+    event decisions, boon take rates, records) with the community's numbers
+    attached for comparison, plus card-pick divergence. Self-only.
+    `character` (e.g. IRONCLAD) scopes the whole view to that character."""
+    user = require_user(request)
+    if not os.environ.get("MONGO_URL", "").strip():
+        return {"total_runs": 0, "runs_walked": 0}
+
+    from ..services.run_entity_stats import _official_character_ids
+    from ..services.user_insights import get_user_insights
+
+    character = (character or "").strip().upper() or None
+    if character:
+        official = _official_character_ids()
+        if official and character not in official:
+            raise HTTPException(status_code=400, detail="Unknown character")
+
+    response.headers["Cache-Control"] = "private, max-age=120"
+    return get_user_insights(
+        str(user["_id"]), username=user.get("username"), character=character
+    )
+
+
+@router.patch("/profile-privacy")
+@limiter.limit(rate_limit_config.endpoint_limit("auth.profile_privacy", "10/minute"))
+async def profile_privacy(request: Request):
+    """Toggle the public /players page for this account. Runs stay on the
+    leaderboards either way; this only controls the profile page."""
+    user = require_user(request)
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON body")
+    private = body.get("private")
+    if not isinstance(private, bool):
+        raise HTTPException(status_code=400, detail="private must be a boolean")
+
+    from ..services.users_db import set_profile_private
+
+    return set_profile_private(user["_id"], private)
 
 
 @router.get("/personal-bests")

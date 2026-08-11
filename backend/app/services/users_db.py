@@ -309,6 +309,28 @@ def get_user(user_id: str) -> dict | None:
     return doc
 
 
+def get_user_by_username(username: str) -> dict | None:
+    """Case-insensitive username lookup for the public player pages."""
+    if not username or not username.strip():
+        return None
+    coll = _get_collection()
+    doc = coll.find_one({"username_lower": username.strip().lower()})
+    if doc:
+        doc["_id"] = str(doc["_id"])
+    return doc
+
+
+def set_profile_private(user_id: str, private: bool) -> dict:
+    """Flip the public-profile flag. Runs stay on leaderboards either way
+    (they're public by design); this only controls the /players page."""
+    coll = _get_collection()
+    coll.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$set": {"profile_private": bool(private)}},
+    )
+    return {"profile_private": bool(private)}
+
+
 def update_username(user_id: str, new_name: str) -> dict:
     coll = _get_collection()
     cleaned = sanitize_username(new_name)

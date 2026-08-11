@@ -2503,6 +2503,121 @@ def distinct_build_ids() -> list[str]:
     return sorted([v for v in coll.distinct("build_id") if v], reverse=True)
 
 
+@_instrument("get_user_run_rows")
+def get_user_run_rows(user_id: str, limit: int = 2000) -> list[dict]:
+    """One account's claimed run rows (newest first) for the profile insights
+    walk: just the fields the community-stats accumulator needs per run.
+    Hidden and deleted runs stay out so a moderated or removed run can't feed
+    someone's personal stats."""
+    from bson import ObjectId
+
+    coll = _get_collection()
+    cursor = (
+        coll.find(
+            {
+                "user_id": ObjectId(user_id),
+                "deleted_at": None,
+                "hidden": {"$ne": True},
+            },
+            {
+                "_id": 0,
+                "run_hash": 1,
+                "win": 1,
+                "character": 1,
+                "ascension": 1,
+                "submitted_at": 1,
+                "game_mode": 1,
+                "player_count": 1,
+            },
+        )
+        .sort("submitted_at", DESCENDING)
+        .limit(max(1, limit))
+    )
+    return [r for r in cursor if r.get("run_hash")]
+
+
+@_instrument("get_user_card_pick_tallies")
+def get_user_card_pick_tallies(
+    user_id: str, character: str | None = None
+) -> dict[str, dict]:
+    """One account's card-reward offered/picked tallies across its claimed
+    runs (the user_id linkage, unlike get_user_picks' submit-time steam_id).
+    Keyed by card id as stored in card_choices. `character` narrows to that
+    character's runs (both bare and CHARACTER.-prefixed storage forms)."""
+    from bson import ObjectId
+
+    match: dict = {
+        "user_id": ObjectId(user_id),
+        "deleted_at": None,
+        "hidden": {"$ne": True},
+    }
+    if character:
+        match["character"] = {
+            "$in": [
+                character,
+                f"CHARACTER.{character}",
+                character.lower(),
+                f"character.{character.lower()}",
+            ]
+        }
+    coll = _get_collection()
+    rows = coll.aggregate(
+        [
+            {"$match": match},
+            {"$unwind": "$card_choices"},
+            {
+                "$group": {
+                    "_id": "$card_choices.card_id",
+                    "offered": {"$sum": 1},
+                    "picked": {"$sum": {"$cond": ["$card_choices.was_picked", 1, 0]}},
+                }
+            },
+        ],
+        allowDiskUse=True,
+    )
+    return {
+        r["_id"]: {"picked": r["picked"], "offered": r["offered"]}
+        for r in rows
+        if r.get("_id")
+    }
+
+
+@_instrument("get_user_relic_run_counts")
+def get_user_relic_run_counts(
+    user_id: str, character: str | None = None
+) -> dict[str, int]:
+    """Distinct claimed runs containing each relic, for the profile's
+    relic carry-rate comparison. `character` narrows to that character's
+    runs (both storage forms, like the card tallies)."""
+    from bson import ObjectId
+
+    match: dict = {
+        "user_id": ObjectId(user_id),
+        "deleted_at": None,
+        "hidden": {"$ne": True},
+    }
+    if character:
+        match["character"] = {
+            "$in": [
+                character,
+                f"CHARACTER.{character}",
+                character.lower(),
+                f"character.{character.lower()}",
+            ]
+        }
+    coll = _get_collection()
+    rows = coll.aggregate(
+        [
+            {"$match": match},
+            {"$unwind": "$relics"},
+            {"$group": {"_id": {"run": "$_id", "relic": "$relics.id"}}},
+            {"$group": {"_id": "$_id.relic", "runs": {"$sum": 1}}},
+        ],
+        allowDiskUse=True,
+    )
+    return {r["_id"]: r["runs"] for r in rows if r.get("_id")}
+
+
 @_instrument("get_user_picks")
 def get_user_picks(steam_id: str) -> dict[str, dict]:
     """One player's own pick rates (by steam_id), no min-sample gate:
