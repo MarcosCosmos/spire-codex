@@ -1,19 +1,72 @@
 """Prometheus metrics for Spire Codex."""
 
-from prometheus_client import Counter, Gauge, Histogram
+import os
+import time
+
+from prometheus_client import Counter, Gauge, Histogram, multiprocess
 
 # ── HTTP / Traffic ────────────────────────────────────────────
 # multiprocess_mode='livesum': under uvicorn --workers N, every worker
 # tracks its own in-flight gauge value. We want the fleet total, so
-# the multiproc collector sums each worker's value at scrape time and
-# ignores files from dead workers. Without an explicit mode, the
-# prometheus_client multiproc collector refuses to register the gauge
-# at all.
+# the multiproc collector sums each worker's value at scrape time.
+# "live" only excludes a dead worker once mark_process_dead() removes
+# its gauge files — uvicorn has no gunicorn-style child_exit hook, so
+# sweep_dead_worker_gauges() below does that cleanup on scrape.
+# Without an explicit mode, the prometheus_client multiproc collector
+# refuses to register the gauge at all.
 requests_in_flight = Gauge(
     "spire_codex_requests_in_flight",
     "Number of requests currently being processed",
     multiprocess_mode="livesum",
 )
+
+_SWEEP_INTERVAL = 60.0
+_last_sweep = 0.0
+
+
+def _pid_alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def sweep_dead_worker_gauges() -> None:
+    """Drop gauge files left behind by dead uvicorn workers.
+
+    A worker that dies mid-request (recycle, OOM kill) leaves its last
+    in-flight value in the multiproc dir, and 'livesum' keeps summing it
+    forever — the fleet gauge only ever climbs (854 -> 1746 within a day
+    on 2026-08-11 while the box held ~240 real connections). Called from
+    the /metrics scrape path, at most once per _SWEEP_INTERVAL."""
+    global _last_sweep
+    now = time.monotonic()
+    if now - _last_sweep < _SWEEP_INTERVAL:
+        return
+    _last_sweep = now
+    mp_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR") or os.environ.get(
+        "prometheus_multiproc_dir"
+    )
+    if not mp_dir or not os.path.isdir(mp_dir):
+        return
+    me = os.getpid()
+    dead: set[int] = set()
+    for fname in os.listdir(mp_dir):
+        stem = fname.rsplit(".", 1)[0]
+        pid_part = stem.rsplit("_", 1)[-1]
+        if pid_part.isdigit():
+            pid = int(pid_part)
+            if pid != me and not _pid_alive(pid):
+                dead.add(pid)
+    for pid in dead:
+        try:
+            multiprocess.mark_process_dead(pid, mp_dir)
+        except OSError:
+            pass  # another worker swept it concurrently
+
 
 response_size = Histogram(
     "spire_codex_response_size_bytes",

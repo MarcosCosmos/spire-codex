@@ -99,6 +99,7 @@ from .metrics import (
     version_usage,
     widget_loads,
     compare_views,
+    sweep_dead_worker_gauges,
 )
 
 # ── Structured logging ────────────────────────────────────────
@@ -475,6 +476,8 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         if request.url.path in _SKIP_PATHS:
+            if request.url.path == "/metrics":
+                sweep_dead_worker_gauges()
             return await call_next(request)
 
         # Resolve the rate-limit tier BEFORE SlowAPIMiddleware runs (this
@@ -565,7 +568,14 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         # URLs bloated the counter and pegged memory/CPU until the
         # container OOM-killed. _normalize_path collapses to a bounded
         # template set regardless of traffic.
-        if response.status_code >= 400:
+        # Presence 404s are the protocol, not errors: the overlay and
+        # compendium poll /api/presence/<steam_id> and 404 means "not in
+        # a run right now". Counting them buried real errors (they were
+        # ~250/min of a 253/min "error" rate on 2026-08-11).
+        is_presence_miss = response.status_code == 404 and path.startswith(
+            "/api/presence/"
+        )
+        if response.status_code >= 400 and not is_presence_miss:
             api_errors.labels(
                 status_code=str(response.status_code),
                 method=request.method,
