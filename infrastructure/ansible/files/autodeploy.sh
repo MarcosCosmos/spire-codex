@@ -85,7 +85,10 @@ if [ "$RECREATE" = "1" ]; then
   # this stack (served at /beta from the same containers), so the old
   # second pass over docker-compose.beta.yml is gone.
   log "  deploying $COMPOSE_FILE"
-  docker compose -f "$COMPOSE_FILE" pull backend frontend >> "$LOG" 2>&1
+  # The rebuilder MUST ride along: it holds the stats-refresher lease, so
+  # leaving it on an old image keeps the fleet pinned to the old snapshot
+  # version forever (no v22 ever built after the 2026-08-11 deploy).
+  docker compose -f "$COMPOSE_FILE" pull backend frontend rebuilder >> "$LOG" 2>&1
 
   # Pre-warm the stats snapshot with the NEW image before swapping
   # containers. If the new code bumped SNAPSHOT_VERSION, this runs the
@@ -108,7 +111,7 @@ if [ "$RECREATE" = "1" ]; then
     fi
   fi
 
-  docker compose -f "$COMPOSE_FILE" up -d --force-recreate backend frontend >> "$LOG" 2>&1
+  docker compose -f "$COMPOSE_FILE" up -d --force-recreate backend frontend rebuilder >> "$LOG" 2>&1
 
   # Settle. 5s is enough for FastAPI startup; longer waits don't help.
   sleep 5
