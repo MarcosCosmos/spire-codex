@@ -293,7 +293,10 @@ _HISTORY_RETENTION_DAYS = 90
 # Version 21: community records (fastest win / longest run / biggest deck) only
 # count standard, modifier-free runs, so custom games can't hold them (the bump
 # forces the rebuild that drops the already-baked custom-run records).
-SNAPSHOT_VERSION = 21
+# Version 22: the official-id filters accept beta-catalog entities (beta-only
+# cards/relics were read as modded and vanished from the tier list); the bump
+# forces the rebuild that restores their walk-time per-act relic data.
+SNAPSHOT_VERSION = 22
 # Serialized-byte budget per persisted chunk doc. With version-composable
 # brackets a popular entity carries hundreds of per-bracket blocks and
 # entity sizes vary wildly (a card dwarfs an affliction), so chunks are
@@ -416,6 +419,29 @@ def _strip_character_prefix(raw: str | None) -> str:
     return raw.split(".", 1)[1] if raw.startswith("CHARACTER.") else raw
 
 
+def _official_ids_with_beta(loader) -> frozenset[str]:
+    """Uppercase catalog ids from the MAIN channel plus the current beta.
+
+    Beta-only entities are official content (they ship in the Steam beta
+    build) and players on that branch submit runs containing them, so the
+    modded-id filters must accept both channels — otherwise every new beta
+    card/relic vanishes from the tier list and metrics until the patch
+    promotes. Genuinely modded ids stay filtered: they're in neither
+    catalog. An empty result (unreadable catalog) means "don't filter"."""
+    from . import data_service
+
+    ids = {(r.get("id") or "").upper() for r in loader() if r.get("id")}
+    if ids and data_service.get_beta_version():
+        token = data_service.current_channel.set("beta")
+        try:
+            ids.update((r.get("id") or "").upper() for r in loader() if r.get("id"))
+        except Exception:
+            logger.warning("beta catalog overlay failed", exc_info=True)
+        finally:
+            data_service.current_channel.reset(token)
+    return frozenset(ids)
+
+
 _official_characters_cache: frozenset[str] | None = None
 
 
@@ -424,17 +450,15 @@ def _official_character_ids() -> frozenset[str]:
 
     A run played as a modded character carries an id outside this set, so the
     stats exclude it (a modded character means a modded run). Loaded once from
-    the character catalog; an empty set (catalog unreadable) means "don't
-    filter" so a transient read failure can't blank every stat.
+    the character catalog (main + beta); an empty set (catalog unreadable)
+    means "don't filter" so a transient read failure can't blank every stat.
     """
     global _official_characters_cache
     if _official_characters_cache is None:
         try:
             from .data_service import load_characters
 
-            _official_characters_cache = frozenset(
-                (c.get("id") or "").upper() for c in load_characters() if c.get("id")
-            )
+            _official_characters_cache = _official_ids_with_beta(load_characters)
         except Exception:
             _official_characters_cache = frozenset()
     return _official_characters_cache
@@ -444,7 +468,7 @@ _official_relics_cache: frozenset[str] | None = None
 
 
 def _official_relic_ids() -> frozenset[str]:
-    """Uppercase ids of the official relics (the real relic catalog).
+    """Uppercase ids of the official relics (main + beta catalogs).
 
     Runs can carry modded relic ids (e.g. forge/rune entities) that aren't real
     relics; the act tier view excludes them. Loaded once; an empty set (catalog
@@ -456,9 +480,7 @@ def _official_relic_ids() -> frozenset[str]:
         try:
             from .data_service import load_relics
 
-            _official_relics_cache = frozenset(
-                (r.get("id") or "").upper() for r in load_relics() if r.get("id")
-            )
+            _official_relics_cache = _official_ids_with_beta(load_relics)
         except Exception:
             _official_relics_cache = frozenset()
     return _official_relics_cache
@@ -468,17 +490,16 @@ _official_potions_cache: frozenset[str] | None = None
 
 
 def _official_potion_ids() -> frozenset[str]:
-    """Uppercase ids of the official potions. Runs can carry modded potion ids;
-    like _official_relic_ids, an empty set (unreadable catalog) means "don't
-    filter" so a transient read failure can't blank the list."""
+    """Uppercase ids of the official potions (main + beta catalogs). Runs can
+    carry modded potion ids; like _official_relic_ids, an empty set (unreadable
+    catalog) means "don't filter" so a transient read failure can't blank the
+    list."""
     global _official_potions_cache
     if _official_potions_cache is None:
         try:
             from .data_service import load_potions
 
-            _official_potions_cache = frozenset(
-                (p.get("id") or "").upper() for p in load_potions() if p.get("id")
-            )
+            _official_potions_cache = _official_ids_with_beta(load_potions)
         except Exception:
             _official_potions_cache = frozenset()
     return _official_potions_cache
@@ -488,17 +509,15 @@ _official_cards_cache: frozenset[str] | None = None
 
 
 def _official_card_ids() -> frozenset[str]:
-    """Uppercase ids of the official cards (the real card catalog). A card id
-    absent from this set is fully modded (a mod's custom card). Empty set means
+    """Uppercase ids of the official cards (main + beta catalogs). A card id
+    absent from both is fully modded (a mod's custom card). Empty set means
     "don't filter"."""
     global _official_cards_cache
     if _official_cards_cache is None:
         try:
             from .data_service import load_cards
 
-            _official_cards_cache = frozenset(
-                (c.get("id") or "").upper() for c in load_cards() if c.get("id")
-            )
+            _official_cards_cache = _official_ids_with_beta(load_cards)
         except Exception:
             _official_cards_cache = frozenset()
     return _official_cards_cache
@@ -527,6 +546,29 @@ _NON_REWARD_CARD_COLORS = frozenset({"curse", "status", "event", "quest", "token
 _excluded_card_ids_cache: frozenset[str] | None = None
 
 
+def _cards_both_channels() -> list[dict]:
+    """Card catalog rows from the MAIN channel plus beta-only additions.
+
+    The property sets below (non-reward colors, tokens, starters, co-op-only,
+    upgradeable) must see beta-only cards too: a new beta curse or co-op card
+    that misses its set leaks into the metrics as a pickable solo card. Main
+    rows win for ids in both channels."""
+    from . import data_service
+    from .data_service import load_cards
+
+    rows = [c for c in load_cards() if c.get("id")]
+    if rows and data_service.get_beta_version():
+        seen = {c["id"] for c in rows}
+        token = data_service.current_channel.set("beta")
+        try:
+            rows.extend(c for c in load_cards() if c.get("id") and c["id"] not in seen)
+        except Exception:
+            logger.warning("beta card catalog overlay failed", exc_info=True)
+        finally:
+            data_service.current_channel.reset(token)
+    return rows
+
+
 _multiplayer_card_ids_cache: frozenset[str] | None = None
 
 
@@ -537,12 +579,8 @@ def _multiplayer_card_ids() -> frozenset[str]:
     global _multiplayer_card_ids_cache
     if _multiplayer_card_ids_cache is None:
         try:
-            from .data_service import load_cards
-
             _multiplayer_card_ids_cache = frozenset(
-                c["id"]
-                for c in load_cards()
-                if c.get("id") and c.get("multiplayer_only")
+                c["id"] for c in _cards_both_channels() if c.get("multiplayer_only")
             )
         except Exception:
             logger.warning("multiplayer card ids load failed", exc_info=True)
@@ -556,13 +594,10 @@ def _excluded_card_ids() -> frozenset[str]:
     global _excluded_card_ids_cache
     if _excluded_card_ids_cache is None:
         try:
-            from .data_service import load_cards
-
             _excluded_card_ids_cache = frozenset(
                 c["id"]
-                for c in load_cards()
-                if c.get("id")
-                and (c.get("color") or "").lower() in _NON_REWARD_CARD_COLORS
+                for c in _cards_both_channels()
+                if (c.get("color") or "").lower() in _NON_REWARD_CARD_COLORS
             )
         except Exception:
             logger.warning(
@@ -583,12 +618,10 @@ def _token_card_ids() -> frozenset[str]:
     global _token_card_ids_cache
     if _token_card_ids_cache is None:
         try:
-            from .data_service import load_cards
-
             _token_card_ids_cache = frozenset(
                 c["id"]
-                for c in load_cards()
-                if c.get("id") and (c.get("color") or "").lower() == "token"
+                for c in _cards_both_channels()
+                if (c.get("color") or "").lower() == "token"
             )
         except Exception:
             logger.warning(
@@ -611,13 +644,10 @@ def _starter_card_ids() -> frozenset[str]:
     global _starter_card_ids_cache
     if _starter_card_ids_cache is None:
         try:
-            from .data_service import load_cards
-
             _starter_card_ids_cache = frozenset(
                 c["id"]
-                for c in load_cards()
-                if c.get("id")
-                and (c.get("rarity_key") or c.get("rarity") or "").lower() == "basic"
+                for c in _cards_both_channels()
+                if (c.get("rarity_key") or c.get("rarity") or "").lower() == "basic"
             )
         except Exception:
             logger.warning(
@@ -637,10 +667,8 @@ def _upgradeable_card_ids() -> frozenset[str]:
     global _upgradeable_card_ids_cache
     if _upgradeable_card_ids_cache is None:
         try:
-            from .data_service import load_cards
-
             _upgradeable_card_ids_cache = frozenset(
-                c["id"] for c in load_cards() if c.get("id") and c.get("upgrade")
+                c["id"] for c in _cards_both_channels() if c.get("upgrade")
             )
         except Exception:
             logger.warning(
