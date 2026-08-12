@@ -4,10 +4,11 @@ only, zero/missing timers excluded, average and median in the series label."""
 from app.services import charts_stats as cs
 
 
-def _row(win: bool, minutes: float) -> tuple:
+def _row(win: bool, minutes: float, day: int = 0) -> tuple:
     r = [0] * 15
     r[cs.WIN] = 1 if win else 0
     r[cs.TIME] = int(minutes * 60)
+    r[cs.DAY] = day
     return tuple(r)
 
 
@@ -33,3 +34,19 @@ def test_time_to_win_wins_only_with_avg_and_median():
 def test_time_to_win_needs_min_sample():
     rows = [_row(True, 40)] * (cs.MIN_POINT_N - 1)
     assert cs.time_to_win(rows, "") == []
+
+
+def test_daily_average_win_time_drops_thin_days():
+    day = 20675  # 2026-08-10 as an epoch day
+    rows = [_row(True, 40, day)] * 10 + [_row(True, 60, day)] * 10
+    rows += [_row(False, 300, day)] * 25  # losses never count
+    rows += [_row(True, 55, day + 1)] * 9  # 9 wins: under the 10-win floor
+
+    series = cs.time_to_win_daily(rows, "")
+
+    assert len(series) == 1
+    points = series[0]["points"]
+    assert len(points) == 1
+    assert points[0]["x"] == "2026-08-10"
+    assert points[0]["y"] == 50.0
+    assert points[0]["n"] == 20
