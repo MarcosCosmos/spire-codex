@@ -256,6 +256,14 @@ CHARTS: dict[str, dict] = {
         "axis": {"x": "stat", "y": "% of runs"},
         "desc": "How a run stat is distributed across the filtered runs.",
     },
+    "time-to-win": {
+        "label": "How long a winning run takes",
+        "group": "Distributions",
+        "kind": "frame",
+        "splits": _RATE_SPLITS,
+        "axis": {"x": "Run length (minutes)", "y": "% of wins"},
+        "desc": "Run length of victorious runs in 5-minute buckets. Each series shows its average and median in the legend. Wins only.",
+    },
     "stat-scatter": {
         "label": "Stat vs stat scatter",
         "group": "Distributions",
@@ -322,6 +330,8 @@ def _build_frame_chart(
         return cs.winrate_by_stat(rows, stat or "deck_size", split)
     if key == "stat-histogram":
         return cs.stat_histogram(rows, stat or "floors_reached", split)
+    if key == "time-to-win":
+        return cs.time_to_win(rows, split)
     if key == "stat-scatter":
         return cs.stat_scatter(rows, x or "floors_reached", y or "deck_size", split)
     if key == "acts-funnel":
