@@ -46,8 +46,12 @@ def player_insights(
     if not user or user.get("profile_private"):
         raise HTTPException(status_code=404, detail="Player not found")
 
-    response.headers["Cache-Control"] = "public, max-age=300"
     data = get_user_insights(
         str(user["_id"]), username=user.get("username"), character=character
+    )
+    # Never let the edge cache a building placeholder: CF would pin it for
+    # 5 minutes and every viewer's poll loop would spin against it.
+    response.headers["Cache-Control"] = (
+        "no-store" if data.get("building") else "public, max-age=300"
     )
     return {"username": user.get("username"), **data}

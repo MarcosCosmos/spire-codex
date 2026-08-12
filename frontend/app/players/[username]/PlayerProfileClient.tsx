@@ -13,30 +13,49 @@ export default function PlayerProfileClient({ username }: { username: string }) 
   const { lang } = useLanguage();
   const [data, setData] = useState<PlayerInsights | null>(null);
   const [status, setStatus] = useState<"loading" | "ok" | "missing">("loading");
+  const [building, setBuilding] = useState(false);
   const [character, setCharacter] = useState<string | null>(null);
   const cards = useCardMap();
   const relics = useRelicMap();
 
   useEffect(() => {
     let alive = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     const q = character ? `?character=${encodeURIComponent(character)}` : "";
-    fetch(`${API}/api/players/${encodeURIComponent(username)}/insights${q}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (!alive) return;
-        if (d) setData(d);
-        setStatus(d ? "ok" : "missing");
-      })
-      .catch(() => alive && setStatus("missing"));
+    // First-ever view of a profile kicks a background walk server-side;
+    // poll until it lands instead of waiting on one long request.
+    const load = () => {
+      fetch(`${API}/api/players/${encodeURIComponent(username)}/insights${q}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          if (!alive) return;
+          if (d && d.building) {
+            setBuilding(true);
+            timer = setTimeout(load, 5000);
+            return;
+          }
+          setBuilding(false);
+          if (d) setData(d);
+          setStatus(d ? "ok" : "missing");
+        })
+        .catch(() => alive && setStatus("missing"));
+    };
+    load();
     return () => {
       alive = false;
+      if (timer) clearTimeout(timer);
     };
   }, [username, character]);
 
-  if (status === "loading") {
+  if (status === "loading" || building) {
     return (
       <div className="max-w-5xl mx-auto px-4 py-8 space-y-3">
         <div className="h-8 w-56 bg-[var(--bg-card)] rounded animate-pulse" />
+        {building && (
+          <p className="text-sm text-[var(--text-secondary)]">
+            {t("Crunching your runs. The first load can take a minute or two.", lang)}
+          </p>
+        )}
         {[...Array(4)].map((_, i) => (
           <div key={i} className="h-24 bg-[var(--bg-card)] rounded-lg animate-pulse" />
         ))}

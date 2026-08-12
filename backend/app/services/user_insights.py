@@ -378,7 +378,93 @@ def _bare_character(raw: str | None) -> str:
     return (raw or "").rsplit(".", 1)[-1].upper()
 
 
+# The walk below (blob fetch + full community-stats accumulate per run) takes
+# minutes for large accounts — far past the 60s gateway timeout (Yitsy's first
+# load 504'd on 2026-08-12) — so it never runs on the request path. Results
+# live in Redis so all workers share them; a fresh marker with the old 120s
+# TTL decides when to re-walk, and stale copies keep serving instantly while
+# the refresh runs behind them.
+_STALE_REDIS_TTL = 6 * 3600
+_LOCK_TTL = 15 * 60
+
+_inflight: set[str] = set()
+_inflight_lock = threading.Lock()
+
+
+def _payload_key(cache_key: str) -> str:
+    return f"user_insights:{cache_key}"
+
+
+def _fresh_key(cache_key: str) -> str:
+    return f"user_insights:fresh:{cache_key}"
+
+
 def get_user_insights(
+    user_id: str, username: str | None = None, character: str | None = None
+) -> dict[str, Any]:
+    """Cached view over _compute_insights. Serves instantly in all cases:
+    a fresh result directly, a stale result while a background refresh runs,
+    or {"building": true} when there is nothing cached yet — clients poll
+    until the walk lands."""
+    from . import cache as app_cache
+
+    character = (character or "").strip().upper() or None
+    cache_key = f"{user_id}:{character or ''}"
+    local = _cache_get(cache_key)
+    if local is not None:
+        return local
+    payload = app_cache.get_json(_payload_key(cache_key))
+    if payload is not None and app_cache.get_json(_fresh_key(cache_key)) is not None:
+        _cache_put(cache_key, payload)
+        return payload
+    _kick_refresh(cache_key, user_id, username, character)
+    if payload is not None:
+        return payload
+    return {"building": True}
+
+
+def _kick_refresh(
+    cache_key: str, user_id: str, username: str | None, character: str | None
+) -> None:
+    """Start one background walk per cache key: an in-process set stops
+    duplicate threads in this worker, a Redis lock stops the other workers
+    (fail-open, so with Redis down each worker walks once — same as the old
+    synchronous behavior)."""
+    from . import cache as app_cache
+
+    with _inflight_lock:
+        if cache_key in _inflight:
+            return
+        _inflight.add(cache_key)
+    lock_key = f"user_insights:lock:{cache_key}"
+    if not app_cache.acquire_lock(lock_key, _LOCK_TTL):
+        with _inflight_lock:
+            _inflight.discard(cache_key)
+        return
+
+    def _run() -> None:
+        from fastapi.encoders import jsonable_encoder
+
+        try:
+            payload = jsonable_encoder(
+                _compute_insights(user_id, username=username, character=character)
+            )
+            app_cache.set_json(_payload_key(cache_key), payload, _STALE_REDIS_TTL)
+            app_cache.set_json(_fresh_key(cache_key), 1, int(_CACHE_TTL))
+            _cache_put(cache_key, payload)
+        except Exception:
+            logger.warning("user-insights refresh failed", exc_info=True)
+        finally:
+            app_cache.delete(lock_key)
+            with _inflight_lock:
+                _inflight.discard(cache_key)
+
+    threading.Thread(
+        target=_run, daemon=True, name=f"insights-{cache_key[:24]}"
+    ).start()
+
+
+def _compute_insights(
     user_id: str, username: str | None = None, character: str | None = None
 ) -> dict[str, Any]:
     """The signed-in account's personal community-stats blob plus community
@@ -393,10 +479,6 @@ def get_user_insights(
     Percentiles are omitted when filtered - the ranking map is overall-only,
     so showing it against a character slice would mislead."""
     character = (character or "").strip().upper() or None
-    cache_key = f"{user_id}:{character or ''}"
-    cached = _cache_get(cache_key)
-    if cached is not None:
-        return cached
 
     from .runs_db_mongo import get_run_blobs, get_user_run_rows
 
@@ -458,6 +540,4 @@ def get_user_insights(
     mine["character"] = character
     mine["runs_walked"] = walked
     mine["runs_capped"] = len(rows) >= _MAX_RUNS
-
-    _cache_put(cache_key, mine)
     return mine

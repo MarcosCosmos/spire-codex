@@ -59,7 +59,7 @@ def test_insights_walk_and_compare(monkeypatch):
     }
     _fake_backend(monkeypatch, rows, blobs, community, table, tallies)
 
-    out = user_insights.get_user_insights("507f1f77bcf86cd799439011")
+    out = user_insights._compute_insights("507f1f77bcf86cd799439011")
     assert out["total_runs"] == 2
     assert out["runs_walked"] == 2
     assert out["records"]["fastest_win"] == {"run_time": 900, "run_hash": "r1"}
@@ -77,7 +77,18 @@ def test_insights_walk_and_compare(monkeypatch):
     assert all(d["id"] != "RARE_SEEN_TWICE" for d in over + under)
 
 
-def test_insights_cached_per_user(monkeypatch):
+class _InlineThread:
+    """threading.Thread stand-in that runs the target on start(), so the
+    background refresh completes before the orchestrator's caller returns."""
+
+    def __init__(self, target=None, **kwargs):
+        self._target = target
+
+    def start(self):
+        self._target()
+
+
+def test_insights_build_then_cache(monkeypatch):
     calls = {"n": 0}
 
     def rows(uid, limit):
@@ -93,9 +104,16 @@ def test_insights_cached_per_user(monkeypatch):
     monkeypatch.setattr(
         user_insights, "get_entity_metrics_table", lambda etype: {"rows": []}
     )
+    monkeypatch.setattr(user_insights.threading, "Thread", _InlineThread)
     user_insights._cache.clear()
 
-    user_insights.get_user_insights("u1")
+    # The walk never runs on the request path: the first call kicks the
+    # refresh (inline here) and reports building; the next serves the result.
+    first = user_insights.get_user_insights("u1")
+    assert first == {"building": True}
+    second = user_insights.get_user_insights("u1")
+    assert second.get("building") is None
+    assert second["runs_walked"] == 0
     user_insights.get_user_insights("u1")
     assert calls["n"] == 1
 
@@ -223,8 +241,8 @@ def test_character_filter_scopes_walk_and_cache(monkeypatch):
     )
     user_insights._cache.clear()
 
-    everything = user_insights.get_user_insights("u1", username="p")
-    ironclad = user_insights.get_user_insights("u1", username="p", character="ironclad")
+    everything = user_insights._compute_insights("u1", username="p")
+    ironclad = user_insights._compute_insights("u1", username="p", character="ironclad")
     assert everything["runs_walked"] == 2
     assert ironclad["runs_walked"] == 1
     assert ironclad["character"] == "IRONCLAD"
@@ -232,8 +250,6 @@ def test_character_filter_scopes_walk_and_cache(monkeypatch):
     assert seen_chars == [None, "IRONCLAD"]
     assert everything["percentiles"] is not None
     assert ironclad["percentiles"] is None
-    # Distinct cache entries per scope.
-    assert user_insights.get_user_insights("u1", username="p")["runs_walked"] == 2
 
 
 def test_relic_carry_deltas(monkeypatch):
