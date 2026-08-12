@@ -109,6 +109,10 @@ def _week_label(week: int) -> str:
     )
 
 
+def _day_label(day: int) -> str:
+    return datetime.fromtimestamp(day * 86400, tz=timezone.utc).strftime("%Y-%m-%d")
+
+
 def _daily_date(seed: str | None, game_mode: str) -> str:
     """Daily seeds encode their date as DD_MM_YYYY; '' for everything else."""
     if game_mode != "daily" or not seed:
@@ -631,6 +635,33 @@ def time_to_win(rows: list[tuple], split: str) -> list[dict]:
                 "median_minutes": round(med, 1),
             }
         )
+    return series
+
+
+def time_to_win_daily(rows: list[tuple], split: str) -> list[dict]:
+    """Average length of winning runs per day: the pace trend behind the
+    time-to-win distribution. Days with under 10 wins are dropped rather
+    than plotted as noise (mirrors winrate_over_time's per-point floor)."""
+    stat = STATS["run_minutes"]
+    series = []
+    for sid, label, sub in _series_split(rows, split):
+        days: dict[int, list[float]] = {}
+        for r in sub:
+            if not r[WIN] or r[DAY] <= 0:
+                continue
+            v = _stat_value(r, stat)
+            if v <= 0 or v > stat["max"]:
+                continue
+            cell = days.setdefault(r[DAY], [0, 0.0])
+            cell[0] += 1
+            cell[1] += v
+        points = [
+            {"x": _day_label(d), "y": round(total / n, 1), "n": n}
+            for d, (n, total) in sorted(days.items())
+            if n >= 10
+        ]
+        if points:
+            series.append({"id": sid, "label": label, "points": points})
     return series
 
 

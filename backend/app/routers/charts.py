@@ -186,6 +186,14 @@ CHARTS: dict[str, dict] = {
         "axis": {"x": "% of max HP lost", "y": "% of fights"},
         "desc": "Damage distribution for one encounter, in 5%-of-max-HP buckets. All ascensions and modes.",
     },
+    "avg-win-time-daily": {
+        "label": "Average win time by day",
+        "group": "Combat",
+        "kind": "frame",
+        "splits": _RATE_SPLITS,
+        "axis": {"x": "Day", "y": "Avg run length (minutes)"},
+        "desc": "Daily average length of winning runs. Days with under 10 wins are dropped.",
+    },
     # ── Strategy (blob) ──
     "elites-vs-winrate": {
         "label": "Elites fought vs win rate",
@@ -332,6 +340,8 @@ def _build_frame_chart(
         return cs.stat_histogram(rows, stat or "floors_reached", split)
     if key == "time-to-win":
         return cs.time_to_win(rows, split)
+    if key == "avg-win-time-daily":
+        return cs.time_to_win_daily(rows, split)
     if key == "stat-scatter":
         return cs.stat_scatter(rows, x or "floors_reached", y or "deck_size", split)
     if key == "acts-funnel":
