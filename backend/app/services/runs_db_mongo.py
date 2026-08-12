@@ -2520,8 +2520,6 @@ def get_user_run_rows(user_id: str, limit: int = 2000) -> list[dict]:
                 "hidden": {"$ne": True},
             },
             {
-                "_id": 0,
-                "run_hash": 1,
                 "win": 1,
                 "character": 1,
                 "ascension": 1,
@@ -2533,7 +2531,14 @@ def get_user_run_rows(user_id: str, limit: int = 2000) -> list[dict]:
         .sort("submitted_at", DESCENDING)
         .limit(max(1, limit))
     )
-    return [r for r in cursor if r.get("run_hash")]
+    # The run hash is the document _id (same as get_user_runs); there is no
+    # run_hash field, so projecting one returns rows with no hash and the
+    # insights walk sees zero runs.
+    rows = []
+    for r in cursor:
+        r["run_hash"] = r.pop("_id")
+        rows.append(r)
+    return rows
 
 
 @_instrument("get_user_card_pick_tallies")
