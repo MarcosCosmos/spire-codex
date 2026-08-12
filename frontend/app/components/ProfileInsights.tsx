@@ -1012,27 +1012,53 @@ export default function ProfileInsights({
   const { lang } = useLanguage();
   const [data, setData] = useState<Insights | null>(null);
   const [loading, setLoading] = useState(true);
+  const [building, setBuilding] = useState(false);
   const [character, setCharacter] = useState<string | null>(null);
   const cards = useCardMap();
   const relics = useRelicMap();
 
   useEffect(() => {
     let alive = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     setLoading(true);
     const q = character ? `?character=${encodeURIComponent(character)}` : "";
-    fetch(`${API}/api/auth/insights${q}`, { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => alive && setData(d))
-      .catch(() => {})
-      .finally(() => alive && setLoading(false));
+    // The first-ever view kicks a background walk server-side; poll until it
+    // lands instead of holding a request open past the gateway timeout.
+    const load = () => {
+      fetch(`${API}/api/auth/insights${q}`, { credentials: "include" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          if (!alive) return;
+          if (d && d.building) {
+            setBuilding(true);
+            timer = setTimeout(load, 5000);
+            return;
+          }
+          setBuilding(false);
+          setData(d);
+          setLoading(false);
+        })
+        .catch(() => {
+          if (!alive) return;
+          setBuilding(false);
+          setLoading(false);
+        });
+    };
+    load();
     return () => {
       alive = false;
+      if (timer) clearTimeout(timer);
     };
   }, [character]);
 
-  if (loading && !data) {
+  if (building || (loading && !data)) {
     return (
       <div className="space-y-3">
+        {building && (
+          <p className="text-sm text-[var(--text-secondary)]">
+            {t("Crunching your runs. The first load can take a minute or two.", lang)}
+          </p>
+        )}
         {[...Array(4)].map((_, i) => (
           <div key={i} className="h-24 bg-[var(--bg-card)] rounded-lg animate-pulse" />
         ))}

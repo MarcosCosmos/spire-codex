@@ -342,10 +342,14 @@ def user_insights(request: Request, response: Response, character: str | None = 
         if official and character not in official:
             raise HTTPException(status_code=400, detail="Unknown character")
 
-    response.headers["Cache-Control"] = "private, max-age=120"
-    return get_user_insights(
+    data = get_user_insights(
         str(user["_id"]), username=user.get("username"), character=character
     )
+    # A building placeholder cached for 2 minutes would freeze the poll loop.
+    response.headers["Cache-Control"] = (
+        "no-store" if data.get("building") else "private, max-age=120"
+    )
+    return data
 
 
 @router.patch("/profile-privacy")
