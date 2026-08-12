@@ -593,6 +593,47 @@ def stat_histogram(rows: list[tuple], stat_key: str, split: str) -> list[dict]:
     return series
 
 
+def time_to_win(rows: list[tuple], split: str) -> list[dict]:
+    """How long winning runs take: run length of wins in 5-minute buckets,
+    with each series' average and median baked into its label so "how long
+    does it take to beat a run" is answered right in the legend. Zero-length
+    times are runs whose file carried no timer, not instant wins."""
+    stat = STATS["run_minutes"]
+    series = []
+    for sid, label, sub in _series_split(rows, split):
+        mins = sorted(
+            v
+            for r in sub
+            if r[WIN]
+            for v in (_stat_value(r, stat),)
+            if 0 < v <= stat["max"]
+        )
+        n = len(mins)
+        if n < MIN_POINT_N:
+            continue
+        buckets: dict[int, int] = {}
+        for v in mins:
+            b = int(v // stat["bucket"]) * stat["bucket"]
+            buckets[b] = buckets.get(b, 0) + 1
+        avg = sum(mins) / n
+        med = mins[n // 2] if n % 2 else (mins[n // 2 - 1] + mins[n // 2]) / 2
+        points = [
+            {"x": b, "y": round(c / n * 100, 2), "n": c}
+            for b, c in sorted(buckets.items())
+        ]
+        series.append(
+            {
+                "id": sid,
+                "label": f"{label} (avg {avg:.0f}m, median {med:.0f}m)",
+                "points": points,
+                "total": n,
+                "avg_minutes": round(avg, 1),
+                "median_minutes": round(med, 1),
+            }
+        )
+    return series
+
+
 def stat_scatter(rows: list[tuple], x_key: str, y_key: str, split: str) -> list[dict]:
     sx, sy = STATS[x_key], STATS[y_key]
     groups = [g for g in _series_split(rows, split) if g[0] != "ALL"]
