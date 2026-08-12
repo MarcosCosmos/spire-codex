@@ -384,7 +384,7 @@ def _bare_character(raw: str | None) -> str:
 # live in Redis so all workers share them; a fresh marker with the old 120s
 # TTL decides when to re-walk, and stale copies keep serving instantly while
 # the refresh runs behind them.
-_STALE_REDIS_TTL = 6 * 3600
+_STALE_REDIS_TTL = 24 * 3600
 _LOCK_TTL = 15 * 60
 
 _inflight: set[str] = set()
@@ -421,6 +421,23 @@ def get_user_insights(
     if payload is not None:
         return payload
     return {"building": True}
+
+
+def prewarm_user_insights(user_id: str, username: str | None = None) -> None:
+    """Fill a cold cache before the user ever opens their profile (called from
+    /me, which fires on every page load). Kicks the background walk only when
+    NO payload exists at all — any cached copy, however stale, already serves
+    instantly and the view path handles refreshing it, so prewarming again
+    would just burn walks on every page view. Costs one local dict hit plus
+    at most one Redis GET per call."""
+    from . import cache as app_cache
+
+    cache_key = f"{user_id}:"
+    if _cache_get(cache_key) is not None:
+        return
+    if app_cache.get_json(_payload_key(cache_key)) is not None:
+        return
+    _kick_refresh(cache_key, user_id, username, None)
 
 
 def _kick_refresh(

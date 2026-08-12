@@ -118,6 +118,33 @@ def test_insights_build_then_cache(monkeypatch):
     assert calls["n"] == 1
 
 
+def test_prewarm_kicks_only_when_cold(monkeypatch):
+    walks = {"n": 0}
+
+    def rows(uid, limit):
+        walks["n"] += 1
+        return []
+
+    monkeypatch.setattr(runs_db_mongo, "get_user_run_rows", rows)
+    monkeypatch.setattr(runs_db_mongo, "get_run_blobs", lambda h: {})
+    monkeypatch.setattr(
+        runs_db_mongo, "get_user_card_pick_tallies", lambda uid, character=None: {}
+    )
+    monkeypatch.setattr(user_insights, "get_community_stats", lambda: {})
+    monkeypatch.setattr(
+        user_insights, "get_entity_metrics_table", lambda etype: {"rows": []}
+    )
+    monkeypatch.setattr(user_insights.threading, "Thread", _InlineThread)
+    user_insights._cache.clear()
+
+    user_insights.prewarm_user_insights("u2")
+    assert walks["n"] == 1
+    # Warm cache: prewarm is a no-op, the profile serves without building.
+    user_insights.prewarm_user_insights("u2")
+    assert walks["n"] == 1
+    assert user_insights.get_user_insights("u2")["runs_walked"] == 0
+
+
 def test_event_divergence_needs_sample_and_gap():
     mine = {
         "events": [

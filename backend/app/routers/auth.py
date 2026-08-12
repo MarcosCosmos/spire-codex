@@ -32,6 +32,13 @@ def me(request: Request):
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
+    if os.environ.get("MONGO_URL", "").strip():
+        try:
+            from ..services.user_insights import prewarm_user_insights
+
+            prewarm_user_insights(str(user["_id"]), username=user.get("username"))
+        except Exception:
+            pass  # prewarm is an optimization; /me must never fail on it
     return {
         "user_id": user["_id"],
         "username": user.get("username"),
