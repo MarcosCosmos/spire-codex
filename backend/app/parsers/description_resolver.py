@@ -10,6 +10,10 @@ def _lookup(name: str, vars_dict: dict[str, int | str], default=None):
     for k, v in vars_dict.items():
         if k.lower() == name.lower():
             return v
+    # Calculated* vars (base + extra * runtime state) display CalculationBase out
+    # of combat; some cards (Expect a Fight) ship only the base in their vars.
+    if name.startswith("Calculated"):
+        return _lookup("CalculationBase", vars_dict, default)
     return default
 
 

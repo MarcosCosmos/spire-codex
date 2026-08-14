@@ -228,10 +228,16 @@ def parse_single_card(
     if damage is None and "OstyDamage" in all_vars:
         damage = all_vars["OstyDamage"]
         all_vars["Damage"] = damage
-    # CalculatedDamage cards (e.g. Ashen Strike) — use CalculationBase as the displayed damage
-    # CalculatedDamage = base + extra * runtime_multiplier, which is misleading as a flat stat
+    # Calculated cards — use CalculationBase as the displayed stat, since
+    # Calculated* = base + extra * runtime_multiplier is misleading as a flat
+    # value. The C# var type says which stat it is: CalculatedBlockVar cards
+    # (e.g. Expect a Fight) gain Block, the rest (e.g. Ashen Strike) deal damage.
     if damage is None and "CalculationBase" in all_vars:
-        damage = all_vars["CalculationBase"]
+        if "CalculatedBlockVar" in content:
+            if block is None:
+                block = all_vars["CalculationBase"]
+        else:
+            damage = all_vars["CalculationBase"]
     elif damage is None and "CalculatedDamage" in all_vars:
         damage = all_vars["CalculatedDamage"]
 

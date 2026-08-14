@@ -59,7 +59,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 STEAM_APP_ID = 2868840
 
 # Fields to ignore when diffing (noise / internal)
-IGNORE_FIELDS = {"image_url", "beta_image_url", "sort_order", "era_position"}
+IGNORE_FIELDS = {"image_url", "beta_image_url", "sort_order", "era_position", "compendium_order"}
 
 # Human-readable category names
 CATEGORY_NAMES = {
