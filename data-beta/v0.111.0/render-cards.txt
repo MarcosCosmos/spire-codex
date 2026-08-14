@@ -1,0 +1,25 @@
+# v0.111.0 changed card text/cost/rarity/keywords; these need re-renders before
+# a dedicated render session (render-version points at v0.110.0 until then).
+alignment
+brightest_flame
+expect_a_fight
+forgotten_ritual
+guiding_star
+hyperbeam
+mirage
+null
+rampage
+refine_blade
+rend
+salvo
+shroud
+splash
+spoils_of_battle
+synchronize
+thunder
+times_up
+hibernate  # new portrait art only
+one_for_all  # new portrait art only
+cacophony  # new portrait art only
+underworld  # new portrait art only
+midnight  # new portrait art only

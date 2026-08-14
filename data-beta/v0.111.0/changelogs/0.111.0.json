@@ -1,0 +1,744 @@
+{
+  "app_id": 2868840,
+  "game_version": "0.111.0",
+  "build_id": "24724944",
+  "tag": "0.111.0",
+  "date": "2026-08-14",
+  "title": "Beta v0.111.0",
+  "from_ref": "/tmp/claude-1000/-mnt-c-Users-peter-Documents-prima-codex-spire-codex/fe7248d4-d6f7-4489-a6e2-4ea989d7103f/scratchpad/baseline/data-beta/v0.110.0/eng",
+  "to_ref": "data-beta/v0.111.0/eng",
+  "summary": {
+    "added": 1,
+    "removed": 0,
+    "changed": 27
+  },
+  "categories": [
+    {
+      "id": "cards",
+      "name": "Cards",
+      "old_count": 595,
+      "new_count": 595,
+      "changed": [
+        {
+          "id": "ALIGNMENT",
+          "name": "Alignment",
+          "changes": [
+            {
+              "field": "star_cost",
+              "old": "3",
+              "new": "2"
+            },
+            {
+              "field": "vars.StarCost",
+              "old": "3",
+              "new": "2"
+            }
+          ]
+        },
+        {
+          "id": "BRIGHTEST_FLAME",
+          "name": "Brightest Flame",
+          "changes": [
+            {
+              "field": "description",
+              "old": "Gain [energy:2].\nDraw 2 cards.\nLose 1 Max HP.",
+              "new": "Gain [energy:2].\nDraw 2 cards.\nLose 2 Max HP."
+            },
+            {
+              "field": "upgrade_description",
+              "old": "Gain [energy:3].\nDraw 3 cards.\nLose 1 Max HP.",
+              "new": "Gain [energy:3].\nDraw 3 cards.\nLose 2 Max HP."
+            },
+            {
+              "field": "vars.MaxHp",
+              "old": "1",
+              "new": "2"
+            }
+          ]
+        },
+        {
+          "id": "EXPECT_A_FIGHT",
+          "name": "Expect a Fight",
+          "changes": [
+            {
+              "field": "block",
+              "old": "none",
+              "new": "15"
+            },
+            {
+              "field": "cost",
+              "old": "2",
+              "new": "3"
+            },
+            {
+              "field": "damage",
+              "old": "0",
+              "new": "none"
+            },
+            {
+              "field": "description",
+              "old": "Gain [energy:1] for each Attack in your [gold]Hand[/gold].",
+              "new": "Gain 15 [gold]Block[/gold].\nGains 5 additional [gold]Block[/gold] for each [g..."
+            },
+            {
+              "field": "description_raw",
+              "old": "Gain {energyPrefix:energyIcons(1)} for each Attack in your [gold]Hand[/gold]....",
+              "new": "Gain {CalculatedBlock:diff()} [gold]Block[/gold].\nGains {CalculationExtra:dif..."
+            },
+            {
+              "field": "energy_gain",
+              "old": "0",
+              "new": "none"
+            },
+            {
+              "field": "upgrade.calculationbase",
+              "old": "none",
+              "new": "+1"
+            },
+            {
+              "field": "upgrade.calculationextra",
+              "old": "none",
+              "new": "+3"
+            },
+            {
+              "field": "upgrade.cost",
+              "old": "1",
+              "new": "none"
+            },
+            {
+              "field": "upgrade_description",
+              "old": "none",
+              "new": "Gain 16 [gold]Block[/gold].\nGains 8 additional [gold]Block[/gold] for each [g..."
+            },
+            {
+              "field": "vars.CalculationBase",
+              "old": "0",
+              "new": "15"
+            },
+            {
+              "field": "vars.CalculationExtra",
+              "old": "1",
+              "new": "5"
+            },
+            {
+              "field": "vars.Energy",
+              "old": "0",
+              "new": "none"
+            }
+          ]
+        },
+        {
+          "id": "FORGOTTEN_RITUAL",
+          "name": "Forgotten Ritual",
+          "changes": [
+            {
+              "field": "description",
+              "old": "If you [gold]Exhausted[/gold] a card this turn, gain [energy:3].",
+              "new": "Gain [energy:3]."
+            },
+            {
+              "field": "description_raw",
+              "old": "If you [gold]Exhausted[/gold] a card this turn, gain {Energy:energyIcons()}.",
+              "new": "Gain {Energy:energyIcons()}."
+            },
+            {
+              "field": "upgrade_description",
+              "old": "If you [gold]Exhausted[/gold] a card this turn, gain [energy:4].",
+              "new": "Gain [energy:4]."
+            }
+          ]
+        },
+        {
+          "id": "GUIDING_STAR",
+          "name": "Guiding Star",
+          "changes": [
+            {
+              "field": "description",
+              "old": "Deal 12 damage.\nDraw 2 cards.",
+              "new": "Deal 12 damage.\nNext turn, draw 2 cards."
+            },
+            {
+              "field": "description_raw",
+              "old": "Deal {Damage:diff()} damage.\nDraw {Cards:diff()} {Cards:plural:card|cards}.",
+              "new": "Deal {Damage:diff()} damage.\nNext turn, draw {Cards:diff()} {Cards:plural:car..."
+            },
+            {
+              "field": "star_cost",
+              "old": "2",
+              "new": "1"
+            },
+            {
+              "field": "upgrade_description",
+              "old": "Deal 13 damage.\nDraw 3 cards.",
+              "new": "Deal 13 damage.\nNext turn, draw 3 cards."
+            },
+            {
+              "field": "vars.StarCost",
+              "old": "2",
+              "new": "1"
+            }
+          ]
+        },
+        {
+          "id": "HYPERBEAM",
+          "name": "Hyperbeam",
+          "changes": [
+            {
+              "field": "damage",
+              "old": "30",
+              "new": "24"
+            },
+            {
+              "field": "description",
+              "old": "Deal 30 damage to ALL enemies.\nLose 3 [gold]Focus[/gold].",
+              "new": "Deal 24 damage to ALL enemies.\nLose 3 [gold]Focus[/gold] this turn."
+            },
+            {
+              "field": "description_raw",
+              "old": "Deal {Damage:diff()} damage to ALL enemies.\nLose {FocusPower:diff()} [gold]Fo...",
+              "new": "Deal {Damage:diff()} damage to ALL enemies.\nLose {FocusPower:diff()} [gold]Fo..."
+            },
+            {
+              "field": "upgrade.damage",
+              "old": "+8",
+              "new": "+6"
+            },
+            {
+              "field": "upgrade_description",
+              "old": "Deal 38 damage to ALL enemies.\nLose 3 [gold]Focus[/gold].",
+              "new": "Deal 30 damage to ALL enemies.\nLose 3 [gold]Focus[/gold] this turn."
+            },
+            {
+              "field": "vars.Damage",
+              "old": "30",
+              "new": "24"
+            }
+          ]
+        },
+        {
+          "id": "MIRAGE",
+          "name": "Mirage",
+          "changes": [
+            {
+              "field": "keywords[0]",
+              "old": "none",
+              "new": "Exhaust"
+            },
+            {
+              "field": "keywords_key[0]",
+              "old": "none",
+              "new": "Exhaust"
+            },
+            {
+              "field": "upgrade.cost",
+              "old": "0",
+              "new": "none"
+            },
+            {
+              "field": "upgrade.remove_exhaust",
+              "old": "none",
+              "new": "yes"
+            }
+          ]
+        },
+        {
+          "id": "NULL",
+          "name": "Null",
+          "changes": [
+            {
+              "field": "description",
+              "old": "Deal 10 damage.\nApply 2 [gold]Weak[/gold].\n[gold]Channel[/gold] 1 [gold]Dark[...",
+              "new": "Deal 10 damage.\nApply 1 [gold]Weak[/gold].\n[gold]Channel[/gold] 1 [gold]Dark[..."
+            },
+            {
+              "field": "powers_applied[0].amount",
+              "old": "2",
+              "new": "1"
+            },
+            {
+              "field": "upgrade_description",
+              "old": "Deal 13 damage.\nApply 3 [gold]Weak[/gold].\n[gold]Channel[/gold] 1 [gold]Dark[...",
+              "new": "Deal 13 damage.\nApply 2 [gold]Weak[/gold].\n[gold]Channel[/gold] 1 [gold]Dark[..."
+            },
+            {
+              "field": "vars.Weak",
+              "old": "2",
+              "new": "1"
+            },
+            {
+              "field": "vars.WeakPower",
+              "old": "2",
+              "new": "1"
+            }
+          ]
+        },
+        {
+          "id": "RAMPAGE",
+          "name": "Rampage",
+          "changes": [
+            {
+              "field": "damage",
+              "old": "9",
+              "new": "10"
+            },
+            {
+              "field": "description",
+              "old": "Deal 9 damage.\nIncrease this card's damage by 5 this combat.",
+              "new": "Deal 10 damage.\nIncrease this card's damage by 5 this combat."
+            },
+            {
+              "field": "upgrade.increase",
+              "old": "+4",
+              "new": "+5"
+            },
+            {
+              "field": "upgrade_description",
+              "old": "Deal 9 damage.\nIncrease this card's damage by 9 this combat.",
+              "new": "Deal 10 damage.\nIncrease this card's damage by 10 this combat."
+            },
+            {
+              "field": "vars.Damage",
+              "old": "9",
+              "new": "10"
+            }
+          ]
+        },
+        {
+          "id": "REFINE_BLADE",
+          "name": "Refine Blade",
+          "changes": [
+            {
+              "field": "description",
+              "old": "[gold]Forge[/gold] 9.\nNext turn, gain [energy:1].",
+              "new": "[gold]Forge[/gold] 8.\nNext turn, gain [energy:1]."
+            },
+            {
+              "field": "upgrade_description",
+              "old": "[gold]Forge[/gold] 13.\nNext turn, gain [energy:1].",
+              "new": "[gold]Forge[/gold] 12.\nNext turn, gain [energy:1]."
+            },
+            {
+              "field": "vars.Forge",
+              "old": "9",
+              "new": "8"
+            }
+          ]
+        },
+        {
+          "id": "REND",
+          "name": "Rend",
+          "changes": [
+            {
+              "field": "cost",
+              "old": "2",
+              "new": "1"
+            },
+            {
+              "field": "damage",
+              "old": "15",
+              "new": "10"
+            },
+            {
+              "field": "description",
+              "old": "Deal 15 damage.\nDeals 5 additional damage for each unique debuff on the enemy.",
+              "new": "Deal 10 damage.\nDeals 5 additional damage for each unique debuff on the enemy."
+            },
+            {
+              "field": "upgrade.calculationbase",
+              "old": "+3",
+              "new": "+2"
+            },
+            {
+              "field": "upgrade_description",
+              "old": "Deal 15 damage.\nDeals 8 additional damage for each unique debuff on the enemy.",
+              "new": "Deal 10 damage.\nDeals 8 additional damage for each unique debuff on the enemy."
+            },
+            {
+              "field": "vars.CalculatedDamage",
+              "old": "15",
+              "new": "10"
+            },
+            {
+              "field": "vars.CalculationBase",
+              "old": "15",
+              "new": "10"
+            }
+          ]
+        },
+        {
+          "id": "SALVO",
+          "name": "Salvo",
+          "changes": [
+            {
+              "field": "rarity",
+              "old": "Rare",
+              "new": "Uncommon"
+            },
+            {
+              "field": "rarity_key",
+              "old": "Rare",
+              "new": "Uncommon"
+            }
+          ]
+        },
+        {
+          "id": "SHROUD",
+          "name": "Shroud",
+          "changes": [
+            {
+              "field": "block",
+              "old": "2",
+              "new": "3"
+            },
+            {
+              "field": "description",
+              "old": "Whenever you apply [gold]Doom[/gold], gain 2 [gold]Block[/gold].",
+              "new": "Whenever you apply [gold]Doom[/gold], gain 3 [gold]Block[/gold]."
+            },
+            {
+              "field": "upgrade_description",
+              "old": "Whenever you apply [gold]Doom[/gold], gain 3 [gold]Block[/gold].",
+              "new": "Whenever you apply [gold]Doom[/gold], gain 4 [gold]Block[/gold]."
+            },
+            {
+              "field": "vars.Block",
+              "old": "2",
+              "new": "3"
+            }
+          ]
+        },
+        {
+          "id": "SPLASH",
+          "name": "Splash",
+          "changes": [
+            {
+              "field": "rarity",
+              "old": "Uncommon",
+              "new": "Rare"
+            },
+            {
+              "field": "rarity_key",
+              "old": "Uncommon",
+              "new": "Rare"
+            }
+          ]
+        },
+        {
+          "id": "SPOILS_OF_BATTLE",
+          "name": "Spoils of Battle",
+          "changes": [
+            {
+              "field": "description",
+              "old": "[gold]Forge[/gold] 5.\nDraw 2 cards.",
+              "new": "[gold]Forge[/gold] 6.\nDraw 2 cards."
+            },
+            {
+              "field": "upgrade_description",
+              "old": "[gold]Forge[/gold] 8.\nDraw 2 cards.",
+              "new": "[gold]Forge[/gold] 9.\nDraw 2 cards."
+            },
+            {
+              "field": "vars.Forge",
+              "old": "5",
+              "new": "6"
+            }
+          ]
+        },
+        {
+          "id": "SYNCHRONIZE",
+          "name": "Synchronize",
+          "changes": [
+            {
+              "field": "description",
+              "old": "Gain 2 [gold]Focus[/gold] this turn for each unique Orb you have.",
+              "new": "Gain 1 [gold]Focus[/gold] this turn for each unique Orb you have."
+            },
+            {
+              "field": "upgrade_description",
+              "old": "Gain 3 [gold]Focus[/gold] this turn for each unique Orb you have.",
+              "new": "Gain 2 [gold]Focus[/gold] this turn for each unique Orb you have."
+            },
+            {
+              "field": "vars.CalculationExtra",
+              "old": "2",
+              "new": "1"
+            }
+          ]
+        },
+        {
+          "id": "THUNDER",
+          "name": "Thunder",
+          "changes": [
+            {
+              "field": "description",
+              "old": "Whenever you [gold]Evoke Lightning[/gold], deal 6 damage to each enemy hit.",
+              "new": "Whenever you [gold]Evoke Lightning[/gold], deal 8 damage to each enemy hit."
+            },
+            {
+              "field": "powers_applied[0].amount",
+              "old": "6",
+              "new": "8"
+            },
+            {
+              "field": "upgrade.thunderpower",
+              "old": "+2",
+              "new": "+3"
+            },
+            {
+              "field": "upgrade_description",
+              "old": "Whenever you [gold]Evoke Lightning[/gold], deal 8 damage to each enemy hit.",
+              "new": "Whenever you [gold]Evoke Lightning[/gold], deal 11 damage to each enemy hit."
+            },
+            {
+              "field": "vars.Thunder",
+              "old": "6",
+              "new": "8"
+            },
+            {
+              "field": "vars.ThunderPower",
+              "old": "6",
+              "new": "8"
+            }
+          ]
+        },
+        {
+          "id": "TIMES_UP",
+          "name": "Time's Up",
+          "changes": [
+            {
+              "field": "keywords[0]",
+              "old": "Exhaust",
+              "new": "none"
+            },
+            {
+              "field": "keywords_key[0]",
+              "old": "Exhaust",
+              "new": "none"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "relics",
+      "name": "Relics",
+      "old_count": 298,
+      "new_count": 298,
+      "changed": [
+        {
+          "id": "BEAUTIFUL_BRACELET",
+          "name": "Beautiful Bracelet",
+          "changes": [
+            {
+              "field": "description",
+              "old": "Upon pickup, choose [blue]4[/blue] cards in your [gold]Deck[/gold]. [gold]Enc...",
+              "new": "Upon pickup, [gold]Enchant[/gold] [blue]4[/blue] random cards in your [gold]D..."
+            },
+            {
+              "field": "description_raw",
+              "old": "Upon pickup, choose [blue]{Cards}[/blue] {Cards:plural:card|cards} in your [g...",
+              "new": "Upon pickup, [gold]Enchant[/gold] [blue]{Cards}[/blue] random {Cards:plural:c..."
+            }
+          ]
+        },
+        {
+          "id": "REGALITE",
+          "name": "Regalite",
+          "changes": [
+            {
+              "field": "description",
+              "old": "The first time you create a card each turn, gain [blue]6[/blue] [gold]Block[/...",
+              "new": "The first time you create a card each turn, gain [blue]4[/blue] [gold]Block[/..."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "monsters",
+      "name": "Monsters",
+      "old_count": 115,
+      "new_count": 115,
+      "changed": [
+        {
+          "id": "AXEBOT",
+          "name": "Axebot",
+          "changes": [
+            {
+              "field": "damage_values.HammerUppercut.ascension",
+              "old": "14",
+              "new": "18"
+            },
+            {
+              "field": "damage_values.HammerUppercut.normal",
+              "old": "12",
+              "new": "14"
+            },
+            {
+              "field": "damage_values.OneTwo.ascension",
+              "old": "10",
+              "new": "11"
+            },
+            {
+              "field": "damage_values.OneTwo.normal",
+              "old": "9",
+              "new": "10"
+            },
+            {
+              "field": "innate_powers[0].amount",
+              "old": "none",
+              "new": "2"
+            },
+            {
+              "field": "innate_powers[0].power_id",
+              "old": "none",
+              "new": "STOCK"
+            },
+            {
+              "field": "moves[HAMMER_UPPERCUT].damage.ascension",
+              "old": "14",
+              "new": "18"
+            },
+            {
+              "field": "moves[HAMMER_UPPERCUT].damage.normal",
+              "old": "12",
+              "new": "14"
+            },
+            {
+              "field": "moves[ONE_TWO].damage.ascension",
+              "old": "10",
+              "new": "11"
+            },
+            {
+              "field": "moves[ONE_TWO].damage.normal",
+              "old": "9",
+              "new": "10"
+            }
+          ]
+        },
+        {
+          "id": "ENTOMANCER",
+          "name": "Entomancer",
+          "changes": [
+            {
+              "field": "min_hp_ascension",
+              "old": "155",
+              "new": "165"
+            }
+          ]
+        },
+        {
+          "id": "EXOSKELETON",
+          "name": "Exoskeleton",
+          "changes": [
+            {
+              "field": "max_hp_ascension",
+              "old": "29",
+              "new": "30"
+            },
+            {
+              "field": "min_hp_ascension",
+              "old": "25",
+              "new": "26"
+            }
+          ]
+        },
+        {
+          "id": "GLOBE_HEAD",
+          "name": "Globe Head",
+          "changes": [
+            {
+              "field": "innate_powers[0].amount_ascension",
+              "old": "none",
+              "new": "8"
+            }
+          ]
+        },
+        {
+          "id": "MECHA_KNIGHT",
+          "name": "Mecha Knight",
+          "changes": [
+            {
+              "field": "damage_values.Flamethrower.ascension",
+              "old": "none",
+              "new": "12"
+            },
+            {
+              "field": "damage_values.Flamethrower.normal",
+              "old": "none",
+              "new": "8"
+            },
+            {
+              "field": "moves[FLAMETHROWER].damage.ascension",
+              "old": "none",
+              "new": "12"
+            },
+            {
+              "field": "moves[FLAMETHROWER].damage.normal",
+              "old": "none",
+              "new": "8"
+            },
+            {
+              "field": "moves[FLAMETHROWER].intent",
+              "old": "Status",
+              "new": "Attack + Status"
+            }
+          ]
+        },
+        {
+          "id": "SOUL_FYSH",
+          "name": "Soul Fysh",
+          "changes": [
+            {
+              "field": "damage_values.DeGas.ascension",
+              "old": "17",
+              "new": "18"
+            },
+            {
+              "field": "moves[DE_GAS].damage.ascension",
+              "old": "17",
+              "new": "18"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "enchantments",
+      "name": "Enchantments",
+      "old_count": 22,
+      "new_count": 22,
+      "changed": [
+        {
+          "id": "INKY",
+          "name": "Inky",
+          "changes": [
+            {
+              "field": "description",
+              "old": "This card deals [blue]1[/blue] additional damage and applies [blue]1[/blue] [...",
+              "new": "This card applies [blue]1[/blue] [gold]Weak[/gold]."
+            },
+            {
+              "field": "description_raw",
+              "old": "This card deals [blue]{Damage}[/blue] additional damage and applies [blue]{We...",
+              "new": "This card applies [blue]{WeakPower}[/blue] [gold]Weak[/gold]."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "powers",
+      "name": "Powers",
+      "old_count": 264,
+      "new_count": 265,
+      "added": [
+        {
+          "id": "HYPERBEAM_FOCUS_DOWN",
+          "name": "Temporary Focus Down",
+          "type": "Debuff"
+        }
+      ]
+    }
+  ]
+}
