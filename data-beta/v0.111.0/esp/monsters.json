@@ -8607,7 +8607,7 @@
       ],
       "description": "Remate → Rayo → Descarga → repeat"
     },
-    "image_url": "/static/images/monsters/the_adversary_placeholder.webp",
+    "image_url": "/static/images/beta/v0.111.0/monsters/the_adversary_placeholder.webp",
     "beta_image_url": null
   },
   {
@@ -8697,7 +8697,7 @@
       ],
       "description": "Colisión → Rayo ígneo → Descarga → repeat"
     },
-    "image_url": "/static/images/monsters/the_adversary_placeholder.webp",
+    "image_url": "/static/images/beta/v0.111.0/monsters/the_adversary_placeholder.webp",
     "beta_image_url": null
   },
   {
@@ -8787,7 +8787,7 @@
       ],
       "description": "Mazazo → Rayo ígneo → Descarga → repeat"
     },
-    "image_url": "/static/images/monsters/the_adversary_placeholder.webp",
+    "image_url": "/static/images/beta/v0.111.0/monsters/the_adversary_placeholder.webp",
     "beta_image_url": null
   },
   {
