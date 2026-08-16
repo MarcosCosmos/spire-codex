@@ -241,6 +241,9 @@ def _ensure_indexes(coll) -> None:
         ]
     )
     coll.create_index([("user_id", ASCENDING), ("submitted_at", DESCENDING)])
+    # Profile run list sorts by when the run was played, not uploaded — a bulk
+    # backlog upload otherwise pins months-old runs to the top.
+    coll.create_index([("user_id", ASCENDING), ("played_at", DESCENDING)])
     # Backfill query on sign-in matches runs by submitter steam_id / discord_id.
     coll.create_index([("steam_id", ASCENDING)])
     coll.create_index([("discord_id", ASCENDING)])
@@ -682,6 +685,27 @@ def _shop_purchases(data: dict) -> list[str]:
     return sorted(bought)
 
 
+def _played_at_from_blob(data: dict) -> datetime:
+    """When the run was actually played: the blob's epoch start_time. Bounded
+    to [2020, now+1d] so a client with a broken clock can't pin itself to the
+    top of a profile forever; out-of-range or missing falls back to upload
+    time (the pre-played_at sort behaviour)."""
+    try:
+        ts = int(data.get("start_time") or 0)
+    except (TypeError, ValueError):
+        ts = 0
+    now = datetime.now(timezone.utc)
+    if ts > 0:
+        played = datetime.fromtimestamp(ts, timezone.utc)
+        if (
+            datetime(2020, 1, 1, tzinfo=timezone.utc)
+            <= played
+            <= now + timedelta(days=1)
+        ):
+            return played
+    return now
+
+
 def _submit_player_run(
     data: dict,
     player: dict,
@@ -797,6 +821,7 @@ def _submit_player_run(
         "user_id": ObjectId(linked_user_id) if linked_user_id else None,
         "build_id": data.get("build_id"),
         "submitted_at": datetime.now(timezone.utc),
+        "played_at": _played_at_from_blob(data),
         "deck": deck,
         "relics": relics,
         "potions": potions,
@@ -911,6 +936,47 @@ def backfill_user_runs(
     result = coll.update_many(
         {"user_id": None, "$or": identity_conds},
         {"$set": update},
+    )
+    return result.modified_count
+
+
+def backfill_played_at() -> int:
+    """One-shot: stamp played_at on existing docs from the stored blob's
+    start_time (raw.start_time, epoch seconds). Same bounds as ingest —
+    [2020, now+1d] — with submitted_at as the fallback, so every doc ends up
+    sortable. Server-side pipeline update, idempotent (only touches docs
+    without the field). Returns the number of docs stamped."""
+    coll = _get_collection()
+    now_epoch = int(datetime.now(timezone.utc).timestamp()) + 86400
+    result = coll.update_many(
+        {"played_at": {"$exists": False}},
+        [
+            {
+                "$set": {
+                    "played_at": {
+                        "$switch": {
+                            "branches": [
+                                {
+                                    "case": {
+                                        "$and": [
+                                            {"$isNumber": "$raw.start_time"},
+                                            {"$gte": ["$raw.start_time", 1577836800]},
+                                            {"$lte": ["$raw.start_time", now_epoch]},
+                                        ]
+                                    },
+                                    "then": {
+                                        "$toDate": {
+                                            "$multiply": ["$raw.start_time", 1000]
+                                        }
+                                    },
+                                }
+                            ],
+                            "default": "$submitted_at",
+                        }
+                    }
+                }
+            }
+        ],
     )
     return result.modified_count
 
@@ -2924,9 +2990,16 @@ def get_user_runs(
         "killed_by": 1,
         "username": 1,
         "submitted_at": 1,
+        "played_at": 1,
     }
+    # Played order, not upload order — a backlog upload lands hundreds of old
+    # runs with fresh submitted_at and used to bury the actual latest run.
+    # Legacy docs without played_at (pre-backfill) sort after, by upload time.
     rows = list(
-        coll.find(match, proj).sort("submitted_at", DESCENDING).skip(skip).limit(limit)
+        coll.find(match, proj)
+        .sort([("played_at", DESCENDING), ("submitted_at", DESCENDING)])
+        .skip(skip)
+        .limit(limit)
     )
 
     runs = []
@@ -2944,6 +3017,7 @@ def get_user_runs(
                 "killed_by": r.get("killed_by"),
                 "username": r.get("username"),
                 "submitted_at": r.get("submitted_at"),
+                "played_at": r.get("played_at") or r.get("submitted_at"),
             }
         )
 
