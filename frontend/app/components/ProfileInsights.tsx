@@ -253,7 +253,7 @@ export function InsightsFilterBar({
   return (
     <div className="flex flex-wrap items-center gap-2">
       <IconSelect
-        label={t("Character", lang)}
+        label={t("Any Character", lang)}
         value={value.character ?? ""}
         options={CHARACTERS.map((c) => ({
           label: c.charAt(0).toUpperCase() + c.slice(1),
@@ -263,7 +263,7 @@ export function InsightsFilterBar({
         onChange={(v) => set({ character: v || null })}
       />
       <IconSelect
-        label={t("Ascension", lang)}
+        label={t("Any Ascension", lang)}
         value={value.ascension}
         options={Array.from({ length: 11 }, (_, i) => ({
           label: `A${i}`,
@@ -272,7 +272,7 @@ export function InsightsFilterBar({
         onChange={(v) => set({ ascension: v })}
       />
       <IconSelect
-        label={t("Players", lang)}
+        label={t("All", lang)}
         value={value.players}
         options={[
           { label: t("Solo", lang), value: "1" },
@@ -284,7 +284,7 @@ export function InsightsFilterBar({
       />
       {versions.length > 0 && (
         <IconSelect
-          label={t("Version", lang)}
+          label={t("Any Version", lang)}
           value={value.version}
           options={versions.map((v) => ({ label: v, value: v }))}
           onChange={(v) => set({ version: v })}
