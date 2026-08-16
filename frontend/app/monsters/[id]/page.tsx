@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import MonsterDetail from "./MonsterDetail";
 import { fetchEncounterStats } from "@/lib/encounter-stats";
 import JsonLd from "@/app/components/JsonLd";
+import { redirectMissingEntity } from "@/lib/redirect-helpers";
+import { fetchEntityRes } from "@/lib/entity-fetch";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
 import { clipMetaDescription, buildLanguageAlternates, SITE_NAME, SITE_URL } from "@/lib/seo";
 import { imageUrl } from "@/lib/image-url";
@@ -52,8 +54,9 @@ export default async function Page({ params }: Props) {
   const { id } = await params;
   let jsonLd = null;
   let monster = null;
+  let apiUnreachable = false;
   try {
-    const res = await fetch(`${API_INTERNAL}/api/monsters/${id}`, {
+    const res = await fetchEntityRes(`${API_INTERNAL}/api/monsters/${id}`, {
       next: { revalidate: 3600 },
     });
     if (res.ok) {
@@ -78,7 +81,12 @@ export default async function Page({ params }: Props) {
       ];
       jsonLd = [...detailJsonLd, buildFAQPageJsonLd(faqQuestions)];
     }
-  } catch {}
+  } catch {
+    apiUnreachable = true;
+  }
+  // Fail the render (500) instead of ISR-caching a contentless shell.
+  if (apiUnreachable) throw new Error("entity API unreachable");
+  if (!monster) redirectMissingEntity("monsters", id);
   // Server-render the community "how deadly" stats for this monster's fights.
   const encounterStats = monster?.encounters?.length
     ? await fetchEncounterStats(

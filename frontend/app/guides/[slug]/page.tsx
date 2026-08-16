@@ -5,6 +5,7 @@ import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
 import GuideDetail from "./GuideDetail";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
+import { fetchEntityRes } from "@/lib/entity-fetch";
 
 const API = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -40,12 +41,14 @@ export default async function GuideDetailPage({ params }: { params: Promise<{ sl
   let guide: Guide | null = null;
   let apiUnreachable = false;
   try {
-    const res = await fetch(`${API}/api/guides/${slug}`, { next: { revalidate: 300 } });
+    const res = await fetchEntityRes(`${API}/api/guides/${slug}`, { next: { revalidate: 300 } });
     if (res.ok) guide = await res.json();
   } catch {
     apiUnreachable = true;
   }
-  if (!guide && !apiUnreachable) redirectMissingEntity("guides", slug);
+  // Fail the render (500) instead of ISR-caching a contentless shell.
+  if (apiUnreachable) throw new Error("entity API unreachable");
+  if (!guide) redirectMissingEntity("guides", slug);
 
   const jsonLd = guide
     ? [

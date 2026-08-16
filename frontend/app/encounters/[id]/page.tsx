@@ -4,6 +4,7 @@ import { stripTags, clipMetaDescription, DEFAULT_OG_IMAGE, buildLanguageAlternat
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
+import { fetchEntityRes } from "@/lib/entity-fetch";
 import { fetchEncounterStats } from "@/lib/encounter-stats";
 
 const API_INTERNAL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -50,7 +51,7 @@ export default async function Page({ params }: Props) {
   let encounter = null;
   let apiUnreachable = false;
   try {
-    const res = await fetch(`${API_INTERNAL}/api/encounters/${id}`);
+    const res = await fetchEntityRes(`${API_INTERNAL}/api/encounters/${id}`);
     if (res.ok) {
       encounter = await res.json();
       const desc = encounter.monsters?.length
@@ -76,7 +77,9 @@ export default async function Page({ params }: Props) {
   } catch {
     apiUnreachable = true;
   }
-  if (!encounter && !apiUnreachable) redirectMissingEntity("encounters", id);
+  // Fail the render (500) instead of ISR-caching a contentless shell.
+  if (apiUnreachable) throw new Error("entity API unreachable");
+  if (!encounter) redirectMissingEntity("encounters", id);
   // Community "how deadly" numbers for this fight (encountered / killed), SSR'd.
   const stats = encounter?.id ? await fetchEncounterStats([encounter.id]) : [];
   const encounterStat = stats[0] ?? null;

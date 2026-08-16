@@ -92,7 +92,7 @@ interface PotionInfo {
   image_url: string | null;
 }
 
-interface CommunityStats {
+export interface CommunityStats {
   total_runs: number;
   total_wins: number;
   total_abandoned: number;
@@ -288,10 +288,16 @@ function pickRateColor(pr: number): string {
   return "var(--text-muted)";
 }
 
-export default function StatsClient() {
+export default function StatsClient({
+  initialStats = null,
+}: {
+  initialStats?: CommunityStats | null;
+} = {}) {
   const lp = useLangPrefix();
   const { lang } = useLanguage();
-  const [stats, setStats] = useState<CommunityStats | null>(null);
+  // Server-fetched unfiltered payload so the initial HTML carries real
+  // numbers (crawlable); the mount effect still refetches live data.
+  const [stats, setStats] = useState<CommunityStats | null>(initialStats);
   const [cardData, setCardData] = useState<Record<string, CardInfo>>({});
   const [relicData, setRelicData] = useState<Record<string, RelicInfo>>({});
   const [potionData, setPotionData] = useState<Record<string, PotionInfo>>({});
@@ -299,7 +305,7 @@ export default function StatsClient() {
   // Codex Elo per card id, from the scores endpoint (reward-pick cards only;
   // curses, statuses, events, tokens, and starters have none).
   const [eloMap, setEloMap] = useState<Record<string, number | null>>({});
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initialStats);
 
   // Top-level filters
   const [character, setCharacter] = useState("");

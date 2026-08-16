@@ -6,6 +6,7 @@ import { stripTags, stripTagsFlat, clipMetaDescription, buildLanguageAlternates,
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
+import { fetchEntityRes } from "@/lib/entity-fetch";
 import { imageUrl } from "@/lib/image-url";
 
 // Relic data only changes on deploy. force-static + revalidate
@@ -57,7 +58,7 @@ export default async function Page({ params }: Props) {
   let relic = null;
   let apiUnreachable = false;
   try {
-    const res = await fetch(`${API_INTERNAL}/api/relics/${id}`, {
+    const res = await fetchEntityRes(`${API_INTERNAL}/api/relics/${id}`, {
       next: { revalidate: 3600 },
     });
     if (res.ok) {
@@ -85,7 +86,9 @@ export default async function Page({ params }: Props) {
   } catch {
     apiUnreachable = true;
   }
-  if (!relic && !apiUnreachable) redirectMissingEntity("relics", id);
+  // Fail the render (500) instead of ISR-caching a contentless shell.
+  if (apiUnreachable) throw new Error("entity API unreachable");
+  if (!relic) redirectMissingEntity("relics", id);
   // Server-render the community stats into the HTML (unique, crawlable data).
   const initialStats: EntityStats | null = relic ? await fetchEntityStats("relics", id) : null;
   return (

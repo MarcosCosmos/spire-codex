@@ -4,6 +4,7 @@ import { stripTags, stripTagsFlat, clipMetaDescription, buildLanguageAlternates,
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
+import { fetchEntityRes } from "@/lib/entity-fetch";
 
 const API_INTERNAL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -45,7 +46,7 @@ export default async function Page({ params }: Props) {
   let orb = null;
   let apiUnreachable = false;
   try {
-    const res = await fetch(`${API_INTERNAL}/api/orbs/${id}`);
+    const res = await fetchEntityRes(`${API_INTERNAL}/api/orbs/${id}`);
     if (res.ok) {
       orb = await res.json();
       const desc = stripTags(orb.description || "");
@@ -68,7 +69,9 @@ export default async function Page({ params }: Props) {
   } catch {
     apiUnreachable = true;
   }
-  if (!orb && !apiUnreachable) redirectMissingEntity("orbs", id);
+  // Fail the render (500) instead of ISR-caching a contentless shell.
+  if (apiUnreachable) throw new Error("entity API unreachable");
+  if (!orb) redirectMissingEntity("orbs", id);
   return (
     <>
       {jsonLd && <JsonLd data={jsonLd} />}

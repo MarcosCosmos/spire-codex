@@ -6,6 +6,7 @@ import { stripTags, stripTagsFlat, clipMetaDescription, buildLanguageAlternates,
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
+import { fetchEntityRes } from "@/lib/entity-fetch";
 import { cardOgImages } from "@/lib/image-url";
 import { enchantmentsForCard } from "@/lib/card-enchantments";
 
@@ -66,7 +67,7 @@ export default async function Page({ params }: Props) {
   let card = null;
   let apiUnreachable = false;
   try {
-    const res = await fetch(`${API_INTERNAL}/api/cards/${id}`, {
+    const res = await fetchEntityRes(`${API_INTERNAL}/api/cards/${id}`, {
       next: { revalidate: 3600 },
     });
     if (res.ok) {
@@ -104,7 +105,9 @@ export default async function Page({ params }: Props) {
   }
   // 308 unknown IDs to the cards list so search engines transfer
   // link equity and humans land on something useful.
-  if (!card && !apiUnreachable) redirectMissingEntity("cards", id);
+  // Fail the render (500) instead of ISR-caching a contentless shell.
+  if (apiUnreachable) throw new Error("entity API unreachable");
+  if (!card) redirectMissingEntity("cards", id);
   // Server-render the community stats into the HTML (unique, crawlable data).
   const initialStats: EntityStats | null = card ? await fetchEntityStats("cards", id) : null;
   return (

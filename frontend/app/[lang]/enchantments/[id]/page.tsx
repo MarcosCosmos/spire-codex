@@ -5,6 +5,7 @@ import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
 import { isValidLang, LANG_HREFLANG, LANG_NAMES, LANG_GAME_NAME, type LangCode } from "@/lib/languages";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
+import { fetchEntityRes } from "@/lib/entity-fetch";
 import { imageUrl } from "@/lib/image-url";
 import { cardsForEnchantment } from "@/lib/card-enchantments";
 
@@ -55,7 +56,7 @@ export default async function Page({ params }: Props) {
   let data = null;
   let apiUnreachable = false;
   try {
-    const res = await fetch(`${API_INTERNAL}/api/enchantments/${id}?lang=${lang}`);
+    const res = await fetchEntityRes(`${API_INTERNAL}/api/enchantments/${id}?lang=${lang}`);
     if (res.ok) {
       data = await res.json();
       const desc = stripTags(data.description || "");
@@ -74,7 +75,9 @@ export default async function Page({ params }: Props) {
   } catch {
     apiUnreachable = true;
   }
-  if (!data && !apiUnreachable) redirectMissingEntity("enchantments", id, lang);
+  // Fail the render (500) instead of ISR-caching a contentless shell.
+  if (apiUnreachable) throw new Error("entity API unreachable");
+  if (!data) redirectMissingEntity("enchantments", id, lang);
   return (
     <>
       {jsonLd && <JsonLd data={jsonLd} />}
