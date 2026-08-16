@@ -123,6 +123,11 @@ export function bracketParam(key: string | undefined | null): string | null {
   const n = normalizeBracket(key);
   if (n === "all") return null;
   if (isCompositeBracket(n) || isVersionBracket(n)) return n;
+  // base+version combos ("wr50:v0.111.0", "solo:wr50:v0.111.0") are already
+  // the API value; the map lookup below only resolves plain single-axis keys
+  // (and used to swallow these into null = all runs).
+  const { base, version } = splitVersion(n);
+  if (version) return base === "all" ? version : n;
   return _BY_KEY.get(n)?.param ?? null;
 }
 
