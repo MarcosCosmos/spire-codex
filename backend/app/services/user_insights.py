@@ -167,7 +167,11 @@ def _event_divergence(mine: dict[str, Any]) -> list[dict]:
 
 
 def _card_pick_deltas(
-    user_id: str, character: str | None = None
+    user_id: str,
+    character: str | None = None,
+    ascension: int | None = None,
+    version: str | None = None,
+    players: int | None = None,
 ) -> dict[str, list[dict]]:
     """The player's card-reward keep rates vs the community's, split into the
     cards they take notably more / less often. Community side comes from the
@@ -175,7 +179,16 @@ def _card_pick_deltas(
     non-draftable filters can appear."""
     from .runs_db_mongo import get_user_card_pick_tallies
 
-    picks = get_user_card_pick_tallies(user_id, character=character) or {}
+    picks = (
+        get_user_card_pick_tallies(
+            user_id,
+            character=character,
+            ascension=ascension,
+            version=version,
+            players=players,
+        )
+        or {}
+    )
     table = get_entity_metrics_table("cards")
     comm = {
         r["id"]: r["pick_rate"]
@@ -326,7 +339,12 @@ def _skipped_relic_ids() -> frozenset[str]:
 
 
 def _relic_carry_deltas(
-    user_id: str, character: str | None, user_total_runs: int
+    user_id: str,
+    character: str | None,
+    user_total_runs: int,
+    ascension: int | None = None,
+    version: str | None = None,
+    players: int | None = None,
 ) -> dict[str, list[dict]]:
     """Relics the player ends runs with notably more / less often than the
     community. Relics have no offered/picked stream like cards, so the
@@ -336,7 +354,16 @@ def _relic_carry_deltas(
         return {"over_carried": [], "under_carried": []}
     from .runs_db_mongo import get_user_relic_run_counts
 
-    mine = get_user_relic_run_counts(user_id, character=character) or {}
+    mine = (
+        get_user_relic_run_counts(
+            user_id,
+            character=character,
+            ascension=ascension,
+            version=version,
+            players=players,
+        )
+        or {}
+    )
     table = get_entity_metrics_table("relics", "all", character)
     comm_total = (
         table.get("character_runs") if character else table.get("total_runs")
@@ -391,6 +418,44 @@ _inflight: set[str] = set()
 _inflight_lock = threading.Lock()
 
 
+def _apply_row_filters(
+    rows: list[dict],
+    character: str | None,
+    ascension: int | None,
+    version: str | None,
+    players: int | None,
+) -> list[dict]:
+    """Narrow the run rows to the requested filter axes. Each axis is exact:
+    ascension level, build_id version, player count (1=solo .. 4)."""
+    if character:
+        rows = [r for r in rows if _bare_character(r.get("character")) == character]
+    if ascension is not None:
+        rows = [r for r in rows if int(r.get("ascension") or 0) == ascension]
+    if version:
+        rows = [r for r in rows if (r.get("build_id") or "") == version]
+    if players is not None:
+        rows = [r for r in rows if int(r.get("player_count") or 1) == players]
+    return rows
+
+
+def _filters_suffix(
+    character: str | None,
+    ascension: int | None,
+    version: str | None,
+    players: int | None,
+) -> str:
+    """Cache-key suffix for the filter axes. The unfiltered and
+    character-only forms predate ascension/version/players and MUST keep
+    their exact historical keys, or a deploy cold-starts every cached
+    profile into the "building" state at once."""
+    key = f":{character or ''}"
+    if ascension is not None or version or players is not None:
+        asc = "" if ascension is None else ascension
+        ppl = "" if players is None else players
+        key += f":a{asc}:v{version or ''}:p{ppl}"
+    return key
+
+
 def _payload_key(cache_key: str) -> str:
     return f"user_insights:{cache_key}"
 
@@ -400,7 +465,12 @@ def _fresh_key(cache_key: str) -> str:
 
 
 def get_user_insights(
-    user_id: str, username: str | None = None, character: str | None = None
+    user_id: str,
+    username: str | None = None,
+    character: str | None = None,
+    ascension: int | None = None,
+    version: str | None = None,
+    players: int | None = None,
 ) -> dict[str, Any]:
     """Cached view over _compute_insights. Serves instantly in all cases:
     a fresh result directly, a stale result while a background refresh runs,
@@ -409,7 +479,8 @@ def get_user_insights(
     from . import cache as app_cache
 
     character = (character or "").strip().upper() or None
-    cache_key = f"{user_id}:{character or ''}"
+    version = (version or "").strip() or None
+    cache_key = f"{user_id}{_filters_suffix(character, ascension, version, players)}"
     local = _cache_get(cache_key)
     if local is not None:
         return local
@@ -417,7 +488,7 @@ def get_user_insights(
     if payload is not None and app_cache.get_json(_fresh_key(cache_key)) is not None:
         _cache_put(cache_key, payload)
         return payload
-    _kick_refresh(cache_key, user_id, username, character)
+    _kick_refresh(cache_key, user_id, username, character, ascension, version, players)
     if payload is not None:
         return payload
     return {"building": True}
@@ -437,11 +508,17 @@ def prewarm_user_insights(user_id: str, username: str | None = None) -> None:
         return
     if app_cache.get_json(_payload_key(cache_key)) is not None:
         return
-    _kick_refresh(cache_key, user_id, username, None)
+    _kick_refresh(cache_key, user_id, username, None, None, None, None)
 
 
 def _kick_refresh(
-    cache_key: str, user_id: str, username: str | None, character: str | None
+    cache_key: str,
+    user_id: str,
+    username: str | None,
+    character: str | None,
+    ascension: int | None,
+    version: str | None,
+    players: int | None,
 ) -> None:
     """Start one background walk per cache key: an in-process set stops
     duplicate threads in this worker, a Redis lock stops the other workers
@@ -464,7 +541,14 @@ def _kick_refresh(
 
         try:
             payload = jsonable_encoder(
-                _compute_insights(user_id, username=username, character=character)
+                _compute_insights(
+                    user_id,
+                    username=username,
+                    character=character,
+                    ascension=ascension,
+                    version=version,
+                    players=players,
+                )
             )
             app_cache.set_json(_payload_key(cache_key), payload, _STALE_REDIS_TTL)
             app_cache.set_json(_fresh_key(cache_key), 1, int(_CACHE_TTL))
@@ -482,7 +566,12 @@ def _kick_refresh(
 
 
 def _compute_insights(
-    user_id: str, username: str | None = None, character: str | None = None
+    user_id: str,
+    username: str | None = None,
+    character: str | None = None,
+    ascension: int | None = None,
+    version: str | None = None,
+    players: int | None = None,
 ) -> dict[str, Any]:
     """The signed-in account's personal community-stats blob plus community
     comparison fields, over its claimed runs. Shape mirrors /community-stats
@@ -500,8 +589,10 @@ def _compute_insights(
     from .runs_db_mongo import get_run_blobs, get_user_run_rows
 
     rows = get_user_run_rows(user_id, limit=_MAX_RUNS)
-    if character:
-        rows = [r for r in rows if _bare_character(r.get("character")) == character]
+    rows = _apply_row_filters(rows, character, ascension, version, players)
+    filtered = bool(
+        character or ascension is not None or version or players is not None
+    )
     acc = community_stats._new_acc_one()
     walked = 0
     for i in range(0, len(rows), 300):
@@ -533,20 +624,27 @@ def _compute_insights(
     _attach_community(mine, community)
     mine["event_divergence"] = _event_divergence(mine)
     try:
-        mine["card_picks"] = _card_pick_deltas(user_id, character)
+        mine["card_picks"] = _card_pick_deltas(
+            user_id, character, ascension, version, players
+        )
     except Exception:
         logger.warning("user-insights card deltas failed", exc_info=True)
         mine["card_picks"] = {"over_picked": [], "under_picked": []}
     try:
         mine["relic_picks"] = _relic_carry_deltas(
-            user_id, character, mine.get("total_runs") or 0
+            user_id,
+            character,
+            mine.get("total_runs") or 0,
+            ascension,
+            version,
+            players,
         )
     except Exception:
         logger.warning("user-insights relic deltas failed", exc_info=True)
         mine["relic_picks"] = {"over_carried": [], "under_carried": []}
     mine["streaks"] = _streaks(rows)
     mine["activity"] = _activity(rows)
-    if character:
+    if filtered:
         mine["percentiles"] = None
     else:
         try:
@@ -555,6 +653,9 @@ def _compute_insights(
             logger.warning("user-insights percentiles failed", exc_info=True)
             mine["percentiles"] = None
     mine["character"] = character
+    mine["ascension"] = ascension
+    mine["version"] = version
+    mine["players"] = players
     mine["runs_walked"] = walked
     mine["runs_capped"] = len(rows) >= _MAX_RUNS
     return mine

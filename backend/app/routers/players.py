@@ -13,6 +13,23 @@ from ..dependencies import shared_limiter
 from ..services import rate_limit_config
 
 router = APIRouter(prefix="/api/players", tags=["Players"])
+
+
+def _validate_insight_filters(
+    ascension: int | None, version: str | None, players: int | None
+) -> None:
+    import re
+
+    from fastapi import HTTPException
+
+    if ascension is not None and not (0 <= ascension <= 20):
+        raise HTTPException(status_code=400, detail="ascension out of range")
+    if version is not None and not re.fullmatch(r"v\d+(\.\d+){0,3}", version):
+        raise HTTPException(status_code=400, detail="bad version")
+    if players is not None and players not in (1, 2, 3, 4):
+        raise HTTPException(status_code=400, detail="players must be 1-4")
+
+
 limiter = shared_limiter
 
 
@@ -23,6 +40,9 @@ def player_insights(
     request: Request,
     response: Response,
     character: str | None = None,
+    ascension: int | None = None,
+    version: str | None = None,
+    players: int | None = None,
 ):
     """One player's public insights: their runs through the community-stats
     accumulator with community comparison fields (the profile Insights tab,
@@ -37,6 +57,7 @@ def player_insights(
     from ..services.users_db import get_user_by_username
 
     character = (character or "").strip().upper() or None
+    _validate_insight_filters(ascension, version, players)
     if character:
         official = _official_character_ids()
         if official and character not in official:
@@ -47,7 +68,12 @@ def player_insights(
         raise HTTPException(status_code=404, detail="Player not found")
 
     data = get_user_insights(
-        str(user["_id"]), username=user.get("username"), character=character
+        str(user["_id"]),
+        username=user.get("username"),
+        character=character,
+        ascension=ascension,
+        version=version,
+        players=players,
     )
     # Never let the edge cache a building placeholder: CF would pin it for
     # 5 minutes and every viewer's poll loop would spin against it.

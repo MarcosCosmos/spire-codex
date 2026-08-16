@@ -19,6 +19,7 @@ import { CDN_BASE, fullCardUrl, imageUrl } from "@/lib/image-url";
 import { useLangPrefix } from "@/lib/use-lang-prefix";
 import { useLanguage } from "@/app/contexts/LanguageContext";
 import { t } from "@/lib/ui-translations";
+import IconSelect from "@/app/components/IconSelect";
 
 ChartJS.register(BarElement, LineElement, PointElement, LinearScale, CategoryScale, Tooltip, Filler);
 
@@ -203,50 +204,92 @@ const CHARACTER_HEX: Record<string, string> = {
 
 const CHARACTERS = ["ironclad", "silent", "defect", "necrobinder", "regent"] as const;
 
-// Scope switcher: All + one chip per character. Selecting re-fetches the
-// whole insights payload filtered to that character's runs.
-export function CharacterPicker({ value, onChange, lang }: { value: string | null; onChange: (c: string | null) => void; lang: string }) {
+// Insight scope filters: character (icon dropdown), ascension, players, and
+// game version, all defaulting to All. Each change re-fetches the whole
+// insights payload filtered to that slice; the version list mirrors the
+// stats pages (the snapshot's stat_versions, newest first).
+export interface InsightFilters {
+  character: string | null;
+  ascension: string;
+  players: string;
+  version: string;
+}
+
+export const EMPTY_INSIGHT_FILTERS: InsightFilters = {
+  character: null,
+  ascension: "",
+  players: "",
+  version: "",
+};
+
+export function insightFilterQuery(f: InsightFilters): string {
+  const params = new URLSearchParams();
+  if (f.character) params.set("character", f.character);
+  if (f.ascension) params.set("ascension", f.ascension);
+  if (f.players) params.set("players", f.players);
+  if (f.version) params.set("version", f.version);
+  const qs = params.toString();
+  return qs ? `?${qs}` : "";
+}
+
+export function InsightsFilterBar({
+  value,
+  onChange,
+  lang,
+}: {
+  value: InsightFilters;
+  onChange: (f: InsightFilters) => void;
+  lang: string;
+}) {
+  const [versions, setVersions] = useState<string[]>([]);
+  useEffect(() => {
+    fetch(`${API}/api/runs/versions`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setVersions(d?.stat_versions || []))
+      .catch(() => {});
+  }, []);
+  const set = (patch: Partial<InsightFilters>) => onChange({ ...value, ...patch });
+
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      <button
-        type="button"
-        onClick={() => onChange(null)}
-        className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-          value === null
-            ? "border-[var(--accent-gold)] text-[var(--accent-gold)] bg-[var(--accent-gold)]/10"
-            : "border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-        }`}
-      >
-        {t("All", lang)}
-      </button>
-      {CHARACTERS.map((c) => {
-        const hex = CHARACTER_HEX[c];
-        const active = value === c.toUpperCase();
-        const label = c.charAt(0).toUpperCase() + c.slice(1);
-        return (
-          <button
-            key={c}
-            type="button"
-            onClick={() => onChange(active ? null : c.toUpperCase())}
-            title={label}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors"
-            style={{
-              borderColor: active ? hex : "var(--border-subtle)",
-              color: active ? hex : "var(--text-secondary)",
-              backgroundColor: active ? `${hex}1a` : "transparent",
-            }}
-          >
-            <img
-              src={`${CDN_BASE}/ui/characters/character_icon_${c}.webp`}
-              alt={label}
-              crossOrigin="anonymous"
-              loading="lazy"
-              className="w-3.5 h-3.5 object-contain"
-            />
-            <span className="hidden sm:inline">{label}</span>
-          </button>
-        );
-      })}
+    <div className="flex flex-wrap items-center gap-2">
+      <IconSelect
+        label={t("Character", lang)}
+        value={value.character ?? ""}
+        options={CHARACTERS.map((c) => ({
+          label: c.charAt(0).toUpperCase() + c.slice(1),
+          value: c.toUpperCase(),
+          icon: `${CDN_BASE}/ui/characters/character_icon_${c}.webp`,
+        }))}
+        onChange={(v) => set({ character: v || null })}
+      />
+      <IconSelect
+        label={t("Ascension", lang)}
+        value={value.ascension}
+        options={Array.from({ length: 11 }, (_, i) => ({
+          label: `A${i}`,
+          value: String(i),
+        }))}
+        onChange={(v) => set({ ascension: v })}
+      />
+      <IconSelect
+        label={t("Players", lang)}
+        value={value.players}
+        options={[
+          { label: t("Solo", lang), value: "1" },
+          { label: "2P", value: "2" },
+          { label: "3P", value: "3" },
+          { label: "4P", value: "4" },
+        ]}
+        onChange={(v) => set({ players: v })}
+      />
+      {versions.length > 0 && (
+        <IconSelect
+          label={t("Version", lang)}
+          value={value.version}
+          options={versions.map((v) => ({ label: v, value: v }))}
+          onChange={(v) => set({ version: v })}
+        />
+      )}
     </div>
   );
 }
@@ -1013,7 +1056,9 @@ export default function ProfileInsights({
   const [data, setData] = useState<Insights | null>(null);
   const [loading, setLoading] = useState(true);
   const [building, setBuilding] = useState(false);
-  const [character, setCharacter] = useState<string | null>(null);
+  const [filters, setFilters] = useState<InsightFilters>(EMPTY_INSIGHT_FILTERS);
+  const filtered =
+    !!filters.character || !!filters.ascension || !!filters.players || !!filters.version;
   const cards = useCardMap();
   const relics = useRelicMap();
 
@@ -1021,7 +1066,7 @@ export default function ProfileInsights({
     let alive = true;
     let timer: ReturnType<typeof setTimeout> | undefined;
     setLoading(true);
-    const q = character ? `?character=${encodeURIComponent(character)}` : "";
+    const q = insightFilterQuery(filters);
     // The first-ever view kicks a background walk server-side; poll until it
     // lands instead of holding a request open past the gateway timeout.
     const load = () => {
@@ -1049,9 +1094,9 @@ export default function ProfileInsights({
       alive = false;
       if (timer) clearTimeout(timer);
     };
-  }, [character]);
+  }, [filters]);
 
-  if (building || (loading && !data)) {
+  if (!data && (building || loading)) {
     return (
       <div className="space-y-3">
         {building && (
@@ -1066,7 +1111,7 @@ export default function ProfileInsights({
     );
   }
 
-  if (!character && (!data || !data.runs_walked)) {
+  if (!filtered && (!data || !data.runs_walked)) {
     return (
       <p className="text-sm text-[var(--text-secondary)] py-4">
         {t("No insights yet. Upload and claim runs to see how you play.", lang)}
@@ -1081,7 +1126,7 @@ export default function ProfileInsights({
           {t("Your runs through the community lens. Every section compares you with all submitted runs.", lang)}
           {data?.runs_capped ? ` ${t("Based on your most recent runs only.", lang)}` : ""}
         </p>
-        <CharacterPicker value={character} onChange={setCharacter} lang={lang} />
+        <InsightsFilterBar value={filters} onChange={setFilters} lang={lang} />
       </div>
       {data && data.runs_walked ? (
         <InsightsPanels
@@ -1089,9 +1134,9 @@ export default function ProfileInsights({
           cards={cards}
           relics={relics}
           lang={lang}
-          bests={character ? undefined : bests}
-          personalRanks={character ? undefined : personalRanks}
-          daily={character ? undefined : daily}
+          bests={filtered ? undefined : bests}
+          personalRanks={filtered ? undefined : personalRanks}
+          daily={filtered ? undefined : daily}
         />
       ) : (
         <p className="text-sm text-[var(--text-secondary)] py-4">{t("Not enough data yet.", lang)}</p>

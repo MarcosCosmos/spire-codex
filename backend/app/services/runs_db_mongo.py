@@ -2526,6 +2526,7 @@ def get_user_run_rows(user_id: str, limit: int = 2000) -> list[dict]:
                 "submitted_at": 1,
                 "game_mode": 1,
                 "player_count": 1,
+                "build_id": 1,
             },
         )
         .sort("submitted_at", DESCENDING)
@@ -2543,7 +2544,11 @@ def get_user_run_rows(user_id: str, limit: int = 2000) -> list[dict]:
 
 @_instrument("get_user_card_pick_tallies")
 def get_user_card_pick_tallies(
-    user_id: str, character: str | None = None
+    user_id: str,
+    character: str | None = None,
+    ascension: int | None = None,
+    version: str | None = None,
+    players: int | None = None,
 ) -> dict[str, dict]:
     """One account's card-reward offered/picked tallies across its claimed
     runs (the user_id linkage, unlike get_user_picks' submit-time steam_id).
@@ -2565,6 +2570,12 @@ def get_user_card_pick_tallies(
                 f"character.{character.lower()}",
             ]
         }
+    if ascension is not None:
+        match["ascension"] = ascension
+    if version:
+        match["build_id"] = version
+    if players is not None:
+        match["player_count"] = players
     coll = _get_collection()
     rows = coll.aggregate(
         [
@@ -2589,7 +2600,11 @@ def get_user_card_pick_tallies(
 
 @_instrument("get_user_relic_run_counts")
 def get_user_relic_run_counts(
-    user_id: str, character: str | None = None
+    user_id: str,
+    character: str | None = None,
+    ascension: int | None = None,
+    version: str | None = None,
+    players: int | None = None,
 ) -> dict[str, int]:
     """Distinct claimed runs containing each relic, for the profile's
     relic carry-rate comparison. `character` narrows to that character's
@@ -2610,6 +2625,12 @@ def get_user_relic_run_counts(
                 f"character.{character.lower()}",
             ]
         }
+    if ascension is not None:
+        match["ascension"] = ascension
+    if version:
+        match["build_id"] = version
+    if players is not None:
+        match["player_count"] = players
     coll = _get_collection()
     rows = coll.aggregate(
         [
