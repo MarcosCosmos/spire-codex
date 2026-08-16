@@ -12,7 +12,9 @@ def _fake_backend(monkeypatch, rows, blobs, community, table, tallies):
         runs_db_mongo, "get_run_blobs", lambda hashes: {h: blobs[h] for h in hashes}
     )
     monkeypatch.setattr(
-        runs_db_mongo, "get_user_card_pick_tallies", lambda uid, character=None: tallies
+        runs_db_mongo,
+        "get_user_card_pick_tallies",
+        lambda uid, character=None, **kw: tallies,
     )
     monkeypatch.setattr(user_insights, "get_community_stats", lambda: community)
     monkeypatch.setattr(user_insights, "get_entity_metrics_table", lambda etype: table)
@@ -98,7 +100,9 @@ def test_insights_build_then_cache(monkeypatch):
     monkeypatch.setattr(runs_db_mongo, "get_user_run_rows", rows)
     monkeypatch.setattr(runs_db_mongo, "get_run_blobs", lambda h: {})
     monkeypatch.setattr(
-        runs_db_mongo, "get_user_card_pick_tallies", lambda uid, character=None: {}
+        runs_db_mongo,
+        "get_user_card_pick_tallies",
+        lambda uid, character=None, **kw: {},
     )
     monkeypatch.setattr(user_insights, "get_community_stats", lambda: {})
     monkeypatch.setattr(
@@ -128,7 +132,9 @@ def test_prewarm_kicks_only_when_cold(monkeypatch):
     monkeypatch.setattr(runs_db_mongo, "get_user_run_rows", rows)
     monkeypatch.setattr(runs_db_mongo, "get_run_blobs", lambda h: {})
     monkeypatch.setattr(
-        runs_db_mongo, "get_user_card_pick_tallies", lambda uid, character=None: {}
+        runs_db_mongo,
+        "get_user_card_pick_tallies",
+        lambda uid, character=None, **kw: {},
     )
     monkeypatch.setattr(user_insights, "get_community_stats", lambda: {})
     monkeypatch.setattr(
@@ -250,7 +256,7 @@ def test_character_filter_scopes_walk_and_cache(monkeypatch):
     }
     seen_chars = []
 
-    def tallies(uid, character=None):
+    def tallies(uid, character=None, **kw):
         seen_chars.append(character)
         return {}
 
@@ -283,7 +289,7 @@ def test_relic_carry_deltas(monkeypatch):
     monkeypatch.setattr(
         runs_db_mongo,
         "get_user_relic_run_counts",
-        lambda uid, character=None: {"KUNAI": 12, "SHOVEL": 1},
+        lambda uid, character=None, **kw: {"KUNAI": 12, "SHOVEL": 1},
     )
     monkeypatch.setattr(
         user_insights,

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useLanguage } from "@/app/contexts/LanguageContext";
 import { t } from "@/lib/ui-translations";
-import { CharacterPicker, InsightsPanels, useCardMap, useRelicMap, type Insights } from "@/app/components/ProfileInsights";
+import { EMPTY_INSIGHT_FILTERS, InsightsFilterBar, InsightsPanels, insightFilterQuery, useCardMap, useRelicMap, type InsightFilters, type Insights } from "@/app/components/ProfileInsights";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -14,14 +14,14 @@ export default function PlayerProfileClient({ username }: { username: string }) 
   const [data, setData] = useState<PlayerInsights | null>(null);
   const [status, setStatus] = useState<"loading" | "ok" | "missing">("loading");
   const [building, setBuilding] = useState(false);
-  const [character, setCharacter] = useState<string | null>(null);
+  const [filters, setFilters] = useState<InsightFilters>(EMPTY_INSIGHT_FILTERS);
   const cards = useCardMap();
   const relics = useRelicMap();
 
   useEffect(() => {
     let alive = true;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const q = character ? `?character=${encodeURIComponent(character)}` : "";
+    const q = insightFilterQuery(filters);
     // First-ever view of a profile kicks a background walk server-side;
     // poll until it lands instead of waiting on one long request.
     const load = () => {
@@ -45,9 +45,9 @@ export default function PlayerProfileClient({ username }: { username: string }) 
       alive = false;
       if (timer) clearTimeout(timer);
     };
-  }, [username, character]);
+  }, [username, filters]);
 
-  if (status === "loading" || building) {
+  if (!data && (status === "loading" || building)) {
     return (
       <div className="max-w-5xl mx-auto px-4 py-8 space-y-3">
         <div className="h-8 w-56 bg-[var(--bg-card)] rounded animate-pulse" />
@@ -86,8 +86,13 @@ export default function PlayerProfileClient({ username }: { username: string }) 
             {t("Compared with all community-submitted runs.", lang)}
           </p>
         </div>
-        <CharacterPicker value={character} onChange={setCharacter} lang={lang} />
+        <InsightsFilterBar value={filters} onChange={setFilters} lang={lang} />
       </div>
+      {building && (
+        <p className="text-sm text-[var(--text-secondary)]">
+          {t("Crunching your runs. The first load can take a minute or two.", lang)}
+        </p>
+      )}
       {data.runs_walked ? (
         <InsightsPanels data={data} cards={cards} relics={relics} lang={lang} />
       ) : (

@@ -330,7 +330,14 @@ def _compute_personal_bests(username: str) -> dict:
 
 @router.get("/insights")
 @limiter.limit(rate_limit_config.endpoint_limit("auth.user_insights", "10/minute"))
-def user_insights(request: Request, response: Response, character: str | None = None):
+def user_insights(
+    request: Request,
+    response: Response,
+    character: str | None = None,
+    ascension: int | None = None,
+    version: str | None = None,
+    players: int | None = None,
+):
     """The signed-in player's personal community-stats: their runs walked
     through the same accumulator as /community-stats (deaths, campfires,
     event decisions, boon take rates, records) with the community's numbers
@@ -343,14 +350,22 @@ def user_insights(request: Request, response: Response, character: str | None = 
     from ..services.run_entity_stats import _official_character_ids
     from ..services.user_insights import get_user_insights
 
+    from .players import _validate_insight_filters
+
     character = (character or "").strip().upper() or None
+    _validate_insight_filters(ascension, version, players)
     if character:
         official = _official_character_ids()
         if official and character not in official:
             raise HTTPException(status_code=400, detail="Unknown character")
 
     data = get_user_insights(
-        str(user["_id"]), username=user.get("username"), character=character
+        str(user["_id"]),
+        username=user.get("username"),
+        character=character,
+        ascension=ascension,
+        version=version,
+        players=players,
     )
     # A building placeholder cached for 2 minutes would freeze the poll loop.
     response.headers["Cache-Control"] = (
