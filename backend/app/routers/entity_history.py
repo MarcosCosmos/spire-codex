@@ -10,14 +10,24 @@ router = APIRouter(prefix="/api/history", tags=["Entity History"])
 
 
 def _load_changelogs() -> list[dict]:
-    """Load all changelog JSON files, sorted oldest first by date then tag."""
+    """Load all changelog JSON files, sorted oldest first by date then tag.
+
+    The resolved tree only carries the site-release logs (and a beta version
+    dir only its own patch), so union in the per-patch game diffs from the
+    data-beta archive — without them every entity's history froze before the
+    current beta version."""
+    from ..services.entity_changelog import load_game_changelogs
+
     d = _resolve_base(_get_version()) / "changelogs"
-    if not d.exists():
-        return []
     logs = []
-    for f in d.glob("*.json"):
-        with open(f, "r", encoding="utf-8") as fh:
-            logs.append(json.load(fh))
+    if d.exists():
+        for f in d.glob("*.json"):
+            with open(f, "r", encoding="utf-8") as fh:
+                logs.append(json.load(fh))
+    seen = {(log.get("game_version"), log.get("tag")) for log in logs}
+    for log in load_game_changelogs():
+        if (log.get("game_version"), log.get("tag")) not in seen:
+            logs.append(log)
     logs.sort(key=lambda log: (log.get("date", ""), log.get("tag", "")))
     return logs
 
