@@ -912,6 +912,12 @@ def backfill_user_runs(
     run tagged with this account's ``steam_id`` or ``discord_id`` that isn't
     already owned. Passing both matters because an account can link Steam +
     Discord — signing in either way links runs tagged with the other ID.
+    Also claims runs tagged with only this account's ``username``: the
+    Compendium watcher uploads with ``?username=`` and no other identity, so
+    those runs used to be permanently invisible on the profile (the profile
+    matches user_id, the public browse matches username). ``username_lower``
+    is unique across accounts and the ``user_id: None`` guard keeps runs
+    another account already owns untouched.
     Returns the number of runs linked. Idempotent — only touches runs whose
     ``user_id`` is still null, so re-running on every sign-in is cheap."""
     if not user_id:
@@ -922,6 +928,8 @@ def backfill_user_runs(
         identity_conds.append({"steam_id": steam_id})
     if discord_id:
         identity_conds.append({"discord_id": discord_id})
+    if username:
+        identity_conds.append({"username_lower": username.lower()})
     if not identity_conds:
         return 0
 
