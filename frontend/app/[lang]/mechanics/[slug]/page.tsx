@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { SITE_URL, SITE_NAME, DEFAULT_OG_IMAGE, clipMetaDescription } from "@/lib/seo";
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd } from "@/lib/jsonld";
+import { fetchEntityRes } from "@/lib/entity-fetch";
 import Link from "next/link";
 import MechanicMarkdown from "@/app/mechanics/[slug]/MechanicMarkdown";
 import { isValidLang, LANG_HREFLANG, type LangCode } from "@/lib/languages";
@@ -19,17 +20,13 @@ interface MechanicSectionDetail extends MechanicSectionMeta {
 }
 
 async function fetchSection(slug: string): Promise<MechanicSectionDetail | null> {
-  // See note in app/mechanics/[slug]/page.tsx, generateStaticParams
-  // dropped, fetch hardened against build-time ECONNREFUSED.
-  try {
-    const res = await fetch(`${API_INTERNAL}/api/mechanics/sections/${slug}`, {
-      next: { revalidate: 300 },
-    });
-    if (!res.ok) return null;
-    return (await res.json()) as MechanicSectionDetail;
-  } catch {
-    return null;
-  }
+  // See note in app/mechanics/[slug]/page.tsx: 404 → null (notFound), 5xx or
+  // network failure → throw (500) so an outage can't mass-404 real pages.
+  const res = await fetchEntityRes(`${API_INTERNAL}/api/mechanics/sections/${slug}`, {
+    next: { revalidate: 300 },
+  });
+  if (!res.ok) return null;
+  return (await res.json()) as MechanicSectionDetail;
 }
 
 export async function generateMetadata({

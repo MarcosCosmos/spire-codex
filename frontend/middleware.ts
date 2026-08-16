@@ -46,6 +46,35 @@ function gidFromEncoded(seg: string): string | null {
 
 const LANG_CODES = LANG_PREFIXES;
 
+// Detail routes whose slugs are canonically lowercase (what the sitemap
+// declares). Any other casing serves the same page and self-canonicalises,
+// so Google treats /cards/ABRASIVE and /cards/abrasive as competing
+// duplicates — 308 every non-lowercase variant onto the canonical instead.
+// Deliberately excludes user-content routes with case-significant ids
+// (/runs hashes, /users, /tier-list-maker).
+const LOWERCASE_DETAIL_TYPES = new Set([
+  "achievements", "acts", "afflictions", "ascensions", "badges", "cards",
+  "characters", "enchantments", "encounters", "events", "guides", "intents",
+  "keywords", "mechanics", "modifiers", "monsters", "orbs", "potions",
+  "powers", "relics", "timeline",
+]);
+
+function lowercaseRedirect(req: NextRequest): NextResponse | null {
+  const parts = req.nextUrl.pathname.split("/");
+  let i = 1;
+  if (LANG_CODES.has(parts[i])) i++;
+  if (parts[i] === "beta") i++;
+  if (!LOWERCASE_DETAIL_TYPES.has(parts[i])) return null;
+  const slug = parts.slice(i + 1);
+  if (slug.length === 0 || !slug.some((s) => /[A-Z]/.test(s))) return null;
+  const url = req.nextUrl.clone();
+  url.pathname = [
+    ...parts.slice(0, i + 1),
+    ...slug.map((s) => s.toLowerCase()),
+  ].join("/");
+  return NextResponse.redirect(url, 308);
+}
+
 // Entity types with a real /beta/<type>/[id] detail route (force-dynamic
 // pages under app/beta/), exempt from the rewrite below.
 const BETA_DETAIL_TYPES = new Set([
@@ -93,6 +122,10 @@ function betaRewrite(req: NextRequest): NextResponse | null {
 }
 
 export function middleware(req: NextRequest) {
+  // Redirect before the beta rewrite so the browser lands on the corrected
+  // URL and only then gets rewritten.
+  const lower = lowercaseRedirect(req);
+  if (lower) return lower;
   const beta = betaRewrite(req);
   if (beta) return beta;
   const m = req.nextUrl.pathname.match(NEWS_PATH);
@@ -115,5 +148,8 @@ export const config = {
     "/:lang/news/:slug*",
     "/beta/:path*",
     "/:lang/beta/:path*",
+    // Keep in sync with LOWERCASE_DETAIL_TYPES above.
+    "/:type(achievements|acts|afflictions|ascensions|badges|cards|characters|enchantments|encounters|events|guides|intents|keywords|mechanics|modifiers|monsters|orbs|potions|powers|relics|timeline)/:slug+",
+    "/:lang/:type(achievements|acts|afflictions|ascensions|badges|cards|characters|enchantments|encounters|events|guides|intents|keywords|mechanics|modifiers|monsters|orbs|potions|powers|relics|timeline)/:slug+",
   ],
 };

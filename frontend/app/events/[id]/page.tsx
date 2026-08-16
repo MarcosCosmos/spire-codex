@@ -5,6 +5,7 @@ import { stripTags, stripTagsFlat, clipMetaDescription, buildLanguageAlternates,
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
+import { fetchEntityRes } from "@/lib/entity-fetch";
 import { imageUrl } from "@/lib/image-url";
 
 const API_INTERNAL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -48,7 +49,7 @@ export default async function Page({ params }: Props) {
   let event = null;
   let apiUnreachable = false;
   try {
-    const res = await fetch(`${API_INTERNAL}/api/events/${id}`);
+    const res = await fetchEntityRes(`${API_INTERNAL}/api/events/${id}`);
     if (res.ok) {
       event = await res.json();
       const desc = stripTags(event.description || "");
@@ -76,7 +77,9 @@ export default async function Page({ params }: Props) {
   } catch {
     apiUnreachable = true;
   }
-  if (!event && !apiUnreachable) redirectMissingEntity("events", id);
+  // Fail the render (500) instead of ISR-caching a contentless shell.
+  if (apiUnreachable) throw new Error("entity API unreachable");
+  if (!event) redirectMissingEntity("events", id);
   // Server-render the community choice distribution (unique, crawlable data).
   const voteStats = event ? await fetchEventVotes(id) : null;
   return (

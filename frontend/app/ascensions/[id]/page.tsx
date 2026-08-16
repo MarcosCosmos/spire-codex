@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import AscensionDetail from "./AscensionDetail";
 import JsonLd from "@/app/components/JsonLd";
+import { redirectMissingEntity } from "@/lib/redirect-helpers";
+import { fetchEntityRes } from "@/lib/entity-fetch";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
 import { stripTags, stripTagsFlat, clipMetaDescription, buildLanguageAlternates, DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
 
@@ -47,8 +49,9 @@ export default async function Page({ params }: Props) {
   const { id } = await params;
   let jsonLd = null;
   let asc = null;
+  let apiUnreachable = false;
   try {
-    const res = await fetch(`${API_INTERNAL}/api/ascensions/${id}`, {
+    const res = await fetchEntityRes(`${API_INTERNAL}/api/ascensions/${id}`, {
       next: { revalidate: 3600 },
     });
     if (res.ok) {
@@ -70,7 +73,12 @@ export default async function Page({ params }: Props) {
       ]);
       jsonLd = [...detailJsonLd, faqJsonLd];
     }
-  } catch {}
+  } catch {
+    apiUnreachable = true;
+  }
+  // Fail the render (500) instead of ISR-caching a contentless shell.
+  if (apiUnreachable) throw new Error("entity API unreachable");
+  if (!asc) redirectMissingEntity("ascensions", id);
   return (
     <>
       {jsonLd && <JsonLd data={jsonLd} />}

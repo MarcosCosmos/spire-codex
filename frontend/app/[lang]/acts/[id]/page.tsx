@@ -5,6 +5,7 @@ import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd } from "@/lib/jsonld";
 import { isValidLang, LANG_HREFLANG, LANG_NAMES, LANG_GAME_NAME, type LangCode } from "@/lib/languages";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
+import { fetchEntityRes } from "@/lib/entity-fetch";
 
 export const revalidate = 3600;
 
@@ -53,7 +54,7 @@ export default async function Page({ params }: Props) {
   let act = null;
   let apiUnreachable = false;
   try {
-    const res = await fetch(`${API_INTERNAL}/api/acts/${id}?lang=${lang}`);
+    const res = await fetchEntityRes(`${API_INTERNAL}/api/acts/${id}?lang=${lang}`);
     if (res.ok) {
       act = await res.json();
       jsonLd = buildDetailPageJsonLd({
@@ -72,7 +73,9 @@ export default async function Page({ params }: Props) {
   } catch {
     apiUnreachable = true;
   }
-  if (!act && !apiUnreachable) redirectMissingEntity("acts", id, lang);
+  // Fail the render (500) instead of ISR-caching a contentless shell.
+  if (apiUnreachable) throw new Error("entity API unreachable");
+  if (!act) redirectMissingEntity("acts", id, lang);
   return (
     <>
       {jsonLd && <JsonLd data={jsonLd} />}

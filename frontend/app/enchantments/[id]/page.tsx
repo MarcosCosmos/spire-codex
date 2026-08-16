@@ -4,6 +4,7 @@ import { stripTags, stripTagsFlat, clipMetaDescription, buildLanguageAlternates,
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
+import { fetchEntityRes } from "@/lib/entity-fetch";
 import { imageUrl } from "@/lib/image-url";
 import { cardsForEnchantment } from "@/lib/card-enchantments";
 
@@ -49,7 +50,7 @@ export default async function Page({ params }: Props) {
   let enchantment = null;
   let apiUnreachable = false;
   try {
-    const res = await fetch(`${API_INTERNAL}/api/enchantments/${id}`);
+    const res = await fetchEntityRes(`${API_INTERNAL}/api/enchantments/${id}`);
     if (res.ok) {
       enchantment = await res.json();
       const desc = stripTags(enchantment.description || "");
@@ -74,7 +75,9 @@ export default async function Page({ params }: Props) {
   } catch {
     apiUnreachable = true;
   }
-  if (!enchantment && !apiUnreachable)
+  // Fail the render (500) instead of ISR-caching a contentless shell.
+  if (apiUnreachable) throw new Error("entity API unreachable");
+  if (!enchantment)
     redirectMissingEntity("enchantments", id);
   return (
     <>

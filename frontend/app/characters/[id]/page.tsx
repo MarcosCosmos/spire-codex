@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import CharacterDetail from "./CharacterDetail";
 import { stripTags, stripTagsFlat, clipMetaDescription, buildLanguageAlternates, SITE_NAME, SITE_URL } from "@/lib/seo";
 import JsonLd from "@/app/components/JsonLd";
+import { redirectMissingEntity } from "@/lib/redirect-helpers";
+import { fetchEntityRes } from "@/lib/entity-fetch";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
 
 import { imageUrl } from "@/lib/image-url";
@@ -46,8 +48,9 @@ export default async function Page({ params }: Props) {
   const { id } = await params;
   let jsonLd = null;
   let char = null;
+  let apiUnreachable = false;
   try {
-    const res = await fetch(`${API_INTERNAL}/api/characters/${id}`);
+    const res = await fetchEntityRes(`${API_INTERNAL}/api/characters/${id}`);
     if (res.ok) {
       char = await res.json();
       const desc = stripTags(char.description || "");
@@ -70,7 +73,12 @@ export default async function Page({ params }: Props) {
       ];
       jsonLd = [...detailJsonLd, buildFAQPageJsonLd(faqQuestions)];
     }
-  } catch {}
+  } catch {
+    apiUnreachable = true;
+  }
+  // Fail the render (500) instead of ISR-caching a contentless shell.
+  if (apiUnreachable) throw new Error("entity API unreachable");
+  if (!char) redirectMissingEntity("characters", id);
   return (
     <>
       {jsonLd && <JsonLd data={jsonLd} />}

@@ -4,6 +4,7 @@ import { stripTags, stripTagsFlat, clipMetaDescription, buildLanguageAlternates,
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
+import { fetchEntityRes } from "@/lib/entity-fetch";
 
 const API_INTERNAL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -45,7 +46,7 @@ export default async function Page({ params }: Props) {
   let intent = null;
   let apiUnreachable = false;
   try {
-    const res = await fetch(`${API_INTERNAL}/api/intents/${id}`);
+    const res = await fetchEntityRes(`${API_INTERNAL}/api/intents/${id}`);
     if (res.ok) {
       intent = await res.json();
       const desc = stripTags(intent.description || "");
@@ -68,7 +69,9 @@ export default async function Page({ params }: Props) {
   } catch {
     apiUnreachable = true;
   }
-  if (!intent && !apiUnreachable) redirectMissingEntity("intents", id);
+  // Fail the render (500) instead of ISR-caching a contentless shell.
+  if (apiUnreachable) throw new Error("entity API unreachable");
+  if (!intent) redirectMissingEntity("intents", id);
   return (
     <>
       {jsonLd && <JsonLd data={jsonLd} />}

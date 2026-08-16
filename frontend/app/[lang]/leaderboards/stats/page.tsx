@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import JsonLd from "@/app/components/JsonLd";
 import { buildBreadcrumbJsonLd, buildCollectionPageJsonLd } from "@/lib/jsonld";
 import StatsClient from "@/app/leaderboards/stats/StatsClient";
+import { fetchInitialStats } from "@/app/leaderboards/stats/fetch-initial-stats";
 import {
   isValidLang,
   LANG_GAME_NAME,
@@ -72,7 +73,7 @@ export default async function LangStatsPage({
   return (
     <>
       <JsonLd data={jsonLd} />
-      <StatsClient />
+      <StatsClient initialStats={await fetchInitialStats()} />
     </>
   );
 }

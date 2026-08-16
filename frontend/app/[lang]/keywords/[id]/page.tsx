@@ -5,6 +5,7 @@ import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
 import { isValidLang, LANG_HREFLANG, LANG_NAMES, LANG_GAME_NAME, type LangCode } from "@/lib/languages";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
+import { fetchEntityRes } from "@/lib/entity-fetch";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +52,7 @@ export default async function Page({ params }: Props) {
   let kw = null;
   let apiUnreachable = false;
   try {
-    const res = await fetch(`${API_INTERNAL}/api/keywords/${id}?lang=${lang}`);
+    const res = await fetchEntityRes(`${API_INTERNAL}/api/keywords/${id}?lang=${lang}`);
     if (res.ok) {
       kw = await res.json();
       const desc = stripTags(kw.description);
@@ -83,7 +84,9 @@ export default async function Page({ params }: Props) {
   // through to the same redirect (the English version tries glossary
   // first because the URL space is shared, but the localized routes
   // are keyword-only).
-  if (!kw && !apiUnreachable) redirectMissingEntity("keywords", id, lang);
+  // Fail the render (500) instead of ISR-caching a contentless shell.
+  if (apiUnreachable) throw new Error("entity API unreachable");
+  if (!kw) redirectMissingEntity("keywords", id, lang);
   return (
     <>
       {jsonLd && <JsonLd data={jsonLd} />}

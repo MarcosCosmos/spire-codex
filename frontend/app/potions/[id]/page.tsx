@@ -6,6 +6,7 @@ import { stripTags, stripTagsFlat, clipMetaDescription, buildLanguageAlternates,
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
+import { fetchEntityRes } from "@/lib/entity-fetch";
 import { imageUrl } from "@/lib/image-url";
 
 const API_INTERNAL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -49,7 +50,7 @@ export default async function Page({ params }: Props) {
   let potion = null;
   let apiUnreachable = false;
   try {
-    const res = await fetch(`${API_INTERNAL}/api/potions/${id}`);
+    const res = await fetchEntityRes(`${API_INTERNAL}/api/potions/${id}`);
     if (res.ok) {
       potion = await res.json();
       const desc = stripTags(potion.description || "");
@@ -74,7 +75,9 @@ export default async function Page({ params }: Props) {
   } catch {
     apiUnreachable = true;
   }
-  if (!potion && !apiUnreachable) redirectMissingEntity("potions", id);
+  // Fail the render (500) instead of ISR-caching a contentless shell.
+  if (apiUnreachable) throw new Error("entity API unreachable");
+  if (!potion) redirectMissingEntity("potions", id);
   // Server-render the community stats into the HTML (unique, crawlable data).
   const initialStats: EntityStats | null = potion ? await fetchEntityStats("potions", id) : null;
   return (

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { SITE_URL, SITE_NAME, DEFAULT_OG_IMAGE, clipMetaDescription, buildLanguageAlternates} from "@/lib/seo";
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd } from "@/lib/jsonld";
+import { fetchEntityRes } from "@/lib/entity-fetch";
 import Link from "next/link";
 import MechanicMarkdown from "./MechanicMarkdown";
 import type { MechanicSectionMeta } from "../page";
@@ -17,20 +18,14 @@ interface MechanicSectionDetail extends MechanicSectionMeta {
 }
 
 async function fetchSection(slug: string): Promise<MechanicSectionDetail | null> {
-  // Tolerates ECONNREFUSED so the Docker frontend build doesn't fail when
-  // the backend container isn't running yet. Pages are rendered on demand
-  // post-deploy with the `revalidate` cache below, same pattern as every
-  // other entity detail page (cards, relics, monsters, etc.) which never
-  // had generateStaticParams in the first place.
-  try {
-    const res = await fetch(`${API_INTERNAL}/api/mechanics/sections/${slug}`, {
-      next: { revalidate: 300 },
-    });
-    if (!res.ok) return null;
-    return (await res.json()) as MechanicSectionDetail;
-  } catch {
-    return null;
-  }
+  // notFound() only on a definitive 404; backend 5xx or network failure
+  // throws (500) so an outage window cannot mass-404 real pages. Detail
+  // routes have no generateStaticParams, so nothing fetches at build time.
+  const res = await fetchEntityRes(`${API_INTERNAL}/api/mechanics/sections/${slug}`, {
+    next: { revalidate: 300 },
+  });
+  if (!res.ok) return null;
+  return (await res.json()) as MechanicSectionDetail;
 }
 
 export async function generateMetadata({
