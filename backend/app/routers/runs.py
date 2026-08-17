@@ -909,11 +909,13 @@ def get_shared_run(run_hash: str, request: Request):
         if primary and primary != run_hash:
             blob["primary_hash"] = primary
         if using_mongo:
-            from ..services.runs_db_mongo import get_username_for_hash
+            from ..services.runs_db_mongo import get_share_meta_for_hash
 
-            name = get_username_for_hash(run_hash)
-            if name:
-                blob["username"] = name
+            meta = get_share_meta_for_hash(run_hash)
+            if meta.get("username"):
+                blob["username"] = meta["username"]
+            if meta.get("hidden"):
+                blob["hidden"] = True
             return blob
 
         from ..services.runs_db import get_conn
