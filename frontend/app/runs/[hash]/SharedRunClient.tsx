@@ -154,7 +154,9 @@ export default function SharedRunClient({ initialRun }: { initialRun?: any }) {
     </div>
   );
 
-  const player = run.players[0];
+  // Co-op siblings all serve the same blob; player_index says which
+  // players[] entry the viewed hash belongs to (0 = host / single-player).
+  const player = run.players[run.player_index ?? 0] ?? run.players[0];
   const charId = cleanId(player.character);
   const charColor = CHAR_CSS_VAR[charId.toUpperCase()] || "var(--accent-gold)";
   const totalFloors = run.map_point_history?.reduce((sum: number, act: any[]) => sum + act.length, 0) || 0;

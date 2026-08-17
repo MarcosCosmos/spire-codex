@@ -2787,6 +2787,25 @@ def get_user_picks(steam_id: str) -> dict[str, dict]:
 
 
 @_instrument("primary_share_hash")
+def player_index_for_hash(data: dict, run_hash: str) -> int | None:
+    """Which players[] entry a per-player share hash belongs to. Co-op runs
+    store one doc per player and every sibling serves the same blob, so the
+    page needs this to show the viewed player's character instead of the
+    host's. Same key recipe as _submit_player_run; None when nothing matches
+    (malformed blob, or a legacy hash scheme)."""
+    try:
+        for idx, p in enumerate(data.get("players") or []):
+            key = (
+                f"{data.get('seed', '')}:{p['character']}:{data.get('start_time', '')}:"
+                f"{data.get('run_time', 0)}:{len(p.get('deck', []))}:{idx}"
+            )
+            if hashlib.sha256(key.encode()).hexdigest()[:16] == run_hash:
+                return idx
+    except Exception:
+        pass
+    return None
+
+
 def primary_share_hash(data: dict) -> str | None:
     """The player-0 share hash recomputed from a submitted run blob.
 

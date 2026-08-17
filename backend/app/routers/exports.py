@@ -210,10 +210,13 @@ def _stream_runs_jsonl(hashes):
             continue
         try:
             raw = run_file.read_text(encoding="utf-8").strip()
-            json.loads(raw)
+            obj = json.loads(raw)
         except (json.JSONDecodeError, OSError):
             continue
-        gz.write(raw.encode("utf-8"))
+        # The blob has no identifier of its own (the hash is derived), so
+        # stamp it in — consumers link back to /runs/<run_hash> with it.
+        obj["run_hash"] = run_hash
+        gz.write(json.dumps(obj, separators=(",", ":")).encode("utf-8"))
         gz.write(b"\n")
         if buf.tell() > 65536:
             gz.flush()
