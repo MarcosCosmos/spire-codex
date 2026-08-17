@@ -22,6 +22,7 @@ import { t } from "@/lib/ui-translations";
 import IconSelect from "@/app/components/IconSelect";
 import AscensionHeatmap, { type AscensionMatrix } from "@/app/components/AscensionHeatmap";
 import EloTrajectory, { type EloPoint } from "@/app/components/EloTrajectory";
+import CharacterTag from "@/app/components/CharacterTag";
 
 ChartJS.register(BarElement, LineElement, PointElement, LinearScale, CategoryScale, Tooltip, Filler);
 
@@ -179,6 +180,7 @@ export interface Insights {
     peak: number;
     lifetime: number;
     runs: number;
+    by_character?: Record<string, { elo: number; runs: number; wins: number }>;
     history: EloPoint[];
   } | null;
   activity?: ActivityWeek[];
@@ -849,6 +851,25 @@ export function InsightsPanels({
                   <p className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] mt-1">{t("Highest Elo Score Achieved", lang)}</p>
                 </div>
               </div>
+              {/* Each character is its own ladder; the tiles above blend them
+                  weighted by how much each one was played. */}
+              {elo.by_character && Object.keys(elo.by_character).length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
+                  {Object.entries(elo.by_character)
+                    .sort(([a], [b]) => CHAR_ORDER.indexOf(a.toUpperCase()) - CHAR_ORDER.indexOf(b.toUpperCase()))
+                    .map(([id, bc]) => (
+                      <div key={id} className="bg-[var(--bg-primary)] rounded-lg px-3 py-2 flex items-center justify-between gap-2 text-xs">
+                        <CharacterTag id={id} size={16} />
+                        <span className="text-right shrink-0">
+                          <span className="text-sm font-semibold tabular-nums text-[var(--text-primary)]">{Math.round(bc.elo)}</span>
+                          <span className="text-[10px] text-[var(--text-muted)] ml-1.5">
+                            {bc.runs.toLocaleString()} {t("Runs", lang)}
+                          </span>
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              )}
             </Section>
           )}
         </div>
@@ -968,7 +989,7 @@ export function InsightsPanels({
             runLabel={t("Run", lang)}
             winLabel={t("win", lang)}
             lossLabel={t("loss", lang)}
-            axisLabel={t("rated A10 run", lang)}
+            axisLabel={t("rated solo A10 run", lang)}
           />
         </Section>
       )}

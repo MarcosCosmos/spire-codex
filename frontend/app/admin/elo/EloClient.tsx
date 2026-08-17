@@ -100,7 +100,7 @@ export default function EloClient() {
   return (
     <AdminShell
       title="Player Elo"
-      subtitle="A10 standard runs, rated against per-character community difficulty. Elo = current form; Lifetime = Wilson-bounded whole record. Hidden — admin eyes only."
+      subtitle="Solo A10 standard runs: one ladder per character, blended by runs played. Elo = current form; Lifetime = Wilson-bounded whole record. Hidden — admin eyes only."
     >
       <div className="flex items-center gap-3 mb-4 text-sm">
         <label className="text-[var(--text-muted)]">

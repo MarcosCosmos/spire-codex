@@ -1,13 +1,15 @@
-"""Hidden per-player Elo over A10 standard runs.
+"""Hidden per-player Elo over solo A10 standard runs.
 
-Each rated run is a match against a per-character difficulty anchor: the
-anchor rating is chosen so a 1000-rated player's expected win chance equals
-the community's A10 win rate for that character (from the snapshot's
-ascension_matrix). Runs are walked in played order; K is 32 for a player's
-first 30 rated runs, 16 after. The admin board serves the full leaderboard;
-profiles surface each account's own rating, peak, and trajectory through the
-insights payload (public since 2026-08-17). ``hidden_elo`` persists on the
-user doc for future use.
+Each character is its own ladder: a rated run is a match against that
+character's difficulty anchor, chosen so a 1000-rated player's expected win
+chance equals the community's solo A10 win rate for the character (from the
+snapshot's ascension_matrix). Runs are walked in played order; K is 32 for
+the first 30 rated runs on a character, 16 after. The headline number blends
+the ladders — a run-weighted mean, so the characters someone actually plays
+carry their rating. Only solo standard A10 runs rate. The admin board serves
+the full leaderboard; profiles surface each account's blended rating, peak,
+per-character ladders, and trajectory through the insights payload (public
+since 2026-08-17). ``hidden_elo`` persists on the user doc for future use.
 """
 
 import logging
@@ -59,34 +61,60 @@ def rate_runs(
     default_p: float,
     collect_history: bool = False,
 ) -> dict:
-    """Fold one player's chronologically ordered A10 runs into a rating.
+    """Fold one player's chronologically ordered rated runs into per-character
+    ladders plus the blended headline rating (a run-weighted mean of the
+    ladders, so the characters someone actually plays carry it). History
+    points track the blend after each run, keeping the trajectory, peak, and
+    current number one consistent series.
 
     Besides the sequential Elo, emits a "lifetime" performance rating: the
     Wilson lower bound of the whole record solved against the player's mean
     anchor — same scale as Elo, but order-independent and volume-punishing,
     so it answers "best proven record" while Elo answers "best right now"."""
-    elo, wins, anchor_sum = START_ELO, 0, 0.0
+    elos: dict[str, float] = {}
+    counts: dict[str, int] = {}
+    char_wins: dict[str, int] = {}
+    wins, anchor_sum = 0, 0.0
     history: list[dict] = []
-    for i, r in enumerate(runs):
+
+    def _blend() -> float:
+        total = sum(counts.values())
+        if not total:
+            return START_ELO
+        return sum(elos[c] * counts[c] for c in elos) / total
+
+    for r in runs:
         char = (r.get("character") or "").split(".")[-1].lower()
         p = p_by_char.get(char, default_p)
         anchor = _anchor_rating(p)
         anchor_sum += anchor
-        k = K_PLACEMENT if i < PLACEMENT_RUNS else K_SETTLED
+        k = K_PLACEMENT if counts.get(char, 0) < PLACEMENT_RUNS else K_SETTLED
         score = 1.0 if r.get("win") else 0.0
-        elo += k * (score - _expected(elo, anchor))
+        elo = elos.get(char, START_ELO)
+        elos[char] = elo + k * (score - _expected(elo, anchor))
+        counts[char] = counts.get(char, 0) + 1
+        char_wins[char] = char_wins.get(char, 0) + int(score)
         wins += int(score)
         if collect_history:
             ts = r.get("played_at") or r.get("submitted_at")
             history.append(
                 {
-                    "n": i + 1,
+                    "n": sum(counts.values()),
                     "t": ts.isoformat() if hasattr(ts, "isoformat") else None,
-                    "elo": round(elo, 1),
+                    "elo": round(_blend(), 1),
                     "win": bool(score),
                 }
             )
-    rec: dict = {"elo": round(elo, 1), "runs": len(runs), "wins": wins}
+
+    rec: dict = {
+        "elo": round(_blend(), 1),
+        "runs": len(runs),
+        "wins": wins,
+        "by_character": {
+            c: {"elo": round(elos[c], 1), "runs": counts[c], "wins": char_wins[c]}
+            for c in elos
+        },
+    }
     if runs:
         p_lb = wilson_lower_bound(wins, len(runs))
         p_lb = min(max(p_lb, 0.01), 0.99)
@@ -101,10 +129,10 @@ def rate_runs(
     return rec
 
 
-def _difficulty_anchors() -> tuple[dict[str, float], float]:
+def _difficulty_anchors(bracket: str | None = None) -> tuple[dict[str, float], float]:
     from .run_entity_stats import get_community_stats
 
-    matrix = (get_community_stats() or {}).get("ascension_matrix") or {}
+    matrix = (get_community_stats(bracket) or {}).get("ascension_matrix") or {}
     p_by_char: dict[str, float] = {}
     for cid, per_asc in matrix.items():
         cell = (per_asc or {}).get("10")
@@ -112,6 +140,19 @@ def _difficulty_anchors() -> tuple[dict[str, float], float]:
             p_by_char[cid] = cell["win_rate"] / 100.0
     default_p = sum(p_by_char.values()) / len(p_by_char) if p_by_char else 0.2
     return p_by_char, default_p
+
+
+def _solo_anchors() -> tuple[dict[str, float], float]:
+    """Anchors from the solo bracket (the ladder's own population), falling
+    back to the all-runs matrix while a snapshot predates player brackets."""
+    p_by_char, default_p = _difficulty_anchors("solo")
+    if not p_by_char:
+        p_by_char, default_p = _difficulty_anchors()
+    return p_by_char, default_p
+
+
+# Missing player_count predates co-op ingest and always means a solo run.
+_SOLO_QUERY = {"player_count": {"$in": [1, None]}}
 
 
 def compute_player_elos(persist: bool = True) -> list[dict]:
@@ -122,7 +163,7 @@ def compute_player_elos(persist: bool = True) -> list[dict]:
     from .runs_db_mongo import _get_collection
     from .users_db import _get_collection as _users_coll
 
-    p_by_char, default_p = _difficulty_anchors()
+    p_by_char, default_p = _solo_anchors()
     from bson import ObjectId
 
     # $gt over the ObjectId floor rides the (user_id, ...) index and skips
@@ -135,6 +176,7 @@ def compute_player_elos(persist: bool = True) -> list[dict]:
             "game_mode": "standard",
             "deleted_at": None,
             "hidden": {"$ne": True},
+            **_SOLO_QUERY,
         },
         {"user_id": 1, "win": 1, "character": 1, "played_at": 1, "submitted_at": 1},
     )
@@ -234,7 +276,7 @@ def compute_player_history(user_id: str) -> dict | None:
         oid = ObjectId(user_id)
     except Exception:
         return None
-    p_by_char, default_p = _difficulty_anchors()
+    p_by_char, default_p = _solo_anchors()
     runs = list(
         _get_collection().find(
             {
@@ -243,6 +285,7 @@ def compute_player_history(user_id: str) -> dict | None:
                 "game_mode": "standard",
                 "deleted_at": None,
                 "hidden": {"$ne": True},
+                **_SOLO_QUERY,
             },
             {"win": 1, "character": 1, "played_at": 1, "submitted_at": 1},
         )
@@ -261,25 +304,28 @@ def compute_player_history(user_id: str) -> dict | None:
 def elo_block_from_rows(rows: list[dict]) -> dict | None:
     """Profile-payload Elo block from already-loaded run rows (the insights
     walk's row set): current rating, the peak ever reached, the Wilson
-    lifetime rating, and the full trajectory. Only the A10 standard subset
-    rates; None when the account has no rated runs."""
+    lifetime rating, the per-character ladders, and the full trajectory. Only
+    the solo A10 standard subset rates; None when the account has no rated
+    runs."""
     rated = [
         r
         for r in rows
         if (r.get("ascension") or 0) == 10
         and (r.get("game_mode") or "standard") == "standard"
+        and int(r.get("player_count") or 1) == 1
     ]
     if not rated:
         return None
     floor = datetime(1970, 1, 1)
     rated.sort(key=lambda r: r.get("played_at") or r.get("submitted_at") or floor)
-    p_by_char, default_p = _difficulty_anchors()
+    p_by_char, default_p = _solo_anchors()
     rec = rate_runs(rated, p_by_char, default_p, collect_history=True)
     return {
         "current": rec["elo"],
         "peak": round(max((h["elo"] for h in rec["history"]), default=START_ELO), 1),
         "lifetime": rec["lifetime"],
         "runs": rec["runs"],
+        "by_character": rec["by_character"],
         "history": rec["history"][-2000:],
     }
 
