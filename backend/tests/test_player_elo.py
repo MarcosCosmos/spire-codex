@@ -60,3 +60,43 @@ def test_lifetime_is_order_independent_and_history_collects():
     assert b["elo"] > a["elo"]  # but recent form separates the Elo
     assert len(a["history"]) == 100
     assert a["history"][0]["n"] == 1 and a["history"][-1]["elo"] == a["elo"]
+
+
+def test_blend_is_run_weighted_across_characters():
+    anchors = {"ironclad": 0.5, "defect": 0.5}
+    runs = [{"character": "IRONCLAD", "win": True}] * 3 + [
+        {"character": "DEFECT", "win": False}
+    ]
+    rec = rate_runs(runs, anchors, 0.5)
+    ic = rec["by_character"]["ironclad"]
+    de = rec["by_character"]["defect"]
+    assert ic["runs"] == 3 and ic["wins"] == 3
+    assert de["runs"] == 1 and de["wins"] == 0
+    # The blend weights each ladder by how much it was actually played.
+    assert abs(rec["elo"] - (ic["elo"] * 3 + de["elo"]) / 4) < 0.2
+    # One character's losses never touch another character's ladder.
+    assert ic["elo"] > START_ELO > de["elo"]
+
+
+def test_block_rates_solo_standard_a10_only(monkeypatch):
+    from app.services import player_elo
+
+    monkeypatch.setattr(player_elo, "_solo_anchors", lambda: ({"ironclad": 0.2}, 0.2))
+    rows = [
+        {"ascension": 10, "character": "IRONCLAD", "win": True, "player_count": 1},
+        {"ascension": 10, "character": "IRONCLAD", "win": True},  # legacy solo
+        {"ascension": 10, "character": "IRONCLAD", "win": True, "player_count": 2},
+        {"ascension": 7, "character": "IRONCLAD", "win": True, "player_count": 1},
+        {
+            "ascension": 10,
+            "character": "IRONCLAD",
+            "win": True,
+            "player_count": 1,
+            "game_mode": "daily",
+        },
+    ]
+    block = player_elo.elo_block_from_rows(rows)
+    assert block is not None and block["runs"] == 2  # co-op, A7, daily never rate
+    assert set(block["by_character"]) == {"ironclad"}
+    assert block["by_character"]["ironclad"]["runs"] == 2
+    assert block["current"] == block["by_character"]["ironclad"]["elo"]
