@@ -172,6 +172,7 @@ def _card_pick_deltas(
     ascension: int | None = None,
     version: str | None = None,
     players: int | None = None,
+    bracket: str | None = None,
 ) -> dict[str, list[dict]]:
     """The player's card-reward keep rates vs the community's, split into the
     cards they take notably more / less often. Community side comes from the
@@ -189,7 +190,7 @@ def _card_pick_deltas(
         )
         or {}
     )
-    table = get_entity_metrics_table("cards")
+    table = get_entity_metrics_table("cards", bracket or "all")
     comm = {
         r["id"]: r["pick_rate"]
         for r in table.get("rows") or []
@@ -345,6 +346,7 @@ def _relic_carry_deltas(
     ascension: int | None = None,
     version: str | None = None,
     players: int | None = None,
+    bracket: str | None = None,
 ) -> dict[str, list[dict]]:
     """Relics the player ends runs with notably more / less often than the
     community. Relics have no offered/picked stream like cards, so the
@@ -364,7 +366,7 @@ def _relic_carry_deltas(
         )
         or {}
     )
-    table = get_entity_metrics_table("relics", "all", character)
+    table = get_entity_metrics_table("relics", bracket or "all", character)
     comm_total = (
         table.get("character_runs") if character else table.get("total_runs")
     ) or 0
@@ -416,6 +418,22 @@ _LOCK_TTL = 15 * 60
 
 _inflight: set[str] = set()
 _inflight_lock = threading.Lock()
+
+
+def _filters_bracket(
+    ascension: int | None, version: str | None, players: int | None
+) -> str | None:
+    """The materialized community bracket matching the active filters, or
+    None when nothing maps (character is not a bracket axis, and only A10
+    has a skill bracket). Composes player:skill:version in the same order
+    as the site's ?bracket= values, so the profile's community comparison
+    numbers match /leaderboards/stats for the same slice."""
+    player = {1: "solo", 2: "2p", 3: "3p", 4: "4p"}.get(players or 0, "")
+    skill = "a10" if ascension == 10 else ""
+    parts = [p for p in (player, skill) if p]
+    if version:
+        parts.append(version)
+    return ":".join(parts) or None
 
 
 def _apply_row_filters(
@@ -620,12 +638,13 @@ def _compute_insights(
                 )
 
     mine = community_stats._finalize_one(acc)
-    community = get_community_stats()
+    bracket = _filters_bracket(ascension, version, players)
+    community = get_community_stats(bracket)
     _attach_community(mine, community)
     mine["event_divergence"] = _event_divergence(mine)
     try:
         mine["card_picks"] = _card_pick_deltas(
-            user_id, character, ascension, version, players
+            user_id, character, ascension, version, players, bracket
         )
     except Exception:
         logger.warning("user-insights card deltas failed", exc_info=True)
@@ -638,6 +657,7 @@ def _compute_insights(
             ascension,
             version,
             players,
+            bracket,
         )
     except Exception:
         logger.warning("user-insights relic deltas failed", exc_info=True)

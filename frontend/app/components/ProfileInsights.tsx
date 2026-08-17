@@ -203,6 +203,8 @@ const CHARACTER_HEX: Record<string, string> = {
 };
 
 const CHARACTERS = ["ironclad", "silent", "defect", "necrobinder", "regent"] as const;
+// Same canonical order the stats page uses, so both lists line up.
+const CHAR_ORDER = ["IRONCLAD", "SILENT", "DEFECT", "NECROBINDER", "REGENT"];
 
 // Insight scope filters: character (icon dropdown), ascension, players, and
 // game version, all defaulting to All. Each change re-fetches the whole
@@ -705,9 +707,9 @@ function DeathColumn({ title, rows, lang }: { title: string; rows: ComparableRow
           <div key={d.id} className="flex items-center justify-between text-sm">
             <span className="text-[var(--text-primary)] truncate">{d.name || d.id.replace(/_/g, " ")}</span>
             <span className="text-xs text-[var(--text-tertiary)] tabular-nums shrink-0 ml-2">
-              {d.count} · {d.pct}%
+              {d.count} · {d.pct.toFixed(1)}%
               {d.community_pct != null && (
-                <span className="text-[var(--text-muted)]"> ({d.community_pct}%)</span>
+                <span className="text-[var(--text-muted)]"> ({d.community_pct.toFixed(1)}%)</span>
               )}
             </span>
           </div>
@@ -776,7 +778,12 @@ export function InsightsPanels({
   const streaks = data.streaks;
   const hasRecords = records.fastest_win || records.longest_run || records.biggest_deck;
   const hasBests = bests && Object.values(bests).some(Boolean);
-  const characters = (data.by_character || []).filter((c) => c.runs > 0);
+  const characters = (data.by_character || [])
+    .filter((c) => c.runs > 0)
+    .sort(
+      (a, b) =>
+        CHAR_ORDER.indexOf(a.id.toUpperCase()) - CHAR_ORDER.indexOf(b.id.toUpperCase()),
+    );
   const losses = data.total_losses ?? (data.total_wins != null ? data.total_runs - data.total_wins : null);
 
   return (
@@ -859,7 +866,7 @@ export function InsightsPanels({
                 <div key={c.id} className="space-y-1">
                   <div className="flex items-center justify-between text-sm">
                     <span className="font-medium" style={{ color: hex }}>
-                      {c.name || displayCharacter(c.id)}
+                      {(c.name || displayCharacter(c.id)).replace(/^The\s+/i, "")}
                     </span>
                     <span className="text-xs text-[var(--text-tertiary)] tabular-nums">
                       {c.runs} {t("runs", lang)} · {c.share}%

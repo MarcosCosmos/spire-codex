@@ -16,8 +16,8 @@ def _fake_backend(monkeypatch, rows, blobs, community, table, tallies):
         "get_user_card_pick_tallies",
         lambda uid, character=None, **kw: tallies,
     )
-    monkeypatch.setattr(user_insights, "get_community_stats", lambda: community)
-    monkeypatch.setattr(user_insights, "get_entity_metrics_table", lambda etype: table)
+    monkeypatch.setattr(user_insights, "get_community_stats", lambda *a, **k: community)
+    monkeypatch.setattr(user_insights, "get_entity_metrics_table", lambda *a, **k: table)
     user_insights._cache.clear()
 
 
@@ -104,9 +104,9 @@ def test_insights_build_then_cache(monkeypatch):
         "get_user_card_pick_tallies",
         lambda uid, character=None, **kw: {},
     )
-    monkeypatch.setattr(user_insights, "get_community_stats", lambda: {})
+    monkeypatch.setattr(user_insights, "get_community_stats", lambda *a, **k: {})
     monkeypatch.setattr(
-        user_insights, "get_entity_metrics_table", lambda etype: {"rows": []}
+        user_insights, "get_entity_metrics_table", lambda *a, **k: {"rows": []}
     )
     monkeypatch.setattr(user_insights.threading, "Thread", _InlineThread)
     user_insights._cache.clear()
@@ -136,9 +136,9 @@ def test_prewarm_kicks_only_when_cold(monkeypatch):
         "get_user_card_pick_tallies",
         lambda uid, character=None, **kw: {},
     )
-    monkeypatch.setattr(user_insights, "get_community_stats", lambda: {})
+    monkeypatch.setattr(user_insights, "get_community_stats", lambda *a, **k: {})
     monkeypatch.setattr(
-        user_insights, "get_entity_metrics_table", lambda etype: {"rows": []}
+        user_insights, "get_entity_metrics_table", lambda *a, **k: {"rows": []}
     )
     monkeypatch.setattr(user_insights.threading, "Thread", _InlineThread)
     user_insights._cache.clear()
@@ -265,9 +265,9 @@ def test_character_filter_scopes_walk_and_cache(monkeypatch):
         runs_db_mongo, "get_run_blobs", lambda hashes: {h: blobs[h] for h in hashes}
     )
     monkeypatch.setattr(runs_db_mongo, "get_user_card_pick_tallies", tallies)
-    monkeypatch.setattr(user_insights, "get_community_stats", lambda: {})
+    monkeypatch.setattr(user_insights, "get_community_stats", lambda *a, **k: {})
     monkeypatch.setattr(
-        user_insights, "get_entity_metrics_table", lambda etype: {"rows": []}
+        user_insights, "get_entity_metrics_table", lambda *a, **k: {"rows": []}
     )
     monkeypatch.setattr(
         runs_db_mongo, "get_user_winrates", lambda: {"p": [10, 5], "q": [10, 4]}

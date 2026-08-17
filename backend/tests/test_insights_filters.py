@@ -37,3 +37,14 @@ def test_cache_keys_stay_backward_compatible():
     assert _filters_suffix("IRONCLAD", None, None, None) == ":IRONCLAD"
     assert _filters_suffix(None, 10, None, None) == "::a10:v:p"
     assert _filters_suffix("SILENT", 10, "v0.111.0", 2) == ":SILENT:a10:vv0.111.0:p2"
+
+
+def test_filters_map_to_materialized_brackets():
+    from app.services.user_insights import _filters_bracket
+
+    assert _filters_bracket(None, None, None) is None
+    assert _filters_bracket(10, None, None) == "a10"
+    assert _filters_bracket(None, None, 1) == "solo"
+    assert _filters_bracket(10, "v0.111.0", 1) == "solo:a10:v0.111.0"
+    assert _filters_bracket(7, None, None) is None  # only A10 has a bracket
+    assert _filters_bracket(None, "v0.110.1", 3) == "3p:v0.110.1"
