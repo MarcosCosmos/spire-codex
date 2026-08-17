@@ -2262,11 +2262,13 @@ def list_runs(
 
 
 @_instrument("set_run_hidden")
-def set_run_hidden(run_hash: str, hidden: bool) -> dict:
+def set_run_hidden(run_hash: str, hidden: bool, reason: str | None = None) -> dict:
     """Flag or unflag every doc sharing this run_hash as ineligible. Hidden runs
     stay in the collection but drop out of leaderboards, /charts, the stats, and
     the run list on the next read. The materialized leaderboard/stats summaries
-    clear the run on their next ~60s rebuild. Returns how many docs changed."""
+    clear the run on their next ~60s rebuild. Returns how many docs changed.
+    Unhiding also clears any auto-hide reason — an accepted appeal leaves no
+    cheat marker behind."""
     coll = _get_collection()
     query = {"$or": [{"_id": run_hash}, {"run_hash": run_hash}]}
     # Single-player runs key on _id (= run hash) with no run_hash field;
@@ -2277,12 +2279,66 @@ def set_run_hidden(run_hash: str, hidden: bool) -> dict:
             {"hidden": 1, "character": 1, "win": 1, "was_abandoned": 1, "ascension": 1},
         )
     )
-    update = {"$set": {"hidden": True}} if hidden else {"$unset": {"hidden": ""}}
+    if hidden:
+        update: dict = {"$set": {"hidden": True}}
+        if reason:
+            update["$set"]["hidden_reason"] = reason
+    else:
+        update = {"$unset": {"hidden": "", "hidden_reason": ""}}
     result = coll.update_many(query, update)
     for row in rows:
         if bool(row.get("hidden")) != hidden:
             bump_stats_counters(row, -1 if hidden else 1)
     return {"matched": result.matched_count, "modified": result.modified_count}
+
+
+def rehide_one_turn_boss_runs(dry_run: bool = False) -> dict:
+    """Backfill for the one-turn-boss cheat signal: sweep already-stored runs
+    (submit-time detection only covers new uploads) and hide every run that
+    cleared a boss in a single turn. The Mongo prefilter is loose (any boss
+    room with turns_taken 1, hidden runs excluded); the shared detector then
+    applies the real rule per doc — a turn-1 death at the run's final boss is
+    legitimate and stays visible. Returns counts; dry_run only reports."""
+    from .cheat_detect import one_turn_bosses
+
+    coll = _get_collection()
+    cursor = coll.find(
+        {
+            "hidden": {"$ne": True},
+            "map_point_history": {
+                "$elemMatch": {
+                    "$elemMatch": {
+                        "rooms": {
+                            "$elemMatch": {
+                                "room_type": {"$regex": "^boss$", "$options": "i"},
+                                "turns_taken": 1,
+                            }
+                        }
+                    }
+                }
+            },
+        },
+        {"map_point_history": 1, "win": 1, "run_hash": 1},
+    )
+    checked = 0
+    hidden_runs: list[str] = []
+    done: set[str] = set()
+    for doc in cursor:
+        checked += 1
+        run_hash = doc.get("run_hash") or doc["_id"]
+        if run_hash in done:
+            continue
+        reasons = one_turn_bosses(
+            {"map_point_history": doc.get("map_point_history"), "win": doc.get("win")}
+        )
+        if not reasons:
+            continue
+        done.add(run_hash)
+        hidden_runs.append(run_hash)
+        if not dry_run:
+            set_run_hidden(run_hash, True, reason="auto:" + ",".join(reasons[:4]))
+            logger.info("auto-hid one-turn-boss run %s: %s", run_hash, reasons[:4])
+    return {"candidates": checked, "hidden": len(hidden_runs), "hashes": hidden_runs}
 
 
 def leaderboard(

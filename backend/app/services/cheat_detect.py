@@ -1,11 +1,11 @@
 """Submit-time cheated-run detection.
 
-Two high-confidence signals, both from real cheated submissions:
+Three high-confidence signals, all from real cheated submissions:
 stacked copies of one relic (a savegame editor artifact; 21x Infused Core),
-and boss-teleport wins where an act's visited path is a floor or two instead
-of the ~16 a real act takes. Flagged runs are stored hidden with a reason so
-they never enter leaderboards or stats but stay inspectable in the admin
-console."""
+boss-teleport wins where an act's visited path is a floor or two instead
+of the ~16 a real act takes, and boss fights cleared in a single turn.
+Flagged runs are stored hidden with a reason so they never enter
+leaderboards or stats but stay inspectable in the admin console."""
 
 from __future__ import annotations
 
@@ -24,6 +24,35 @@ MIN_WIN_SECONDS = 300
 def _bare(raw: str) -> str:
     parts = str(raw or "").split(".")
     return parts[-1] if parts else ""
+
+
+def one_turn_bosses(data: dict) -> list[str]:
+    """Boss rooms this run got PAST in a single turn — no legitimate build
+    does that. Dying (or abandoning) on turn 1 of a boss is legitimate, so
+    the run's final location only counts on a win; every earlier boss room
+    was necessarily cleared for the run to continue. Also used by the
+    rehide backfill, which feeds it a stored doc's projection instead of a
+    full submission blob."""
+    locations: list[tuple[int, dict]] = []
+    for i, act in enumerate(data.get("map_point_history") or []):
+        for fl in act or []:
+            if isinstance(fl, dict) and fl.get("rooms"):
+                locations.append((i, fl))
+    win = bool(data.get("win"))
+    reasons: list[str] = []
+    for pos, (i, fl) in enumerate(locations):
+        if not win and pos == len(locations) - 1:
+            continue
+        for room in fl.get("rooms") or []:
+            if not isinstance(room, dict):
+                continue
+            if (room.get("room_type") or "").lower() != "boss":
+                continue
+            turns = room.get("turns_taken")
+            if isinstance(turns, (int, float)) and turns == 1:
+                enc = _bare(str(room.get("model_id") or "")).upper() or "UNKNOWN"
+                reasons.append(f"one_turn_boss:act{i + 1}:{enc}")
+    return reasons
 
 
 def detect_cheats(data: dict) -> list[str]:
@@ -66,4 +95,5 @@ def detect_cheats(data: dict) -> list[str]:
             and str(data.get("game_mode") or "standard").lower() == "standard"
         ):
             reasons.append(f"missing_acts:{boss_acts}of3bosses")
+    reasons.extend(one_turn_bosses(data))
     return reasons
