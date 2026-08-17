@@ -1,7 +1,8 @@
 import Link from "next/link";
 import JsonLd from "@/app/components/JsonLd";
 import { buildBreadcrumbJsonLd, buildCollectionPageJsonLd } from "@/lib/jsonld";
-import { RankBars, EventDonut, OPTION_HEX } from "./charts";
+import { RankBars, EventDonut, SurvivalLine, OPTION_HEX } from "./charts";
+import AscensionHeatmap, { type AscensionMatrix } from "@/app/components/AscensionHeatmap";
 import BracketFilter from "@/app/components/BracketFilter";
 import { bracketParam } from "@/lib/content-brackets";
 import { LANG_HREFLANG, type LangCode } from "@/lib/languages";
@@ -30,6 +31,15 @@ interface CommunityStats {
   // beta, uncapped (they can't outrank main content in the top lists).
   beta?: { deaths?: { encounters?: { id: string; name: string; count: number }[]; events?: { id: string; name: string; count: number }[] } };
   rest_sites: { id: string; label: string; count: number; pct: number }[];
+  character_behavior?: {
+    id: string;
+    runs: number;
+    removes: number;
+    removes_per_run: number;
+    rest: Record<string, number>;
+  }[];
+  survival?: { floor: number; alive_pct: number }[];
+  ascension_matrix?: AscensionMatrix;
   ancient_picks: Ranked[];
   most_removed: Ranked[];
   hopper_stolen?: Ranked[];
@@ -185,6 +195,92 @@ export async function CommunityStatsBody({ lang, bracket }: { lang: string; brac
           />
         </div>
       </section>
+
+      {/* Character x ascension win-rate heatmap */}
+      {Object.keys(stats.ascension_matrix || {}).length > 0 && (
+        <section className="mb-10">
+          <h2 className="text-lg font-semibold text-[var(--accent-gold)] mb-1">{t("Win rate by character and ascension", lang)}</h2>
+          <p className="text-sm text-[var(--text-muted)] mb-3">{t("Every character at every ascension. The pale band is where the community wins; the dark band is the wall.", lang)}</p>
+          <AscensionHeatmap matrix={stats.ascension_matrix!} lang={lang} />
+        </section>
+      )}
+
+      {/* Character habits: removals + campfire splits (per-player attribution) */}
+      {(stats.character_behavior?.length ?? 0) > 0 && (
+        <section className="mb-10 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <h2 className="text-lg font-semibold text-[var(--accent-gold)] mb-1">{t("Who removes the most", lang)}</h2>
+            <p className="text-sm text-[var(--text-muted)] mb-3">{t("Cards removed per run at shops and events, by the removing player's character.", lang)}</p>
+            <RankBars
+              color={GOLD}
+              data={(stats.character_behavior ?? []).map((c) => ({
+                name: c.id.charAt(0).toUpperCase() + c.id.slice(1),
+                value: c.removes_per_run,
+                display: `${c.removes_per_run.toFixed(2)}`,
+                detail: `${c.removes.toLocaleString()} ${t("removals over", lang)} ${c.runs.toLocaleString()} ${t("runs", lang)}`,
+                color: `var(--color-${c.id})`,
+              }))}
+            />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-[var(--accent-gold)] mb-1">{t("Campfire habits", lang)}</h2>
+            <p className="text-sm text-[var(--text-muted)] mb-3">{t("What each character does at rest sites.", lang)}</p>
+            <ul className="space-y-2">
+              {(stats.character_behavior ?? []).map((c) => (
+                <li key={c.id} className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card)] px-3 py-2 text-xs">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: `var(--color-${c.id})` }} />
+                    <span className="font-medium text-[var(--text-primary)]">{c.id.charAt(0).toUpperCase() + c.id.slice(1)}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[var(--text-secondary)]">
+                    {Object.entries(c.rest).slice(0, 4).map(([action, pct]) => (
+                      <span key={action} className="tabular-nums">
+                        {action.charAt(0) + action.slice(1).toLowerCase()} {pct.toFixed(1)}%
+                      </span>
+                    ))}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
+
+      {/* The ascension wall: WR change per step, derived from by_ascension */}
+      {stats.by_ascension.length > 2 && (
+        <section className="mb-10 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <h2 className="text-lg font-semibold text-[var(--accent-gold)] mb-1">{t("The ascension wall", lang)}</h2>
+            <p className="text-sm text-[var(--text-muted)] mb-3">{t("Win-rate change at each ascension step. The deepest bar is where the community hits the wall.", lang)}</p>
+            <RankBars
+              color={ROSE}
+              data={[...stats.by_ascension]
+                .sort((a, b) => a.ascension - b.ascension)
+                .flatMap((a, i, arr) =>
+                  i === 0
+                    ? []
+                    : [{
+                        name: `A${arr[i - 1].ascension} → A${a.ascension}`,
+                        value: Math.round((a.win_rate - arr[i - 1].win_rate) * 10) / 10,
+                        display: `${a.win_rate - arr[i - 1].win_rate > 0 ? "+" : ""}${(Math.round((a.win_rate - arr[i - 1].win_rate) * 10) / 10).toFixed(1)}`,
+                        detail: `${arr[i - 1].win_rate}% → ${a.win_rate}% ${t("win rate", lang)}`,
+                      }],
+                )}
+            />
+          </div>
+          {(stats.survival?.length ?? 0) > 0 && (
+            <div>
+              <h2 className="text-lg font-semibold text-[var(--accent-gold)] mb-1">{t("Survival by floor", lang)}</h2>
+              <p className="text-sm text-[var(--text-muted)] mb-3">{t("The share of runs still alive at each floor, abandons included.", lang)}</p>
+              <SurvivalLine
+                data={stats.survival ?? []}
+                aliveLabel={t("of runs still alive", lang)}
+                floorLabel={t("Floor", lang)}
+              />
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Event decisions */}
       <section className="mb-10">

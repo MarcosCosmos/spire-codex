@@ -20,6 +20,7 @@ import { useLangPrefix } from "@/lib/use-lang-prefix";
 import { useLanguage } from "@/app/contexts/LanguageContext";
 import { t } from "@/lib/ui-translations";
 import IconSelect from "@/app/components/IconSelect";
+import AscensionHeatmap, { type AscensionMatrix } from "@/app/components/AscensionHeatmap";
 
 ChartJS.register(BarElement, LineElement, PointElement, LinearScale, CategoryScale, Tooltip, Filler);
 
@@ -156,6 +157,7 @@ export interface DailyBoard {
 }
 
 export interface Insights {
+  ascension_matrix?: AscensionMatrix;
   total_runs: number;
   total_wins?: number;
   total_losses?: number;
@@ -926,6 +928,12 @@ export function InsightsPanels({
       {activity.length >= 2 && (
         <Section title={t("Weekly activity", lang)}>
           <ActivityChart rows={activity} lang={lang} />
+        </Section>
+      )}
+
+      {Object.keys(data.ascension_matrix || {}).length > 0 && (
+        <Section title={t("Win rate by character and ascension", lang)}>
+          <AscensionHeatmap matrix={data.ascension_matrix!} lang={lang} />
         </Section>
       )}
 

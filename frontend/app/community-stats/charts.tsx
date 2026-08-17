@@ -9,17 +9,29 @@ import {
   Chart as ChartJS,
   BarElement,
   ArcElement,
+  LineElement,
+  PointElement,
   CategoryScale,
   LinearScale,
   Tooltip,
+  Filler,
   type ChartOptions,
   type TooltipItem,
   type TooltipModel,
 } from "chart.js";
 import ChartDataLabels from "chartjs-plugin-datalabels";
-import { Bar, Doughnut } from "react-chartjs-2";
+import { Bar, Doughnut, Line } from "react-chartjs-2";
 
-ChartJS.register(BarElement, ArcElement, CategoryScale, LinearScale, Tooltip);
+ChartJS.register(
+  BarElement,
+  ArcElement,
+  LineElement,
+  PointElement,
+  CategoryScale,
+  LinearScale,
+  Tooltip,
+  Filler,
+);
 
 // Theme hexes (canvas rendering needs resolved colors, not CSS vars).
 const GOLD = "#d4a843";
@@ -236,6 +248,75 @@ export function EventDonut({
       <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm font-bold tabular-nums text-[var(--text-primary)]">
         {options[0]?.pct}%
       </span>
+    </div>
+  );
+}
+
+
+// Survival curve: share of runs still alive at each floor. Single gold
+// series (no legend needed), soft area fill, hover crosshair via tooltip.
+export function SurvivalLine({
+  data,
+  aliveLabel,
+  floorLabel,
+}: {
+  data: { floor: number; alive_pct: number }[];
+  aliveLabel: string;
+  floorLabel: string;
+}) {
+  const options: ChartOptions<"line"> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: false,
+    scales: {
+      x: {
+        grid: { display: false },
+        border: { display: false },
+        ticks: { color: TEXT_MUTED, font: { size: 11 }, maxTicksLimit: 12 },
+      },
+      y: {
+        beginAtZero: true,
+        max: 100,
+        border: { display: false },
+        grid: { color: "rgba(138, 138, 147, 0.15)" },
+        ticks: {
+          color: TEXT_MUTED,
+          font: { size: 11 },
+          callback: (v) => `${v}%`,
+        },
+      },
+    },
+    elements: { point: { radius: 0, hitRadius: 10, hoverRadius: 4 } },
+    interaction: { mode: "index", intersect: false },
+    plugins: {
+      tooltip: {
+        ...TOOLTIP_BASE,
+        callbacks: {
+          title: (items: TooltipItem<"line">[]) => `${floorLabel} ${items[0]?.label}`,
+          label: (item: TooltipItem<"line">) => `${item.parsed.y}% ${aliveLabel}`,
+        },
+      },
+      datalabels: { display: false },
+    },
+  };
+  return (
+    <div style={{ height: 220 }}>
+      <Line
+        data={{
+          labels: data.map((d) => d.floor),
+          datasets: [
+            {
+              data: data.map((d) => d.alive_pct),
+              borderColor: GOLD,
+              backgroundColor: "rgba(212, 168, 67, 0.16)",
+              fill: true,
+              borderWidth: 2,
+              tension: 0.25,
+            },
+          ],
+        }}
+        options={options}
+      />
     </div>
   );
 }

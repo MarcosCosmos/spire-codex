@@ -106,6 +106,10 @@ def _new_acc_one() -> dict[str, Any]:
         "rest": {},
         "ancient": {},  # relic_id -> [chosen, offered] (the 3-relic offer take-rate)
         "removed": {},  # card_id -> count (purged at a shop/event)
+        "char_removes": {},  # char_id -> count (chosen removals, per character)
+        "char_asc": {},  # char_id -> {asc(int) -> [runs, wins]} (heatmap)
+        "char_rest": {},  # char_id -> {choice -> count}
+        "floors": {},  # floors_reached(int) -> [runs, wins] (survival curve)
         "stolen": {},  # card_id -> count (taken by the Thieving Hopper)
         "reward_screens": 0,
         "reward_skips": 0,
@@ -145,12 +149,14 @@ _COMMUNITY_LIST_DICT_FIELDS = (
     "map_danger",
     "rest",
     "ancient",
+    "floors",
 )
 _COMMUNITY_COUNTER_FIELDS = (
     "deaths_encounter",
     "deaths_event",
     "removed",
     "stolen",
+    "char_removes",
 )
 
 
@@ -178,12 +184,25 @@ def merge(dst: dict, src: dict) -> None:
             df = d[f]
             for k, v in s[f].items():
                 df[k] = df.get(k, 0) + v
-        # events: event_id -> {option_id -> count}
-        de = d["events"]
-        for eid, opts in s["events"].items():
-            cur = de.setdefault(eid, {})
-            for opt, n in opts.items():
-                cur[opt] = cur.get(opt, 0) + n
+        # char_asc: char_id -> {asc -> [runs, wins]}, element-wise adds.
+        dca = d.setdefault("char_asc", {})
+        for cid, per_asc in s.get("char_asc", {}).items():
+            cur_c = dca.setdefault(cid, {})
+            for a, v in per_asc.items():
+                cur = cur_c.get(a)
+                if cur is None:
+                    cur_c[a] = list(v)
+                else:
+                    cur[0] += v[0]
+                    cur[1] += v[1]
+        # events: event_id -> {option_id -> count}; char_rest merges the same
+        # nested-counter way (char_id -> {choice -> count}).
+        for nested in ("events", "char_rest"):
+            dn = d.setdefault(nested, {})
+            for eid, opts in s.get(nested, {}).items():
+                cur = dn.setdefault(eid, {})
+                for opt, n in opts.items():
+                    cur[opt] = cur.get(opt, 0) + n
         # Records: replace only when src is STRICTLY better, so the earlier chunk
         # (already in dst) wins ties, matching the serial walk.
         if s["fastest_win"] is not None and (
@@ -253,6 +272,23 @@ def _accumulate_one(
     ch[0] += 1
     if is_win:
         ch[1] += 1
+    ca = acc["char_asc"].setdefault(char_id, {}).setdefault(int(ascension or 0), [0, 0])
+    ca[0] += 1
+    if is_win:
+        ca[1] += 1
+    # players[].id keys the per-floor player_stats rows, so co-op tallies can
+    # attribute each player's choices to their own character, not the doc's.
+    pid_char = {
+        p.get("id"): (p.get("character") or "").split(".")[-1].lower()
+        for p in blob.get("players") or []
+        if p.get("id") is not None and p.get("character")
+    }
+    floors_reached = sum(len(a or []) for a in blob.get("map_point_history") or [])
+    if floors_reached:
+        frec = acc["floors"].setdefault(int(floors_reached), [0, 0])
+        frec[0] += 1
+        if is_win:
+            frec[1] += 1
 
     # How you died (losses only). killed_by_* are top-level on the blob.
     if not is_win:
@@ -348,6 +384,7 @@ def _accumulate_one(
                         and hp_ref[0] is not None
                         and hp_ref[0] * 2 < hp_ref[1]
                     )
+                    ps_char = pid_char.get(ps.get("player_id")) or char_id
                     for choice in rest_choices:
                         if not choice:
                             continue
@@ -357,6 +394,7 @@ def _accumulate_one(
                             rec[1] += 1
                         if low:
                             rec[2] += 1
+                        _bump(acc["char_rest"].setdefault(ps_char, {}), choice)
 
                 # 3-relic "ancient" offers: count chosen AND offered per relic, so
                 # the in-game tip can say "taken X% of the time it's offered".
@@ -379,6 +417,11 @@ def _accumulate_one(
                     cid = _merge_starter(_bare(raw))
                     if cid:
                         _bump(acc["stolen" if hopper_floor else "removed"], cid)
+                        if not hopper_floor:
+                            _bump(
+                                acc["char_removes"],
+                                pid_char.get(ps.get("player_id")) or char_id,
+                            )
 
                 # Card-reward screens: a screen with nothing picked is a skip.
                 choices = ps.get("card_choices") or []
@@ -705,6 +748,22 @@ def _finalize_one(acc: dict[str, Any]) -> dict[str, Any]:
             and (not names["relics"] or rid in names["relics"])
         },
         "most_removed": _ranked(removed, names["cards"], _TOP_N),
+        "character_behavior": _character_behavior(acc),
+        "survival": _survival(acc),
+        # char -> {asc -> {runs, wins, win_rate}} for the ascension heatmap.
+        "ascension_matrix": {
+            cid: {
+                str(asc): {
+                    "runs": rec[0],
+                    "wins": rec[1],
+                    "win_rate": _pct(rec[1], rec[0]),
+                }
+                for asc, rec in sorted(per_asc.items())
+            }
+            for cid in _OFFICIAL_CHARS
+            for per_asc in [(acc.get("char_asc") or {}).get(cid) or {}]
+            if per_asc
+        },
         "hopper_stolen": _ranked(acc.get("stolen") or {}, names["cards"], 10),
         "reward_skip_rate": _pct(acc["reward_skips"], acc["reward_screens"]),
         "records": {
@@ -723,6 +782,51 @@ def _finalize_one(acc: dict[str, Any]) -> dict[str, Any]:
 _OFFICIAL_REST_OPTIONS = frozenset(
     ("SMITH", "HEAL", "MEND", "DIG", "CLONE", "COOK", "LIFT", "HATCH", "KINDLE")
 )
+
+
+_OFFICIAL_CHARS = ("ironclad", "silent", "defect", "necrobinder", "regent")
+
+
+def _character_behavior(acc: dict[str, Any]) -> list[dict]:
+    """Per-character habit comparison (chosen removals per run, campfire
+    action split), in the site's canonical character order."""
+    removes = acc.get("char_removes") or {}
+    out = []
+    for cid in _OFFICIAL_CHARS:
+        runs = (acc["by_character"].get(cid) or [0, 0])[0]
+        if not runs:
+            continue
+        rests = (acc.get("char_rest") or {}).get(cid) or {}
+        rest_total = sum(rests.values())
+        out.append(
+            {
+                "id": cid,
+                "runs": runs,
+                "removes": removes.get(cid, 0),
+                "removes_per_run": round(removes.get(cid, 0) / runs, 2),
+                "rest": {
+                    k: _pct(v, rest_total)
+                    for k, v in sorted(rests.items(), key=lambda kv: -kv[1])[:6]
+                },
+            }
+        )
+    return out
+
+
+def _survival(acc: dict[str, Any]) -> list[dict]:
+    """Share of runs still alive at each floor (reached floor >= f), floor 1
+    to the deepest observed. Abandons count as ending where they ended."""
+    hist = acc.get("floors") or {}
+    total = sum(v[0] for v in hist.values())
+    if not total:
+        return []
+    max_floor = min(max(hist), 60)
+    out = []
+    remaining = total
+    for f in range(1, max_floor + 1):
+        out.append({"floor": f, "alive_pct": _pct(remaining, total)})
+        remaining -= (hist.get(f) or [0, 0])[0]
+    return out
 
 
 def _rest_sites(acc: dict[str, Any]) -> list[dict]:
