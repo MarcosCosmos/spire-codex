@@ -122,6 +122,7 @@ _BRACKET_KEYS = [
     "3p",
     "4p",
     "a10",
+    "standard",
     "daily",
     "custom",
     # Win-rate skill brackets (see _winrate_brackets).
@@ -152,6 +153,8 @@ def _run_extra_brackets(player_count: int, ascension: int, game_mode: str) -> li
         out.append("daily")
     elif gm == "custom":
         out.append("custom")
+    else:
+        out.append("standard")
     return out
 
 
@@ -296,7 +299,7 @@ _HISTORY_RETENTION_DAYS = 90
 # Version 22: the official-id filters accept beta-catalog entities (beta-only
 # cards/relics were read as modded and vanished from the tier list); the bump
 # forces the rebuild that restores their walk-time per-act relic data.
-SNAPSHOT_VERSION = 23
+SNAPSHOT_VERSION = 24
 # Serialized-byte budget per persisted chunk doc. With version-composable
 # brackets a popular entity carries hundreds of per-bracket blocks and
 # entity sizes vary wildly (a card dwarfs an affliction), so chunks are

@@ -79,10 +79,14 @@ COMMUNITY_VERSION = 1
 # _COMPOSITE_BRACKETS in run_entity_stats.py.
 _PLAYER_BRACKETS = ("solo", "2p", "3p", "4p")
 _SKILL_BRACKETS = ("a10", "wr30", "wr50", "wr75")
+# Game-mode keys share the single ?bracket= slot (a mode replaces the
+# player/skill selection, like daily/custom always did on the entity side).
+_MODE_BRACKETS = ("standard", "daily", "custom")
 _BLOB_BRACKETS = (
     ["all"]
     + list(_PLAYER_BRACKETS)
     + list(_SKILL_BRACKETS)
+    + list(_MODE_BRACKETS)
     + [f"{p}:{c}" for p in _PLAYER_BRACKETS for c in _SKILL_BRACKETS]
 )
 
