@@ -1092,3 +1092,17 @@ def admin_player_elo(refresh: bool = False):
     from ..services.player_elo import get_player_elos
 
     return get_player_elos(refresh=refresh)
+
+
+@router.get("/player-elo/{user_id}/history")
+def admin_player_elo_history(user_id: str):
+    """One player's Elo trajectory (a point per rated A10 run) for the
+    admin board's chart."""
+    from fastapi import HTTPException
+
+    from ..services.player_elo import compute_player_history
+
+    rec = compute_player_history(user_id)
+    if rec is None:
+        raise HTTPException(status_code=404, detail="No rated runs")
+    return rec
