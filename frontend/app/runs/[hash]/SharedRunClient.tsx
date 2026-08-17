@@ -170,6 +170,19 @@ export default function SharedRunClient({ initialRun }: { initialRun?: any }) {
           {copied ? t("Copied!", lang) : t("Share", lang)}
         </button>
       </div>
+      {run.hidden && (
+        <div className="mb-4 rounded-lg border border-[var(--accent-gold)]/40 bg-[var(--accent-gold)]/10 px-4 py-3 text-sm text-[var(--text-secondary)]">
+          {t("This run doesn't count toward leaderboards or community stats.", lang)}{" "}
+          <a
+            href="https://discord.gg/xMsTBeh"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[var(--accent-gold)] hover:underline"
+          >
+            {t("Reach out on Discord if that seems wrong.", lang)}
+          </a>
+        </div>
+      )}
 
       {/* Compact header, Victory/Defeat banner + ascension */}
       <div

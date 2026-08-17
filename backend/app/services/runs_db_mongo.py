@@ -2816,6 +2816,16 @@ def get_username_for_hash(run_hash: str) -> str | None:
     return (doc or {}).get("username")
 
 
+def get_share_meta_for_hash(run_hash: str) -> dict:
+    """Username + hidden flag for the share page in one lookup, so the page
+    can banner runs excluded from leaderboards and aggregates."""
+    doc = _get_collection().find_one({"_id": run_hash}, {"username": 1, "hidden": 1})
+    return {
+        "username": (doc or {}).get("username"),
+        "hidden": bool((doc or {}).get("hidden")),
+    }
+
+
 @_instrument("find_sibling_hashes")
 def find_sibling_hashes(run_hash: str) -> list[str]:
     """For a multiplayer run, find sibling player runs (same seed and party
