@@ -28,9 +28,18 @@ export const PLAYER_BRACKETS: ContentBracket[] = [
   { key: "4p", param: "4p", label: "4P" },
 ];
 
+// Game-mode brackets. Like the player axis they share the single ?bracket=
+// slot: picking a mode replaces the player/skill selection (only the version
+// composes on top). "All" is the absence of a mode key.
+export const MODE_BRACKETS: ContentBracket[] = [
+  { key: "standard", param: "standard", label: "Standard" },
+  { key: "daily", param: "daily", label: "Daily" },
+  { key: "custom", param: "custom", label: "Custom" },
+];
+
 // Both axes are valid ?bracket= values, so normalizeBracket must recognize them.
 const _BY_KEY = new Map(
-  [...CONTENT_BRACKETS, ...PLAYER_BRACKETS].map((b) => [b.key, b]),
+  [...CONTENT_BRACKETS, ...PLAYER_BRACKETS, ...MODE_BRACKETS].map((b) => [b.key, b]),
 );
 
 const _PLAYER_KEYS = new Set(PLAYER_BRACKETS.map((b) => b.key));

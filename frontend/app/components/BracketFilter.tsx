@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   CONTENT_BRACKETS,
   PLAYER_BRACKETS,
+  MODE_BRACKETS,
   normalizeBracket,
   splitBracket,
   combineBracket,
@@ -77,6 +78,30 @@ export default function BracketFilter({
           <span className="text-xs text-[var(--text-muted)] mx-1">Players</span>
           {PLAYER_BRACKETS.map(renderPill)}
         </div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="w-14 text-xs text-[var(--text-muted)]">Mode</span>
+        <Link
+          href={hrefFor(
+            base && !MODE_BRACKETS.some((m) => m.key === base)
+              ? version
+                ? `${base}:${version}`
+                : base
+              : version || "all",
+          )}
+          className={pillCls(!MODE_BRACKETS.some((m) => m.key === base))}
+        >
+          All
+        </Link>
+        {MODE_BRACKETS.map((m) => (
+          <Link
+            key={m.key}
+            href={hrefFor(version ? `${m.key}:${version}` : m.key)}
+            className={pillCls(base === m.key)}
+          >
+            {m.label}
+          </Link>
+        ))}
+      </div>
         <VersionSelectNav
           basePath={basePath}
           current={active}
@@ -88,7 +113,9 @@ export default function BracketFilter({
   }
 
   // Composite: each skill pill keeps the current player and vice versa, so the
-  // two axes combine into a player:skill bracket.
+  // two axes combine into a player:skill bracket. Modes occupy the whole base
+  // slot instead (they don't compose with player/skill).
+  const base = stripVersion(active);
   const playerOpts = [{ key: "", label: "All" }, ...PLAYER_BRACKETS];
   return (
     <div className="mb-5 space-y-1.5">
@@ -119,13 +146,37 @@ export default function BracketFilter({
           </Link>
         ))}
       </div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="w-14 text-xs text-[var(--text-muted)]">Mode</span>
+        <Link
+          href={hrefFor(
+            base && !MODE_BRACKETS.some((m) => m.key === base)
+              ? version
+                ? `${base}:${version}`
+                : base
+              : version || "all",
+          )}
+          className={pillCls(!MODE_BRACKETS.some((m) => m.key === base))}
+        >
+          All
+        </Link>
+        {MODE_BRACKETS.map((m) => (
+          <Link
+            key={m.key}
+            href={hrefFor(version ? `${m.key}:${version}` : m.key)}
+            className={pillCls(base === m.key)}
+          >
+            {m.label}
+          </Link>
+        ))}
+      </div>
       {/* Game version is a third axis: it composes with the player and
           skill selections instead of replacing them. */}
       <VersionSelectNav
         basePath={basePath}
         current={active}
         extraParams={extraParams}
-        base={combineBracket(player, skill) === "all" ? "" : combineBracket(player, skill)}
+        base={base === "all" ? "" : base}
       />
     </div>
   );

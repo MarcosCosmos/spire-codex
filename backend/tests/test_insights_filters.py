@@ -48,3 +48,16 @@ def test_filters_map_to_materialized_brackets():
     assert _filters_bracket(10, "v0.111.0", 1) == "solo:a10:v0.111.0"
     assert _filters_bracket(7, None, None) is None  # only A10 has a bracket
     assert _filters_bracket(None, "v0.110.1", 3) == "3p:v0.110.1"
+
+
+def test_mode_brackets_materialize():
+    from app.services.community_stats import new_accumulator
+    from app.services.run_entity_stats import _run_extra_brackets
+
+    acc = new_accumulator(("v0.111.0",))
+    for key in ("standard", "daily", "custom", "standard:v0.111.0"):
+        assert key in acc
+    assert "standard" in _run_extra_brackets(1, 0, "standard")
+    assert "standard" in _run_extra_brackets(1, 0, "")
+    assert "daily" in _run_extra_brackets(1, 0, "daily")
+    assert "standard" not in _run_extra_brackets(1, 0, "custom")
