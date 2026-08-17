@@ -296,7 +296,7 @@ _HISTORY_RETENTION_DAYS = 90
 # Version 22: the official-id filters accept beta-catalog entities (beta-only
 # cards/relics were read as modded and vanished from the tier list); the bump
 # forces the rebuild that restores their walk-time per-act relic data.
-SNAPSHOT_VERSION = 22
+SNAPSHOT_VERSION = 23
 # Serialized-byte budget per persisted chunk doc. With version-composable
 # brackets a popular entity carries hundreds of per-bracket blocks and
 # entity sizes vary wildly (a card dwarfs an affliction), so chunks are
