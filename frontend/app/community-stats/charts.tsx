@@ -220,9 +220,12 @@ function donutTooltip(ctx: { chart: ChartJS; tooltip: TooltipModel<"doughnut"> }
 export function EventDonut({
   options,
   size = 96,
+  colors,
 }: {
   options: { id: string; label: string; pct: number }[];
   size?: number;
+  /** Per-slice colors (hex or "var(--color-x)"); defaults to OPTION_HEX. */
+  colors?: string[];
 }) {
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
@@ -234,7 +237,11 @@ export function EventDonut({
           datasets: [
             {
               data: options.map((o) => o.pct),
-              backgroundColor: options.map((_, i) => OPTION_HEX[i % OPTION_HEX.length]),
+              backgroundColor: options.map(
+                (_, i) =>
+                  (colors?.[i] && resolveColor(colors[i])) ||
+                  OPTION_HEX[i % OPTION_HEX.length],
+              ),
               borderWidth: 0,
             },
           ],

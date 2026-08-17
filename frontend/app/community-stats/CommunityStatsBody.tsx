@@ -49,6 +49,17 @@ interface CommunityStats {
 }
 
 const EMERALD = "#34d399";
+const REST_HEX: Record<string, string> = {
+  SMITH: "#e8b830",
+  HEAL: "#23935b",
+  MEND: "#3aa8a0",
+  DIG: "#c5894a",
+  CLONE: "#6b5b8a",
+  COOK: "#f07c1e",
+  LIFT: "#d53b27",
+  HATCH: "#3873a9",
+  KINDLE: "#bf5a85",
+};
 const SKY = "#38bdf8";
 const ROSE = "#fb7185";
 const GOLD = "#d4a843";
@@ -236,36 +247,67 @@ export async function CommunityStatsBody({ lang, bracket }: { lang: string; brac
           <div>
             <h2 className="text-lg font-semibold text-[var(--accent-gold)] mb-1">{t("Who removes the most", lang)}</h2>
             <p className="text-sm text-[var(--text-muted)] mb-3">{t("Cards removed per run at shops and events, by the removing player's character.", lang)}</p>
-            <RankBars
-              color={GOLD}
-              data={(stats.character_behavior ?? []).map((c) => ({
-                name: characterName(c.id),
-                value: c.removes_per_run,
-                display: `${c.removes_per_run.toFixed(2)}`,
-                detail: `${c.removes.toLocaleString()} ${t("removals over", lang)} ${c.runs.toLocaleString()} ${t("runs", lang)}`,
-                color: `var(--color-${c.id})`,
-              }))}
-            />
+            {(() => {
+              const rows = stats.character_behavior ?? [];
+              const total = rows.reduce((s, c) => s + c.removes, 0) || 1;
+              return (
+                <div className="flex items-center gap-5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4">
+                  <EventDonut
+                    size={132}
+                    options={rows.map((c) => ({
+                      id: c.id,
+                      label: characterName(c.id),
+                      pct: Math.round((c.removes / total) * 1000) / 10,
+                    }))}
+                    colors={rows.map((c) => `var(--color-${c.id})`)}
+                  />
+                  <ul className="space-y-1.5 min-w-0">
+                    {rows.map((c) => (
+                      <li key={c.id} className="flex items-center gap-3 text-xs">
+                        <CharacterTag id={c.id} />
+                        <span className="tabular-nums text-[var(--text-primary)] font-semibold">
+                          {c.removes_per_run.toFixed(2)}
+                        </span>
+                        <span className="text-[var(--text-muted)]">{t("per run", lang)}</span>
+                        <span className="tabular-nums text-[var(--text-muted)]">
+                          · {(Math.round((c.removes / total) * 1000) / 10).toFixed(1)}%
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })()}
           </div>
           <div>
             <h2 className="text-lg font-semibold text-[var(--accent-gold)] mb-1">{t("Campfire habits", lang)}</h2>
             <p className="text-sm text-[var(--text-muted)] mb-3">{t("What each character does at rest sites.", lang)}</p>
-            <ul className="space-y-2">
-              {(stats.character_behavior ?? []).map((c) => (
-                <li key={c.id} className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card)] px-3 py-2 text-xs">
-                  <div className="flex items-center mb-1 font-medium">
-                    <CharacterTag id={c.id} />
+            <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4">
+              <div className="flex flex-wrap justify-between gap-3">
+                {(stats.character_behavior ?? []).map((c) => (
+                  <div key={c.id} className="flex flex-col items-center gap-1.5">
+                    <EventDonut
+                      size={84}
+                      options={Object.entries(c.rest).map(([action, pct]) => ({
+                        id: action,
+                        label: `${characterName(c.id)} · ${action.charAt(0) + action.slice(1).toLowerCase()}`,
+                        pct,
+                      }))}
+                      colors={Object.keys(c.rest).map((a) => REST_HEX[a] ?? OPTION_HEX[0])}
+                    />
+                    <CharacterTag id={c.id} showName={false} size={18} />
                   </div>
-                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[var(--text-secondary)]">
-                    {Object.entries(c.rest).slice(0, 4).map(([action, pct]) => (
-                      <span key={action} className="tabular-nums">
-                        {action.charAt(0) + action.slice(1).toLowerCase()} {pct.toFixed(1)}%
-                      </span>
-                    ))}
-                  </div>
-                </li>
-              ))}
-            </ul>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-[11px] text-[var(--text-muted)]">
+                {Object.entries(REST_HEX).slice(0, 6).map(([action, hex]) => (
+                  <span key={action} className="inline-flex items-center gap-1.5">
+                    <span className="inline-block w-2 h-2 rounded-sm" style={{ backgroundColor: hex }} />
+                    {action.charAt(0) + action.slice(1).toLowerCase()}
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
         </section>
       )}
