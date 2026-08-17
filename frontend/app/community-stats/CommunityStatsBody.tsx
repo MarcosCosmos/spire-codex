@@ -3,6 +3,7 @@ import JsonLd from "@/app/components/JsonLd";
 import { buildBreadcrumbJsonLd, buildCollectionPageJsonLd } from "@/lib/jsonld";
 import { RankBars, EventDonut, SurvivalLine, OPTION_HEX } from "./charts";
 import AscensionHeatmap, { type AscensionMatrix } from "@/app/components/AscensionHeatmap";
+import CharacterTag, { characterName } from "@/app/components/CharacterTag";
 import BracketFilter from "@/app/components/BracketFilter";
 import { bracketParam } from "@/lib/content-brackets";
 import { LANG_HREFLANG, type LangCode } from "@/lib/languages";
@@ -214,7 +215,7 @@ export async function CommunityStatsBody({ lang, bracket }: { lang: string; brac
             <RankBars
               color={GOLD}
               data={(stats.character_behavior ?? []).map((c) => ({
-                name: c.id.charAt(0).toUpperCase() + c.id.slice(1),
+                name: characterName(c.id),
                 value: c.removes_per_run,
                 display: `${c.removes_per_run.toFixed(2)}`,
                 detail: `${c.removes.toLocaleString()} ${t("removals over", lang)} ${c.runs.toLocaleString()} ${t("runs", lang)}`,
@@ -228,9 +229,8 @@ export async function CommunityStatsBody({ lang, bracket }: { lang: string; brac
             <ul className="space-y-2">
               {(stats.character_behavior ?? []).map((c) => (
                 <li key={c.id} className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card)] px-3 py-2 text-xs">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: `var(--color-${c.id})` }} />
-                    <span className="font-medium text-[var(--text-primary)]">{c.id.charAt(0).toUpperCase() + c.id.slice(1)}</span>
+                  <div className="flex items-center mb-1 font-medium">
+                    <CharacterTag id={c.id} />
                   </div>
                   <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[var(--text-secondary)]">
                     {Object.entries(c.rest).slice(0, 4).map(([action, pct]) => (

@@ -1,5 +1,6 @@
 import { Fragment } from "react";
 
+import CharacterTag, { characterName } from "@/app/components/CharacterTag";
 import { t } from "@/lib/ui-translations";
 
 // Character x ascension win-rate heatmap. Pure presentational (no hooks), so
@@ -12,13 +13,7 @@ export type AscensionMatrix = Record<
   Record<string, { runs: number; wins: number; win_rate: number }>
 >;
 
-const CHARS: [string, string][] = [
-  ["ironclad", "Ironclad"],
-  ["silent", "Silent"],
-  ["defect", "Defect"],
-  ["necrobinder", "Necrobinder"],
-  ["regent", "Regent"],
-];
+const CHARS = ["ironclad", "silent", "defect", "necrobinder", "regent"];
 
 // Same ramp as the tier heat treatment: near-ink -> gold -> pale gold.
 const ANCHORS: [number, [number, number, number]][] = [
@@ -79,10 +74,10 @@ export default function AscensionHeatmap({
   matrix: AscensionMatrix;
   lang: string;
 }) {
-  const rows = CHARS.filter(([id]) => Object.keys(matrix[id] || {}).length > 0);
+  const rows = CHARS.filter((id) => Object.keys(matrix[id] || {}).length > 0);
   if (rows.length === 0) return null;
   const values: number[] = [];
-  for (const [id] of rows) {
+  for (const id of rows) {
     for (const cell of Object.values(matrix[id])) {
       if (cell.runs > 0) values.push(cell.win_rate);
     }
@@ -107,14 +102,10 @@ export default function AscensionHeatmap({
             A{a}
           </div>
         ))}
-        {rows.map(([id, name]) => (
+        {rows.map((id) => (
           <Fragment key={id}>
-            <div className="flex items-center gap-2 pr-2 text-xs text-[var(--text-secondary)]">
-              <span
-                className="inline-block w-2.5 h-2.5 rounded-sm shrink-0"
-                style={{ backgroundColor: `var(--color-${id})` }}
-              />
-              {name}
+            <div className="flex items-center pr-2 text-xs">
+              <CharacterTag id={id} />
             </div>
             {Array.from({ length: 11 }, (_, a) => {
               const cell = matrix[id]?.[String(a)];
@@ -131,7 +122,7 @@ export default function AscensionHeatmap({
                   key={`${id}-${a}`}
                   className="rounded min-h-[36px] flex items-center justify-center text-[11px] tabular-nums"
                   style={cellStyle(cell.win_rate, lo, hi)}
-                  title={`${name} · A${a} — ${cell.win_rate}% ${t("win rate", lang)} · ${cell.runs.toLocaleString()} ${t("runs", lang)}`}
+                  title={`${characterName(id)} · A${a} — ${cell.win_rate}% ${t("win rate", lang)} · ${cell.runs.toLocaleString()} ${t("runs", lang)}`}
                 >
                   {cell.win_rate}
                 </div>
