@@ -908,6 +908,13 @@ def get_shared_run(run_hash: str, request: Request):
         primary = primary_share_hash(blob)
         if primary and primary != run_hash:
             blob["primary_hash"] = primary
+        # Which players[] entry this hash belongs to, so the page renders the
+        # viewed player's character instead of the host's on co-op siblings.
+        from ..services.runs_db_mongo import player_index_for_hash
+
+        idx = player_index_for_hash(blob, run_hash)
+        if idx is not None:
+            blob["player_index"] = idx
         if using_mongo:
             from ..services.runs_db_mongo import get_share_meta_for_hash
 
