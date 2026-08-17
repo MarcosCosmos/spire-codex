@@ -1,16 +1,32 @@
 "use client";
 
 // Hidden player Elo board: A10 standard runs rated against per-character
-// community difficulty anchors. Display experiment — nothing public links
-// or serves this; the numbers live only on user docs and this page.
+// community difficulty anchors. Elo answers "best right now" (sequential,
+// recency-weighted); Lifetime answers "best proven record" (Wilson lower
+// bound vs the same anchors, order-independent). Clicking a row charts the
+// player's full Elo trajectory. Display experiment — nothing public serves
+// any of this.
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
+import {
+  Chart as ChartJS,
+  LineElement,
+  PointElement,
+  LinearScale,
+  CategoryScale,
+  Tooltip,
+  Filler,
+} from "chart.js";
+import { Line } from "react-chartjs-2";
 import { AdminShell, adminFetch } from "../shared";
+
+ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, Tooltip, Filler);
 
 interface EloRow {
   user_id: string;
   username: string | null;
   elo: number;
+  lifetime?: number;
   runs: number;
   wins: number;
 }
@@ -22,9 +38,93 @@ interface Board {
   building?: boolean;
 }
 
+interface HistoryPoint {
+  n: number;
+  t: string | null;
+  elo: number;
+  win: boolean;
+}
+
+interface History {
+  username: string | null;
+  history: HistoryPoint[];
+}
+
+function TrajectoryChart({ userId }: { userId: string }) {
+  const [hist, setHist] = useState<History | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    adminFetch<History>(`/api/admin/player-elo/${userId}/history`)
+      .then(setHist)
+      .catch((e) => setErr(String((e as Error)?.message || e)));
+  }, [userId]);
+
+  if (err) return <p className="text-xs text-rose-400 py-3">{err}</p>;
+  if (!hist) return <p className="text-xs text-[var(--text-muted)] py-3">Loading trajectory…</p>;
+
+  const pts = hist.history;
+  return (
+    <div style={{ height: 200 }} className="py-2">
+      <Line
+        data={{
+          labels: pts.map((p) => p.n),
+          datasets: [
+            {
+              data: pts.map((p) => p.elo),
+              borderColor: "#e8b830",
+              backgroundColor: "rgba(232, 184, 48, 0.12)",
+              fill: true,
+              borderWidth: 2,
+              tension: 0.2,
+              pointRadius: 0,
+              pointHitRadius: 8,
+            },
+          ],
+        }}
+        options={{
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          interaction: { mode: "index", intersect: false },
+          scales: {
+            x: {
+              grid: { display: false },
+              border: { display: false },
+              ticks: { color: "#8a8a93", font: { size: 10 }, maxTicksLimit: 14 },
+              title: { display: true, text: "rated run #", color: "#8a8a93", font: { size: 10 } },
+            },
+            y: {
+              border: { display: false },
+              grid: { color: "rgba(138,138,147,0.15)" },
+              ticks: { color: "#8a8a93", font: { size: 10 } },
+            },
+          },
+          plugins: {
+            tooltip: {
+              callbacks: {
+                title: (items) => {
+                  const p = pts[items[0]?.dataIndex ?? 0];
+                  return `Run ${p?.n}${p?.t ? ` · ${new Date(p.t).toLocaleDateString()}` : ""}`;
+                },
+                label: (item) => {
+                  const p = pts[item.dataIndex];
+                  return `${Math.round(item.parsed.y ?? 0)} Elo · ${p?.win ? "win" : "loss"}`;
+                },
+              },
+            },
+          },
+        }}
+      />
+    </div>
+  );
+}
+
 export default function EloClient() {
   const [board, setBoard] = useState<Board | null>(null);
   const [minRuns, setMinRuns] = useState(10);
+  const [sortKey, setSortKey] = useState<"elo" | "lifetime">("elo");
+  const [expanded, setExpanded] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
 
@@ -51,12 +151,24 @@ export default function EloClient() {
   };
   useEffect(() => load(), []);
 
-  const rows = (board?.players || []).filter((p) => p.runs >= minRuns);
+  const rows = (board?.players || [])
+    .filter((p) => p.runs >= minRuns)
+    .sort((a, b) => (b[sortKey] ?? 0) - (a[sortKey] ?? 0));
+
+  const sortHeader = (key: "elo" | "lifetime", label: string) => (
+    <button
+      onClick={() => setSortKey(key)}
+      className={sortKey === key ? "text-[var(--accent-gold)]" : "hover:text-[var(--text-primary)]"}
+    >
+      {label}
+      {sortKey === key ? " ↓" : ""}
+    </button>
+  );
 
   return (
     <AdminShell
       title="Player Elo"
-      subtitle="A10 standard runs, rated against per-character community difficulty. Hidden — admin eyes only."
+      subtitle="A10 standard runs, rated against per-character community difficulty. Elo = current form; Lifetime = Wilson-bounded whole record. Hidden — admin eyes only."
     >
       <div className="flex items-center gap-3 mb-4 text-sm">
         <label className="text-[var(--text-muted)]">
@@ -89,12 +201,13 @@ export default function EloClient() {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="text-sm tabular-nums w-full max-w-2xl">
+        <table className="text-sm tabular-nums w-full max-w-3xl">
           <thead>
             <tr className="text-left text-xs uppercase tracking-wider text-[var(--text-muted)]">
               <th className="py-1.5 pr-4">#</th>
               <th className="py-1.5 pr-4">Player</th>
-              <th className="py-1.5 pr-4 text-right">Elo</th>
+              <th className="py-1.5 pr-4 text-right">{sortHeader("elo", "Elo")}</th>
+              <th className="py-1.5 pr-4 text-right">{sortHeader("lifetime", "Lifetime")}</th>
               <th className="py-1.5 pr-4 text-right">A10 runs</th>
               <th className="py-1.5 pr-4 text-right">Wins</th>
               <th className="py-1.5 text-right">WR</th>
@@ -102,20 +215,35 @@ export default function EloClient() {
           </thead>
           <tbody>
             {rows.slice(0, 200).map((p, i) => (
-              <tr key={p.user_id} className="border-t border-[var(--border-subtle)]">
-                <td className="py-1.5 pr-4 text-[var(--text-muted)]">{i + 1}</td>
-                <td className="py-1.5 pr-4 text-[var(--text-primary)]">
-                  {p.username || <span className="text-[var(--text-muted)]">{p.user_id.slice(0, 8)}…</span>}
-                </td>
-                <td className="py-1.5 pr-4 text-right font-semibold text-[var(--accent-gold)]">
-                  {Math.round(p.elo)}
-                </td>
-                <td className="py-1.5 pr-4 text-right">{p.runs.toLocaleString()}</td>
-                <td className="py-1.5 pr-4 text-right">{p.wins.toLocaleString()}</td>
-                <td className="py-1.5 text-right">
-                  {p.runs ? ((p.wins / p.runs) * 100).toFixed(1) : "0.0"}%
-                </td>
-              </tr>
+              <Fragment key={p.user_id}>
+                <tr
+                  onClick={() => setExpanded(expanded === p.user_id ? null : p.user_id)}
+                  className="border-t border-[var(--border-subtle)] cursor-pointer hover:bg-[var(--bg-card)]"
+                >
+                  <td className="py-1.5 pr-4 text-[var(--text-muted)]">{i + 1}</td>
+                  <td className="py-1.5 pr-4 text-[var(--text-primary)]">
+                    {p.username || <span className="text-[var(--text-muted)]">{p.user_id.slice(0, 8)}…</span>}
+                  </td>
+                  <td className="py-1.5 pr-4 text-right font-semibold text-[var(--accent-gold)]">
+                    {Math.round(p.elo)}
+                  </td>
+                  <td className="py-1.5 pr-4 text-right text-[var(--text-secondary)]">
+                    {p.lifetime != null ? Math.round(p.lifetime) : "–"}
+                  </td>
+                  <td className="py-1.5 pr-4 text-right">{p.runs.toLocaleString()}</td>
+                  <td className="py-1.5 pr-4 text-right">{p.wins.toLocaleString()}</td>
+                  <td className="py-1.5 text-right">
+                    {p.runs ? ((p.wins / p.runs) * 100).toFixed(1) : "0.0"}%
+                  </td>
+                </tr>
+                {expanded === p.user_id && (
+                  <tr className="border-t border-[var(--border-subtle)]">
+                    <td colSpan={7}>
+                      <TrajectoryChart userId={p.user_id} />
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
             ))}
           </tbody>
         </table>

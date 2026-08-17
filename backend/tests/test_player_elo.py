@@ -35,3 +35,28 @@ def test_settled_k_after_placement():
     rec = rate_runs(runs, {"ironclad": 0.2}, 0.2)
     assert rec["runs"] == 32 and rec["wins"] == 32
     assert rec["elo"] > START_ELO
+
+
+def test_wilson_punishes_small_samples():
+    from app.services.player_elo import wilson_lower_bound
+
+    # 92% over 74 runs must score below 89% over 310 runs.
+    assert wilson_lower_bound(68, 74) < wilson_lower_bound(277, 310)
+    assert wilson_lower_bound(0, 0) == 0.0
+    assert 0.9 < wilson_lower_bound(9400, 10000) < 0.94
+
+
+def test_lifetime_is_order_independent_and_history_collects():
+    anchors = {"ironclad": 0.2}
+    early_wins = [
+        {"character": "IRONCLAD", "win": w} for w in [True] * 50 + [False] * 50
+    ]
+    late_wins = [
+        {"character": "IRONCLAD", "win": w} for w in [False] * 50 + [True] * 50
+    ]
+    a = rate_runs(early_wins, anchors, 0.2, collect_history=True)
+    b = rate_runs(late_wins, anchors, 0.2)
+    assert a["lifetime"] == b["lifetime"]  # same record, same lifetime
+    assert b["elo"] > a["elo"]  # but recent form separates the Elo
+    assert len(a["history"]) == 100
+    assert a["history"][0]["n"] == 1 and a["history"][-1]["elo"] == a["elo"]

@@ -39,17 +39,64 @@ def _expected(player: float, anchor: float) -> float:
     return 1.0 / (1.0 + 10.0 ** ((anchor - player) / 400.0))
 
 
-def rate_runs(runs: list[dict], p_by_char: dict[str, float], default_p: float) -> dict:
-    """Fold one player's chronologically ordered A10 runs into a rating."""
-    elo, wins = START_ELO, 0
+def wilson_lower_bound(wins: int, n: int, z: float = 1.96) -> float:
+    """95% lower confidence bound on a win rate — the volume-honest lifetime
+    number (74 runs at 92% scores below 310 runs at 89%)."""
+    if n == 0:
+        return 0.0
+    p = wins / n
+    denom = 1 + z * z / n
+    center = p + z * z / (2 * n)
+    spread = z * math.sqrt((p * (1 - p) + z * z / (4 * n)) / n)
+    return max(0.0, (center - spread) / denom)
+
+
+def rate_runs(
+    runs: list[dict],
+    p_by_char: dict[str, float],
+    default_p: float,
+    collect_history: bool = False,
+) -> dict:
+    """Fold one player's chronologically ordered A10 runs into a rating.
+
+    Besides the sequential Elo, emits a "lifetime" performance rating: the
+    Wilson lower bound of the whole record solved against the player's mean
+    anchor — same scale as Elo, but order-independent and volume-punishing,
+    so it answers "best proven record" while Elo answers "best right now"."""
+    elo, wins, anchor_sum = START_ELO, 0, 0.0
+    history: list[dict] = []
     for i, r in enumerate(runs):
         char = (r.get("character") or "").split(".")[-1].lower()
         p = p_by_char.get(char, default_p)
+        anchor = _anchor_rating(p)
+        anchor_sum += anchor
         k = K_PLACEMENT if i < PLACEMENT_RUNS else K_SETTLED
         score = 1.0 if r.get("win") else 0.0
-        elo += k * (score - _expected(elo, _anchor_rating(p)))
+        elo += k * (score - _expected(elo, anchor))
         wins += int(score)
-    return {"elo": round(elo, 1), "runs": len(runs), "wins": wins}
+        if collect_history:
+            ts = r.get("played_at") or r.get("submitted_at")
+            history.append(
+                {
+                    "n": i + 1,
+                    "t": ts.isoformat() if hasattr(ts, "isoformat") else None,
+                    "elo": round(elo, 1),
+                    "win": bool(score),
+                }
+            )
+    rec: dict = {"elo": round(elo, 1), "runs": len(runs), "wins": wins}
+    if runs:
+        p_lb = wilson_lower_bound(wins, len(runs))
+        p_lb = min(max(p_lb, 0.01), 0.99)
+        mean_anchor = anchor_sum / len(runs)
+        rec["lifetime"] = round(
+            mean_anchor + 400.0 * math.log10(p_lb / (1.0 - p_lb)), 1
+        )
+    else:
+        rec["lifetime"] = START_ELO
+    if collect_history:
+        rec["history"] = history
+    return rec
 
 
 def _difficulty_anchors() -> tuple[dict[str, float], float]:
@@ -170,6 +217,43 @@ def _kick_compute() -> None:
                 _inflight = False
 
     threading.Thread(target=_run, daemon=True, name="player-elo").start()
+
+
+def compute_player_history(user_id: str) -> dict | None:
+    """One player's full Elo trajectory (a point per rated run), computed on
+    demand — cheap via the (user_id, played_at) index. None when the id is
+    malformed or the account has no rated runs."""
+    from bson import ObjectId
+
+    from .runs_db_mongo import _get_collection
+    from .users_db import _get_collection as _users_coll
+
+    try:
+        oid = ObjectId(user_id)
+    except Exception:
+        return None
+    p_by_char, default_p = _difficulty_anchors()
+    runs = list(
+        _get_collection().find(
+            {
+                "user_id": oid,
+                "ascension": 10,
+                "game_mode": "standard",
+                "deleted_at": None,
+                "hidden": {"$ne": True},
+            },
+            {"win": 1, "character": 1, "played_at": 1, "submitted_at": 1},
+        )
+    )
+    if not runs:
+        return None
+    floor = datetime(1970, 1, 1)
+    runs.sort(key=lambda r: r.get("played_at") or r.get("submitted_at") or floor)
+    rec = rate_runs(runs, p_by_char, default_p, collect_history=True)
+    user = _users_coll().find_one({"_id": oid}, {"username": 1})
+    rec["user_id"] = user_id
+    rec["username"] = (user or {}).get("username")
+    return rec
 
 
 def get_player_elos(refresh: bool = False) -> dict:
