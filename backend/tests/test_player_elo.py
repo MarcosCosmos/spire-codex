@@ -94,9 +94,15 @@ def test_block_rates_solo_standard_a10_only(monkeypatch):
             "player_count": 1,
             "game_mode": "daily",
         },
+        {
+            "ascension": 10,
+            "character": "CHARACTER.DOWNFALL_HERMIT",  # modded cast never rates
+            "win": True,
+            "player_count": 1,
+        },
     ]
     block = player_elo.elo_block_from_rows(rows)
-    assert block is not None and block["runs"] == 2  # co-op, A7, daily never rate
+    assert block is not None and block["runs"] == 2  # co-op, A7, daily, modded out
     assert set(block["by_character"]) == {"ironclad"}
     assert block["by_character"]["ironclad"]["runs"] == 2
     assert block["current"] == block["by_character"]["ironclad"]["elo"]
