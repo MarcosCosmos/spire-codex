@@ -166,11 +166,12 @@ export async function CommunityStatsBody({ lang, bracket }: { lang: string; brac
         </div>
       </section>
 
-      {/* By character + ascension */}
-      <section className="mb-10 grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Character, ascension, and the wall: one row of columns */}
+      <section className="mb-10 grid grid-cols-1 md:grid-cols-3 gap-6">
         <div>
           <h2 className="text-lg font-semibold text-[var(--accent-gold)] mb-3">{t("Win rate by character", lang)}</h2>
           <RankBars
+            vertical
             color={EMERALD}
             data={stats.by_character.map((c) => ({
               name: c.name.replace(/^The\s+/i, ""),
@@ -186,6 +187,7 @@ export async function CommunityStatsBody({ lang, bracket }: { lang: string; brac
         <div>
           <h2 className="text-lg font-semibold text-[var(--accent-gold)] mb-3">{t("Win rate by ascension", lang)}</h2>
           <RankBars
+            vertical
             color={SKY}
             data={stats.by_ascension.map((a) => ({
               name: `A${a.ascension}`,
@@ -195,6 +197,28 @@ export async function CommunityStatsBody({ lang, bracket }: { lang: string; brac
             }))}
           />
         </div>
+        {stats.by_ascension.length > 2 && (
+          <div>
+            <h2 className="text-lg font-semibold text-[var(--accent-gold)] mb-3" title={t("Win-rate change at each ascension step. The deepest bar is where the community hits the wall.", lang)}>{t("The ascension wall", lang)}</h2>
+            <RankBars
+              vertical
+              color={ROSE}
+              data={[...stats.by_ascension]
+                .sort((a, b) => a.ascension - b.ascension)
+                .flatMap((a, i, arr) =>
+                  i === 0
+                    ? []
+                    : [{
+                        name: `A${a.ascension}`,
+                        value: Math.round((a.win_rate - arr[i - 1].win_rate) * 10) / 10,
+                        display: `${a.win_rate - arr[i - 1].win_rate > 0 ? "+" : ""}${(Math.round((a.win_rate - arr[i - 1].win_rate) * 10) / 10).toFixed(1)}`,
+                        detail: `A${arr[i - 1].ascension} → A${a.ascension}: ${arr[i - 1].win_rate}% → ${a.win_rate}% ${t("win rate", lang)}`,
+                        color: a.win_rate - arr[i - 1].win_rate >= 0 ? EMERALD : ROSE,
+                      }],
+                )}
+            />
+          </div>
+        )}
       </section>
 
       {/* Character x ascension win-rate heatmap */}
@@ -246,39 +270,16 @@ export async function CommunityStatsBody({ lang, bracket }: { lang: string; brac
         </section>
       )}
 
-      {/* The ascension wall: WR change per step, derived from by_ascension */}
-      {stats.by_ascension.length > 2 && (
-        <section className="mb-10 grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <h2 className="text-lg font-semibold text-[var(--accent-gold)] mb-1">{t("The ascension wall", lang)}</h2>
-            <p className="text-sm text-[var(--text-muted)] mb-3">{t("Win-rate change at each ascension step. The deepest bar is where the community hits the wall.", lang)}</p>
-            <RankBars
-              color={ROSE}
-              data={[...stats.by_ascension]
-                .sort((a, b) => a.ascension - b.ascension)
-                .flatMap((a, i, arr) =>
-                  i === 0
-                    ? []
-                    : [{
-                        name: `A${arr[i - 1].ascension} → A${a.ascension}`,
-                        value: Math.round((a.win_rate - arr[i - 1].win_rate) * 10) / 10,
-                        display: `${a.win_rate - arr[i - 1].win_rate > 0 ? "+" : ""}${(Math.round((a.win_rate - arr[i - 1].win_rate) * 10) / 10).toFixed(1)}`,
-                        detail: `${arr[i - 1].win_rate}% → ${a.win_rate}% ${t("win rate", lang)}`,
-                      }],
-                )}
-            />
-          </div>
-          {(stats.survival?.length ?? 0) > 0 && (
-            <div>
-              <h2 className="text-lg font-semibold text-[var(--accent-gold)] mb-1">{t("Survival by floor", lang)}</h2>
-              <p className="text-sm text-[var(--text-muted)] mb-3">{t("The share of runs still alive at each floor, abandons included.", lang)}</p>
-              <SurvivalLine
-                data={stats.survival ?? []}
-                aliveLabel={t("of runs still alive", lang)}
-                floorLabel={t("Floor", lang)}
-              />
-            </div>
-          )}
+      {/* Survival curve */}
+      {(stats.survival?.length ?? 0) > 0 && (
+        <section className="mb-10">
+          <h2 className="text-lg font-semibold text-[var(--accent-gold)] mb-1">{t("Survival by floor", lang)}</h2>
+          <p className="text-sm text-[var(--text-muted)] mb-3">{t("The share of runs still alive at each floor, abandons included.", lang)}</p>
+          <SurvivalLine
+            data={stats.survival ?? []}
+            aliveLabel={t("of runs still alive", lang)}
+            floorLabel={t("Floor", lang)}
+          />
         </section>
       )}
 

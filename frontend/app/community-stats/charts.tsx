@@ -81,40 +81,45 @@ interface Datum {
   color?: string;
 }
 
-/** Horizontal bar chart for ranked lists and win-rate breakdowns. */
+/** Bar chart for ranked lists and win-rate breakdowns. Horizontal rows by
+ * default; `vertical` flips to columns (used when several charts share one
+ * row). Negative values grow downward, so delta charts read as dips. */
 export function RankBars({
   data,
   color = GOLD,
+  vertical = false,
 }: {
   data: Datum[];
   color?: string;
+  vertical?: boolean;
 }) {
-  const height = Math.max(96, data.length * 32);
+  const height = vertical ? 240 : Math.max(96, data.length * 32);
   const labels = data.map((d) => d.name);
 
+  const catAxis = {
+    grid: { display: false },
+    border: { display: false },
+    ticks: {
+      color: TEXT_SECONDARY,
+      font: { size: vertical ? 10 : 12 },
+      autoSkip: false,
+      maxRotation: vertical ? 60 : 0,
+      callback(value: string | number) {
+        const label = labels[Number(value)] ?? "";
+        return label.length > MAX_LABEL ? `${label.slice(0, MAX_LABEL - 1)}…` : label;
+      },
+    },
+  };
   const options: ChartOptions<"bar"> = {
-    indexAxis: "y",
+    indexAxis: vertical ? "x" : "y",
     responsive: true,
     maintainAspectRatio: false,
     animation: false,
     // Room for the value label drawn past the end of the longest bar.
-    layout: { padding: { right: 56 } },
-    scales: {
-      x: { display: false, beginAtZero: true },
-      y: {
-        grid: { display: false },
-        border: { display: false },
-        ticks: {
-          color: TEXT_SECONDARY,
-          font: { size: 12 },
-          autoSkip: false,
-          callback(value) {
-            const label = labels[Number(value)] ?? "";
-            return label.length > MAX_LABEL ? `${label.slice(0, MAX_LABEL - 1)}…` : label;
-          },
-        },
-      },
-    },
+    layout: vertical ? { padding: { top: 18 } } : { padding: { right: 56 } },
+    scales: vertical
+      ? { x: catAxis, y: { display: false, beginAtZero: true } }
+      : { x: { display: false, beginAtZero: true }, y: catAxis },
     plugins: {
       legend: { display: false },
       tooltip: {
@@ -130,10 +135,10 @@ export function RankBars({
       datalabels: {
         anchor: "end",
         align: "end",
-        offset: 4,
+        offset: 2,
         clamp: true,
         color: TEXT_MUTED,
-        font: { size: 11 },
+        font: { size: vertical ? 9 : 11 },
         formatter: (_value: number, ctx: { dataIndex: number }) =>
           data[ctx.dataIndex]?.display ?? "",
       },
