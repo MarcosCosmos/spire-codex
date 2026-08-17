@@ -120,6 +120,7 @@ const SECTIONS = [
   { href: "/admin/searches", label: "Searches" },
   { href: "/admin/cache", label: "Cache" },
   { href: "/admin/rate-limits", label: "Rate limits" },
+  { href: "/admin/elo", label: "Elo" },
   { href: "/admin/keys", label: "API keys" },
 ];
 
