@@ -1,0 +1,108 @@
+"use client";
+
+// Hidden player Elo board: A10 standard runs rated against per-character
+// community difficulty anchors. Display experiment — nothing public links
+// or serves this; the numbers live only on user docs and this page.
+
+import { useEffect, useState } from "react";
+import { AdminShell, adminFetch } from "../shared";
+
+interface EloRow {
+  user_id: string;
+  username: string | null;
+  elo: number;
+  runs: number;
+  wins: number;
+}
+
+interface Board {
+  players: EloRow[];
+  computed_at: number;
+  compute_seconds: number;
+}
+
+export default function EloClient() {
+  const [board, setBoard] = useState<Board | null>(null);
+  const [minRuns, setMinRuns] = useState(10);
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+
+  const load = (refresh = false) => {
+    setBusy(true);
+    adminFetch<Board>(`/api/admin/player-elo${refresh ? "?refresh=1" : ""}`)
+      .then(setBoard)
+      .catch((e) => setNote(String((e as Error)?.message || e)))
+      .finally(() => setBusy(false));
+  };
+  useEffect(() => load(), []);
+
+  const rows = (board?.players || []).filter((p) => p.runs >= minRuns);
+
+  return (
+    <AdminShell
+      title="Player Elo"
+      subtitle="A10 standard runs, rated against per-character community difficulty. Hidden — admin eyes only."
+    >
+      <div className="flex items-center gap-3 mb-4 text-sm">
+        <label className="text-[var(--text-muted)]">
+          Min rated runs{" "}
+          <input
+            type="number"
+            min={1}
+            value={minRuns}
+            onChange={(e) => setMinRuns(Math.max(1, Number(e.target.value) || 1))}
+            className="w-16 ml-1 px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var(--text-primary)]"
+          />
+        </label>
+        <button
+          onClick={() => load(true)}
+          disabled={busy}
+          className="px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:border-[var(--border-accent)] disabled:opacity-50"
+        >
+          {busy ? "Computing…" : "Recompute"}
+        </button>
+        {board && (
+          <span className="text-xs text-[var(--text-muted)]">
+            {board.players.length.toLocaleString()} rated players · computed in{" "}
+            {board.compute_seconds}s ·{" "}
+            {new Date(board.computed_at * 1000).toLocaleTimeString()}
+          </span>
+        )}
+        {note && <span className="text-xs text-rose-400">{note}</span>}
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="text-sm tabular-nums w-full max-w-2xl">
+          <thead>
+            <tr className="text-left text-xs uppercase tracking-wider text-[var(--text-muted)]">
+              <th className="py-1.5 pr-4">#</th>
+              <th className="py-1.5 pr-4">Player</th>
+              <th className="py-1.5 pr-4 text-right">Elo</th>
+              <th className="py-1.5 pr-4 text-right">A10 runs</th>
+              <th className="py-1.5 pr-4 text-right">Wins</th>
+              <th className="py-1.5 text-right">WR</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.slice(0, 200).map((p, i) => (
+              <tr key={p.user_id} className="border-t border-[var(--border-subtle)]">
+                <td className="py-1.5 pr-4 text-[var(--text-muted)]">{i + 1}</td>
+                <td className="py-1.5 pr-4 text-[var(--text-primary)]">
+                  {p.username || <span className="text-[var(--text-muted)]">{p.user_id.slice(0, 8)}…</span>}
+                </td>
+                <td className="py-1.5 pr-4 text-right font-semibold text-[var(--accent-gold)]">
+                  {Math.round(p.elo)}
+                </td>
+                <td className="py-1.5 pr-4 text-right">{p.runs.toLocaleString()}</td>
+                <td className="py-1.5 pr-4 text-right">{p.wins.toLocaleString()}</td>
+                <td className="py-1.5 text-right">
+                  {p.runs ? ((p.wins / p.runs) * 100).toFixed(1) : "0.0"}%
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </AdminShell>
+  );
+}

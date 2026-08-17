@@ -1082,3 +1082,13 @@ async def analytics(request: Request):
         # UMAMI_URL (http://umami:3000) the proxy itself may use.
         "dashboard_url": "https://analytics.spire-codex.com",
     }
+
+
+@router.get("/player-elo")
+def admin_player_elo(refresh: bool = False):
+    """Hidden player Elo board (A10 standard runs), admin-only. Cached an
+    hour; ?refresh=1 recomputes and re-persists hidden_elo on the user docs.
+    Deliberately unexposed anywhere public — display experiment only."""
+    from ..services.player_elo import get_player_elos
+
+    return get_player_elos(refresh=refresh)
