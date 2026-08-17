@@ -6,7 +6,7 @@ chance equals the community's solo A10 win rate for the character (from the
 snapshot's ascension_matrix). Runs are walked in played order; K is 32 for
 the first 30 rated runs on a character, 16 after. The headline number blends
 the ladders — a run-weighted mean, so the characters someone actually plays
-carry their rating. Only solo standard A10 runs rate. The admin board serves
+carry their rating. Only solo standard A10 runs on the official cast rate. The admin board serves
 the full leaderboard; profiles surface each account's blended rating, peak,
 per-character ladders, and trajectory through the insights payload (public
 since 2026-08-17). ``hidden_elo`` persists on the user doc for future use.
@@ -129,6 +129,14 @@ def rate_runs(
     return rec
 
 
+def _is_official(r: dict) -> bool:
+    """Only the official cast rates — a modded character has no community
+    anchor and would otherwise ride the default one."""
+    from .runs_db_mongo import OFFICIAL_CHARACTERS
+
+    return (r.get("character") or "").split(".")[-1].upper() in OFFICIAL_CHARACTERS
+
+
 def _difficulty_anchors(bracket: str | None = None) -> tuple[dict[str, float], float]:
     from .run_entity_stats import get_community_stats
 
@@ -182,7 +190,8 @@ def compute_player_elos(persist: bool = True) -> list[dict]:
     )
     by_user: dict[Any, list[dict]] = {}
     for r in rows:
-        by_user.setdefault(r["user_id"], []).append(r)
+        if _is_official(r):
+            by_user.setdefault(r["user_id"], []).append(r)
 
     floor = datetime(1970, 1, 1)
     out: list[dict] = []
@@ -290,6 +299,7 @@ def compute_player_history(user_id: str) -> dict | None:
             {"win": 1, "character": 1, "played_at": 1, "submitted_at": 1},
         )
     )
+    runs = [r for r in runs if _is_official(r)]
     if not runs:
         return None
     floor = datetime(1970, 1, 1)
@@ -313,6 +323,7 @@ def elo_block_from_rows(rows: list[dict]) -> dict | None:
         if (r.get("ascension") or 0) == 10
         and (r.get("game_mode") or "standard") == "standard"
         and int(r.get("player_count") or 1) == 1
+        and _is_official(r)
     ]
     if not rated:
         return None
