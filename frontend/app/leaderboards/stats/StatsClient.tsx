@@ -14,6 +14,9 @@ import { CONTENT_BRACKETS, combineBracket } from "@/lib/content-brackets";
 import { Pills, PLAYER_OPTS } from "@/app/components/PlayerCountPills";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+// Canonical character order, shared with the profile page so the two lists
+// always line up (was: sorted by total runs here, payload order there).
+const CHAR_ORDER = ["IRONCLAD", "SILENT", "DEFECT", "NECROBINDER", "REGENT"];
 
 // One entity's per-bracket slice from /api/runs/scores/{type}?bracket= (or,
 // with a character selected, from /api/runs/metrics/{type} mapped to the same
@@ -1167,7 +1170,13 @@ function OverviewTab({
             {t("Character Win Rates", lang)}
           </h2>
           <div className="space-y-2">
-            {stats.characters.map((c) => {
+            {[...stats.characters]
+              .sort(
+                (a, b) =>
+                  CHAR_ORDER.indexOf(a.character.toUpperCase()) -
+                  CHAR_ORDER.indexOf(b.character.toUpperCase()),
+              )
+              .map((c) => {
               const charColor = characterHex(c.character) || "var(--text-muted)";
               const totalPct = (c.total / maxCharTotal) * 100;
               const winPct = c.total > 0 ? (c.wins / c.total) * 100 : 0;
@@ -1182,7 +1191,7 @@ function OverviewTab({
                       className="text-sm font-medium group-hover:text-[var(--accent-gold)] transition-colors"
                       style={{ color: charColor }}
                     >
-                      {displayName(`CHARACTER.${c.character}`)}
+                      {displayName(`CHARACTER.${c.character}`).replace(/^The\s+/i, "")}
                     </span>
                     <div className="flex items-center gap-3 text-xs">
                       <span className="text-[var(--text-muted)]">

@@ -95,6 +95,14 @@ def test_attribution_and_survival():
     assert out["survival"][1] == {"floor": 2, "alive_pct": 50.0}
 
 
+def test_survival_clamps_corrupt_floor_counts():
+    acc = cs._new_acc_one()
+    acc["floors"] = {40: [98, 20], 53: [2, 1]}  # duplicate-floor blobs log >48
+    out = cs._survival(acc)
+    assert out[-1]["floor"] == 48
+    assert out[-1]["alive_pct"] == 2.0  # the corrupt pair lives in the 48 bucket
+
+
 def test_merge_combines_new_fields():
     a = cs.new_accumulator()
     b = cs.new_accumulator()

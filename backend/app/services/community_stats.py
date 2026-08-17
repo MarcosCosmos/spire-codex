@@ -813,17 +813,27 @@ def _character_behavior(acc: dict[str, Any]) -> list[dict]:
     return out
 
 
+# The deepest a legitimate run can go: 45 floors + one extra act-3 floor on
+# A10 + two extra act-2 floors from the Golden Compass. ~1-2% of blobs log
+# duplicate floor records (doubled bosses / rest sites), so anything past
+# this clamps into the last bucket instead of stretching the curve.
+_MAX_REAL_FLOOR = 48
+
+
 def _survival(acc: dict[str, Any]) -> list[dict]:
     """Share of runs still alive at each floor (reached floor >= f), floor 1
     to the deepest observed. Abandons count as ending where they ended."""
-    hist = acc.get("floors") or {}
+    hist: dict[int, list[int]] = {}
+    for f, rec in (acc.get("floors") or {}).items():
+        cur = hist.setdefault(min(int(f), _MAX_REAL_FLOOR), [0, 0])
+        cur[0] += rec[0]
+        cur[1] += rec[1]
     total = sum(v[0] for v in hist.values())
     if not total:
         return []
-    max_floor = min(max(hist), 60)
     out = []
     remaining = total
-    for f in range(1, max_floor + 1):
+    for f in range(1, max(hist) + 1):
         out.append({"floor": f, "alive_pct": _pct(remaining, total)})
         remaining -= (hist.get(f) or [0, 0])[0]
     return out
