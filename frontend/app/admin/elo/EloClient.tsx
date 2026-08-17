@@ -16,9 +16,10 @@ interface EloRow {
 }
 
 interface Board {
-  players: EloRow[];
-  computed_at: number;
-  compute_seconds: number;
+  players?: EloRow[];
+  computed_at?: number;
+  compute_seconds?: number;
+  building?: boolean;
 }
 
 export default function EloClient() {
@@ -27,12 +28,26 @@ export default function EloClient() {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
 
+  // First-ever load (and every Recompute) kicks a background walk
+  // server-side; poll until it lands instead of holding a request open
+  // past the gateway timeout.
   const load = (refresh = false) => {
     setBusy(true);
     adminFetch<Board>(`/api/admin/player-elo${refresh ? "?refresh=1" : ""}`)
-      .then(setBoard)
-      .catch((e) => setNote(String((e as Error)?.message || e)))
-      .finally(() => setBusy(false));
+      .then((d) => {
+        if (d.building) {
+          setNote("Computing the board in the background…");
+          setTimeout(() => load(false), 5000);
+          return;
+        }
+        setNote(null);
+        setBoard(d);
+        setBusy(false);
+      })
+      .catch((e) => {
+        setNote(String((e as Error)?.message || e));
+        setBusy(false);
+      });
   };
   useEffect(() => load(), []);
 
@@ -61,11 +76,13 @@ export default function EloClient() {
         >
           {busy ? "Computing…" : "Recompute"}
         </button>
-        {board && (
+        {board?.players && (
           <span className="text-xs text-[var(--text-muted)]">
             {board.players.length.toLocaleString()} rated players · computed in{" "}
-            {board.compute_seconds}s ·{" "}
-            {new Date(board.computed_at * 1000).toLocaleTimeString()}
+            {board.compute_seconds ?? "?"}s ·{" "}
+            {board.computed_at
+              ? new Date(board.computed_at * 1000).toLocaleTimeString()
+              : ""}
           </span>
         )}
         {note && <span className="text-xs text-rose-400">{note}</span>}

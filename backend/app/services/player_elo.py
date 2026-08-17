@@ -10,6 +10,7 @@ doc and serve ONLY through the admin router — no public endpoint reads them.
 
 import logging
 import math
+import threading
 import time
 from datetime import datetime
 from typing import Any
@@ -73,9 +74,14 @@ def compute_player_elos(persist: bool = True) -> list[dict]:
     from .users_db import _get_collection as _users_coll
 
     p_by_char, default_p = _difficulty_anchors()
+    from bson import ObjectId
+
+    # $gt over the ObjectId floor rides the (user_id, ...) index and skips
+    # every unlinked doc; {$ne: None} forced a 1.2M-doc collection scan,
+    # which is what 504'd the first admin request.
     rows = _get_collection().find(
         {
-            "user_id": {"$ne": None},
+            "user_id": {"$gt": ObjectId("0" * 24)},
             "ascension": 10,
             "game_mode": "standard",
             "deleted_at": None,
@@ -125,20 +131,56 @@ def compute_player_elos(persist: bool = True) -> list[dict]:
     return out
 
 
-def get_player_elos(refresh: bool = False) -> dict:
-    """Cached admin view. refresh=True recomputes and re-persists."""
+_inflight_lock = threading.Lock()
+_inflight = False
+
+
+def _kick_compute() -> None:
+    global _inflight
     from . import cache as app_cache
 
-    if not refresh:
-        cached = app_cache.get_json(_CACHE_KEY)
-        if cached is not None:
-            return cached
-    started = time.time()
-    board = compute_player_elos()
-    payload = {
-        "players": board,
-        "computed_at": time.time(),
-        "compute_seconds": round(time.time() - started, 1),
-    }
-    app_cache.set_json(_CACHE_KEY, payload, _CACHE_TTL)
-    return payload
+    with _inflight_lock:
+        if _inflight:
+            return
+        _inflight = True
+    if not app_cache.acquire_lock(f"{_CACHE_KEY}:lock", 600):
+        with _inflight_lock:
+            _inflight = False
+        return
+
+    def _run() -> None:
+        global _inflight
+        try:
+            started = time.time()
+            board = compute_player_elos()
+            app_cache.set_json(
+                _CACHE_KEY,
+                {
+                    "players": board,
+                    "computed_at": time.time(),
+                    "compute_seconds": round(time.time() - started, 1),
+                },
+                _CACHE_TTL,
+            )
+        except Exception:
+            logger.warning("player elo compute failed", exc_info=True)
+        finally:
+            app_cache.delete(f"{_CACHE_KEY}:lock")
+            with _inflight_lock:
+                _inflight = False
+
+    threading.Thread(target=_run, daemon=True, name="player-elo").start()
+
+
+def get_player_elos(refresh: bool = False) -> dict:
+    """Cached admin view. Never computes on the request path — the walk can
+    outlive the gateway timeout, so a cold or refreshed board returns
+    {"building": true} and the client polls until the background compute
+    lands."""
+    from . import cache as app_cache
+
+    cached = None if refresh else app_cache.get_json(_CACHE_KEY)
+    if cached is not None:
+        return cached
+    _kick_compute()
+    return {"building": True}
