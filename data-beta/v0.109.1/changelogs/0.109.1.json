@@ -4,7 +4,7 @@
   "build_id": "24305648",
   "tag": "0.109.1",
   "date": "2026-07-25",
-  "title": "Beta v0.109.1",
+  "title": "Beta Hotfix Patch Notes - v0.109.1",
   "from_ref": "/tmp/claude-1000/-mnt-c-Users-peter-Documents-prima-codex-spire-codex/fe7248d4-d6f7-4489-a6e2-4ea989d7103f/scratchpad/data-beta-0109-reparse/eng",
   "to_ref": "/tmp/claude-1000/-mnt-c-Users-peter-Documents-prima-codex-spire-codex/fe7248d4-d6f7-4489-a6e2-4ea989d7103f/scratchpad/data-beta-new/eng",
   "summary": {
@@ -89,5 +89,7 @@
         }
       ]
     }
-  ]
+  ],
+  "steam_url": "https://store.steampowered.com/news/app/2868840/view/1839041357032587",
+  "notes": "Got a tiny patch today with one important hotfix for players playing in Traditional Chinese!\n\n[h3]BUG FIXES:[/h3]\n[list]\n[*] Synced corrected Traditional Chinese translations to fix broken plural evaluation\n[/list]"
 }

@@ -14,6 +14,7 @@ interface ChangelogSummary {
   date: string;
   title: string;
   summary: { added: number; removed: number; changed: number };
+  steam_url?: string | null;
 }
 
 interface FieldChange {
@@ -44,10 +45,35 @@ interface ChangelogDetail extends ChangelogSummary {
   features?: string[];
   fixes?: string[];
   api_changes?: string[];
+  notes?: string | null;
   categories: CategoryDiff[];
 }
 
 const STEAM_APP_URL = "https://store.steampowered.com/app/2868840";
+
+// "0.104.0" -> "v0.104.0"; unversioned patches ("May Bug Fixes") stay as-is.
+const versionLabel = (gv: string) => (/^\d/.test(gv) ? `v${gv}` : gv);
+
+// Official patch notes ship as Steam BBCode; convert the common tags to
+// markup and drop the rest. Input is HTML-escaped first, so the only tags
+// in the output are the ones written here.
+function bbcodeToHtml(src: string): string {
+  let s = src.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  s = s.replace(/\[img\][\s\S]*?\[\/img\]/gi, "");
+  s = s.replace(/\[previewyoutube[^\]]*\][\s\S]*?\[\/previewyoutube\]/gi, "");
+  s = s.replace(
+    /\[url=([^\]]+)\]([\s\S]*?)\[\/url\]/gi,
+    '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-[var(--accent-gold)] hover:underline">$2</a>',
+  );
+  s = s.replace(/\[(\/?)b\]/gi, (_, close) => (close ? "</strong>" : "<strong>"));
+  s = s.replace(/\[(\/?)i\]/gi, (_, close) => (close ? "</em>" : "<em>"));
+  s = s.replace(/\[(\/?)u\]/gi, (_, close) => (close ? "</u>" : "<u>"));
+  s = s.replace(/\[(\/?)strike\]/gi, (_, close) => (close ? "</s>" : "<s>"));
+  s = s.replace(/\[h([1-3])\]([\s\S]*?)\[\/h[1-3]\]/gi, "<strong>$2</strong>");
+  s = s.replace(/\[\*\]\s?/g, "&bull; ");
+  s = s.replace(/\[\/?[a-z][a-z0-9]*(=[^\]]*)?\]/gi, "");
+  return s.replace(/\r?\n/g, "<br/>");
+}
 
 function SummaryBadge({ added, removed, changed }: { added: number; removed: number; changed: number }) {
   return (
@@ -282,7 +308,7 @@ export default function ChangelogPage() {
                 >
                   <div className="flex items-baseline justify-between">
                     <span className="font-medium text-sm">
-                      v{log.game_version}
+                      {versionLabel(log.game_version)}
                     </span>
                     <span className="text-[10px] text-[var(--text-muted)]">{log.date}</span>
                   </div>
@@ -299,7 +325,7 @@ export default function ChangelogPage() {
                 <div className="mb-6">
                   <div className="flex items-center gap-3 mb-1">
                     <h2 className="text-xl font-bold text-[var(--text-primary)]">
-                      v{selected.game_version}
+                      {versionLabel(selected.game_version)}
                     </h2>
                     <span className="text-sm text-[var(--text-muted)]">{selected.date}</span>
                     <button
@@ -311,6 +337,27 @@ export default function ChangelogPage() {
                     </button>
                   </div>
                   <p className="text-sm text-[var(--text-secondary)] mb-2">{selected.title}</p>
+                  {selected.steam_url && (
+                    <a
+                      href={selected.steam_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block text-xs text-[var(--accent-gold)] hover:underline mb-2"
+                    >
+                      Official patch notes on Steam ↗
+                    </a>
+                  )}
+                  {selected.notes && (
+                    <details className="mt-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card)]">
+                      <summary className="px-4 py-2.5 text-sm font-medium text-[var(--text-secondary)] cursor-pointer hover:text-[var(--text-primary)] transition-colors">
+                        Official patch notes
+                      </summary>
+                      <div
+                        className="px-4 pb-4 text-sm text-[var(--text-secondary)] leading-relaxed"
+                        dangerouslySetInnerHTML={{ __html: bbcodeToHtml(selected.notes) }}
+                      />
+                    </details>
+                  )}
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-[var(--text-muted)] mb-3">
                     {selected.app_id && (
                       <a

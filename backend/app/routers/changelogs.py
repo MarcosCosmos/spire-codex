@@ -18,9 +18,6 @@ router = APIRouter(prefix="/api/changelogs", tags=["Changelogs"])
 
 
 def _changelogs_dir() -> Path:
-    # On the beta channel, serve the beta-to-beta changelogs that
-    # beta-watch writes per ingest, so /beta/changelog shows the beta
-    # branch's own patch history.
     if get_channel() == "beta":
         beta_version = get_beta_version()
         if beta_version:
@@ -29,14 +26,22 @@ def _changelogs_dir() -> Path:
 
 
 def _load_changelogs() -> list[dict]:
-    """Load all changelog JSON files, sorted newest first by date then tag."""
-    d = _changelogs_dir()
-    if not d.exists():
-        return []
-    logs = []
-    for f in d.glob("*.json"):
-        with open(f, "r", encoding="utf-8") as fh:
-            logs.append(json.load(fh))
+    """Load all changelog JSON files, sorted newest first by date then tag.
+    On the beta channel this is the FULL per-patch game archive (every
+    official patch, 1:1 with the Steam announcements) — serving only the
+    current version's dir made the timeline forget history each ingest."""
+    if get_channel() == "beta":
+        from ..services.entity_changelog import load_game_changelogs
+
+        logs = list(load_game_changelogs())
+    else:
+        d = _changelogs_dir()
+        if not d.exists():
+            return []
+        logs = []
+        for f in d.glob("*.json"):
+            with open(f, "r", encoding="utf-8") as fh:
+                logs.append(json.load(fh))
     logs.sort(key=lambda log: (log.get("date", ""), log.get("tag", "")), reverse=True)
     return logs
 
@@ -54,6 +59,7 @@ def list_changelogs(request: Request):
             "date": log["date"],
             "title": log["title"],
             "summary": log["summary"],
+            "steam_url": log.get("steam_url"),
         }
         for log in logs
     ]
@@ -134,9 +140,16 @@ def recent_additions(
 
 @router.get("/{tag:path}", tags=["Changelogs"])
 def get_changelog(tag: str, request: Request):
-    """Return full changelog for a specific tag (e.g. '1.0.3')."""
+    """Return full changelog for a specific tag (e.g. '1.0.3'). On the beta
+    channel any archived game patch resolves, not just the current one."""
     path = _changelogs_dir() / f"{tag}.json"
-    if not path.exists():
-        raise HTTPException(status_code=404, detail=f"Changelog '{tag}' not found")
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+    if path.exists():
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    if get_channel() == "beta":
+        from ..services.entity_changelog import load_game_changelogs
+
+        for log in load_game_changelogs():
+            if str(log.get("tag") or "") == tag:
+                return log
+    raise HTTPException(status_code=404, detail=f"Changelog '{tag}' not found")

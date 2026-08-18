@@ -4,7 +4,7 @@
   "build_id": "",
   "tag": "0.105.1",
   "date": "2026-05-08",
-  "title": "Beta v0.105.1 — Aeonglass hotfix",
+  "title": "Beta Hotfix Notes - v0.105.1",
   "from_ref": "data-beta/v0.105.0/eng",
   "to_ref": "data-beta/v0.105.1/eng",
   "summary": {
@@ -32,5 +32,7 @@
         }
       ]
     }
-  ]
+  ],
+  "steam_url": "https://store.steampowered.com/news/app/2868840/view/1832065502816737",
+  "notes": "Quick hotfix today addressing several bugs related to the new Aeonglass boss and multiplayer state divergences.\n\n[h3]USER INTERFACE & EXPERIENCE:[/h3]\n\n- Updated the [b]Aeonglass[/b] boss icon\n\n[h3]BUG FIXES:[/h3]\n\n[b]Enemies:[/b]\n- Fixed [b]Aeonglass[/b] first move intent showing a buff instead of a debuff\n- Fixed [b]Aeonglass[/b] music not playing correctly\n- Fixed [b]Ceremonial Beast[/b] background music transition not lining up with when it gets stunned\n\n[b]Multiplayer:[/b]\n- Fixed [b]Silken Tress[/b] relic only affecting card rewards for the host\n- Fixed state divergence when taking any rewards after a treasure room\n- Fixed state divergence after [b]Crystal Sphere[/b] event"
 }
