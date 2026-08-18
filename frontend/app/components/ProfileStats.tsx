@@ -259,7 +259,6 @@ export default function ProfileStats({
         <ProfileInsights
           bests={bests}
           personalRanks={competitive?.personal_ranks}
-          daily={competitive?.daily_leaderboard}
         />
       )}
 

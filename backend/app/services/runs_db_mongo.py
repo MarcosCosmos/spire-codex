@@ -2943,10 +2943,15 @@ def get_daily_leaderboard(username: str | None = None) -> dict:
         # Official content only, like the other ladders (A10 cap, real characters).
         "ascension": {"$gte": 0, "$lte": 10},
         "character": {"$in": list(OFFICIAL_CHARACTERS)},
+        # Soft-deleted runs never board (equality keeps counts index-friendly).
+        "deleted_at": None,
     }
+    # Cheated/moderated runs leaked onto profiles until 2026-08-17: finds
+    # exclude hidden directly, counts stay subtractive (_count_visible).
+    visible = {**base, "hidden": {"$ne": True}}
 
-    top_10 = list(coll.find(base, _projection_row()).sort("run_time", 1).limit(10))
-    total = coll.count_documents(base)
+    top_10 = list(coll.find(visible, _projection_row()).sort("run_time", 1).limit(10))
+    total = _count_visible(coll, base)
 
     runs = []
     for r in top_10:
@@ -2959,14 +2964,14 @@ def get_daily_leaderboard(username: str | None = None) -> dict:
     user_rank = None
     if username:
         user_run = coll.find_one(
-            {**base, "username_lower": username.lower()},
+            {**visible, "username_lower": username.lower()},
             {"run_time": 1},
             sort=[("run_time", 1)],
         )
         if user_run:
             user_rank = (
-                coll.count_documents(
-                    {**base, "run_time": {"$lt": user_run["run_time"]}}
+                _count_visible(
+                    coll, {**base, "run_time": {"$lt": user_run["run_time"]}}
                 )
                 + 1
             )

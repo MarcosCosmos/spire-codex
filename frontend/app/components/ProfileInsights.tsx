@@ -143,21 +143,6 @@ export interface PersonalBests {
   fastest_daily?: PersonalBest;
 }
 
-export interface DailyEntry {
-  run_hash: string;
-  username: string | null;
-  character: string;
-  run_time: number;
-  ascension: number;
-  is_current_user: boolean;
-}
-
-export interface DailyBoard {
-  runs: DailyEntry[];
-  user_rank: number | null;
-  total_today: number;
-}
-
 export interface Insights {
   ascension_matrix?: AscensionMatrix;
   total_runs: number;
@@ -754,8 +739,10 @@ function BestTile({ href, value, label, sub, rank }: { href: string; value: stri
 }
 
 // The full merged overview+insights layout, shared between the signed-in
-// profile tab and the public /players page. `bests`, `personalRanks`, and
-// `daily` are self-only extras; the public page simply omits them.
+// profile tab and the public /players page. `bests` and `personalRanks` are
+// self-only extras; the public page simply omits them. Other players' daily
+// runs deliberately stay off profiles (the leaderboards page has that board)
+// — a stranger's run on your own profile just reads as a bug.
 export function InsightsPanels({
   data,
   cards,
@@ -763,7 +750,6 @@ export function InsightsPanels({
   lang,
   bests,
   personalRanks,
-  daily,
 }: {
   data: Insights;
   cards: Record<string, EntityInfo>;
@@ -771,7 +757,6 @@ export function InsightsPanels({
   lang: string;
   bests?: PersonalBests | null;
   personalRanks?: Record<string, { rank: number; total: number } | null>;
-  daily?: DailyBoard | null;
 }) {
   const lp = useLangPrefix();
   const deathsEnc = data.deaths?.encounters || [];
@@ -943,39 +928,6 @@ export function InsightsPanels({
         </Section>
       )}
 
-      {daily && daily.runs.length > 0 && (
-        <Section title={t("Today's Daily Climb", lang)}>
-          <div className="space-y-1">
-            {daily.runs.map((entry, i) => (
-              <Link
-                key={entry.run_hash}
-                href={`${lp}/runs/${entry.run_hash}`}
-                className={`flex items-center gap-3 text-sm px-2 -mx-2 py-1.5 rounded transition-colors ${
-                  entry.is_current_user
-                    ? "bg-[var(--accent-gold)]/10 hover:bg-[var(--accent-gold)]/15"
-                    : "hover:bg-[var(--bg-card-hover)]"
-                }`}
-              >
-                <span className="w-5 text-right text-xs text-[var(--text-tertiary)] tabular-nums">{i + 1}</span>
-                <span className={`flex-1 truncate ${entry.is_current_user ? "text-[var(--accent-gold)] font-medium" : "text-[var(--text-primary)]"}`}>
-                  {entry.username || t("Anonymous", lang)}
-                </span>
-                <span className="text-xs tabular-nums" style={{ color: CHARACTER_HEX[entry.character.toLowerCase()] || "var(--text-tertiary)" }}>
-                  {displayCharacter(entry.character)}
-                </span>
-                <span className="text-xs text-[var(--text-primary)] tabular-nums font-medium">{formatTime(entry.run_time)}</span>
-              </Link>
-            ))}
-            {daily.user_rank != null && daily.user_rank > 10 && (
-              <div className="flex items-center gap-3 text-sm px-2 -mx-2 py-1.5 rounded bg-[var(--accent-gold)]/10">
-                <span className="w-5 text-right text-xs text-[var(--text-tertiary)] tabular-nums">{daily.user_rank}</span>
-                <span className="flex-1 text-[var(--accent-gold)] font-medium">{t("You", lang)}</span>
-              </div>
-            )}
-          </div>
-        </Section>
-      )}
-
       {activity.length >= 2 && (
         <Section title={t("Weekly activity", lang)}>
           <ActivityChart rows={activity} lang={lang} />
@@ -1117,11 +1069,9 @@ export function useRelicMap(): Record<string, EntityInfo> {
 export default function ProfileInsights({
   bests,
   personalRanks,
-  daily,
 }: {
   bests?: PersonalBests | null;
   personalRanks?: Record<string, { rank: number; total: number } | null>;
-  daily?: DailyBoard | null;
 } = {}) {
   const { lang } = useLanguage();
   const [data, setData] = useState<Insights | null>(null);
@@ -1207,7 +1157,6 @@ export default function ProfileInsights({
           lang={lang}
           bests={filtered ? undefined : bests}
           personalRanks={filtered ? undefined : personalRanks}
-          daily={filtered ? undefined : daily}
         />
       ) : (
         <p className="text-sm text-[var(--text-secondary)] py-4">{t("Not enough data yet.", lang)}</p>
