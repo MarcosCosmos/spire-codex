@@ -255,19 +255,19 @@ def _run_mode(r: dict) -> str:
 def _activity(rows: list[dict]) -> list[dict]:
     """Weekly run-count buckets split by mode, with the week's win rate,
     oldest first. Weeks with no runs are absent (the chart skips them);
-    capped to the most recent _ACTIVITY_WEEKS buckets."""
+    capped to the most recent _ACTIVITY_WEEKS buckets. Bucketed on when the
+    run was PLAYED, in Pacific time (site policy: never upload date, never
+    UTC calendar boundaries)."""
     from datetime import date
+
+    from .timeutil import pacific_date
 
     buckets: dict[str, dict] = {}
     for r in rows:
-        ts = r.get("submitted_at")
-        if ts is None:
+        d = pacific_date(r.get("played_at") or r.get("submitted_at"))
+        if d is None:
             continue
-        try:
-            d = date.fromisoformat(str(ts)[:10])
-        except ValueError:
-            continue
-        week = d.fromordinal(d.toordinal() - d.weekday()).isoformat()
+        week = date.fromordinal(d.toordinal() - d.weekday()).isoformat()
         b = buckets.setdefault(
             week,
             {
@@ -671,7 +671,16 @@ def _compute_insights(
     except Exception:
         logger.warning("user-insights relic deltas failed", exc_info=True)
         mine["relic_picks"] = {"over_carried": [], "under_carried": []}
-    mine["streaks"] = _streaks(rows)
+    # Streaks are order-sensitive: walk runs in PLAYED order (newest first),
+    # not upload order — a backfilled old loss must not break today's streak.
+    # str() sorts both datetime objects and ISO strings chronologically.
+    mine["streaks"] = _streaks(
+        sorted(
+            rows,
+            key=lambda r: str(r.get("played_at") or r.get("submitted_at") or ""),
+            reverse=True,
+        )
+    )
     mine["elo"] = elo_block
     mine["activity"] = _activity(rows)
     if filtered:

@@ -299,7 +299,9 @@ _HISTORY_RETENTION_DAYS = 90
 # Version 22: the official-id filters accept beta-catalog entities (beta-only
 # cards/relics were read as modded and vanished from the tier list); the bump
 # forces the rebuild that restores their walk-time per-act relic data.
-SNAPSHOT_VERSION = 24
+# 25: chart time buckets re-keyed to played-date Pacific days — a full
+# rebuild is required or old runs keep their UTC upload-day keys.
+SNAPSHOT_VERSION = 25
 # Serialized-byte budget per persisted chunk doc. With version-composable
 # brackets a popular entity carries hundreds of per-bracket blocks and
 # entity sizes vary wildly (a card dwarfs an affliction), so chunks are
@@ -1201,6 +1203,11 @@ def _accumulate(rows, official_chars, wr_map, recent_versions=(), preloaded_blob
                 + [_bid]
             )
         try:
+            # Chart time buckets key on when the run was PLAYED; `submitted`
+            # stays the incremental cursor anchor below and must not change.
+            played = row.get("played_at") or row["submitted_at"]
+            if played is not None and hasattr(played, "isoformat"):
+                played = played.isoformat()
             charts_stats.accumulate(
                 charts_acc,
                 blob,
@@ -1208,7 +1215,7 @@ def _accumulate(rows, official_chars, wr_map, recent_versions=(), preloaded_blob
                 is_win=is_win,
                 character=character,
                 player_count=row.get("player_count") or 1,
-                submitted=submitted,
+                submitted=played,
             )
         except Exception:
             logger.warning(
@@ -1779,6 +1786,7 @@ def _build_cache_data(stash: bool = False) -> tuple[dict, dict, dict, dict]:
                     "character": 1,
                     "win": 1,
                     "submitted_at": 1,
+                    "played_at": 1,
                     "player_count": 1,
                     "ascension": 1,
                     "game_mode": 1,
@@ -1799,6 +1807,7 @@ def _build_cache_data(stash: bool = False) -> tuple[dict, dict, dict, dict]:
                 "character": d.get("character") or "",
                 "win": bool(d.get("win")),
                 "submitted_at": d.get("submitted_at"),
+                "played_at": d.get("played_at"),
                 "player_count": d.get("player_count") or 1,
                 "ascension": d.get("ascension") or 0,
                 "game_mode": d.get("game_mode") or "standard",
@@ -2493,6 +2502,7 @@ def _load_rows_after(last_key: tuple) -> list[dict]:
                 "character": 1,
                 "win": 1,
                 "submitted_at": 1,
+                "played_at": 1,
                 "player_count": 1,
                 "ascension": 1,
                 "game_mode": 1,
@@ -2509,6 +2519,7 @@ def _load_rows_after(last_key: tuple) -> list[dict]:
             "character": d.get("character") or "",
             "win": bool(d.get("win")),
             "submitted_at": d.get("submitted_at"),
+            "played_at": d.get("played_at"),
             "player_count": d.get("player_count") or 1,
             "ascension": d.get("ascension") or 0,
             "game_mode": d.get("game_mode") or "standard",
