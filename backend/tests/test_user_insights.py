@@ -340,3 +340,65 @@ def test_relic_carry_deltas(monkeypatch):
         "over_carried": [],
         "under_carried": [],
     }
+
+
+def test_prewarm_slices_match_on_demand_computes(monkeypatch):
+    # The multi-slice prewarm must produce byte-identical payloads to the
+    # on-demand filtered walk — same helpers, same numbers, no drift.
+    rows = [
+        {
+            "run_hash": "r1",
+            "win": True,
+            "character": "IRONCLAD",
+            "ascension": 10,
+            "player_count": 1,
+        },
+        {
+            "run_hash": "r2",
+            "win": False,
+            "character": "SILENT",
+            "ascension": 4,
+            "player_count": 2,
+        },
+    ]
+    blobs = {
+        "r1": {
+            "game_mode": "standard",
+            "run_time": 900,
+            "players": [{"deck": [{}] * 30}],
+        },
+        "r2": {
+            "game_mode": "standard",
+            "run_time": 1100,
+            "players": [{"deck": [{}] * 20}],
+        },
+    }
+    _fake_backend(monkeypatch, rows, blobs, {}, {"rows": []}, {})
+
+    slices = user_insights._compute_insights_all_slices(
+        "507f1f77bcf86cd799439011", None
+    )
+    # Unfiltered + 5 characters + A10 + Solo, keyed by cache suffix.
+    assert set(slices) == {
+        ":",
+        ":IRONCLAD",
+        ":SILENT",
+        ":DEFECT",
+        ":NECROBINDER",
+        ":REGENT",
+        "::a10:v:p",
+        "::a:v:p1",
+    }
+    assert slices[":"] == user_insights._compute_insights("507f1f77bcf86cd799439011")
+    assert slices[":IRONCLAD"] == user_insights._compute_insights(
+        "507f1f77bcf86cd799439011", character="IRONCLAD"
+    )
+    assert slices["::a10:v:p"] == user_insights._compute_insights(
+        "507f1f77bcf86cd799439011", ascension=10
+    )
+    assert slices["::a:v:p1"] == user_insights._compute_insights(
+        "507f1f77bcf86cd799439011", players=1
+    )
+    # The slices really are filtered: the Silent-only slice walked one run.
+    assert slices[":SILENT"]["runs_walked"] == 1
+    assert slices[":"]["runs_walked"] == 2

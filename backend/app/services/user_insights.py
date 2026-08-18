@@ -558,6 +558,25 @@ def _kick_refresh(
         from fastapi.encoders import jsonable_encoder
 
         try:
+            unfiltered = (
+                character is None
+                and ascension is None
+                and not version
+                and players is None
+            )
+            if unfiltered:
+                # The blob fetch is the walk's whole cost, so the unfiltered
+                # walk also pre-builds the popular filter slices from the
+                # same pass — their dropdowns then serve instantly.
+                for suffix, slice_payload in _compute_insights_all_slices(
+                    user_id, username
+                ).items():
+                    enc = jsonable_encoder(slice_payload)
+                    key = f"{user_id}{suffix}"
+                    app_cache.set_json(_payload_key(key), enc, _STALE_REDIS_TTL)
+                    app_cache.set_json(_fresh_key(key), 1, int(_CACHE_TTL))
+                    _cache_put(key, enc)
+                return
             payload = jsonable_encoder(
                 _compute_insights(
                     user_id,
@@ -604,8 +623,9 @@ def _compute_insights(
     so showing it against a character slice would mislead."""
     character = (character or "").strip().upper() or None
 
-    from .runs_db_mongo import get_run_blobs, get_user_run_rows
+    from .runs_db_mongo import get_user_run_rows
 
+    t0 = time.time()
     rows = get_user_run_rows(user_id, limit=_MAX_RUNS)
     # Elo rates the account's whole A10 standard history — it ignores the
     # active filter axes so the profile shows one rating on every slice.
@@ -617,35 +637,163 @@ def _compute_insights(
         logger.warning("profile elo block failed", exc_info=True)
         elo_block = None
     rows = _apply_row_filters(rows, character, ascension, version, players)
+    t1 = time.time()
+    blobs = _fetch_blobs(rows)
+    t2 = time.time()
+    acc = community_stats._new_acc_one()
+    walked = _accumulate_rows(rows, blobs, acc)
+    payload = _assemble_payload(
+        user_id,
+        username,
+        rows,
+        acc,
+        walked,
+        elo_block,
+        character,
+        ascension,
+        version,
+        players,
+    )
+    logger.info(
+        "user-insights walk uid=%s slice=%s rows=%d fetch_ms=%d walk_ms=%d total_ms=%d",
+        user_id,
+        _filters_suffix(character, ascension, version, players),
+        len(rows),
+        int((t2 - t1) * 1000),
+        int((time.time() - t2) * 1000),
+        int((time.time() - t0) * 1000),
+    )
+    return payload
+
+
+_PREWARM_CHARACTERS = ("IRONCLAD", "SILENT", "DEFECT", "NECROBINDER", "REGENT")
+
+
+def _fetch_blobs(rows: list[dict]) -> dict[str, dict]:
+    """All blobs for `rows`, fetched in parallel 300-doc batches. The blob
+    fetch dominates walk latency (map_point_history is ~90% of every blob),
+    so the batches overlap instead of running back to back."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    from .runs_db_mongo import get_run_blobs
+
+    batches = [rows[i : i + 300] for i in range(0, len(rows), 300)]
+    if not batches:
+        return {}
+    if len(batches) == 1:
+        return get_run_blobs([r["run_hash"] for r in batches[0]])
+    out: dict[str, dict] = {}
+    with ThreadPoolExecutor(max_workers=min(4, len(batches))) as pool:
+        for blobs in pool.map(
+            lambda b: get_run_blobs([r["run_hash"] for r in b]), batches
+        ):
+            out.update(blobs)
+    return out
+
+
+def _accumulate_rows(rows: list[dict], blobs: dict[str, dict], acc: dict) -> int:
+    walked = 0
+    for r in rows:
+        blob = blobs.get(r["run_hash"])
+        if blob is None:
+            continue
+        try:
+            community_stats._accumulate_one(
+                acc,
+                blob,
+                run_hash=r["run_hash"],
+                is_win=bool(r.get("win")),
+                character=r.get("character") or "",
+                ascension=r.get("ascension") or 0,
+            )
+            walked += 1
+        except Exception:
+            logger.warning(
+                "user-insights accumulate failed for %s",
+                r["run_hash"],
+                exc_info=True,
+            )
+    return walked
+
+
+def _compute_insights_all_slices(user_id: str, username: str | None) -> dict[str, dict]:
+    """One blob pass, many payloads: the unfiltered profile plus the filter
+    slices people actually click (each character, A10, Solo), keyed by their
+    cache suffix. The blob fetch is nearly all of a walk's cost, so building
+    these from the same pass makes those dropdowns serve instantly instead
+    of each spawning its own minutes-long walk."""
+    from .runs_db_mongo import get_user_run_rows
+
+    t0 = time.time()
+    rows = get_user_run_rows(user_id, limit=_MAX_RUNS)
+    try:
+        from .player_elo import elo_block_from_rows
+
+        elo_block = elo_block_from_rows(rows)
+    except Exception:
+        logger.warning("profile elo block failed", exc_info=True)
+        elo_block = None
+    t1 = time.time()
+    blobs = _fetch_blobs(rows)
+    t2 = time.time()
+
+    slices: list[tuple[tuple, list[dict]]] = [((None, None, None, None), rows)]
+    for c in _PREWARM_CHARACTERS:
+        slices.append(
+            ((c, None, None, None), _apply_row_filters(rows, c, None, None, None))
+        )
+    slices.append(
+        ((None, 10, None, None), _apply_row_filters(rows, None, 10, None, None))
+    )
+    slices.append(
+        ((None, None, None, 1), _apply_row_filters(rows, None, None, None, 1))
+    )
+
+    out: dict[str, dict] = {}
+    t_walk = 0.0
+    for f, srows in slices:
+        c, a, v, pl = f
+        tw = time.time()
+        acc = community_stats._new_acc_one()
+        walked = _accumulate_rows(srows, blobs, acc)
+        t_walk += time.time() - tw
+        try:
+            out[_filters_suffix(c, a, v, pl)] = _assemble_payload(
+                user_id, username, srows, acc, walked, elo_block, c, a, v, pl
+            )
+        except Exception:
+            logger.warning("insights slice assemble failed for %s", f, exc_info=True)
+    logger.info(
+        "user-insights prewarm uid=%s rows=%d slices=%d rows_ms=%d fetch_ms=%d walk_ms=%d total_ms=%d",
+        user_id,
+        len(rows),
+        len(out),
+        int((t1 - t0) * 1000),
+        int((t2 - t1) * 1000),
+        int(t_walk * 1000),
+        int((time.time() - t0) * 1000),
+    )
+    return out
+
+
+def _assemble_payload(
+    user_id: str,
+    username: str | None,
+    rows: list[dict],
+    acc: dict,
+    walked: int,
+    elo_block: dict | None,
+    character: str | None,
+    ascension: int | None,
+    version: str | None,
+    players: int | None,
+) -> dict[str, Any]:
+    """Build one slice's payload from its accumulated walk. Shared by the
+    on-demand compute and the multi-slice prewarm, so a prewarmed slice is
+    identical to an on-demand one."""
     filtered = bool(
         character or ascension is not None or version or players is not None
     )
-    acc = community_stats._new_acc_one()
-    walked = 0
-    for i in range(0, len(rows), 300):
-        batch = rows[i : i + 300]
-        blobs = get_run_blobs([r["run_hash"] for r in batch])
-        for r in batch:
-            blob = blobs.get(r["run_hash"])
-            if blob is None:
-                continue
-            try:
-                community_stats._accumulate_one(
-                    acc,
-                    blob,
-                    run_hash=r["run_hash"],
-                    is_win=bool(r.get("win")),
-                    character=r.get("character") or "",
-                    ascension=r.get("ascension") or 0,
-                )
-                walked += 1
-            except Exception:
-                logger.warning(
-                    "user-insights accumulate failed for %s",
-                    r["run_hash"],
-                    exc_info=True,
-                )
-
     mine = community_stats._finalize_one(acc)
     bracket = _filters_bracket(ascension, version, players)
     community = get_community_stats(bracket)
