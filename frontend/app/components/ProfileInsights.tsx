@@ -954,6 +954,7 @@ export function InsightsPanels({
 
       {(bosses.length > 0 || elites.length > 0 || fights.length > 0) && (
         <Section title={t("What kills you", lang)}>
+          <p className="text-[11px] text-[var(--text-muted)] mb-3">{t("Share of your deaths. Gray = community share.", lang)}</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <DeathColumn title={t("Bosses", lang)} rows={bosses} lang={lang} />
             <DeathColumn title={t("Elites", lang)} rows={elites} lang={lang} />
@@ -965,6 +966,7 @@ export function InsightsPanels({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {(data.map_danger || []).length > 0 && (
           <Section title={t("Where you die", lang)}>
+            <p className="text-[11px] text-[var(--text-muted)] mb-3">{t("How often a visit kills you. Gray = community.", lang)}</p>
             <DangerTable rows={data.map_danger!} lang={lang} />
           </Section>
         )}
