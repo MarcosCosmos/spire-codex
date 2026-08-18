@@ -4,7 +4,7 @@
   "build_id": "23811903",
   "tag": "0.107.1",
   "date": "2026-06-18",
-  "title": "v0.107.1: Aeonglass replaces Doormaker, new Neow relics, the RNG rework, and a full balance pass",
+  "title": "Major Update #2 - v0.107.1",
   "from_ref": "data-beta/v0.107.0/eng",
   "to_ref": "data-beta/v0.107.1/eng",
   "summary": {
@@ -171,5 +171,6 @@
         }
       ]
     }
-  ]
+  ],
+  "steam_url": "https://store.steampowered.com/news/app/2868840/view/1835871199305790"
 }

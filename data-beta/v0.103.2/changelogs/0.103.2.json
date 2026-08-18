@@ -4,7 +4,7 @@
   "build_id": "",
   "tag": "0.103.2",
   "date": "2026-04-16",
-  "title": "Major Update #1",
+  "title": "Major Update #1 - v0.103.2",
   "from_ref": "data-beta/v0.103.1/eng",
   "to_ref": "data-beta/v0.103.2/eng",
   "summary": {
@@ -5173,5 +5173,6 @@
         }
       ]
     }
-  ]
+  ],
+  "steam_url": "https://store.steampowered.com/news/app/2868840/view/1830163047258879"
 }

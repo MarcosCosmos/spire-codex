@@ -4,7 +4,7 @@
   "build_id": "",
   "tag": "0.103.0",
   "date": "2026-04-09",
-  "title": "Beta v0.103.0 — RIP DeprecatedCharacter (1000 HP, 100 energy, empty deck. Gone but not forgotten.)",
+  "title": "Beta Patch Notes - v0.103.0",
   "from_ref": "data-beta/v0.102.0/eng",
   "to_ref": "data-beta/v0.103.0/eng",
   "summary": {
@@ -1962,5 +1962,6 @@
         }
       ]
     }
-  ]
+  ],
+  "steam_url": "https://store.steampowered.com/news/app/2868840/view/1829528821308663"
 }

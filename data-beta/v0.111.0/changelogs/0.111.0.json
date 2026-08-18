@@ -3,8 +3,8 @@
   "game_version": "0.111.0",
   "build_id": "24724944",
   "tag": "0.111.0",
-  "date": "2026-08-14",
-  "title": "Beta v0.111.0",
+  "date": "2026-08-13",
+  "title": "Beta Patch Notes - v0.111.0",
   "from_ref": "/tmp/claude-1000/-mnt-c-Users-peter-Documents-prima-codex-spire-codex/fe7248d4-d6f7-4489-a6e2-4ea989d7103f/scratchpad/baseline/data-beta/v0.110.0/eng",
   "to_ref": "data-beta/v0.111.0/eng",
   "summary": {
@@ -740,5 +740,6 @@
         }
       ]
     }
-  ]
+  ],
+  "steam_url": "https://store.steampowered.com/news/app/2868840/view/1840944183778277"
 }

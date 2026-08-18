@@ -3,8 +3,8 @@
   "game_version": "0.101.0",
   "build_id": "",
   "tag": "0.101.0",
-  "date": "2026-04-10",
-  "title": "Beta v0.101.0",
+  "date": "2026-03-26",
+  "title": "Beta Patch Notes - v0.101.0",
   "from_ref": "data-beta/v0.100.0/eng",
   "to_ref": "data-beta/v0.101.0/eng",
   "summary": {
@@ -1562,5 +1562,6 @@
         }
       ]
     }
-  ]
+  ],
+  "steam_url": "https://store.steampowered.com/news/app/2868840/view/1828441623103381"
 }

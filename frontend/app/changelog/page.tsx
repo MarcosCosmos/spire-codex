@@ -14,6 +14,7 @@ interface ChangelogSummary {
   date: string;
   title: string;
   summary: { added: number; removed: number; changed: number };
+  steam_url?: string | null;
 }
 
 interface FieldChange {
@@ -311,6 +312,16 @@ export default function ChangelogPage() {
                     </button>
                   </div>
                   <p className="text-sm text-[var(--text-secondary)] mb-2">{selected.title}</p>
+                  {selected.steam_url && (
+                    <a
+                      href={selected.steam_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block text-xs text-[var(--accent-gold)] hover:underline mb-2"
+                    >
+                      Official patch notes on Steam ↗
+                    </a>
+                  )}
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-[var(--text-muted)] mb-3">
                     {selected.app_id && (
                       <a

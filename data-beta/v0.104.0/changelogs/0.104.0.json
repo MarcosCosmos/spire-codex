@@ -4,7 +4,7 @@
   "build_id": "",
   "tag": "0.104.0",
   "date": "2026-04-23",
-  "title": "Beta v0.104.0 — Conflagration/Drum rework, Parry-on-Blade, card art, ancient buffs",
+  "title": "Beta Patch Notes - v0.104.0",
   "from_ref": "data-beta/v0.103.2/eng",
   "to_ref": "data-beta/v0.104.0/eng",
   "summary": {
@@ -12014,5 +12014,6 @@
         }
       ]
     }
-  ]
+  ],
+  "steam_url": "https://store.steampowered.com/news/app/2868840/view/1830797770234584"
 }

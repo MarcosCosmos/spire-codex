@@ -3,8 +3,8 @@
   "game_version": "0.98.0-beta",
   "build_id": "",
   "tag": "0.98.0-beta",
-  "date": "2026-04-10",
-  "title": "Beta v0.98.0 — initial beta branch",
+  "date": "2026-03-05",
+  "title": "Slay the Spire 2 is out NOW in Early Access!!",
   "from_ref": "data/eng",
   "to_ref": "data-beta/v0.98.0-beta/eng",
   "summary": {
@@ -2222,5 +2222,6 @@
         }
       ]
     }
-  ]
+  ],
+  "steam_url": "https://store.steampowered.com/news/app/2868840/view/1826362059922055"
 }

@@ -4,7 +4,7 @@
   "build_id": "",
   "tag": "0.105.1",
   "date": "2026-05-08",
-  "title": "Beta v0.105.1 — Aeonglass hotfix",
+  "title": "Beta Hotfix Notes - v0.105.1",
   "from_ref": "data-beta/v0.105.0/eng",
   "to_ref": "data-beta/v0.105.1/eng",
   "summary": {
@@ -32,5 +32,6 @@
         }
       ]
     }
-  ]
+  ],
+  "steam_url": "https://store.steampowered.com/news/app/2868840/view/1832065502816737"
 }

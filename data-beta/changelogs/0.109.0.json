@@ -4,7 +4,7 @@
   "build_id": "24251656",
   "tag": "0.109.0",
   "date": "2026-07-16",
-  "title": "Beta Patch Notes - v0.109.0",
+  "title": "Beta v0.109.0",
   "from_ref": "/mnt/c/Users/peter/Documents/prima-codex/spire-codex-v0107/data-beta/v0.108.0/eng",
   "to_ref": "/mnt/c/Users/peter/Documents/prima-codex/spire-codex-v0107/data-beta/v0.109.0/eng",
   "summary": {
@@ -7189,6 +7189,5 @@
         }
       ]
     }
-  ],
-  "steam_url": "https://store.steampowered.com/news/app/2868840/view/1838407329258348"
+  ]
 }

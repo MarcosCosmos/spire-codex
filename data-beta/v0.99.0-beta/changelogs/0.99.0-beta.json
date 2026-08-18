@@ -3,8 +3,8 @@
   "game_version": "0.99.0-beta",
   "build_id": "",
   "tag": "0.99.0-beta",
-  "date": "2026-04-10",
-  "title": "Beta v0.99.0",
+  "date": "2026-03-12",
+  "title": "Beta Patch Notes - v0.99",
   "from_ref": "data-beta/v0.98.0-beta/eng",
   "to_ref": "data-beta/v0.99.0-beta/eng",
   "summary": {
@@ -1102,5 +1102,6 @@
         }
       ]
     }
-  ]
+  ],
+  "steam_url": "https://store.steampowered.com/news/app/2868840/view/1826992588594229"
 }

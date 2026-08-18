@@ -4,7 +4,7 @@
   "build_id": "",
   "tag": "0.105.0",
   "date": "2026-05-07",
-  "title": "Beta v0.105.0",
+  "title": "Beta Patch Notes - v0.105.0",
   "from_ref": "data-beta/v0.104.0/eng",
   "to_ref": "data-beta/v0.105.0/eng",
   "summary": {
@@ -2187,5 +2187,6 @@
         }
       ]
     }
-  ]
+  ],
+  "steam_url": "https://store.steampowered.com/news/app/2868840/view/1832065502813730"
 }
