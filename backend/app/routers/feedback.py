@@ -2,6 +2,7 @@
 
 import logging
 import os
+import re
 
 import httpx
 from fastapi import APIRouter, HTTPException, Request
@@ -89,4 +90,89 @@ async def submit_feedback(request: Request, body: FeedbackRequest):
             logger.warning("Failed to create GitHub issue from feedback: %s", e)
 
     feedback_submissions.labels(type=feedback_type).inc()
+    return {"ok": True}
+
+
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]{2,}$")
+_HASH_RE = re.compile(r"^[0-9a-f]{16}$")
+
+
+class RunReportRequest(BaseModel):
+    run_hash: str
+    email: str
+    reason: str
+
+
+@router.post("/run-report")
+@limiter.limit(rate_limit_config.endpoint_limit("feedback.report_run", "3/minute"))
+async def report_run(request: Request, body: RunReportRequest):
+    """A viewer reporting a specific run (suspected cheat, wrong hide, ...).
+    Lands in the Discord feedback channel and the admin inbox — never GitHub,
+    since the required email must stay private."""
+    if not WEBHOOK_URL:
+        raise HTTPException(status_code=503, detail="Feedback not configured")
+
+    run_hash = body.run_hash.strip().lower()
+    email = body.email.strip()
+    reason = body.reason.strip()
+    if not _HASH_RE.match(run_hash):
+        raise HTTPException(status_code=422, detail="Bad run hash")
+    if not reason or len(reason) > 2000:
+        raise HTTPException(status_code=422, detail="A reason is required")
+    if len(email) > 254 or not _EMAIL_RE.match(email):
+        raise HTTPException(status_code=422, detail="A valid email address is required")
+
+    from ..services.runs_db_mongo import get_share_meta_for_hash
+
+    meta = get_share_meta_for_hash(run_hash)
+    if not meta.get("exists"):
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    payload = {
+        "content": "<@99656376954916864>",
+        "embeds": [
+            {
+                "title": "Run report",
+                "description": reason,
+                "color": 0xE8B830,
+                "fields": [
+                    {
+                        "name": "Run",
+                        "value": f"https://spire-codex.com/runs/{run_hash}",
+                        "inline": False,
+                    },
+                    {
+                        "name": "Uploader",
+                        "value": meta.get("username") or "anonymous",
+                        "inline": True,
+                    },
+                    {
+                        "name": "Hidden",
+                        "value": "yes" if meta.get("hidden") else "no",
+                        "inline": True,
+                    },
+                    {"name": "Reporter email", "value": email, "inline": True},
+                ],
+                "footer": {"text": "Spire Codex Run Report"},
+            }
+        ],
+    }
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(WEBHOOK_URL, json=payload)
+        if resp.status_code >= 400:
+            raise HTTPException(status_code=502, detail="Failed to send report")
+
+    from ..services.admin_db import record_feedback
+
+    record_feedback(
+        "run_report",
+        {
+            "run_hash": run_hash,
+            "email": email,
+            "reason": reason,
+            "uploader": meta.get("username"),
+            "hidden": bool(meta.get("hidden")),
+        },
+    )
+    feedback_submissions.labels(type="RunReport").inc()
     return {"ok": True}
