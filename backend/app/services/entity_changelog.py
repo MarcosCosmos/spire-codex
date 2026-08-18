@@ -1,8 +1,9 @@
 """Per-entity Version-history entries derived from the game-version diff
 changelogs (data-beta/<version>/changelogs/*.json, the per-patch archive).
 
-Complements the wiki-sourced data/entity_history.json: the wiki lags a patch
-by however long its editors take, these land the moment an ingest merges."""
+The site's only Version-history source: every entry is a diff of the shipped
+game data itself, so entries land the moment an ingest merges and no
+third-party prose ever appears on entity pages."""
 
 import json
 import re
