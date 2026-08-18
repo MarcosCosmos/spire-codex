@@ -2897,6 +2897,7 @@ def get_share_meta_for_hash(run_hash: str) -> dict:
     can banner runs excluded from leaderboards and aggregates."""
     doc = _get_collection().find_one({"_id": run_hash}, {"username": 1, "hidden": 1})
     return {
+        "exists": doc is not None,
         "username": (doc or {}).get("username"),
         "hidden": bool((doc or {}).get("hidden")),
     }

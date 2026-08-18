@@ -5,6 +5,8 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useLangPrefix } from "@/lib/use-lang-prefix";
 import { useLanguage } from "@/app/contexts/LanguageContext";
+import { useAuth } from "@/app/contexts/AuthContext";
+import { authHeaders } from "@/app/admin/shared";
 import { t } from "@/lib/ui-translations";
 import { cachedFetch } from "@/lib/fetch-cache";
 import RunSummary, { type PotionInfo } from "./RunSummary";
@@ -29,10 +31,17 @@ export default function SharedRunClient({ initialRun }: { initialRun?: any }) {
   const { hash } = useParams<{ hash: string }>();
   const lp = useLangPrefix();
   const { lang } = useLanguage();
+  const { user } = useAuth();
   const [run, setRun] = useState<any>(initialRun ?? null);
   const [loading, setLoading] = useState(!initialRun);
   const [notFound, setNotFound] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showReport, setShowReport] = useState(false);
+  const [reportEmail, setReportEmail] = useState("");
+  const [reportReason, setReportReason] = useState("");
+  const [reportState, setReportState] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [reportError, setReportError] = useState<string | null>(null);
+  const [unhiding, setUnhiding] = useState(false);
   const [cardData, setCardData] = useState<Record<string, CardInfo>>({});
   const [relicData, setRelicData] = useState<Record<string, RelicInfo>>({});
   const [potionData, setPotionData] = useState<Record<string, PotionInfo>>({});
@@ -146,6 +155,52 @@ export default function SharedRunClient({ initialRun }: { initialRun?: any }) {
     });
   }
 
+  const emailOk = /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(reportEmail.trim());
+
+  function submitReport() {
+    if (!emailOk || !reportReason.trim()) return;
+    setReportState("sending");
+    setReportError(null);
+    fetch(`${API}/api/feedback/run-report`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ run_hash: hash, email: reportEmail.trim(), reason: reportReason.trim() }),
+    })
+      .then(async (r) => {
+        if (!r.ok) {
+          const body = await r.json().catch(() => null);
+          throw new Error(body?.detail || `${r.status}`);
+        }
+        setReportState("sent");
+        setTimeout(() => {
+          setShowReport(false);
+          setReportState("idle");
+          setReportReason("");
+          setReportEmail("");
+        }, 1800);
+      })
+      .catch((e) => {
+        setReportState("error");
+        setReportError(String((e as Error)?.message || e));
+      });
+  }
+
+  function unhideRun() {
+    setUnhiding(true);
+    fetch(`${API}/api/admin/runs/${hash}/hide`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ hidden: false }),
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error();
+        setRun({ ...run, hidden: false });
+      })
+      .catch(() => {})
+      .finally(() => setUnhiding(false));
+  }
+
   if (loading) return <div className="max-w-4xl mx-auto px-4 py-12 text-center text-[var(--text-muted)]">{t("Loading...", lang)}</div>;
   if (notFound || !run) return (
     <div className="max-w-4xl mx-auto px-4 py-12 text-center">
@@ -167,11 +222,66 @@ export default function SharedRunClient({ initialRun }: { initialRun?: any }) {
         <Link href={`${lp}/leaderboards`} className="text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
           &larr; {t("Back to", lang)}
         </Link>
-        <button onClick={copyLink}
-          className="text-xs px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--border-accent)] transition-colors">
-          {copied ? t("Copied!", lang) : t("Share", lang)}
-        </button>
+        <div className="flex items-center gap-2">
+          {run.hidden && user?.is_admin && (
+            <button onClick={unhideRun} disabled={unhiding}
+              className="text-xs px-3 py-1.5 rounded-lg border border-[var(--accent-gold)]/40 text-[var(--accent-gold)] hover:border-[var(--accent-gold)] transition-colors disabled:opacity-50">
+              {unhiding ? "..." : "Unhide"}
+            </button>
+          )}
+          <button onClick={() => setShowReport(true)}
+            className="text-xs px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--border-accent)] transition-colors">
+            {t("Report", lang)}
+          </button>
+          <button onClick={copyLink}
+            className="text-xs px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--border-accent)] transition-colors">
+            {copied ? t("Copied!", lang) : t("Share", lang)}
+          </button>
+        </div>
       </div>
+      {showReport && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4"
+          onClick={() => reportState !== "sending" && setShowReport(false)}>
+          <div className="bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-xl p-5 w-full max-w-md"
+            onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-bold text-[var(--text-primary)] mb-3">{t("Report run", lang)}</h2>
+            {reportState === "sent" ? (
+              <p className="text-sm text-[var(--color-silent)] py-4">{t("Report sent. Thanks!", lang)}</p>
+            ) : (
+              <div className="space-y-3">
+                <label className="block">
+                  <span className="text-xs text-[var(--text-muted)]">{t("Why are you reporting this run?", lang)}</span>
+                  <textarea value={reportReason} onChange={(e) => setReportReason(e.target.value)}
+                    rows={4} maxLength={2000}
+                    className="mt-1 w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[var(--border-accent)] focus:outline-none" />
+                </label>
+                <label className="block">
+                  <span className="text-xs text-[var(--text-muted)]">{t("Email", lang)}</span>
+                  <input type="email" value={reportEmail} onChange={(e) => setReportEmail(e.target.value)}
+                    required maxLength={254}
+                    className="mt-1 w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[var(--border-accent)] focus:outline-none" />
+                  {reportEmail.trim() !== "" && !emailOk && (
+                    <span className="text-xs text-[var(--color-ironclad)]">{t("Enter a valid email address.", lang)}</span>
+                  )}
+                </label>
+                {reportState === "error" && (
+                  <p className="text-xs text-[var(--color-ironclad)]">{reportError || t("Could not send the report.", lang)}</p>
+                )}
+                <div className="flex justify-end gap-2 pt-1">
+                  <button onClick={() => setShowReport(false)}
+                    className="text-xs px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
+                    {t("Cancel", lang)}
+                  </button>
+                  <button onClick={submitReport} disabled={reportState === "sending" || !emailOk || !reportReason.trim()}
+                    className="text-xs px-3 py-1.5 rounded-lg border border-[var(--accent-gold)]/40 bg-[var(--accent-gold)]/10 text-[var(--accent-gold)] hover:border-[var(--accent-gold)] transition-colors disabled:opacity-50">
+                    {reportState === "sending" ? "..." : t("Send report", lang)}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       {run.hidden && (
         <div className="mb-4 rounded-lg border border-[var(--accent-gold)]/40 bg-[var(--accent-gold)]/10 px-4 py-3 text-sm text-[var(--text-secondary)]">
           {t("This run doesn't count toward leaderboards or community stats.", lang)}{" "}
