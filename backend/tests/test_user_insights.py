@@ -17,7 +17,9 @@ def _fake_backend(monkeypatch, rows, blobs, community, table, tallies):
         lambda uid, character=None, **kw: tallies,
     )
     monkeypatch.setattr(user_insights, "get_community_stats", lambda *a, **k: community)
-    monkeypatch.setattr(user_insights, "get_entity_metrics_table", lambda *a, **k: table)
+    monkeypatch.setattr(
+        user_insights, "get_entity_metrics_table", lambda *a, **k: table
+    )
     user_insights._cache.clear()
 
 
@@ -221,6 +223,21 @@ def test_streaks_and_weekly_activity():
     assert newer["solo"] == 1 and newer["coop"] == 1
     assert newer["daily"] == 1 and newer["custom"] == 1
     assert newer["win_rate"] == 75.0
+
+
+def test_activity_buckets_on_played_date_in_pacific():
+    rows = [
+        # Played in June, uploaded in August: the PLAYED week gets the run.
+        {
+            "win": True,
+            "played_at": "2026-06-30T10:00:00",
+            "submitted_at": "2026-08-02T10:00:00",
+        },
+        # Saturday 04:00 UTC is Friday evening Pacific: Friday's week.
+        {"win": False, "submitted_at": "2026-08-08T04:00:00"},
+    ]
+    a = user_insights._activity(rows)
+    assert [w["week"] for w in a] == ["2026-06-29", "2026-08-03"]
 
 
 def test_percentiles_use_qualifying_floor(monkeypatch):

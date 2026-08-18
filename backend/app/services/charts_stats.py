@@ -28,7 +28,6 @@ import math
 import os
 import threading
 import time
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -89,28 +88,22 @@ def _bare(raw: str | None) -> str | None:
 
 
 def _epoch_day(submitted: Any) -> int:
-    if submitted is None:
-        return 0
-    if hasattr(submitted, "timestamp"):
-        return int(submitted.timestamp() // 86400)
-    s = str(submitted)
-    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S"):
-        try:
-            dt = datetime.strptime(s[:19], fmt).replace(tzinfo=timezone.utc)
-            return int(dt.timestamp() // 86400)
-        except ValueError:
-            continue
-    return 0
+    """Pacific-calendar day bucket (site policy: never UTC boundaries)."""
+    from .timeutil import pacific_epoch_day
+
+    return pacific_epoch_day(submitted)
 
 
 def _week_label(week: int) -> str:
-    return datetime.fromtimestamp(week * 7 * 86400, tz=timezone.utc).strftime(
-        "%Y-%m-%d"
-    )
+    from .timeutil import epoch_day_label
+
+    return epoch_day_label(week * 7)
 
 
 def _day_label(day: int) -> str:
-    return datetime.fromtimestamp(day * 86400, tz=timezone.utc).strftime("%Y-%m-%d")
+    from .timeutil import epoch_day_label
+
+    return epoch_day_label(day)
 
 
 def _daily_date(seed: str | None, game_mode: str) -> str:
@@ -152,6 +145,7 @@ def _load_frame() -> list[tuple]:
                 "deck_size": 1,
                 "relic_count": 1,
                 "submitted_at": 1,
+                "played_at": 1,
                 "username": 1,
                 "was_abandoned": 1,
                 "acts_completed": 1,
@@ -172,7 +166,7 @@ def _load_frame() -> list[tuple]:
                     int(d.get("floors_reached") or 0),
                     int(d.get("deck_size") or 0),
                     int(d.get("relic_count") or 0),
-                    _epoch_day(d.get("submitted_at")),
+                    _epoch_day(d.get("played_at") or d.get("submitted_at")),
                     (d.get("username") or "").lower(),
                     1 if d.get("was_abandoned") else 0,
                     int(d.get("acts_completed") or 0),
@@ -853,7 +847,7 @@ def accumulate(
     is_win: bool,
     character: str,
     player_count: int,
-    submitted: Any = None,
+    played: Any = None,
 ) -> None:
     """Fold one run into the sub-accumulator of every content bracket it belongs
     to (`brackets` always includes 'all')."""
@@ -866,7 +860,7 @@ def accumulate(
                 is_win=is_win,
                 character=character,
                 player_count=player_count,
-                submitted=submitted,
+                played=played,
             )
 
 
@@ -877,13 +871,13 @@ def _accumulate_one(
     is_win: bool,
     character: str,
     player_count: int,
-    submitted: Any = None,
+    played: Any = None,
 ) -> None:
     """Fold one run blob into ONE bracket's accumulator. Defensive like the
     community walk: missing keys skip quietly, never raise."""
     char = _norm_char(character)
     players = min(max(int(player_count or 1), 1), 4)
-    week = _epoch_day(submitted) // 7 if submitted else 0
+    week = _epoch_day(played) // 7 if played else 0
 
     floor_idx = 0
     last_room_type = None
@@ -1500,6 +1494,7 @@ def build_user_blob_stats(username: str) -> dict[str, Any]:
                     "win": 1,
                     "player_count": 1,
                     "submitted_at": 1,
+                    "played_at": 1,
                 },
             )
             .sort("submitted_at", -1)
@@ -1512,6 +1507,7 @@ def build_user_blob_stats(username: str) -> dict[str, Any]:
                 "win": bool(d.get("win")),
                 "player_count": d.get("player_count") or 1,
                 "submitted_at": d.get("submitted_at"),
+                "played_at": d.get("played_at"),
             }
             for d in cursor
         ]
@@ -1555,7 +1551,7 @@ def build_user_blob_stats(username: str) -> dict[str, Any]:
                 is_win=bool(row["win"]),
                 character=row["character"],
                 player_count=row["player_count"],
-                submitted=row.get("submitted_at"),
+                played=row.get("played_at") or row.get("submitted_at"),
             )
         except Exception:
             continue
