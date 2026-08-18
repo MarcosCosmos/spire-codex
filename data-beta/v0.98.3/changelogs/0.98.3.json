@@ -13,5 +13,6 @@
     "removed": 0,
     "changed": 0
   },
-  "categories": []
+  "categories": [],
+  "notes": "Another small hotfix which resolves some more softlock issues. Thanks again to everyone reporting issues like this!\n\n[h3]BUG FIXES:[/h3]\n[list]\n[*]Fixed more instances of players getting stuck at the timeline\n[/list]"
 }

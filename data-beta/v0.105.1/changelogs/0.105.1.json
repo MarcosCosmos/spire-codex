@@ -33,5 +33,6 @@
       ]
     }
   ],
-  "steam_url": "https://store.steampowered.com/news/app/2868840/view/1832065502816737"
+  "steam_url": "https://store.steampowered.com/news/app/2868840/view/1832065502816737",
+  "notes": "Quick hotfix today addressing several bugs related to the new Aeonglass boss and multiplayer state divergences.\n\n[h3]USER INTERFACE & EXPERIENCE:[/h3]\n\n- Updated the [b]Aeonglass[/b] boss icon\n\n[h3]BUG FIXES:[/h3]\n\n[b]Enemies:[/b]\n- Fixed [b]Aeonglass[/b] first move intent showing a buff instead of a debuff\n- Fixed [b]Aeonglass[/b] music not playing correctly\n- Fixed [b]Ceremonial Beast[/b] background music transition not lining up with when it gets stunned\n\n[b]Multiplayer:[/b]\n- Fixed [b]Silken Tress[/b] relic only affecting card rewards for the host\n- Fixed state divergence when taking any rewards after a treasure room\n- Fixed state divergence after [b]Crystal Sphere[/b] event"
 }

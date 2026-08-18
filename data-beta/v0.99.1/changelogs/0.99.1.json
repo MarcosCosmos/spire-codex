@@ -13,5 +13,6 @@
     "removed": 0,
     "changed": 0
   },
-  "categories": []
+  "categories": [],
+  "notes": "Got a quick hotfix for our players on the beta branch--this is what it's all for, so thank you to everyone providing feedback! If you're interested in accessing the beta branch, please see the [url=https://steamcommunity.com/games/2868840/announcements/detail/502852451136700759]previous patch notes[/url].\n\n[h3]BUG FIXES:[/h3]\n\n- Fixed a softlock that could occur when a player dies to [b]Breakthrough[/b] card's self-HP loss in multiplayer\n- Fixed softlock at the end of the Architect event in multiplayer"
 }
