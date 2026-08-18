@@ -10,7 +10,7 @@
  * down to plain text.
  */
 
-import { fmtDate } from "@/lib/pacific";
+import { fmtDatePacific } from "@/lib/pacific";
 
 const STEAM_CLAN_IMAGE_BASE = "https://clan.cloudflare.steamstatic.com/images/";
 
@@ -328,7 +328,7 @@ export function firstNewsImage(raw: string | undefined | null): string | null {
 }
 
 export function formatNewsDate(unixSeconds: number, locale: string = "en"): string {
-  return fmtDate(unixSeconds * 1000, { year: "numeric", month: "long", day: "numeric" }, locale);
+  return fmtDatePacific(unixSeconds * 1000, { year: "numeric", month: "long", day: "numeric" }, locale);
 }
 
 /** Steam exposes the same article under several URL patterns. We canonicalize
