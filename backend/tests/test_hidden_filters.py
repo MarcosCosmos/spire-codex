@@ -87,3 +87,30 @@ def test_seed_rank_for_stays_index_only(monkeypatch):
     assert fake.find_one_queries
     for q in fake.find_one_queries:
         assert q.get("hidden") == {"$ne": True}, q
+
+
+class _FakeCursor:
+    def sort(self, *a, **k):
+        return self
+
+    def limit(self, *a, **k):
+        return iter([])
+
+
+def test_daily_leaderboard_excludes_hidden(monkeypatch):
+    # Hidden daily "wins" leaked onto profile daily boards until 2026-08-17.
+    fake = FakeColl(None, counts=[5, 1])
+    fake.find_queries = []
+
+    def find(q, projection=None, **kw):
+        fake.find_queries.append(q)
+        return _FakeCursor()
+
+    fake.find = find
+    monkeypatch.setattr(runs_db_mongo, "_get_collection", lambda: fake)
+    out = runs_db_mongo.get_daily_leaderboard("yitsy")
+    assert out["total_today"] == 4  # 5 candidates minus 1 hidden
+    _assert_subtractive_pairs(fake.count_queries)
+    for q in fake.find_queries + fake.find_one_queries:
+        assert q.get("hidden") == {"$ne": True}, q
+        assert q.get("deleted_at", "missing") is None, q
