@@ -10,6 +10,7 @@
 import { Fragment, useEffect, useState } from "react";
 import EloTrajectory, { type EloPoint } from "@/app/components/EloTrajectory";
 import { AdminShell, adminFetch } from "../shared";
+import { fmtTime } from "@/lib/pacific";
 
 interface EloRow {
   user_id: string;
@@ -125,7 +126,7 @@ export default function EloClient() {
             {board.players.length.toLocaleString()} rated players · computed in{" "}
             {board.compute_seconds ?? "?"}s ·{" "}
             {board.computed_at
-              ? new Date(board.computed_at * 1000).toLocaleTimeString()
+              ? fmtTime(board.computed_at * 1000)
               : ""}
           </span>
         )}

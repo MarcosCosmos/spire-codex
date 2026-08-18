@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from "react";
 import { AdminShell, adminFetch } from "../shared";
+import { fmtDateTime } from "@/lib/pacific";
 
 interface Announcement {
   id: string;
@@ -99,7 +100,7 @@ export default function BannersClient() {
                 >
                   {a.active ? "active" : "off"}
                 </span>
-                {a.created_at && new Date(a.created_at).toLocaleString()}
+                {a.created_at && fmtDateTime(a.created_at)}
               </div>
               <div className="flex gap-2 shrink-0">
                 <button

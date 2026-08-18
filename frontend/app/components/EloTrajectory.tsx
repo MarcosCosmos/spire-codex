@@ -15,6 +15,7 @@ import {
   Filler,
 } from "chart.js";
 import { Line } from "react-chartjs-2";
+import { fmtDate } from "@/lib/pacific";
 
 ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, Tooltip, Filler);
 
@@ -82,7 +83,7 @@ export default function EloTrajectory({
               callbacks: {
                 title: (items) => {
                   const p = points[items[0]?.dataIndex ?? 0];
-                  return `${runLabel} ${p?.n}${p?.t ? ` · ${new Date(p.t).toLocaleDateString()}` : ""}`;
+                  return `${runLabel} ${p?.n}${p?.t ? ` · ${fmtDate(p.t)}` : ""}`;
                 },
                 label: (item) => {
                   const p = points[item.dataIndex];

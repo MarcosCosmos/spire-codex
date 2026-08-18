@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useLanguage } from "@/app/contexts/LanguageContext";
 import { t } from "@/lib/ui-translations";
+import { fmtDate as fmtPacificDate } from "@/lib/pacific";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -32,7 +33,7 @@ const TIER_LABELS: Record<string, string> = {
 
 function fmtDate(iso: string | null): string {
   if (!iso) return "never";
-  return new Date(iso).toLocaleDateString();
+  return fmtPacificDate(iso);
 }
 
 export default function ApiKeysSection() {

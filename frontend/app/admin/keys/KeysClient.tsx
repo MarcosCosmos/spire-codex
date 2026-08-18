@@ -6,6 +6,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AdminShell, adminFetch } from "../shared";
+import { fmtDate } from "@/lib/pacific";
 
 interface AdminKey {
   id: string;
@@ -27,7 +28,7 @@ interface KeysResponse {
 
 function fmt(iso: string | null): string {
   if (!iso) return "never";
-  return new Date(iso).toLocaleDateString();
+  return fmtDate(iso);
 }
 
 const TIER_BADGE: Record<string, string> = {

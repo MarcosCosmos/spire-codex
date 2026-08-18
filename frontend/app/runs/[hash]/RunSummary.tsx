@@ -5,7 +5,7 @@
  * Renders three act rows of map node icons + relic strip + card grid.
  */
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import TinyCard from "@/app/components/TinyCard";
 import { useLanguage } from "@/app/contexts/LanguageContext";
@@ -25,6 +25,7 @@ export type { PotionInfo };
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 import { imageUrl } from "@/lib/image-url";
+import { fmtDateTime, fmtDateTimePacific } from "@/lib/pacific";
 const ICON_BASE = imageUrl("/static/images/ui/run_history");
 
 interface DeckCard {
@@ -122,16 +123,19 @@ function formatTime(seconds: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-function formatDate(epoch?: number): string {
+const DATE_STYLE = {
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+} as const;
+
+// Server-rendered pages must emit the same string everywhere, so the first
+// paint is Pacific; after hydration it becomes the viewer's local time.
+function formatDate(epoch: number | undefined, local: boolean): string {
   if (!epoch) return "";
-  const d = new Date(epoch * 1000);
-  return d.toLocaleString(undefined, {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return local ? fmtDateTime(epoch * 1000, DATE_STYLE) : fmtDateTimePacific(epoch * 1000, DATE_STYLE);
 }
 
 /** Decide the tier ("weak"|"normal"|"elite"|"boss") for an encounter. */
@@ -211,6 +215,8 @@ interface Props {
 }
 
 export default function RunSummary({ run, player, cardData, relicData, potionData, charColor, langPrefix: lp }: Props) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const { lang } = useLanguage();
   const finalStats = lastPlayerStats(run);
   const totalFloors = (run.map_point_history ?? []).reduce((sum, act) => sum + act.length, 0);
@@ -271,7 +277,7 @@ export default function RunSummary({ run, player, cardData, relicData, potionDat
               </Link>
             </div>
           )}
-          {run.start_time && <div className="truncate">{formatDate(run.start_time)}</div>}
+          {run.start_time && <div className="truncate" suppressHydrationWarning>{formatDate(run.start_time, mounted)}</div>}
           {run.seed && (
             <div className="truncate">
               Seed: <span className="font-mono">{run.seed}</span>
