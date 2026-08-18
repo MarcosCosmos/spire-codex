@@ -1,8 +1,6 @@
-"""Per-entity Version history must include the current beta patch. The
-wiki-sourced entity_history.json lags each patch by days and used to win
-outright whenever an entity had any wiki entries, freezing every history at
-the wiki's newest covered version (found live 2026-08-16: 0.111.0 changes
-invisible on every card page)."""
+"""Per-entity Version history must include the current beta patch, and
+every entry comes from our own per-patch game-data diffs (imported
+third-party prose was dropped 2026-08-18)."""
 
 from app.routers.update_history import get_update_history
 from app.services.entity_changelog import game_history_entries, version_key
@@ -25,10 +23,10 @@ def test_game_entries_cover_the_current_beta():
     assert not any("[gold]" in c for c in changes)
 
 
-def test_merged_history_tops_up_wiki_with_newer_patches():
+def test_history_is_game_diffs_only():
     entries = get_update_history("cards", "expect_a_fight")
+    assert all(e["type"] == "Beta Patch" for e in entries)
     versions = [e.get("version") for e in entries]
     assert "V0.111.0" in versions
-    assert "V0.109.0" in versions  # wiki-sourced entries survive the merge
     keys = [version_key(v) for v in versions]
     assert keys == sorted(keys, reverse=True), "newest first"
