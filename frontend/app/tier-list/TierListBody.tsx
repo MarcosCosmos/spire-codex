@@ -5,6 +5,7 @@ import ScoreBadge from "@/app/components/ScoreBadge";
 import { imageUrl, fullCardUrl } from "@/lib/image-url";
 import { LANG_HREFLANG, type LangCode } from "@/lib/languages";
 import { t } from "@/lib/ui-translations";
+import { fmtDate } from "@/lib/pacific";
 
 const API_INTERNAL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -152,11 +153,11 @@ export async function TierListBody({ lang }: { lang: string }) {
   // ISO 8601 date for the visible "updated" line. force-dynamic means
   // this is fresh on every request, Google rewards visible-recent
   // dates on tier-list-style pages.
-  const updatedDate = new Date().toLocaleDateString("en-US", {
+  const updatedDate = fmtDate(new Date(), {
     year: "numeric",
     month: "long",
     day: "numeric",
-  });
+  }, "en-US");
 
   const faqs = buildFaqEntries({ cards: topCards, relics: topRelics, potions: topPotions }, lang);
 

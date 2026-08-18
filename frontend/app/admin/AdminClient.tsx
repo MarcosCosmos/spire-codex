@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from "react";
 import { AdminShell, Card, adminFetch } from "./shared";
+import { fmtDate, fmtTime } from "@/lib/pacific";
 
 interface Overview {
   runs: { total?: number; last_24h?: number; last_submission?: string | null };
@@ -149,8 +150,8 @@ export default function AdminClient() {
             <Card label="Last 24h" value={(r.last_24h ?? 0).toLocaleString()} />
             <Card
               label="Last submission"
-              value={r.last_submission ? new Date(r.last_submission).toLocaleTimeString() : "-"}
-              sub={r.last_submission ? new Date(r.last_submission).toLocaleDateString() : undefined}
+              value={r.last_submission ? fmtTime(r.last_submission) : "-"}
+              sub={r.last_submission ? fmtDate(r.last_submission) : undefined}
             />
             <Card label="Users" value={(data.users.total ?? 0).toLocaleString()} />
           </div>
@@ -244,7 +245,7 @@ export default function AdminClient() {
               value={live?.peak?.value != null ? live.peak.value.toLocaleString() : "-"}
               sub={
                 live?.peak?.at
-                  ? `all-time · ${new Date(live.peak.at).toLocaleDateString()}`
+                  ? `all-time · ${fmtDate(live.peak.at)}`
                   : "all-time"
               }
             />

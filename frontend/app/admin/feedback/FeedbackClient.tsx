@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from "react";
 import { AdminShell, adminFetch } from "../shared";
+import { fmtDateTime } from "@/lib/pacific";
 
 interface FeedbackItem {
   id: string;
@@ -71,7 +72,7 @@ export default function FeedbackClient() {
                 </span>
                 {i.type && <span className="mr-2">{i.type}</span>}
                 {i.card_name && <span className="mr-2">{i.card_name}</span>}
-                {i.created_at && new Date(i.created_at).toLocaleString()}
+                {i.created_at && fmtDateTime(i.created_at)}
                 {i.contact && <span className="ml-2">· {i.contact}</span>}
               </div>
               {!i.resolved && (

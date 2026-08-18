@@ -8,6 +8,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { AdminShell, adminFetch } from "../shared";
+import { fmtDateTime } from "@/lib/pacific";
 
 interface RunRow {
   run_hash?: string;
@@ -334,7 +335,7 @@ export default function RunsClient() {
                   <td className="px-3 py-2 tabular-nums text-xs">{fmtTime(r.run_time)}</td>
                   <td className="px-3 py-2 text-xs">{r.build_id ?? "-"}</td>
                   <td className="px-3 py-2 text-xs">
-                    {r.submitted_at ? new Date(r.submitted_at).toLocaleString() : "-"}
+                    {r.submitted_at ? fmtDateTime(r.submitted_at) : "-"}
                   </td>
                   <td className="px-3 py-2">
                     <div className="flex justify-end gap-1.5">

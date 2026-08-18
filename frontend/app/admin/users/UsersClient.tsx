@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { AdminShell, adminFetch } from "../shared";
 import GiveawayLookup from "./GiveawayLookup";
+import { fmtDate } from "@/lib/pacific";
 
 interface UserRow {
   _id: string;
@@ -278,7 +279,7 @@ export default function UsersClient() {
                     </td>
                     <td className="px-3 py-2 tabular-nums">{u.run_count}</td>
                     <td className="px-3 py-2 text-xs">
-                      {u.created_at ? new Date(u.created_at).toLocaleDateString() : "-"}
+                      {u.created_at ? fmtDate(u.created_at) : "-"}
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex justify-end gap-1.5">

@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from "react";
 import { AdminShell, adminFetch } from "../shared";
+import { fmtDateTime } from "@/lib/pacific";
 
 interface GuideSub {
   id: string;
@@ -71,7 +72,7 @@ export default function GuidesClient() {
             <div className="text-xs text-[var(--text-muted)] mb-2">
               {g.author_name} · {g.contact} · {g.category}
               {g.character ? ` · ${g.character}` : ""} · {g.difficulty}
-              {g.created_at ? ` · ${new Date(g.created_at).toLocaleString()}` : ""}
+              {g.created_at ? ` · ${fmtDateTime(g.created_at)}` : ""}
             </div>
             {g.summary && <p className="text-sm text-[var(--text-secondary)] mb-2">{g.summary}</p>}
             {open === g.id && (

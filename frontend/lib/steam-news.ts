@@ -10,6 +10,8 @@
  * down to plain text.
  */
 
+import { fmtDate } from "@/lib/pacific";
+
 const STEAM_CLAN_IMAGE_BASE = "https://clan.cloudflare.steamstatic.com/images/";
 
 /** Convert `{STEAM_CLAN_IMAGE}/path.png` placeholders to absolute Steam CDN URLs. */
@@ -326,8 +328,7 @@ export function firstNewsImage(raw: string | undefined | null): string | null {
 }
 
 export function formatNewsDate(unixSeconds: number, locale: string = "en"): string {
-  const d = new Date(unixSeconds * 1000);
-  return d.toLocaleDateString(locale, { year: "numeric", month: "long", day: "numeric" });
+  return fmtDate(unixSeconds * 1000, { year: "numeric", month: "long", day: "numeric" }, locale);
 }
 
 /** Steam exposes the same article under several URL patterns. We canonicalize

@@ -25,6 +25,7 @@ export type { PotionInfo };
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 import { imageUrl } from "@/lib/image-url";
+import { fmtDateTime } from "@/lib/pacific";
 const ICON_BASE = imageUrl("/static/images/ui/run_history");
 
 interface DeckCard {
@@ -124,8 +125,7 @@ function formatTime(seconds: number): string {
 
 function formatDate(epoch?: number): string {
   if (!epoch) return "";
-  const d = new Date(epoch * 1000);
-  return d.toLocaleString(undefined, {
+  return fmtDateTime(epoch * 1000, {
     year: "numeric",
     month: "long",
     day: "numeric",
