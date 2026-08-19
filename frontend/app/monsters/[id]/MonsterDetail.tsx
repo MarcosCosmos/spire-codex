@@ -305,6 +305,7 @@ interface EncounterBuild {
   size: number;
   win_rate: number;
   deaths: number;
+  reached?: number | null;
   death_rate: number;
 }
 
@@ -498,7 +499,13 @@ export default function MonsterDetail({
   const struggleKeys = new Set(struggles.map((b) => `${b.character}:${b.name}`));
   const handles = [...builds]
     .sort((a, b) => a.death_rate - b.death_rate)
-    .filter((b) => b.size >= 500 && !struggleKeys.has(`${b.character}:${b.name}`))
+    // "Handles it best" needs proof the build actually faces this fight:
+    // enough runs that reached it (or, on legacy data, a big cluster).
+    .filter(
+      (b) =>
+        (b.reached != null ? b.reached >= 50 : b.size >= 500) &&
+        !struggleKeys.has(`${b.character}:${b.name}`),
+    )
     .slice(0, 5);
   const hasBuilds = struggles.length > 0;
 
@@ -664,9 +671,9 @@ export default function MonsterDetail({
             <section id="builds">
               <h2>{t("Builds", lang)}</h2>
               <p className="h-note">
-                Of the community archetypes that face {monster.name}, the share
-                of each build&apos;s runs that end here, next to that
-                build&apos;s overall win rate.
+                Of each community build&apos;s runs that reach {monster.name},
+                the share that die to it, next to that build&apos;s overall
+                win rate.
               </p>
               <div style={{ display: "grid", gap: "1rem", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
                 <div>

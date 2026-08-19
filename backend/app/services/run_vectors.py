@@ -83,6 +83,7 @@ def build_run_vectors() -> dict:
             "submitted_at": 1,
             "build_id": 1,
             "killed_by": 1,
+            "floors_reached": 1,
             "deck.id": 1,
             "relics.id": 1,
         },
@@ -120,6 +121,7 @@ def build_run_vectors() -> dict:
                 else str(sub or "")[:10],
                 "ver": doc.get("build_id"),
                 "kb": doc.get("killed_by") or "",
+                "floors": int(doc.get("floors_reached") or 0),
             }
         )
 
@@ -159,6 +161,7 @@ def build_run_vectors() -> dict:
             date=np.array([r["date"] for r in m], dtype="S10"),
             ver=np.array([r.get("ver") or "" for r in m], dtype="S16"),
             kb=np.array([r.get("kb") or "" for r in m], dtype="S48"),
+            floors=np.array([r.get("floors") or 0 for r in m], dtype=np.int16),
         )
         total += n
         k = max(4, min(14, n // 3000))
@@ -478,9 +481,22 @@ def _load_labels(character: str):
     return labels
 
 
+# A cluster needs this many runs that actually reached the encounter before
+# its conditioned death rate means anything; thinner clusters drop out.
+_MIN_REACHED = 50
+
+
 def encounter_builds(encounter: str) -> list[dict] | None:
-    """Per-archetype death counts at one encounter, joined from the stored
-    run->cluster labels and the killed_by column of the shard meta."""
+    """Per-archetype death rates at one encounter, joined from the stored
+    run->cluster labels and the killed_by column of the shard meta.
+
+    Death rate is conditioned on runs that actually REACHED the fight: the
+    reachable floor band self-calibrates from where deaths at this encounter
+    occur (5th percentile of their floors_reached), so a build that dies in
+    Act 1 can't top "handles it best" for an Act 3 boss just because it never
+    gets there. Shards built before the floors column fall back to the old
+    whole-cluster rate with a guard that drops builds that neither die here
+    nor win at all."""
     import numpy as np
 
     arch = load_archetypes()
@@ -498,8 +514,24 @@ def encounter_builds(encounter: str) -> list[dict] | None:
             continue
         n = min(len(kb), len(labels))
         lab = np.asarray(labels[:n])
-        sel = (np.asarray(kb[:n]) == enc) & (lab >= 0)
+        kb_arr = np.asarray(kb[:n])
+        death_mask = kb_arr == enc
+        sel = death_mask & (lab >= 0)
         counts = np.bincount(lab[sel].astype(np.int64), minlength=len(clusters))
+
+        reached_counts = None
+        fl = loaded[1].get("floors")
+        if fl is not None:
+            floors_arr = np.asarray(fl[: min(n, len(fl))])
+            m = len(floors_arr)
+            death_floors = floors_arr[death_mask[:m]]
+            if death_floors.size >= 20:
+                threshold = int(np.percentile(death_floors, 5))
+                reached_sel = (floors_arr >= threshold) & (lab[:m] >= 0)
+                reached_counts = np.bincount(
+                    lab[:m][reached_sel].astype(np.int64), minlength=len(clusters)
+                )
+
         total = sum(c["size"] for c in clusters) or 1
         for j, c in enumerate(clusters):
             if not c["defining_cards"] and not c["defining_relics"]:
@@ -507,6 +539,18 @@ def encounter_builds(encounter: str) -> list[dict] | None:
             if c["size"] < 200:
                 continue
             deaths = int(counts[j]) if j < len(counts) else 0
+            if reached_counts is not None:
+                reached = int(reached_counts[j]) if j < len(reached_counts) else 0
+                if reached < _MIN_REACHED:
+                    continue
+                death_rate = round(deaths / reached * 100, 2)
+            else:
+                reached = None
+                # Legacy shards can't tell "survives it" from "never sees
+                # it"; a build with no deaths here and ~no wins is the latter.
+                if deaths == 0 and (c["win_rate"] or 0) < 5:
+                    continue
+                death_rate = round(deaths / c["size"] * 100, 2)
             out.append(
                 {
                     "character": ch,
@@ -517,7 +561,8 @@ def encounter_builds(encounter: str) -> list[dict] | None:
                     "share": round(c["size"] / total * 100, 1),
                     "win_rate": c["win_rate"],
                     "deaths": deaths,
-                    "death_rate": round(deaths / c["size"] * 100, 2),
+                    "reached": reached,
+                    "death_rate": death_rate,
                 }
             )
     return out
