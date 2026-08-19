@@ -132,6 +132,26 @@ _BRACKET_KEYS = [
 ] + _COMPOSITE_BRACKETS
 
 
+_MODE_BRACKET_KEYS = ("standard", "daily", "custom")
+
+
+def _community_blob_brackets(
+    mp_blob_brackets: list[str], extra_brackets: list[str]
+) -> list[str]:
+    """Blob brackets the community accumulator slices by: the player-count set,
+    the player x skill composites (solo:wr50, ...) so the page can combine both
+    axes like the tier list, and the run's game mode. Modes occupy the whole
+    base slot (they never compose with players or skill), but they DO compose
+    with versions via the caller's version step. The mode keys were silently
+    dropped by allowlists until snapshot v26 — the mode pills served blobs
+    nothing had ever accumulated into."""
+    return (
+        mp_blob_brackets
+        + [c for c in extra_brackets if c in _COMPOSITE_BRACKETS_SET]
+        + [c for c in extra_brackets if c in _MODE_BRACKET_KEYS]
+    )
+
+
 def _run_extra_brackets(player_count: int, ascension: int, game_mode: str) -> list[str]:
     """Non-"all" bracket keys a single run belongs to (from per-run fields only;
     the win-rate brackets come from _winrate_brackets since they need the
@@ -301,7 +321,9 @@ _HISTORY_RETENTION_DAYS = 90
 # forces the rebuild that restores their walk-time per-act relic data.
 # 25: chart time buckets re-keyed to played-date Pacific days — a full
 # rebuild is required or old runs keep their UTC upload-day keys.
-SNAPSHOT_VERSION = 25
+# 26: mode brackets actually accumulate (they were allowlist-dropped since
+# v24, so Standard/Daily/Custom community blobs sat empty).
+SNAPSHOT_VERSION = 26
 # Serialized-byte budget per persisted chunk doc. With version-composable
 # brackets a popular entity carries hundreds of per-bracket blocks and
 # entity sizes vary wildly (a card dwarfs an affliction), so chunks are
@@ -1158,12 +1180,9 @@ def _accumulate(rows, official_chars, wr_map, recent_versions=(), preloaded_blob
         mp_blob_brackets = blob_brackets + [
             c for c in extra_brackets if c in ("solo", "2p", "3p", "4p")
         ]
-        # Community blob ALSO slices by the player x skill composites (solo:wr50,
-        # ...) so its page can combine both axes like the tier list. These only
-        # apply to A10 runs from qualifying players, so most runs add nothing.
-        community_blob_brackets = mp_blob_brackets + [
-            c for c in extra_brackets if c in _COMPOSITE_BRACKETS_SET
-        ]
+        community_blob_brackets = _community_blob_brackets(
+            mp_blob_brackets, extra_brackets
+        )
         # Version slices: one accumulator per game version, plus the version
         # composed onto every other blob bracket ("all:version" collapses to
         # the bare version key), so /community-stats combines version with
