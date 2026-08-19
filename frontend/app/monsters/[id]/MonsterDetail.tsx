@@ -497,10 +497,11 @@ export default function MonsterDetail({
 
   const struggles = builds.filter((b) => b.deaths >= 5).slice(0, 5);
   const struggleKeys = new Set(struggles.map((b) => `${b.character}:${b.name}`));
+  // "Handles it best" = the highest-win-rate builds among those with proof
+  // they actually face this fight (enough runs that reached it; on legacy
+  // data, a big cluster), with their death share here alongside.
   const handles = [...builds]
-    .sort((a, b) => a.death_rate - b.death_rate)
-    // "Handles it best" needs proof the build actually faces this fight:
-    // enough runs that reached it (or, on legacy data, a big cluster).
+    .sort((a, b) => b.win_rate - a.win_rate)
     .filter(
       (b) =>
         (b.reached != null ? b.reached >= 50 : b.size >= 500) &&
@@ -710,7 +711,7 @@ export default function MonsterDetail({
                         />
                         <span className="cn" style={{ flexGrow: 1 }}>{b.name}</span>
                         <span style={{ color: "var(--text-muted)", fontVariantNumeric: "tabular-nums" }}>
-                          {b.death_rate}% {t("die here", lang)} · {b.win_rate}% WR
+                          {b.win_rate}% WR · {b.death_rate}% {t("die here", lang)}
                         </span>
                       </div>
                     ))}
