@@ -33,6 +33,14 @@ def _clusters():
             "size": 300,
             "win_rate": 0.0,
         },
+        # Relic-only catch-all: not a build, must never appear (archetypes
+        # are card-driven).
+        {
+            "defining_cards": [],
+            "defining_relics": ["BLOOD_VIAL"],
+            "size": 300,
+            "win_rate": 40.0,
+        },
     ]
 
 

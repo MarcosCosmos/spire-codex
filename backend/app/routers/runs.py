@@ -1832,10 +1832,12 @@ def get_archetypes(request: Request, response: Response, lang: str = "eng"):
         for c in clusters:
             if c["size"] < 50:
                 continue
-            # No draftable identity after the starter filter = not a build
-            # (the starter-deck early-exit clusters); real archetypes' share
-            # stays computed against ALL runs so the numbers remain honest.
-            if not c["defining_cards"] and not c["defining_relics"]:
+            # Archetypes are card-driven: a cluster with no distinctive
+            # cards is a character's catch-all deck, not a build, even when
+            # a couple of relics cleared the lift bar. Real archetypes'
+            # share stays computed against ALL runs so the numbers remain
+            # honest.
+            if not c["defining_cards"]:
                 continue
             trend = None
             if len(recent) == 2:
