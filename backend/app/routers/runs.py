@@ -7,6 +7,7 @@ import time
 from functools import lru_cache
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, Query, Request, Response
+from pymongo.errors import ExecutionTimeout
 from starlette.concurrency import run_in_threadpool
 from ..dependencies import shared_limiter
 from ..services import rate_limit_config
@@ -1656,14 +1657,29 @@ def get_community_stats(
                 return winner
 
     try:
-        result = get_stats(
-            character=character,
-            win=win,
-            ascension=ascension,
-            game_mode=game_mode,
-            players=players,
-            username=username,
-        )
+        # Bounded so an aggregation that outgrew the data can never hold the
+        # request past the gateway timeout (issue #868): it either finishes
+        # inside the cap or aborts into a clear 503, and combos the refresher
+        # owns get materialized within minutes regardless.
+        try:
+            result = get_stats(
+                character=character,
+                win=win,
+                ascension=ascension,
+                game_mode=game_mode,
+                players=players,
+                username=username,
+                max_time_ms=20_000,
+            )
+        except ExecutionTimeout:
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "Stats for this filter combination are being computed "
+                    "in the background; retry in a few minutes."
+                ),
+                headers={"Retry-After": "120"},
+            )
         _stats_fallback_cache[cache_key] = (time.monotonic(), result)
         app_cache.set_json(redis_key, result, ttl_seconds=60)
 

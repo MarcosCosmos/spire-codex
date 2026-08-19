@@ -1303,6 +1303,8 @@ def get_stats(
         coll.find_one({"username_lower": username.lower()}, {"_id": 1}) is None
     ):
         total = 0
+    elif max_time_ms:
+        total = coll.count_documents(match, maxTimeMS=max_time_ms)
     else:
         total = coll.count_documents(match)
     if total == 0:
@@ -1693,10 +1695,15 @@ def read_stats_summary(
         doc = _summary_coll().find_one({"_id": key})
         if not doc:
             return None
-        # Hot combos (no filter, or character only) are kept fresh by the
-        # refresher and always served. Every other combo is write-through only,
-        # so honor its age and fall through to a recompute past the TTL.
-        non_hot = bool(win or ascension or game_mode or players or username)
+        # Combos the refresher owns (hot + the ascension rotation) are always
+        # served whatever their age — minutes-stale beats an inline
+        # multi-aggregation that can no longer finish inside the gateway
+        # timeout (issue #868). Every other combo is write-through only, so
+        # honor its age and fall through to a recompute past the TTL.
+        non_hot = (
+            bool(win or ascension or game_mode or players or username)
+            and key not in MATERIALIZED_STATS_KEYS
+        )
         if non_hot:
             updated = doc.get("updated_at")
             if not isinstance(updated, datetime):
@@ -1725,6 +1732,24 @@ HOT_FILTER_COMBOS: list[dict] = [
     {"character": "NECROBINDER"},
     {"character": "REGENT"},
 ]
+
+# Second tier: every ascension slice (A0-A10, alone and per character). Their
+# live aggregation outgrew the gateway timeout at ~1.2M runs (issue #868), so
+# they must never compute on the request path — but 66 combos are too many to
+# recompute every cycle, so the refresher rotates through the stalest K per
+# cycle. Full coverage lands within ~11 cycles (~11 minutes).
+ASCENSION_FILTER_COMBOS: list[dict] = [
+    {**({"character": c} if c else {}), "ascension": str(a)}
+    for a in range(0, 11)
+    for c in (None, "IRONCLAD", "SILENT", "DEFECT", "NECROBINDER", "REGENT")
+]
+_ASCENSION_COMBOS_PER_CYCLE = 6
+
+# Every combo the refresher owns. Reads serve these regardless of age — a
+# minutes-stale doc beats recomputing a multi-aggregation inline.
+MATERIALIZED_STATS_KEYS = frozenset(
+    _filter_key(**f) for f in (*HOT_FILTER_COMBOS, *ASCENSION_FILTER_COMBOS)
+)
 
 
 # Hot leaderboard combos to materialize into leaderboard_summary.
@@ -1782,13 +1807,28 @@ def try_acquire_refresh_lease() -> bool:
         return False
 
 
+def _pick_stalest_keys(ages: dict[str, datetime | None], k: int) -> list[str]:
+    """The k keys most in need of a refresh: never-materialized first, then
+    oldest updated_at (naive values treated as UTC)."""
+    floor = datetime(1970, 1, 1, tzinfo=timezone.utc)
+
+    def _age(key: str) -> datetime:
+        u = ages.get(key)
+        if not isinstance(u, datetime):
+            return floor
+        return u if u.tzinfo else u.replace(tzinfo=timezone.utc)
+
+    return sorted(ages, key=_age)[:k]
+
+
 @_instrument("refresh_stats_summary", collection="stats_summary")
 def refresh_stats_summary() -> int:
-    """Compute every hot filter combo and write to stats_summary.
-    Returns count of docs written. Called by the leader-only loop."""
+    """Compute the hot filter combos plus a rotating slice of the ascension
+    tier and write them to stats_summary. Returns count of docs written.
+    Called by the leader-only loop."""
     summary = _summary_coll()
-    written = 0
-    for filters in HOT_FILTER_COMBOS:
+
+    def _refresh_one(filters: dict) -> int:
         try:
             result = get_stats(**filters, max_time_ms=120_000)
             key = _filter_key(**filters)
@@ -1804,10 +1844,27 @@ def refresh_stats_summary() -> int:
                 result,
                 ttl_seconds=app_cache.WARM_TTL_SECONDS,
             )
-            written += 1
+            return 1
         except Exception:
             # Best-effort; if one filter combo fails, keep going.
-            pass
+            return 0
+
+    written = 0
+    for filters in HOT_FILTER_COMBOS:
+        written += _refresh_one(filters)
+
+    # Ascension tier: refresh the stalest K this cycle (issue #868 — these
+    # can never compute on the request path, so the rotation is their only
+    # source of freshness).
+    keyed = {_filter_key(**f): f for f in ASCENSION_FILTER_COMBOS}
+    ages: dict[str, datetime | None] = dict.fromkeys(keyed)
+    try:
+        for doc in summary.find({"_id": {"$in": list(keyed)}}, {"updated_at": 1}):
+            ages[doc["_id"]] = doc.get("updated_at")
+    except Exception:
+        pass
+    for key in _pick_stalest_keys(ages, _ASCENSION_COMBOS_PER_CYCLE):
+        written += _refresh_one(keyed[key])
     return written
 
 
