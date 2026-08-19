@@ -534,7 +534,8 @@ def encounter_builds(encounter: str) -> list[dict] | None:
 
         total = sum(c["size"] for c in clusters) or 1
         for j, c in enumerate(clusters):
-            if not c["defining_cards"] and not c["defining_relics"]:
+            # Card-driven only: relic-only catch-all clusters aren't builds.
+            if not c["defining_cards"]:
                 continue
             if c["size"] < 200:
                 continue
@@ -609,7 +610,12 @@ def match_archetype(character: str, deck: list, relics: list) -> dict | None:
         return None
     q = built[0]
     sims = centers.dot(q)
-    j = int(np.argmax(sims))
+    # Archetypes are card-driven: never name a run after a relic-only
+    # catch-all cluster.
+    eligible = [i for i, c in enumerate(clusters) if c["defining_cards"]]
+    if not eligible:
+        return None
+    j = max(eligible, key=lambda i: float(sims[i]))
     total = sum(c["size"] for c in clusters) or 1
     c = clusters[j]
     return {
@@ -705,7 +711,7 @@ def pick_coach(
                 "similarity": round(float(sims[i]) * 100, 1),
             }
             for i, c in enumerate(clusters)
-            if c["defining_cards"] or c["defining_relics"]
+            if c["defining_cards"]
         ),
         key=lambda c: -c["similarity"],
     )[:5]
