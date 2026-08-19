@@ -499,11 +499,14 @@ export default function MonsterDetail({
   const struggleKeys = new Set(struggles.map((b) => `${b.character}:${b.name}`));
   const handles = [...builds]
     .sort((a, b) => a.death_rate - b.death_rate)
-    // "Handles it best" needs proof the build actually faces this fight:
-    // enough runs that reached it (or, on legacy data, a big cluster).
+    // "Handles it best" needs proof the build actually faces this fight
+    // (enough runs that reached it; on legacy data, a big cluster) AND that
+    // it is a build worth copying — dodging deaths here at a near-zero
+    // overall win rate is trivia, not handling.
     .filter(
       (b) =>
         (b.reached != null ? b.reached >= 50 : b.size >= 500) &&
+        b.win_rate >= 20 &&
         !struggleKeys.has(`${b.character}:${b.name}`),
     )
     .slice(0, 5);
