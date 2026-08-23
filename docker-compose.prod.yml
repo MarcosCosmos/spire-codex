@@ -42,6 +42,12 @@ services:
     image: ptrlrd/spire-codex-backend:latest
     container_name: spire-codex-backend
     restart: unless-stopped
+    # Memory budget, 15.6G box (see the rebuilder note below for why these
+    # exist): mongo 5G + backend 5G + rebuilder 3G + redis 2.5G + frontend 1G.
+    # Caps, not reservations — real steady usage is ~10G total, and redis
+    # never approaches its cap. Each of the 4 web workers holds its own copy
+    # of the entity-stats snapshot, which is what puts this at ~4.5G.
+    mem_limit: 5g
     # Multiple workers so a burst of POST /api/runs (Overwolf launch
     # backfills) doesn't serialise behind a single thread and block
     # everything else (GET /api/runs/stats, /api/runs/list etc.).
@@ -170,6 +176,14 @@ services:
     image: ptrlrd/spire-codex-backend:latest
     container_name: spire-codex-rebuilder
     restart: unless-stopped
+    # Hard cap so a full snapshot walk can never starve the box. Without it,
+    # the v26 rebuild OOM-killed this container on 2026-08-21/22/23, and
+    # because the kernel OOM was machine-wide (constraint=CONSTRAINT_NONE)
+    # nginx, mongod and next-server were failing allocations too — the site
+    # went down with it. Capped, a too-large walk fails alone and retries.
+    # Requires ENTITY_STATS_REBUILD_WORKERS=1: each parallel worker holds its
+    # own accumulators, so 2+ workers will not fit in this cap.
+    mem_limit: 3g
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]
     volumes:
       - ./data:/data
@@ -192,6 +206,9 @@ services:
 
   redis:
     image: redis:7-alpine
+    # Above redis's own --maxmemory so it evicts by LRU (its intended
+    # behavior) instead of being OOM-killed at the cgroup boundary.
+    mem_limit: 2500m
     container_name: spire-codex-redis
     # Cache only: hard memory cap with LRU eviction, no persistence (no AOF,
     # no RDB snapshots). Everything in here is rebuildable from Mongo / the
@@ -215,6 +232,8 @@ services:
     image: ptrlrd/spire-codex-frontend:latest
     container_name: spire-codex-frontend
     restart: unless-stopped
+    # Next server sits ~400M; 1G leaves room for ISR render spikes.
+    mem_limit: 1g
     depends_on:
       - backend
     volumes:
