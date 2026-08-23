@@ -1743,7 +1743,11 @@ ASCENSION_FILTER_COMBOS: list[dict] = [
     for a in range(0, 11)
     for c in (None, "IRONCLAD", "SILENT", "DEFECT", "NECROBINDER", "REGENT")
 ]
-_ASCENSION_COMBOS_PER_CYCLE = 6
+# Throttled after the 2026-08-20 load incident: 6 per cycle kept Mongo in a
+# continuous disk-spilling aggregation storm. 2 per cycle = full coverage in
+# ~33 min, still minutes-fresh for readers who serve any age. Set
+# STATS_ASCENSION_TIER=off to disable the tier entirely under duress.
+_ASCENSION_COMBOS_PER_CYCLE = 2
 
 # Every combo the refresher owns. Reads serve these regardless of age — a
 # minutes-stale doc beats recomputing a multi-aggregation inline.
@@ -1856,6 +1860,12 @@ def refresh_stats_summary() -> int:
     # Ascension tier: refresh the stalest K this cycle (issue #868 — these
     # can never compute on the request path, so the rotation is their only
     # source of freshness).
+    if os.environ.get("STATS_ASCENSION_TIER", "on").strip().lower() in (
+        "off",
+        "0",
+        "false",
+    ):
+        return written
     keyed = {_filter_key(**f): f for f in ASCENSION_FILTER_COMBOS}
     ages: dict[str, datetime | None] = dict.fromkeys(keyed)
     try:
