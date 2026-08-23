@@ -42,8 +42,10 @@ export default function EntityVersionSelect({
 
   async function pick(v: string) {
     setSelected(v);
-    const { player, skill } = splitBracket(bracket);
-    onBracketChange(combineBracket(player, skill, statVersions.has(v) ? v : ""));
+    const { player, skill, mode } = splitBracket(bracket);
+    onBracketChange(
+      combineBracket(player, skill, mode, statVersions.has(v) ? v : ""),
+    );
     if (!onEntityData) return;
     const qs = `lang=${lang}${v ? `&version=${v}` : ""}`;
     try {

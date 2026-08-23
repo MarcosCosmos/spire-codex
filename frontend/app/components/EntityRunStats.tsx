@@ -263,12 +263,15 @@ export default function EntityRunStats({ entityType, entityId, entityName, varia
   const {
     player: selPlayer,
     skill: selSkill,
+    mode: selMode,
     version: selVersion,
   } = splitBracket(selectedBracket);
   const pickPlayer = (p: string) =>
-    setSelectedBracket(combineBracket(p, selSkill, selVersion));
+    setSelectedBracket(combineBracket(p, selSkill, selMode, selVersion));
   const pickSkill = (sk: string) =>
-    setSelectedBracket(combineBracket(selPlayer, sk === "all" ? "" : sk, selVersion));
+    setSelectedBracket(
+      combineBracket(selPlayer, sk === "all" ? "" : sk, selMode, selVersion),
+    );
   const sel = brackets[selectedBracket] ?? brackets["all"];
   // Everything below scopes to the selected bracket, with a fall back to the
   // global figures for a pre-update API response that lacks the per-bracket data.
