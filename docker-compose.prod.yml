@@ -206,9 +206,11 @@ services:
 
   redis:
     image: redis:7-alpine
-    # Above redis's own --maxmemory so it evicts by LRU (its intended
-    # behavior) instead of being OOM-killed at the cgroup boundary.
-    mem_limit: 2500m
+    # Must stay ABOVE redis's own --maxmemory so it evicts by LRU (its
+    # intended behavior) instead of being OOM-killed at the cgroup boundary.
+    # The repo says 2gb but the running prod instance reports a 3gb cap
+    # (config drift, found 2026-08-23), so this clears the higher of the two.
+    mem_limit: 3500m
     container_name: spire-codex-redis
     # Cache only: hard memory cap with LRU eviction, no persistence (no AOF,
     # no RDB snapshots). Everything in here is rebuildable from Mongo / the
