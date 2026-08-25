@@ -1,5 +1,6 @@
 import base64
 import gzip
+import logging
 import io
 import json
 import os
@@ -15,6 +16,8 @@ from ..dependencies import VALID_LANGUAGES, shared_limiter
 from ..services import rate_limit_config
 from ..metrics import data_exports, run_export_pages, run_exports
 from ..services.data_service import DATA_DIR
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/exports", tags=["Exports"])
 
@@ -200,31 +203,61 @@ def _export_cost(request: Request) -> int:
     return 1 if request.query_params.get("limit") else 60
 
 
+def _read_file_blob(run_hash: str) -> dict | None:
+    run_file = _RUNS_DIR / f"{run_hash}.json"
+    try:
+        return json.loads(run_file.read_text(encoding="utf-8").strip())
+    except Exception:
+        # Missing file, bad bytes, bad JSON — the caller skips this run.
+        return None
+
+
 def _stream_runs_jsonl(hashes):
+    """Gzipped JSONL of the requested runs: Mongo blobs first (the canonical
+    store, batched like _BlobProvider), per-run file fallback for anything
+    not there. Every per-run failure SKIPS instead of raising: an exception
+    mid-generator used to kill the stream after the 200 was already sent,
+    handing clients a silently truncated file (found 2026-08-25 when a
+    poison run aborted a 50k-page export 236 lines in)."""
     buf = io.BytesIO()
     gz = gzip.GzipFile(fileobj=buf, mode="wb")
+    written = skipped = 0
 
-    for run_hash in hashes:
-        run_file = _RUNS_DIR / f"{run_hash}.json"
-        if not run_file.exists():
-            continue
+    for i in range(0, len(hashes), 300):
+        batch = hashes[i : i + 300]
+        fetched: dict = {}
         try:
-            raw = run_file.read_text(encoding="utf-8").strip()
-            obj = json.loads(raw)
-        except (json.JSONDecodeError, OSError):
-            continue
-        # The blob has no identifier of its own (the hash is derived), so
-        # stamp it in — consumers link back to /runs/<run_hash> with it.
-        obj["run_hash"] = run_hash
-        gz.write(json.dumps(obj, separators=(",", ":")).encode("utf-8"))
-        gz.write(b"\n")
-        if buf.tell() > 65536:
-            gz.flush()
-            yield buf.getvalue()
-            buf.seek(0)
-            buf.truncate()
+            from ..services.runs_db_mongo import get_run_blobs
+
+            fetched = get_run_blobs(batch)
+        except Exception:
+            # SQLite dev mode or a Mongo hiccup: files still serve below.
+            fetched = {}
+        for run_hash in batch:
+            try:
+                obj = fetched.get(run_hash) or _read_file_blob(run_hash)
+                if obj is None:
+                    skipped += 1
+                    continue
+                # The blob has no identifier of its own (the hash is
+                # derived), so stamp it in — consumers link back to
+                # /runs/<run_hash> with it.
+                obj["run_hash"] = run_hash
+                gz.write(json.dumps(obj, separators=(",", ":")).encode("utf-8"))
+                gz.write(b"\n")
+                written += 1
+            except Exception:
+                skipped += 1
+                continue
+            if buf.tell() > 65536:
+                gz.flush()
+                yield buf.getvalue()
+                buf.seek(0)
+                buf.truncate()
 
     gz.close()
+    if skipped:
+        logger.warning("run export: wrote %d, skipped %d", written, skipped)
     tail = buf.getvalue()
     if tail:
         yield tail

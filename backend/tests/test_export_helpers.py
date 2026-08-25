@@ -178,3 +178,27 @@ def test_export_cost_paged_is_cheap():
 
 def test_export_cost_full_dump_is_expensive():
     assert _export_cost(_FakeRequest({})) == 60
+
+
+def test_stream_survives_poison_runs(tmp_path, monkeypatch):
+    # A run that raises mid-stream must be SKIPPED, not kill the generator —
+    # a dead generator hands clients a 200 with a truncated gzip.
+    import gzip as _gzip
+    import io as _io
+
+    from app.routers import exports
+
+    good = tmp_path / "good.json"
+    good.write_text('{"win": true}', encoding="utf-8")
+    poison = tmp_path / "poison.json"
+    poison.write_bytes(b"\xff\xfe not utf8 at all")
+    monkeypatch.setattr(exports, "_RUNS_DIR", tmp_path)
+
+    chunks = b"".join(exports._stream_runs_jsonl(["good", "poison", "good"]))
+    lines = (
+        _gzip.GzipFile(fileobj=_io.BytesIO(chunks)).read().decode().strip().split("\n")
+    )
+    assert len(lines) == 2  # both good copies, poison skipped
+    assert all(
+        '"run_hash": "good"'.replace(" ", "") in l.replace(" ", "") for l in lines
+    )
