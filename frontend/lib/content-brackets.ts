@@ -28,9 +28,9 @@ export const PLAYER_BRACKETS: ContentBracket[] = [
   { key: "4p", param: "4p", label: "4P" },
 ];
 
-// Game-mode brackets: a third composing axis (snapshot v27). Picking a mode
-// narrows the player/skill selection rather than replacing it. "All" is the
-// absence of a mode key.
+// Game-mode brackets. Like the player axis they share the single ?bracket=
+// slot: picking a mode replaces the player/skill selection (only the version
+// composes on top). "All" is the absence of a mode key.
 export const MODE_BRACKETS: ContentBracket[] = [
   { key: "standard", param: "standard", label: "Standard" },
   { key: "daily", param: "daily", label: "Daily" },
@@ -46,29 +46,6 @@ const _PLAYER_KEYS = new Set(PLAYER_BRACKETS.map((b) => b.key));
 const _SKILL_KEYS = new Set(
   CONTENT_BRACKETS.filter((b) => b.key !== "all").map((b) => b.key),
 );
-const _MODE_KEYS = new Set(MODE_BRACKETS.map((b) => b.key));
-
-export interface BracketAxes {
-  player: string;
-  skill: string;
-  mode: string;
-  version: string;
-}
-
-/** Classify each colon-separated segment onto its axis. Unknown segments
- * make the whole value invalid (callers fall back to "all"). Order-tolerant
- * on the way in; canonical on the way out. */
-function parseAxes(raw: string): BracketAxes | null {
-  const axes: BracketAxes = { player: "", skill: "", mode: "", version: "" };
-  for (const part of raw.split(":")) {
-    if (_PLAYER_KEYS.has(part)) axes.player = part;
-    else if (_SKILL_KEYS.has(part)) axes.skill = part;
-    else if (_MODE_KEYS.has(part)) axes.mode = part;
-    else if (isVersionBracket(part)) axes.version = part;
-    else if (part !== "all") return null;
-  }
-  return axes;
-}
 
 /**
  * A game-version bracket ("v0.107.1"): the snapshot keeps a per-version
@@ -83,9 +60,19 @@ export function isVersionBracket(raw: string | undefined | null): boolean {
 /** The bracket value minus any trailing version segment ("" for a bare
  * version or "all"). */
 export function stripVersion(raw: string | undefined | null): string {
-  const { player, skill, mode } = splitBracket(raw);
-  const base = combineBracket(player, skill, mode);
+  if (!raw || raw === "all") return "";
+  const { base } = splitVersion(raw);
   return base === "all" ? "" : base;
+}
+
+/** Split a trailing ":vX.Y.Z" version segment off a bracket value. */
+function splitVersion(raw: string): { base: string; version: string } {
+  const i = raw.lastIndexOf(":");
+  if (i > 0 && isVersionBracket(raw.slice(i + 1))) {
+    return { base: raw.slice(0, i), version: raw.slice(i + 1) };
+  }
+  if (isVersionBracket(raw)) return { base: "", version: raw };
+  return { base: raw, version: "" };
 }
 
 /**
@@ -95,30 +82,35 @@ export function stripVersion(raw: string | undefined | null): string {
  */
 export function isCompositeBracket(raw: string | undefined | null): boolean {
   if (!raw || !raw.includes(":")) return false;
-  const axes = parseAxes(raw);
-  if (!axes) return false;
-  // Two or more content axes selected (version alone doesn't count).
-  return [axes.player, axes.skill, axes.mode].filter(Boolean).length >= 2;
+  const [p, s] = raw.split(":");
+  return _PLAYER_KEYS.has(p) && _SKILL_KEYS.has(s);
 }
 
 /** Split a bracket value into its player + skill + version axes. A single
  * bracket maps to whichever axis owns it; "all"/unknown gives all empty. */
-export function splitBracket(raw: string | undefined | null): BracketAxes {
+export function splitBracket(raw: string | undefined | null): {
+  player: string;
+  skill: string;
+  version: string;
+} {
   const b = normalizeBracket(raw);
-  if (b === "all") return { player: "", skill: "", mode: "", version: "" };
-  return parseAxes(b) ?? { player: "", skill: "", mode: "", version: "" };
+  const { base, version } = splitVersion(b === "all" ? "" : b);
+  if (isCompositeBracket(base)) {
+    const [player, skill] = base.split(":");
+    return { player, skill, version };
+  }
+  if (_PLAYER_KEYS.has(base)) return { player: base, skill: "", version };
+  if (_SKILL_KEYS.has(base)) return { player: "", skill: base, version };
+  return { player: "", skill: "", version };
 }
 
 /** Combine player + skill + version selections into one ?bracket= value.
  * Any subset works: the axes compose in canonical player:skill:version
  * order, and all-empty collapses to "all". */
-export function combineBracket(
-  player: string,
-  skill: string,
-  mode = "",
-  version = "",
-): string {
-  return [player, skill, mode, version].filter(Boolean).join(":") || "all";
+export function combineBracket(player: string, skill: string, version = ""): string {
+  const base = [player, skill].filter(Boolean).join(":");
+  if (base && version) return `${base}:${version}`;
+  return base || version || "all";
 }
 
 /** Normalize a raw ?bracket= value to a known bracket key, a player:skill
@@ -126,17 +118,26 @@ export function combineBracket(
  * ("all" if unknown). */
 export function normalizeBracket(raw: string | undefined | null): string {
   if (!raw) return "all";
-  const axes = parseAxes(raw);
-  if (!axes) return "all";
-  return combineBracket(axes.player, axes.skill, axes.mode, axes.version);
+  if (_BY_KEY.has(raw)) return raw;
+  if (isCompositeBracket(raw)) return raw;
+  if (isVersionBracket(raw)) return raw;
+  const { base, version } = splitVersion(raw);
+  if (version && base && (_BY_KEY.has(base) || isCompositeBracket(base))) return raw;
+  return "all";
 }
 
 /** The ?bracket= API value for a bracket key (null = all runs, no param). A
  * composite passes through unchanged (its API value is the composite itself). */
 export function bracketParam(key: string | undefined | null): string | null {
-  // The normalized key IS the API value for everything except "all".
   const n = normalizeBracket(key);
-  return n === "all" ? null : n;
+  if (n === "all") return null;
+  if (isCompositeBracket(n) || isVersionBracket(n)) return n;
+  // base+version combos ("wr50:v0.111.0", "solo:wr50:v0.111.0") are already
+  // the API value; the map lookup below only resolves plain single-axis keys
+  // (and used to swallow these into null = all runs).
+  const { base, version } = splitVersion(n);
+  if (version) return base === "all" ? version : n;
+  return _BY_KEY.get(n)?.param ?? null;
 }
 
 /**

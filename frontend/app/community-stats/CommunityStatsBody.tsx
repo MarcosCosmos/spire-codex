@@ -111,7 +111,7 @@ function Empty({ jsonLd, current, lang, basePath }: { jsonLd: object[]; current:
     <div className="mx-auto max-w-[1400px] px-3 sm:px-5 py-6">
       <JsonLd data={jsonLd} />
       <h1 className="text-3xl font-bold mb-2"><span className="text-[var(--accent-gold)]">{t("Community Stats", lang)}</span></h1>
-      <BracketFilter basePath={basePath} current={current} />
+      <BracketFilter basePath={basePath} current={current} composite />
       <p className="text-sm text-[var(--text-muted)]">
         {t("No data for this bracket yet. Stats build from community-submitted runs,", lang)} <Link href="/leaderboards/submit" className="text-[var(--accent-gold)] hover:underline">{t("submit a run", lang)}</Link> {t("to seed them.", lang)}
       </p>
@@ -165,7 +165,7 @@ export async function CommunityStatsBody({ lang, bracket }: { lang: string; brac
       </p>
 
       {/* Content bracket: slice every dataset below by skill and/or player count. */}
-      <BracketFilter basePath={basePath} current={bracket} />
+      <BracketFilter basePath={basePath} current={bracket} composite />
 
       {/* Headline numbers */}
       <section className="mb-10">
