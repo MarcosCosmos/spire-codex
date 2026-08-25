@@ -5,7 +5,7 @@ name: spire-codex-lab
 # targets, memory-capped so they can never starve the site.
 #
 #   docker compose -f docker-compose.lab.yml run --rm extract
-#   docker compose -f docker-compose.lab.yml run --rm duckdb -c ".read /lake/build.sql"
+#   docker compose -f docker-compose.lab.yml run --rm duckdb /lake/build.duckdb -c ".read /lake/lab/build.sql"
 #   docker compose -f docker-compose.lab.yml run --rm duckdb -c "SELECT ... FROM read_parquet('/lake/runs.parquet')"
 
 services:
@@ -23,7 +23,10 @@ services:
 
   duckdb:
     image: duckdb/duckdb:1.5.5
-    mem_limit: 2g
+    entrypoint: ["duckdb"]
+    # 3g: DuckDB's internal limit doesn't cover JSON-reader/decompress
+    # buffers; 2g got memcg-killed mid-build on the full corpus.
+    mem_limit: 3g
     working_dir: /lake
     volumes:
       - ./lab:/lake/lab:ro
