@@ -79,16 +79,19 @@ COMMUNITY_VERSION = 1
 # _COMPOSITE_BRACKETS in run_entity_stats.py.
 _PLAYER_BRACKETS = ("solo", "2p", "3p", "4p")
 _SKILL_BRACKETS = ("a10", "wr30", "wr50", "wr75")
-# Game-mode keys share the single ?bracket= slot (a mode replaces the
-# player/skill selection, like daily/custom always did on the entity side).
+# Game-mode keys are a third composing axis (v27): a mode narrows the
+# player/skill selection instead of replacing it.
 _MODE_BRACKETS = ("standard", "daily", "custom")
-_BLOB_BRACKETS = (
-    ["all"]
-    + list(_PLAYER_BRACKETS)
-    + list(_SKILL_BRACKETS)
-    + list(_MODE_BRACKETS)
-    + [f"{p}:{c}" for p in _PLAYER_BRACKETS for c in _SKILL_BRACKETS]
-)
+# Every combination of the three axes, canonical player:skill:mode order.
+# Kept identical to _ALL_BRACKET_COMBOS in run_entity_stats.py (a test pins
+# them together) so a filter the UI can express always has a slice.
+_BLOB_BRACKETS = ["all"] + [
+    ":".join(x for x in (p, s, m) if x)
+    for p in ("",) + _PLAYER_BRACKETS
+    for s in ("",) + _SKILL_BRACKETS
+    for m in ("",) + _MODE_BRACKETS
+    if (p or s or m)
+]
 
 
 def _new_acc_one() -> dict[str, Any]:

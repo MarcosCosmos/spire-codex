@@ -109,13 +109,46 @@ _ACT_MIN_PICKS = 200
 # encounter / charts blobs filter to their own key sets and skip them.
 _PLAYER_BRACKETS = ("solo", "2p", "3p", "4p")
 _SKILL_BRACKETS = ("a10", "wr30", "wr50", "wr75")
+_MODE_BRACKET_KEYS = ("standard", "daily", "custom")
 _COMPOSITE_BRACKETS = [f"{p}:{c}" for p in _PLAYER_BRACKETS for c in _SKILL_BRACKETS]
+
+# Every combination of the three run axes, in canonical player:skill:mode
+# order (the same order the frontend's combineBracket builds). A filter the
+# UI can express must have a materialized slice behind it, so picking Solo,
+# then A10, then Standard narrows instead of resetting.
+_ALL_BRACKET_COMBOS = [
+    ":".join(x for x in (p, s, m) if x)
+    for p in ("",) + _PLAYER_BRACKETS
+    for s in ("",) + _SKILL_BRACKETS
+    for m in ("",) + _MODE_BRACKET_KEYS
+    if (p or s or m)
+]
+
+
+def axis_combos(players: list[str], skills: list[str], modes: list[str]) -> list[str]:
+    """Every canonical key a run matching these axes belongs to, singles
+    included. Shared by the entity cache and the community blob so the two
+    can never disagree about what a combination is called."""
+    out: list[str] = []
+    for p in [""] + list(players):
+        for s in [""] + list(skills):
+            for m in [""] + list(modes):
+                key = ":".join(x for x in (p, s, m) if x)
+                if key:
+                    out.append(key)
+    return out
+
+
 # Fast membership test in the hot per-run walk. Composites carry the full
 # reward-pairwise / Codex Elo + Pick% build like every other bracket (v16); it's
 # the heaviest part of the walk, so this build leans on the parallel rebuild.
 # Cards below the per-bracket head-to-head floor still get no Elo in that slice.
 _COMPOSITE_BRACKETS_SET = frozenset(_COMPOSITE_BRACKETS)
 
+# The chart prewarm's warm-up grid. Deliberately the pre-composition set:
+# the charts page filters players and mode query-time off the metadata frame
+# rather than the blob, so its bracket space is its own and warming the full
+# 99-key grid would just burn cycles.
 _BRACKET_KEYS = [
     "solo",
     "2p",
@@ -131,25 +164,9 @@ _BRACKET_KEYS = [
     "wr75",
 ] + _COMPOSITE_BRACKETS
 
-
-_MODE_BRACKET_KEYS = ("standard", "daily", "custom")
-
-
-def _community_blob_brackets(
-    mp_blob_brackets: list[str], extra_brackets: list[str]
-) -> list[str]:
-    """Blob brackets the community accumulator slices by: the player-count set,
-    the player x skill composites (solo:wr50, ...) so the page can combine both
-    axes like the tier list, and the run's game mode. Modes occupy the whole
-    base slot (they never compose with players or skill), but they DO compose
-    with versions via the caller's version step. The mode keys were silently
-    dropped by allowlists until snapshot v26 — the mode pills served blobs
-    nothing had ever accumulated into."""
-    return (
-        mp_blob_brackets
-        + [c for c in extra_brackets if c in _COMPOSITE_BRACKETS_SET]
-        + [c for c in extra_brackets if c in _MODE_BRACKET_KEYS]
-    )
+# What the entity cache materializes: every expressible combination.
+_ENTITY_BRACKET_KEYS = _ALL_BRACKET_COMBOS
+_ALL_BRACKET_COMBOS_SET = frozenset(_ALL_BRACKET_COMBOS)
 
 
 def _run_extra_brackets(player_count: int, ascension: int, game_mode: str) -> list[str]:
@@ -323,7 +340,9 @@ _HISTORY_RETENTION_DAYS = 90
 # rebuild is required or old runs keep their UTC upload-day keys.
 # 26: mode brackets actually accumulate (they were allowlist-dropped since
 # v24, so Standard/Daily/Custom community blobs sat empty).
-SNAPSHOT_VERSION = 26
+# 27: game mode became a composing axis (player x skill x mode), so picking
+# Standard on top of Solo + A10 narrows instead of replacing the selection.
+SNAPSHOT_VERSION = 27
 # Serialized-byte budget per persisted chunk doc. With version-composable
 # brackets a popular entity carries hundreds of per-bracket blocks and
 # entity sizes vary wildly (a card dwarfs an affliction), so chunks are
@@ -1092,11 +1111,11 @@ def _accumulate(rows, official_chars, wr_map, recent_versions=(), preloaded_blob
     # mid-walk - which is exactly how the un-seeded version keys killed
     # every v18-v20 rebuild the first time one actually ran to this point.
     bracket_accs: dict[str, dict[str, Any]] = {
-        k: _new_bracket_acc() for k in _BRACKET_KEYS
+        k: _new_bracket_acc() for k in _ENTITY_BRACKET_KEYS
     }
     for _v in recent_versions:
         bracket_accs[_v] = _new_bracket_acc()
-        for _b in _BRACKET_KEYS:
+        for _b in _ENTITY_BRACKET_KEYS:
             bracket_accs[f"{_b}:{_v}"] = _new_bracket_acc()
 
     if preloaded_blobs is not None:
@@ -1138,8 +1157,8 @@ def _accumulate(rows, official_chars, wr_map, recent_versions=(), preloaded_blob
         # their own keys and skip composites.
         _pc = [b for b in extra_brackets if b in _PLAYER_BRACKETS]
         _sk = [b for b in extra_brackets if b in _SKILL_BRACKETS]
-        if _pc and _sk:
-            extra_brackets = extra_brackets + [f"{p}:{c}" for p in _pc for c in _sk]
+        _md = [b for b in extra_brackets if b in _MODE_BRACKET_KEYS]
+        extra_brackets = axis_combos(_pc, _sk, _md)
         # Version brackets: a run's build_id becomes one more bracket key AND
         # composes with every bracket key the run already matched (player,
         # skill, mode, player:skill), so any filter combo the UI can express
@@ -1180,9 +1199,11 @@ def _accumulate(rows, official_chars, wr_map, recent_versions=(), preloaded_blob
         mp_blob_brackets = blob_brackets + [
             c for c in extra_brackets if c in ("solo", "2p", "3p", "4p")
         ]
-        community_blob_brackets = _community_blob_brackets(
-            mp_blob_brackets, extra_brackets
-        )
+        # The community blob carries every combination too, so its page can
+        # narrow by player AND skill AND mode the way the tier list does.
+        community_blob_brackets = ["all"] + [
+            b for b in extra_brackets if b in _ALL_BRACKET_COMBOS_SET
+        ]
         # Version slices: one accumulator per game version, plus the version
         # composed onto every other blob bracket ("all:version" collapses to
         # the bare version key), so /community-stats combines version with
