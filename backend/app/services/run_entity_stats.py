@@ -1234,7 +1234,7 @@ def _accumulate(rows, official_chars, wr_map, recent_versions=(), preloaded_blob
                 is_win=is_win,
                 character=character,
                 player_count=row.get("player_count") or 1,
-                submitted=played,
+                played=played,
             )
         except Exception:
             logger.warning(

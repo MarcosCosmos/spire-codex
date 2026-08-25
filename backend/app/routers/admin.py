@@ -102,7 +102,18 @@ def _snapshot_info() -> dict:
                 "age_seconds": age,
                 "version": meta.get("snapshot_version"),
                 "total_runs": (meta.get("global_totals") or {}).get("total_runs"),
-                "has_charts": bool(meta.get("charts")),
+                # The blobs were moved out of __meta__ into their own
+                # sharded docs (charts / charts:<bracket>), so the old
+                # meta.get("charts") probe reported "building" forever.
+                "has_charts": bool(
+                    (
+                        db[SNAPSHOT_COLLECTION_NAME].find_one(
+                            {"_id": "charts"}, {"keys": 1}
+                        )
+                        or {}
+                    ).get("keys")
+                    or meta.get("charts")
+                ),
             }
         from ..services import run_entity_stats as res
 
