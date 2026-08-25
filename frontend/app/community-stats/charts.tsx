@@ -21,6 +21,7 @@ import {
 } from "chart.js";
 import ChartDataLabels from "chartjs-plugin-datalabels";
 import { Bar, Doughnut, Line } from "react-chartjs-2";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 ChartJS.register(
   BarElement,
@@ -32,6 +33,55 @@ ChartJS.register(
   Tooltip,
   Filler,
 );
+
+// This page mounts ~17 Chart.js canvases. Building them all during hydration
+// stalls the main thread even though every byte arrived fast (measured
+// 2026-08-25: TTFB 0.19s, but the page still felt slow). Each chart now waits
+// until it is near the viewport, so a first paint builds the two or three
+// that are actually visible. The wrapper keeps the chart's footprint reserved
+// so nothing shifts when it fills in.
+function DeferredChart({
+  children,
+  className,
+  style,
+}: {
+  children: ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    if (show) return;
+    const el = ref.current;
+    if (!el) return;
+    // No IntersectionObserver (old browser, jsdom): render immediately rather
+    // than never.
+    if (typeof IntersectionObserver === "undefined") {
+      setShow(true);
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setShow(true);
+          io.disconnect();
+        }
+      },
+      { rootMargin: "400px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [show]);
+
+  return (
+    <div ref={ref} className={className} style={style}>
+      {show ? children : null}
+    </div>
+  );
+}
+
 
 // Theme hexes (canvas rendering needs resolved colors, not CSS vars).
 const GOLD = "#d4a843";
@@ -146,7 +196,7 @@ export function RankBars({
   };
 
   return (
-    <div style={{ height }}>
+    <DeferredChart style={{ height }}>
       <Bar
         plugins={[ChartDataLabels]}
         data={{
@@ -165,7 +215,7 @@ export function RankBars({
         }}
         options={options}
       />
-    </div>
+    </DeferredChart>
   );
 }
 
@@ -228,7 +278,10 @@ export function EventDonut({
   colors?: string[];
 }) {
   return (
-    <div className="relative shrink-0" style={{ width: size, height: size }}>
+    <DeferredChart
+      className="relative shrink-0"
+      style={{ width: size, height: size }}
+    >
       <Doughnut
         width={size}
         height={size}
@@ -260,7 +313,7 @@ export function EventDonut({
       <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm font-bold tabular-nums text-[var(--text-primary)]">
         {options[0]?.pct}%
       </span>
-    </div>
+    </DeferredChart>
   );
 }
 
@@ -312,7 +365,7 @@ export function SurvivalLine({
     },
   };
   return (
-    <div style={{ height: 220 }}>
+    <DeferredChart style={{ height: 220 }}>
       <Line
         data={{
           labels: data.map((d) => d.floor),
@@ -329,6 +382,6 @@ export function SurvivalLine({
         }}
         options={options}
       />
-    </div>
+    </DeferredChart>
   );
 }
