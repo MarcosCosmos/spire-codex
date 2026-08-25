@@ -47,15 +47,16 @@ exist.
 docker compose -f docker-compose.lab.yml run --rm duckdb -c "
 SELECT killed_by_encounter, count(*) AS deaths
 FROM read_parquet('/lake/runs.parquet') r
-ANTI JOIN read_parquet('/lake/excluded.parquet') x USING (run_hash)
+ANTI JOIN read_parquet('/lake/excluded.parquet') x ON r.run_hash = x.run_hash
 WHERE NOT win AND killed_by_encounter IS NOT NULL
 GROUP BY 1 ORDER BY 2 DESC LIMIT 15"
 ```
 
 Interactive shell: `docker compose -f docker-compose.lab.yml run --rm duckdb`
 (`.quit` to exit). Queries read the parquet files directly — no database
-file argument needed. Always anti-join `excluded.parquet` so hidden/deleted runs
-stay out, same as the site.
+file argument needed. Always anti-join `excluded.parquet` (with an explicit ON -- DuckDB
+rejects ANTI JOIN with USING) so hidden/deleted runs stay out, same as
+the site.
 
 ## Refresh
 
