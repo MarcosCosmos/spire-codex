@@ -3,6 +3,7 @@
 -- corpus is far larger than the memory cap):
 --   docker compose -f docker-compose.lab.yml run --rm duckdb /lake/build.duckdb -c ".read /lake/lab/build.sql"
 SET memory_limit='1500MB';
+SET threads=2;
 SET temp_directory='/lake/tmp';
 SET preserve_insertion_order=false;
 
