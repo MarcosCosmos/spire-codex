@@ -1801,8 +1801,27 @@ def _build_cache_data(stash: bool = False) -> tuple[dict, dict, dict, dict]:
         from .runs_db_mongo import _get_collection
 
         coll = _get_collection()
-        rows = list(
-            coll.find(
+        # Reshape straight off the cursor. This used to build the full list of
+        # raw BSON dicts FIRST and then reshape it into a second full list, so
+        # 1.35M row dicts existed twice at once — roughly 2GB of transient peak
+        # before a single accumulator was touched, which is real weight on a
+        # 15.6G box that OOM-killed this walk three days running (2026-08-21
+        # through 23). The cursor streams, so only the reshaped list survives.
+        rows = [
+            {
+                "run_hash": d["_id"],
+                "character": d.get("character") or "",
+                "win": bool(d.get("win")),
+                "submitted_at": d.get("submitted_at"),
+                "played_at": d.get("played_at"),
+                "player_count": d.get("player_count") or 1,
+                "ascension": d.get("ascension") or 0,
+                "game_mode": d.get("game_mode") or "standard",
+                "killed_by": d.get("killed_by"),
+                "username": d.get("username") or "",
+                "build_id": d.get("build_id") or "",
+            }
+            for d in coll.find(
                 {"hidden": {"$ne": True}},
                 {
                     "_id": 1,
@@ -1821,24 +1840,6 @@ def _build_cache_data(stash: bool = False) -> tuple[dict, dict, dict, dict]:
                     "build_id": 1,
                 },
             )
-        )
-        # Normalise to a common dict-like shape so the loop below
-        # doesn't have to branch.
-        rows = [
-            {
-                "run_hash": d["_id"],
-                "character": d.get("character") or "",
-                "win": bool(d.get("win")),
-                "submitted_at": d.get("submitted_at"),
-                "played_at": d.get("played_at"),
-                "player_count": d.get("player_count") or 1,
-                "ascension": d.get("ascension") or 0,
-                "game_mode": d.get("game_mode") or "standard",
-                "killed_by": d.get("killed_by"),
-                "username": d.get("username") or "",
-                "build_id": d.get("build_id") or "",
-            }
-            for d in rows
         ]
     else:
         with get_conn() as conn:
