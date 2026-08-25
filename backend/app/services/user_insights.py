@@ -43,6 +43,7 @@ _MIN_RUNS_FOR_UNDER = 10
 _RELIC_RARITIES_SKIPPED = frozenset({"starter", "ancient"})
 
 _CACHE_TTL = 120.0
+_walk_gate = threading.BoundedSemaphore(1)
 _CACHE_MAX = 500
 _cache: dict[str, tuple[float, dict]] = {}
 _cache_lock = threading.Lock()
@@ -555,6 +556,13 @@ def _kick_refresh(
         return
 
     def _run() -> None:
+        # One walk at a time per worker: each holds every blob for the
+        # account in memory, and unbounded stacking swapped the box on
+        # 2026-08-20.
+        with _walk_gate:
+            _run_locked()
+
+    def _run_locked() -> None:
         from fastapi.encoders import jsonable_encoder
 
         try:
@@ -683,7 +691,9 @@ def _fetch_blobs(rows: list[dict]) -> dict[str, dict]:
     if len(batches) == 1:
         return get_run_blobs([r["run_hash"] for r in batches[0]])
     out: dict[str, dict] = {}
-    with ThreadPoolExecutor(max_workers=min(4, len(batches))) as pool:
+    # 2 workers, not 4: the 2026-08-20 load incident showed stacked walks x
+    # wide fetches swapping the box; latency still roughly halves vs serial.
+    with ThreadPoolExecutor(max_workers=min(2, len(batches))) as pool:
         for blobs in pool.map(
             lambda b: get_run_blobs([r["run_hash"] for r in b]), batches
         ):
