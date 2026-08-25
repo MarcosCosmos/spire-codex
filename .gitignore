@@ -52,3 +52,6 @@ backend/static/images/cards/composite/
 # at runtime by bin/op-ansible. Origin IPs are CF-shielded; keep them
 # out of git.
 infrastructure/ansible/inventory.yml
+
+# on-box analytics lab output
+lake/
