@@ -1,0 +1,34 @@
+name: spire-codex-lab
+
+# The analytics lab: extraction + DuckDB, fully separate from the prod stack.
+# Nothing here runs continuously — both services are one-shot `compose run`
+# targets, memory-capped so they can never starve the site.
+#
+#   docker compose -f docker-compose.lab.yml run --rm extract
+#   docker compose -f docker-compose.lab.yml run --rm duckdb -c ".read /lake/build.sql"
+#   docker compose -f docker-compose.lab.yml run --rm duckdb -c "SELECT ... FROM read_parquet('/lake/runs.parquet')"
+
+services:
+  extract:
+    image: ptrlrd/spire-codex-backend:latest
+    entrypoint: ["python", "/lab/extract.py"]
+    env_file: .env
+    mem_limit: 1500m
+    volumes:
+      - ./lab:/lab:ro
+      - ./data:/data:ro
+      - ./lake:/lake
+    networks:
+      - nginx_web-network
+
+  duckdb:
+    image: duckdb/duckdb:1.5.5
+    mem_limit: 2g
+    working_dir: /lake
+    volumes:
+      - ./lab:/lake/lab:ro
+      - ./lake:/lake
+
+networks:
+  nginx_web-network:
+    external: true
