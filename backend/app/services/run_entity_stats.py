@@ -2763,6 +2763,16 @@ def _incremental_tick() -> int:
     return 0
 
 
+_full_walk_active = False
+
+
+def full_walk_in_progress() -> bool:
+    """True while this process is inside a full snapshot walk. Callers use it
+    to hold off other memory-hungry background work (the chart prewarm loads
+    a 1.37M-row frame of its own) until the walk is done."""
+    return _full_walk_active
+
+
 def _release_snapshot_for_full_walk() -> None:
     """Free this process's in-memory snapshot before a full walk replaces it.
 
@@ -2843,9 +2853,14 @@ def refresh_entity_stats_snapshot(force_full: bool = False) -> int:
     # STATS_REFRESHER=off and never take the lease), so nothing being read
     # by traffic is dropped.
     _release_snapshot_for_full_walk()
-    cache, totals, baselines, bracket_meta = _build_cache_data(
-        stash=_INCREMENTAL_ENABLED
-    )
+    global _full_walk_active
+    _full_walk_active = True
+    try:
+        cache, totals, baselines, bracket_meta = _build_cache_data(
+            stash=_INCREMENTAL_ENABLED
+        )
+    finally:
+        _full_walk_active = False
     _t_persist = time.time()
     _persist_snapshot(cache, totals, baselines, bracket_meta)
     _persist_secs = time.time() - _t_persist

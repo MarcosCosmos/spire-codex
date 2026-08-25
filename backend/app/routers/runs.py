@@ -14,6 +14,7 @@ from ..services import rate_limit_config
 from ..services.runs_db import submit_run, get_stats, claim_runs
 from ..services import cache as app_cache
 from ..services.run_entity_stats import (
+    full_walk_in_progress as entity_stats_full_walk_in_progress,
     get_all_entity_scores,
     get_community_stats as get_community_fun_stats,
     get_entity_metric_history,
@@ -1545,9 +1546,15 @@ def start_stats_refresher() -> None:
 
         # Charts prewarm on its own thread and cadence: it can run up to its
         # 15-minute budget and must never block the stats tick.
+        # Never alongside a full walk: the prewarm loads its own 1.37M-row
+        # charts frame (measured 965s / ~0.6GB on 2026-08-25), and stacking
+        # that on top of the walk's accumulators is half of what OOM-killed
+        # the rebuilder. The cadence stamp is left alone so it runs on the
+        # next cycle once the walk finishes.
         if (
             app_cache.enabled()
             and time.time() - _cadence["prewarm"] >= _PREWARM_INTERVAL_SECONDS
+            and not entity_stats_full_walk_in_progress()
         ):
             _cadence["prewarm"] = time.time()
 
