@@ -1,10 +1,14 @@
 -- Build the analytical lake from /lake/staging/*.jsonl.gz.
---   docker compose -f docker-compose.lab.yml run --rm duckdb -c ".read /lake/lab/build.sql"
+-- Must run against a disk-backed database file (spills to disk; the full
+-- corpus is far larger than the memory cap):
+--   docker compose -f docker-compose.lab.yml run --rm duckdb /lake/build.duckdb -c ".read /lake/lab/build.sql"
 SET memory_limit='1500MB';
+SET temp_directory='/lake/tmp';
+SET preserve_insertion_order=false;
 
 CREATE OR REPLACE TABLE raw AS SELECT * FROM read_ndjson_auto(
   '/lake/staging/*.jsonl.gz',
-  maximum_object_size=104857600, sample_size=5000,
+  maximum_object_size=104857600, sample_size=30000,
   ignore_errors=true, union_by_name=true);
 
 CREATE OR REPLACE TABLE runs AS SELECT run_hash,

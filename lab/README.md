@@ -30,11 +30,16 @@ the HTTP export doesn't carry. Prints progress per page; capped at 1.5GB RAM.
 ## 2. Build the lake
 
 ```
-docker compose -f docker-compose.lab.yml run --rm duckdb -c ".read /lake/lab/build.sql"
+docker compose -f docker-compose.lab.yml run --rm duckdb /lake/build.duckdb -c ".read /lake/lab/build.sql"
 ```
 
 Produces `lake/runs.parquet`, `excluded.parquet`, `floor_events.parquet`,
-`deck.parquet` and prints row counts. Capped at 2GB RAM (1.5GB inside DuckDB).
+`deck.parquet` and prints row counts. Capped at 2GB RAM (1.5GB inside
+DuckDB). The `/lake/build.duckdb` argument matters: the corpus is far
+larger than the memory cap, so the build needs a disk-backed database to
+spill into. `lake/build.duckdb` and `lake/tmp/` are scratch — delete them
+(and `lake/staging/` if you want the ~4GB back) once the parquet files
+exist.
 
 ## 3. Query
 
@@ -48,7 +53,8 @@ GROUP BY 1 ORDER BY 2 DESC LIMIT 15"
 ```
 
 Interactive shell: `docker compose -f docker-compose.lab.yml run --rm duckdb`
-(`.quit` to exit). Always anti-join `excluded.parquet` so hidden/deleted runs
+(`.quit` to exit). Queries read the parquet files directly — no database
+file argument needed. Always anti-join `excluded.parquet` so hidden/deleted runs
 stay out, same as the site.
 
 ## Refresh
