@@ -2600,6 +2600,28 @@ def save_stats_checkpoint() -> bool:
 def _load_stats_checkpoint() -> bool:
     if not _CHECKPOINT_PATH.exists():
         return False
+    # A checkpoint from a different snapshot version is discarded a few lines
+    # below anyway, but gzip+pickle has to inflate the WHOLE thing (gigabytes
+    # of raw accumulators) before that field is readable. Doing that on top of
+    # the snapshot this process already holds is what OOM-killed the rebuilder
+    # in a restart loop on 2026-08-25, before it ever reached the walk. The
+    # persisted meta carries the same version and costs one indexed lookup, so
+    # check there first and skip the load entirely when it can't match.
+    try:
+        meta = _snapshot_coll().find_one({"_id": "__meta__"}, {"snapshot_version": 1})
+        if meta and meta.get("snapshot_version") not in (None, SNAPSHOT_VERSION):
+            logger.info(
+                "persisted snapshot is version %s (want %s); skipping the "
+                "checkpoint load and going straight to a full walk",
+                meta.get("snapshot_version"),
+                SNAPSHOT_VERSION,
+            )
+            return False
+    except Exception:
+        # Can't tell — fall through and let the existing version check handle
+        # it, which is the old behavior.
+        logger.warning("checkpoint version pre-check failed", exc_info=True)
+
     import gzip
     import pickle
 
