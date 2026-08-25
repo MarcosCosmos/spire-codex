@@ -2763,6 +2763,47 @@ def _incremental_tick() -> int:
     return 0
 
 
+_full_walk_active = False
+
+
+def full_walk_in_progress() -> bool:
+    """True while this process is inside a full snapshot walk. Callers use it
+    to hold off other memory-hungry background work (the chart prewarm loads
+    a 1.37M-row frame of its own) until the walk is done."""
+    return _full_walk_active
+
+
+def _release_snapshot_for_full_walk() -> None:
+    """Free this process's in-memory snapshot before a full walk replaces it.
+
+    No-op unless this instance is the stats refresher, so an API worker that
+    somehow reaches a full walk keeps serving its cache instead of blanking
+    the tier list. The load timestamp is left fresh so the background
+    reloader doesn't pull the old snapshot straight back in mid-walk;
+    _apply_cache repopulates everything when the walk lands."""
+    if os.environ.get("STATS_REFRESHER", "on").strip().lower() in (
+        "off",
+        "0",
+        "false",
+        "no",
+    ):
+        return
+    global _cache, _community_stats, _charts_blob_stats, _encounter_blob_stats
+    global _cache_built_at
+    import gc
+
+    had = len(_cache or {})
+    _cache = {}
+    _community_stats = {}
+    _charts_blob_stats = {}
+    _encounter_blob_stats = {}
+    _cache_built_at = time.time()
+    gc.collect()
+    logger.info(
+        "released the in-memory snapshot (%d entities) before the full walk", had
+    )
+
+
 def refresh_entity_stats_snapshot(force_full: bool = False) -> int:
     """Leader-only. With a retained incremental base, folds new runs in and
     persists every _STATS_PERSIST_SECONDS; otherwise (boot, repair due, new
@@ -2802,9 +2843,24 @@ def refresh_entity_stats_snapshot(force_full: bool = False) -> int:
                 return 0  # snapshot still fresh
 
     global _cache_snapshot_version
-    cache, totals, baselines, bracket_meta = _build_cache_data(
-        stash=_INCREMENTAL_ENABLED
-    )
+    # A full walk builds a complete replacement, so the copy this process is
+    # already holding is dead weight for the walk's entire duration. On the
+    # dedicated rebuilder that copy is the whole snapshot (13.5k entities,
+    # ~1000 blob keys) which it never serves a request from, and carrying it
+    # alongside the walk's own allocations is what cgroup-OOM-killed the
+    # container 13 times on 2026-08-25 at 4.18GB anon-rss, only 30s in.
+    # Only the refresher instance reaches here (the API workers run with
+    # STATS_REFRESHER=off and never take the lease), so nothing being read
+    # by traffic is dropped.
+    _release_snapshot_for_full_walk()
+    global _full_walk_active
+    _full_walk_active = True
+    try:
+        cache, totals, baselines, bracket_meta = _build_cache_data(
+            stash=_INCREMENTAL_ENABLED
+        )
+    finally:
+        _full_walk_active = False
     _t_persist = time.time()
     _persist_snapshot(cache, totals, baselines, bracket_meta)
     _persist_secs = time.time() - _t_persist
