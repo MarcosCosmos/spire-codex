@@ -162,14 +162,14 @@ export default function AlertTicker() {
               href="https://www.patreon.com/cw/SpireCodex"
               target="_blank"
               rel="noopener noreferrer"
-              className="font-medium not-italic text-emerald-100 underline hover:text-white transition-colors"
+              className="font-medium not-italic text-emerald-200 underline hover:text-white transition-colors"
             >
               supporting us on Patreon
             </a>
             . Servants! Fetch tea for{" "}
             <Link
               href="/thank-you"
-              className="font-medium not-italic text-emerald-100 underline hover:text-white transition-colors"
+              className="font-medium not-italic text-emerald-200 underline hover:text-white transition-colors"
             >
               those who&apos;ve supported us
             </Link>
