@@ -323,11 +323,14 @@ _HISTORY_RETENTION_DAYS = 90
 # rebuild is required or old runs keep their UTC upload-day keys.
 # 26: mode brackets actually accumulate (they were allowlist-dropped since
 # v24, so Standard/Daily/Custom community blobs sat empty).
-# 27: forces the one full walk that backfills the charts blob. The charts
-# accumulator had been throwing on every run since v25 (a renamed keyword),
-# so its buckets are empty and an incremental fold would only ever add runs
-# submitted after the fix. Nothing about the snapshot's SHAPE changed here.
-SNAPSHOT_VERSION = 27
+# 27 was an attempt to force the full walk that backfills the charts blob.
+# Held back on 2026-08-25: the walk cannot complete on this box yet (it
+# OOM-looped for five hours), and a version that can never finish means the
+# rebuilder retries forever and nothing else gets to run. Staying on 26 keeps
+# the incremental fold working and the box stable. The charts blob stays
+# empty until the walk is affordable; the fix for that is memory work, not a
+# version bump.
+SNAPSHOT_VERSION = 26
 # Serialized-byte budget per persisted chunk doc. With version-composable
 # brackets a popular entity carries hundreds of per-bracket blocks and
 # entity sizes vary wildly (a card dwarfs an affliction), so chunks are
