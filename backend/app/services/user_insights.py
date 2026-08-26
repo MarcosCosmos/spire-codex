@@ -414,7 +414,11 @@ def _bare_character(raw: str | None) -> str:
 # live in Redis so all workers share them; a fresh marker with the old 120s
 # TTL decides when to re-walk, and stale copies keep serving instantly while
 # the refresh runs behind them.
-_STALE_REDIS_TTL = 24 * 3600
+# 7 days, not 24h: the payload is stale-while-revalidate, so serving an old
+# profile instantly beats an empty one in every case -- 24h TTLs let a
+# two-day incident window (2026-08-25/26) empty every profile on the site
+# into the building placeholder at once.
+_STALE_REDIS_TTL = 7 * 24 * 3600
 _LOCK_TTL = 15 * 60
 
 _inflight: set[str] = set()
