@@ -34,6 +34,8 @@ def main() -> None:
 
         lake_stats.build_and_store_payload()
         print("community payload stored", flush=True)
+        lake_stats.build_entity_store()
+        print("entity store stored", flush=True)
     except Exception as e:
         print(f"community payload build failed: {e}", flush=True)
     print("ingest complete", flush=True)
