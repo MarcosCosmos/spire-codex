@@ -1522,6 +1522,11 @@ def start_stats_refresher() -> None:
                 )
 
             _kick_side_job("summaries", _summaries)
+
+            from ..services import lake_stats
+
+            if lake_stats.SHADOW_ENABLED:
+                _kick_side_job("lake_shadow", lake_stats.shadow_check)
         # Proactive warm of the entity-scores cache so tier pages serve
         # straight from Redis cluster-wide. Only after something was
         # actually persisted; a no-op tick has nothing new to warm.
