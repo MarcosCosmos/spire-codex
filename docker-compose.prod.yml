@@ -21,6 +21,7 @@ x-shared-env: &shared-env
   # summary cycle. Set values in the box .env.
   LAKE_COMMUNITY_STATS: ${LAKE_COMMUNITY_STATS:-}
   LAKE_STATS_SHADOW: ${LAKE_STATS_SHADOW:-}
+  LAKE_ENTITY_STATS: ${LAKE_ENTITY_STATS:-}
   # How often the leader may rerun the heavy walk (seconds). Default 7200
   # (2h). With the parallel rebuild on, lower it for fresher public numbers,
   # but keep it well above the observed walk time so the box isn't always
@@ -228,7 +229,10 @@ services:
     env_file: .env
     environment:
       DATA_DIR: /data
-    mem_limit: 3g
+    # 5g container / 3.5g duckdb: with the rebuilder headed for deletion the
+    # ingest is the box's main computer, so it gets real memory instead of
+    # spilling every heavy aggregate to disk.
+    mem_limit: 5g
     volumes:
       - ./lab:/lab:ro
       - ./data:/data:ro

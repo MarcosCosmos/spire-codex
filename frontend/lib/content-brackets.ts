@@ -75,40 +75,62 @@ function splitVersion(raw: string): { base: string; version: string } {
   return { base: raw, version: "" };
 }
 
+const _MODE_KEYS = new Set(MODE_BRACKETS.map((b) => b.key));
+
 /**
- * A "player:skill" composite (e.g. "solo:wr50") combines a player-count bracket
- * with a content/skill bracket. Only the entity cache (tier list + metrics)
- * materializes these, so BracketFilter offers them only in composite mode.
+ * A composite combines distinct axes with colons: player + skill
+ * ("solo:wr50"), and -- on pages whose data source folds a bracket cube
+ * (community stats) -- game mode as a third axis ("standard:solo:wr50").
+ * Each axis at most once, two or more parts, any order.
  */
 export function isCompositeBracket(raw: string | undefined | null): boolean {
   if (!raw || !raw.includes(":")) return false;
-  const [p, s] = raw.split(":");
-  return _PLAYER_KEYS.has(p) && _SKILL_KEYS.has(s);
+  const parts = raw.split(":");
+  if (parts.length < 2 || parts.length > 3) return false;
+  let player = 0,
+    skill = 0,
+    mode = 0;
+  for (const part of parts) {
+    if (_PLAYER_KEYS.has(part)) player++;
+    else if (_SKILL_KEYS.has(part)) skill++;
+    else if (_MODE_KEYS.has(part)) mode++;
+    else return false;
+  }
+  return player <= 1 && skill <= 1 && mode <= 1;
 }
 
-/** Split a bracket value into its player + skill + version axes. A single
- * bracket maps to whichever axis owns it; "all"/unknown gives all empty. */
+/** Split a bracket value into its player + skill + mode + version axes. A
+ * single bracket maps to whichever axis owns it; "all"/unknown gives all
+ * empty. */
 export function splitBracket(raw: string | undefined | null): {
   player: string;
   skill: string;
+  mode: string;
   version: string;
 } {
   const b = normalizeBracket(raw);
   const { base, version } = splitVersion(b === "all" ? "" : b);
-  if (isCompositeBracket(base)) {
-    const [player, skill] = base.split(":");
-    return { player, skill, version };
+  let player = "",
+    skill = "",
+    mode = "";
+  for (const part of base ? base.split(":") : []) {
+    if (_PLAYER_KEYS.has(part)) player = part;
+    else if (_SKILL_KEYS.has(part)) skill = part;
+    else if (_MODE_KEYS.has(part)) mode = part;
   }
-  if (_PLAYER_KEYS.has(base)) return { player: base, skill: "", version };
-  if (_SKILL_KEYS.has(base)) return { player: "", skill: base, version };
-  return { player: "", skill: "", version };
+  return { player, skill, mode, version };
 }
 
-/** Combine player + skill + version selections into one ?bracket= value.
- * Any subset works: the axes compose in canonical player:skill:version
- * order, and all-empty collapses to "all". */
-export function combineBracket(player: string, skill: string, version = ""): string {
-  const base = [player, skill].filter(Boolean).join(":");
+/** Combine player + skill + mode + version selections into one ?bracket=
+ * value. Any subset works: the axes compose in canonical
+ * player:skill:mode:version order, and all-empty collapses to "all". */
+export function combineBracket(
+  player: string,
+  skill: string,
+  version = "",
+  mode = "",
+): string {
+  const base = [player, skill, mode].filter(Boolean).join(":");
   if (base && version) return `${base}:${version}`;
   return base || version || "all";
 }

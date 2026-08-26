@@ -29,14 +29,18 @@ export default function BracketFilter({
   current,
   extraParams,
   composite,
+  modeComposes,
 }: {
   basePath: string;
   current: string;
   extraParams?: Record<string, string | undefined>;
   composite?: boolean;
+  /** The page's data source folds a full bracket cube (lake-served pages),
+   * so the mode row composes with player + skill instead of replacing them. */
+  modeComposes?: boolean;
 }) {
   const active = normalizeBracket(current);
-  const { player, skill, version } = splitBracket(active);
+  const { player, skill, mode, version } = splitBracket(active);
 
   const hrefFor = (bracketValue: string) => {
     const params = new URLSearchParams();
@@ -126,7 +130,7 @@ export default function BracketFilter({
           return (
             <Link
               key={b.key}
-              href={hrefFor(combineBracket(player, targetSkill, version))}
+              href={hrefFor(combineBracket(player, targetSkill, version, modeComposes ? mode : ""))}
               className={pillCls(skill === targetSkill)}
             >
               {b.label}
@@ -139,7 +143,7 @@ export default function BracketFilter({
         {playerOpts.map((b) => (
           <Link
             key={b.key || "all"}
-            href={hrefFor(combineBracket(b.key, skill, version))}
+            href={hrefFor(combineBracket(b.key, skill, version, modeComposes ? mode : ""))}
             className={pillCls(player === b.key)}
           >
             {b.label}
@@ -148,27 +152,51 @@ export default function BracketFilter({
       </div>
       <div className="flex flex-wrap items-center gap-1.5">
         <span className="w-14 text-xs text-[var(--text-muted)]">Mode</span>
-        <Link
-          href={hrefFor(
-            base && !MODE_BRACKETS.some((m) => m.key === base)
-              ? version
-                ? `${base}:${version}`
-                : base
-              : version || "all",
-          )}
-          className={pillCls(!MODE_BRACKETS.some((m) => m.key === base))}
-        >
-          All
-        </Link>
-        {MODE_BRACKETS.map((m) => (
-          <Link
-            key={m.key}
-            href={hrefFor(version ? `${m.key}:${version}` : m.key)}
-            className={pillCls(base === m.key)}
-          >
-            {m.label}
-          </Link>
-        ))}
+        {modeComposes ? (
+          <>
+            {/* Cube-backed page: mode is a real axis, so every mode pill
+                keeps the player + skill selection and vice versa. */}
+            <Link
+              href={hrefFor(combineBracket(player, skill, version))}
+              className={pillCls(!mode)}
+            >
+              All
+            </Link>
+            {MODE_BRACKETS.map((m) => (
+              <Link
+                key={m.key}
+                href={hrefFor(combineBracket(player, skill, version, m.key))}
+                className={pillCls(mode === m.key)}
+              >
+                {m.label}
+              </Link>
+            ))}
+          </>
+        ) : (
+          <>
+            <Link
+              href={hrefFor(
+                base && !MODE_BRACKETS.some((m) => m.key === base)
+                  ? version
+                    ? `${base}:${version}`
+                    : base
+                  : version || "all",
+              )}
+              className={pillCls(!MODE_BRACKETS.some((m) => m.key === base))}
+            >
+              All
+            </Link>
+            {MODE_BRACKETS.map((m) => (
+              <Link
+                key={m.key}
+                href={hrefFor(version ? `${m.key}:${version}` : m.key)}
+                className={pillCls(base === m.key)}
+              >
+                {m.label}
+              </Link>
+            ))}
+          </>
+        )}
       </div>
       {/* Game version is a third axis: it composes with the player and
           skill selections instead of replacing them. */}
