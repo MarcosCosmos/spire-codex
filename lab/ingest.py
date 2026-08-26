@@ -57,6 +57,13 @@ def main() -> None:
         print(f"leaderboard summary refreshed ({n} boards)", flush=True)
     except Exception as e:
         print(f"summary refresh failed: {e}", flush=True)
+    try:
+        from app.services.charts_stats import store_frame_parquet
+
+        n = store_frame_parquet()
+        print(f"frame parquet stored ({n} rows)", flush=True)
+    except Exception as e:
+        print(f"frame parquet failed: {e}", flush=True)
     print("ingest complete", flush=True)
 
 
