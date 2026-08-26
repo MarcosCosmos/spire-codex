@@ -67,13 +67,11 @@ fi
 docker compose -f docker-compose.prod.yml pull backend frontend
 docker compose -f docker-compose.prod.yml up -d --force-recreate backend frontend
 
-# The rebuilder gets its own `up` WITHOUT --force-recreate: compose then
-# only recreates it when the backend image actually changed. A frontend or
-# data-only deploy leaves it untouched, so the multi-hour snapshot walk
-# survives - recreating it on every deploy is exactly how the snapshot
-# sat stale for days. Never drop this line: a rebuilder abandoned on an
-# old image would keep writing old-version snapshots forever.
-docker compose -f docker-compose.prod.yml up -d rebuilder
+# The rebuilder is RETIRED (2026-08-26): the lake ingest computes and
+# serves everything it used to. Deploys must not resurrect it - its walks
+# are exactly the multi-hour cost the lake replaced. Stop it if a manual
+# start left it running; delete this block when the service leaves compose.
+docker stop spire-codex-rebuilder 2>/dev/null || true
 
 # Recreated containers get new IPs on the shared docker network, but nginx
 # resolves upstream hostnames once at startup, so without a reload it keeps
