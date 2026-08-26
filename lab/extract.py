@@ -2,12 +2,20 @@
 
 Runs inside the backend image (has pymongo + the app's Mongo config), so it
 reads blobs Mongo-first with per-run file fallback -- the same source of
-truth the site serves from, including the ~7% of runs the HTTP export's
-file-only path silently skipped. Each line is the raw run blob plus a _meta
-envelope carrying the server-side fields the blob itself lacks (username,
-hidden, timestamps), which later become the lake's sidecar tables.
+truth the site serves from. Each line is the raw run blob plus a _meta
+envelope carrying server-side fields the blob lacks (username, hidden,
+timestamps).
+
+Incremental: /lake/staging/state.json records the (submitted_at, _id)
+cursor; when present, only newer runs are pulled and appended as new pages.
+Every run also refreshes /lake/excluded_current.jsonl.gz (outside the
+pages glob) -- the
+full current hidden/deleted id set -- because runs mutate (hide/unhide,
+deletes) after their page was written.
 
     docker compose -f docker-compose.lab.yml run --rm extract
+    docker compose -f docker-compose.lab.yml run --rm extract --bootstrap
+      (one-time: derive state.json from existing pages that predate it)
 """
 
 import gzip
@@ -18,9 +26,10 @@ import time
 
 sys.path.insert(0, "/app")
 
-from app.services.runs_db_mongo import _get_collection, get_run_blobs 
+from app.services.runs_db_mongo import _get_collection, get_run_blobs
 
 STAGING = pathlib.Path("/lake/staging")
+STATE = STAGING / "state.json"
 RUNS_DIR = pathlib.Path("/data/runs")
 PAGE_SIZE = 50_000
 BATCH = 300
@@ -30,11 +39,66 @@ def _iso(v):
     return v.isoformat() if hasattr(v, "isoformat") else v
 
 
+def _bootstrap() -> None:
+    """Write state.json from the newest existing page (pre-state extracts)."""
+    pages = sorted(STAGING.glob("[0-9]*.jsonl.gz"))
+    if not pages:
+        print("no pages found; nothing to bootstrap")
+        return
+    last = None
+    with gzip.open(pages[-1], "rt", encoding="utf-8") as f:
+        for line in f:
+            last = line
+    obj = json.loads(last)
+    state = {
+        "submitted_at": obj["_meta"]["submitted_at"],
+        "run_hash": obj["run_hash"],
+        "page_next": int(pages[-1].stem) + 1,
+    }
+    STATE.write_text(json.dumps(state))
+    print(f"state bootstrapped from {pages[-1].name}: {state}")
+
+
+def _refresh_excluded(coll) -> None:
+    n = 0
+    tmp = pathlib.Path("/lake/excluded_current.jsonl.gz.tmp")
+    with gzip.open(tmp, "wt", encoding="utf-8") as out:
+        for doc in coll.find(
+            {"$or": [{"hidden": True}, {"deleted_at": {"$ne": None}}]}, {"_id": 1}
+        ):
+            out.write(json.dumps({"run_hash": doc["_id"]}) + "\n")
+            n += 1
+    tmp.replace(pathlib.Path("/lake/excluded_current.jsonl.gz"))
+    print(f"excluded sidecar refreshed: {n:,} hidden/deleted runs", flush=True)
+
+
 def main() -> None:
     STAGING.mkdir(parents=True, exist_ok=True)
+    if "--bootstrap" in sys.argv:
+        _bootstrap()
+        return
     coll = _get_collection()
+    _refresh_excluded(coll)
+
+    query: dict = {}
+    page = 0
+    if STATE.exists():
+        st = json.loads(STATE.read_text())
+        page = st["page_next"]
+        ts, last_id = st["submitted_at"], st["run_hash"]
+        from datetime import datetime
+
+        cutoff = datetime.fromisoformat(ts)
+        query = {
+            "$or": [
+                {"submitted_at": {"$gt": cutoff}},
+                {"submitted_at": cutoff, "_id": {"$gt": last_id}},
+            ]
+        }
+        print(f"incremental from ({ts}, {last_id}), next page {page}", flush=True)
+
     cursor = coll.find(
-        {},
+        query,
         {
             "_id": 1,
             "username": 1,
@@ -48,13 +112,13 @@ def main() -> None:
     ).sort([("submitted_at", 1), ("_id", 1)])
 
     t0 = time.time()
-    page = written = skipped = 0
+    written = skipped = 0
+    last_meta: dict = {}
     out = gzip.open(STAGING / f"{page:05d}.jsonl.gz", "wt", encoding="utf-8")
     batch: list[dict] = []
 
     def flush(rows: list[dict]) -> None:
-        nonlocal written, skipped, page, out
-        blobs = {}
+        nonlocal written, skipped, page, out, last_meta
         try:
             blobs = get_run_blobs([r["_id"] for r in rows])
         except Exception:
@@ -82,6 +146,10 @@ def main() -> None:
                 }
                 out.write(json.dumps(obj, separators=(",", ":")) + "\n")
                 written += 1
+                last_meta = {
+                    "submitted_at": obj["_meta"]["submitted_at"],
+                    "run_hash": h,
+                }
             except Exception:
                 skipped += 1
                 continue
@@ -109,6 +177,8 @@ def main() -> None:
     finally:
         cursor.close()
         out.close()
+    if last_meta:
+        STATE.write_text(json.dumps({**last_meta, "page_next": page + 1}))
     print(
         f"DONE: {written:,} written, {skipped:,} skipped in "
         f"{(time.time() - t0) / 60:.1f} min",
