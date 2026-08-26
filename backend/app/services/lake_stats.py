@@ -56,7 +56,10 @@ def _connect(build: bool = False):
 
     con = duckdb.connect()
     if build:
-        con.execute("SET memory_limit='3500MB'")
+        # Tunable so quiet-box runs can burst (LAKE_BUILD_MEMORY=4500MB with
+        # the 5g container leaves the observed ~300-500MB native overhead).
+        mem = os.environ.get("LAKE_BUILD_MEMORY", "") or "3500MB"
+        con.execute(f"SET memory_limit='{mem}'")
         con.execute(f"SET temp_directory='{LAKE_DIR}/tmp'")
         con.execute("SET preserve_insertion_order=false")
     else:
