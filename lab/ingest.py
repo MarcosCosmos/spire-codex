@@ -54,15 +54,16 @@ def main() -> None:
     except Exception as e:
         print(f"stats core failed: {e}", flush=True)
     try:
-        from app.services.runs_db_mongo import (
-            refresh_leaderboard_summary,
-            refresh_stats_summary,
-        )
+        from app.services.runs_db_mongo import refresh_leaderboard_summary
 
         n = refresh_leaderboard_summary()
         print(f"leaderboard summary refreshed ({n} boards)", flush=True)
-        n = refresh_stats_summary()
-        print(f"legacy deep tables refreshed ({n} combos)", flush=True)
+        # The legacy deep-tables aggregation (refresh_stats_summary) is
+        # REMOVED from the cycle: with a 600s budget it hammered Mongo for
+        # up to ~80 minutes per ingest and starved the serving workers
+        # (2026-08-27, sitewide slowness). The stats core (#920) keeps the
+        # headline numbers fresh; the deep item tables stay as-is until
+        # their lake conversion replaces them.
     except Exception as e:
         print(f"legacy summary refresh failed: {e}", flush=True)
     try:
