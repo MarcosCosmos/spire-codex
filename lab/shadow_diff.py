@@ -24,6 +24,17 @@ LIVE_URLS = [
 ]
 MAX_REAL_FLOOR = 48
 WORST_SHOWN = 5
+OFFICIAL_REST = {
+    "SMITH",
+    "HEAL",
+    "MEND",
+    "DIG",
+    "CLONE",
+    "COOK",
+    "LIFT",
+    "HATCH",
+    "KINDLE",
+}
 
 
 def _pct(part, whole):
@@ -187,6 +198,126 @@ def diff_map_danger(live: dict) -> float:
     return s.report()
 
 
+def diff_events(live: dict) -> float:
+    lake: dict[tuple[str, str], int] = {}
+    for r in _load("shadow_events.json"):
+        lake[(r["event_id"], r["option_id"])] = r["n"]
+    s = Section("events")
+    for ev in (live.get("events") or [])[:12]:
+        opts = ev.get("options") or []
+        total = sum(lake.get((ev["id"], o["id"]), 0) for o in opts)
+        s.count(f"{ev['id']} total", ev["total"], total)
+        for o in opts[:3]:
+            s.count(
+                f"{ev['id']}.{o['id']}", o["count"], lake.get((ev["id"], o["id"]), 0)
+            )
+    return s.report()
+
+
+def diff_rest(live: dict) -> float:
+    agg: dict[str, list[int]] = {}
+    for r in _load("shadow_rest.json"):
+        if r["choice"].upper() not in OFFICIAL_REST:
+            continue
+        rec = agg.setdefault(r["choice"], [0, 0, 0])
+        rec[0] += r["n"]
+        rec[1] += r["wins"]
+        rec[2] += r["low"]
+    total = sum(rec[0] for rec in agg.values())
+    low_total = sum(rec[2] for rec in agg.values())
+    high_total = total - low_total
+    s = Section("rest_sites")
+    for row in live.get("rest_sites") or []:
+        count, wins, low = agg.get(row["id"], [0, 0, 0])
+        s.count(f"{row['id']} count", row["count"], count)
+        s.rate(f"{row['id']} win_rate", row["win_rate"], _pct(wins, count))
+        s.rate(f"{row['id']} pct_low_hp", row["pct_low_hp"], _pct(low, low_total))
+        s.rate(
+            f"{row['id']} pct_high_hp",
+            row["pct_high_hp"],
+            _pct(count - low, high_total),
+        )
+    return s.report()
+
+
+def diff_ancients(live: dict) -> float:
+    lake = {r["rid"]: r for r in _load("shadow_ancient.json")}
+    s = Section("ancient_picks")
+    for row in live.get("ancient_picks") or []:
+        rec = lake.get(row["id"]) or {"chosen": 0, "offered": 0}
+        s.count(f"{row['id']} count", row["count"], rec["chosen"])
+        if row.get("offered"):
+            s.count(f"{row['id']} offered", row["offered"], rec["offered"])
+            s.rate(
+                f"{row['id']} take_rate",
+                row.get("take_rate"),
+                _pct(rec["chosen"], rec["offered"]),
+            )
+    return s.report()
+
+
+def diff_removed(live: dict) -> float:
+    removed: dict[str, int] = {}
+    stolen: dict[str, int] = {}
+    char_removes: dict[str, int] = {}
+    for r in _load("shadow_removed.json"):
+        if r["hopper_floor"]:
+            stolen[r["cid"]] = stolen.get(r["cid"], 0) + r["n"]
+        else:
+            removed[r["cid"]] = removed.get(r["cid"], 0) + r["n"]
+            char_removes[r["ps_char"]] = char_removes.get(r["ps_char"], 0) + r["n"]
+    worst = 0.0
+    s = Section("most_removed")
+    for row in live.get("most_removed") or []:
+        s.count(row["id"], row["count"], removed.get(row["id"], 0))
+    worst = s.report()
+    s = Section("hopper_stolen")
+    for row in live.get("hopper_stolen") or []:
+        s.count(row["id"], row["count"], stolen.get(row["id"], 0))
+    worst = max(worst, s.report())
+
+    reward = _load("shadow_reward.json")[0]
+    s = Section("reward_skip_rate")
+    s.rate(
+        "reward_skip_rate",
+        live.get("reward_skip_rate"),
+        _pct(reward["skips"], reward["screens"]),
+    )
+    worst = max(worst, s.report())
+
+    rests: dict[str, dict[str, int]] = {}
+    for r in _load("shadow_rest.json"):
+        rests.setdefault(r["ps_char"], {})
+        rests[r["ps_char"]][r["choice"]] = (
+            rests[r["ps_char"]].get(r["choice"], 0) + r["n"]
+        )
+    s = Section("character_behavior")
+    for row in live.get("character_behavior") or []:
+        s.count(f"{row['id']} removes", row["removes"], char_removes.get(row["id"], 0))
+        crest = rests.get(row["id"]) or {}
+        rest_total = sum(crest.values())
+        for choice, pct in (row.get("rest") or {}).items():
+            s.rate(
+                f"{row['id']} rest.{choice}",
+                pct,
+                _pct(crest.get(choice, 0), rest_total),
+            )
+    return max(worst, s.report())
+
+
+def diff_records(live: dict) -> float:
+    rec = _load("shadow_records.json")[0]
+    lr = live.get("records") or {}
+    s = Section("records")
+    if lr.get("fastest_win"):
+        s.count("fastest_win", lr["fastest_win"]["run_time"], rec["fastest_win"])
+    if lr.get("longest_run"):
+        s.count("longest_run", lr["longest_run"]["run_time"], rec["longest_run"])
+    if lr.get("biggest_deck"):
+        s.count("biggest_deck", lr["biggest_deck"]["size"], rec["biggest_deck"])
+    return s.report()
+
+
 def _freshness() -> None:
     meta = _load("shadow_meta.json")[0]
     try:
@@ -209,6 +340,11 @@ def main() -> None:
         diff_char_asc(live),
         diff_survival(live),
         diff_map_danger(live),
+        diff_events(live),
+        diff_rest(live),
+        diff_ancients(live),
+        diff_removed(live),
+        diff_records(live),
     )
     print(
         f"\nVERDICT: worst drift {worst:.2f} "
