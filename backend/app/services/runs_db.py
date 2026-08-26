@@ -759,8 +759,17 @@ def get_stats(
         }
 
 
-# Initialize on import
-init_db()
+# Initialize on import. Best-effort: on Mongo deployments this SQLite
+# fallback is never read, and containers that mount the data dir read-only
+# (the lake ingest) can't open it at all -- that must not poison imports.
+try:
+    init_db()
+except sqlite3.OperationalError as e:
+    import logging
+
+    logging.getLogger(__name__).warning(
+        "sqlite runs db unavailable (%s); local fallback disabled", e
+    )
 
 
 # ── MongoDB dispatch ──────────────────────────────────────────────────────
