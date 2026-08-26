@@ -29,6 +29,13 @@ def main() -> None:
             continue
         con.execute(path.read_text())
         print(f"{name}: done", flush=True)
+    try:
+        from app.services import lake_stats
+
+        lake_stats.build_and_store_payload()
+        print("community payload stored", flush=True)
+    except Exception as e:
+        print(f"community payload build failed: {e}", flush=True)
     print("ingest complete", flush=True)
 
 

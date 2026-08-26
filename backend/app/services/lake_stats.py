@@ -145,28 +145,56 @@ WHERE player_id IS NOT NULL AND character <> ''
 """
 
 
+_PAYLOAD_PATH_NAME = "community_payload.json"
+
+
 def community_payload(bracket: str | None = None) -> dict | None:
-    """Community-stats payload built from the lake, or None when this
-    bracket isn't lake-served, the lake is missing pieces, or anything at
-    all fails -- the caller falls back to the snapshot path."""
+    """Community-stats payload PRECOMPUTED by the ingest, or None when this
+    bracket isn't lake-served, no precomputed payload exists, or anything
+    fails -- the caller falls back to the snapshot path. Serving never
+    builds inline: the full-corpus build takes minutes and times out the
+    request."""
     try:
         if bracket not in (None, "all"):
             return None
-        if not SERVE_ENABLED or not available(*_SERVE_FILES[1:]):
+        if not SERVE_ENABLED:
             return None
-        import time
+        import json
 
+        path = LAKE_DIR / _PAYLOAD_PATH_NAME
+        if not path.exists():
+            return None
+        mtime = path.stat().st_mtime
         hit = _payload_cache.get("all")
-        if hit and time.time() - hit[0] < _PAYLOAD_TTL_SECONDS:
+        if hit and hit[0] == mtime:
             return hit[1]
-        payload = _build_community_all()
-        _payload_cache["all"] = (time.time(), payload)
+        payload = json.loads(path.read_text())
+        _payload_cache["all"] = (mtime, payload)
         return payload
     except Exception:
         logger.warning(
             "lake community payload failed; snapshot fallback", exc_info=True
         )
         return None
+
+
+def build_and_store_payload() -> dict | None:
+    """Build the full community payload from the lake and write it beside
+    the parquet for the serving workers to point-read. Ingest-time only."""
+    if not available(*_SERVE_FILES[1:]):
+        logger.info("lake payload build skipped: lake incomplete")
+        return None
+    import json
+
+    payload = _build_community_all()
+    tmp = LAKE_DIR / (_PAYLOAD_PATH_NAME + ".tmp")
+    tmp.write_text(json.dumps(payload, separators=(",", ":")))
+    tmp.replace(LAKE_DIR / _PAYLOAD_PATH_NAME)
+    logger.info(
+        "lake community payload stored (%d bytes)",
+        (LAKE_DIR / _PAYLOAD_PATH_NAME).stat().st_size,
+    )
+    return payload
 
 
 def _build_community_all() -> dict:
