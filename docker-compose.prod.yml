@@ -76,6 +76,7 @@ services:
       # pull at deploy, exactly like data/. Image bytes themselves are
       # served from the CDN (nginx 301s /static/images/*).
       - ./backend/static:/app/static:ro
+      - ./lake:/lake:ro
       - ./.secrets:/secrets:ro
     environment:
       <<: *shared-env
@@ -192,6 +193,7 @@ services:
       - ./data:/data
       - ./data-beta:/data-beta:ro
       - ./backend/static:/app/static:ro
+      - ./lake:/lake:ro
       - ./.secrets:/secrets:ro
     environment:
       <<: *shared-env
