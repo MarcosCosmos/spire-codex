@@ -21,13 +21,25 @@ SHADOW_ENABLED = (os.environ.get("LAKE_STATS_SHADOW", "") or "").lower() in (
     "on",
     "true",
 )
+# "serve": /api/runs/community-stats builds its payload from the lake (the
+# snapshot stays as automatic fallback for unsupported brackets and errors).
+SERVE_ENABLED = (os.environ.get("LAKE_COMMUNITY_STATS", "") or "").lower() == "serve"
 
 _OFFICIAL = "('IRONCLAD','SILENT','DEFECT','NECROBINDER','REGENT')"
 
 
-def available() -> bool:
-    if not (LAKE_DIR / "runs.parquet").exists():
-        return False
+_SERVE_FILES = (
+    "runs.parquet",
+    "excluded.parquet",
+    "floors.parquet",
+    "players.parquet",
+)
+
+
+def available(*extra: str) -> bool:
+    for name in ("runs.parquet",) + extra:
+        if not (LAKE_DIR / name).exists():
+            return False
     try:
         import duckdb  # noqa: F401
     except ImportError:
@@ -99,3 +111,236 @@ def shadow_check() -> None:
             )
     except Exception:
         logger.warning("lake shadow check failed", exc_info=True)
+
+
+# ── Serve mode: the full community-stats payload from the lake ────────────────
+
+_PAYLOAD_TTL_SECONDS = 60.0
+_payload_cache: dict[str, tuple[float, dict]] = {}
+
+_ELIGIBLE_SQL = """
+CREATE OR REPLACE TEMP VIEW eligible AS
+SELECT r.*
+FROM read_parquet('{lake}/runs.parquet') r
+ANTI JOIN read_parquet('{lake}/excluded.parquet') x ON r.run_hash = x.run_hash
+WHERE r.ascension BETWEEN 0 AND 10
+  AND r.character IN ('IRONCLAD','SILENT','DEFECT','NECROBINDER','REGENT')
+"""
+
+_PFLOORS_SQL = """
+CREATE OR REPLACE TEMP VIEW pfloors AS
+SELECT f.run_hash, f.act, f.floor_idx, ps.u AS p,
+  e.win, lower(e.character) AS run_char,
+  len(list_filter(f.room_models, m -> m LIKE '%THIEVING_HOPPER%')) > 0 AS hopper_floor
+FROM read_parquet('{lake}/floors.parquet') f
+JOIN eligible e ON f.run_hash = e.run_hash,
+LATERAL (SELECT unnest(f.players) AS u) ps
+"""
+
+_PID_CHAR_SQL = """
+CREATE OR REPLACE TEMP VIEW pid_char AS
+SELECT run_hash, player_id, lower(character) AS character
+FROM read_parquet('{lake}/players.parquet')
+WHERE player_id IS NOT NULL AND character <> ''
+"""
+
+
+def community_payload(bracket: str | None = None) -> dict | None:
+    """Community-stats payload built from the lake, or None when this
+    bracket isn't lake-served, the lake is missing pieces, or anything at
+    all fails -- the caller falls back to the snapshot path."""
+    try:
+        if bracket not in (None, "all"):
+            return None
+        if not SERVE_ENABLED or not available(*_SERVE_FILES[1:]):
+            return None
+        import time
+
+        hit = _payload_cache.get("all")
+        if hit and time.time() - hit[0] < _PAYLOAD_TTL_SECONDS:
+            return hit[1]
+        payload = _build_community_all()
+        _payload_cache["all"] = (time.time(), payload)
+        return payload
+    except Exception:
+        logger.warning(
+            "lake community payload failed; snapshot fallback", exc_info=True
+        )
+        return None
+
+
+def _build_community_all() -> dict:
+    from . import community_stats as cs
+
+    lake = str(LAKE_DIR)
+    con = _connect()
+    try:
+        con.execute(_ELIGIBLE_SQL.format(lake=lake))
+        con.execute(_PFLOORS_SQL.format(lake=lake))
+        con.execute(_PID_CHAR_SQL.format(lake=lake))
+        acc = cs._new_acc_one()
+
+        for char, asc, runs, wins in con.execute(
+            "SELECT lower(character), coalesce(ascension, 0)::INT, count(*),"
+            " count(*) FILTER (win) FROM eligible GROUP BY 1, 2"
+        ).fetchall():
+            acc["total_runs"] += runs
+            acc["total_wins"] += wins
+            for store_key, rec in (
+                ("by_ascension", acc["by_ascension"].setdefault(asc, [0, 0])),
+                ("by_character", acc["by_character"].setdefault(char, [0, 0])),
+                (
+                    "char_asc",
+                    acc["char_asc"].setdefault(char, {}).setdefault(asc, [0, 0]),
+                ),
+            ):
+                rec[0] += runs
+                rec[1] += wins
+
+        for col, key in (("encounter", "deaths_encounter"), ("event", "deaths_event")):
+            acc[key] = dict(
+                con.execute(
+                    f"SELECT killed_by_{col}, count(*) FROM eligible"
+                    f" WHERE NOT win AND killed_by_{col} IS NOT NULL"
+                    f" AND killed_by_{col} NOT LIKE 'NONE%' GROUP BY 1"
+                ).fetchall()
+            )
+
+        for floors, runs, wins in con.execute(
+            "WITH per_run AS (SELECT f.run_hash, count(*) AS n"
+            f" FROM read_parquet('{lake}/floors.parquet') f"
+            " JOIN eligible e ON f.run_hash = e.run_hash GROUP BY 1)"
+            " SELECT n, count(*), count(*) FILTER (e.win) FROM per_run p"
+            " JOIN eligible e ON p.run_hash = e.run_hash GROUP BY 1"
+        ).fetchall():
+            acc["floors"][int(floors)] = [runs, wins]
+
+        for act, ptype, visits, dmg, deaths in con.execute(
+            f"WITH typed AS (SELECT f.* FROM read_parquet('{lake}/floors.parquet') f"
+            " JOIN eligible e ON f.run_hash = e.run_hash"
+            " WHERE f.map_point_type IS NOT NULL AND f.map_point_type <> '')"
+            ", visits AS (SELECT act, map_point_type, count(*) AS v,"
+            " sum(least(100.0, greatest(0, coalesce(ps.u.damage_taken, 0)) * 100.0"
+            " / ps.u.max_hp)) AS dmg FROM typed,"
+            " LATERAL (SELECT unnest(players) AS u) ps"
+            " WHERE coalesce(ps.u.max_hp, 0) > 0 GROUP BY 1, 2)"
+            ", lastf AS (SELECT t.run_hash, arg_max(t.act, t.act * 10000 + t.floor_idx)"
+            " AS act, arg_max(t.map_point_type, t.act * 10000 + t.floor_idx) AS mpt"
+            " FROM typed t JOIN eligible e ON t.run_hash = e.run_hash"
+            " WHERE coalesce(e.killed_by_encounter, '') <> ''"
+            "  OR coalesce(e.killed_by_event, '') <> '' GROUP BY 1)"
+            ", deaths AS (SELECT act, mpt, count(*) AS d FROM lastf GROUP BY 1, 2)"
+            " SELECT v.act, v.map_point_type, v.v, v.dmg, coalesce(d.d, 0)"
+            " FROM visits v LEFT JOIN deaths d"
+            " ON v.act = d.act AND v.map_point_type = d.mpt"
+        ).fetchall():
+            acc["map_danger"][(int(act), ptype)] = [visits, float(dmg or 0.0), deaths]
+
+        for eid, oid, n in con.execute(
+            "SELECT split_part((ec.u).title.\"key\", '.', 1),"
+            " split_part(split_part((ec.u).title.\"key\", '.options.', 2), '.', 1),"
+            " count(*) FROM pfloors, LATERAL (SELECT unnest((p).event_choices) AS u) ec"
+            " WHERE (ec.u).title.\"table\" = 'events'"
+            " AND (ec.u).title.\"key\" LIKE '%.options.%' GROUP BY 1, 2"
+        ).fetchall():
+            if eid and oid:
+                acc["events"].setdefault(eid, {})[oid] = n
+
+        for choice, ps_char, n, wins, low in con.execute(
+            "WITH hp AS (SELECT run_hash, act, floor_idx, p, win, run_char,"
+            " last_value(CASE WHEN (p).current_hp IS NOT NULL"
+            " AND coalesce((p).max_hp, 0) > 0 THEN"
+            " struct_pack(hp := (p).current_hp, mx := (p).max_hp) END IGNORE NULLS)"
+            " OVER (PARTITION BY run_hash, (p).player_id ORDER BY act, floor_idx"
+            " ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING) AS hp_prev"
+            " FROM pfloors)"
+            ", choices AS (SELECT rc.u AS choice, h.win,"
+            " coalesce(h.hp_prev, struct_pack(hp := (h.p).current_hp,"
+            " mx := coalesce((h.p).max_hp, 0))) AS ref,"
+            " coalesce(pc.character, h.run_char) AS ps_char FROM hp h"
+            " LEFT JOIN pid_char pc ON h.run_hash = pc.run_hash"
+            " AND (h.p).player_id = pc.player_id,"
+            " LATERAL (SELECT unnest((h.p).rest_site_choices) AS u) rc"
+            " WHERE rc.u IS NOT NULL AND rc.u <> '')"
+            " SELECT choice, ps_char, count(*), count(*) FILTER (win),"
+            " count(*) FILTER (ref.mx > 0 AND ref.hp IS NOT NULL"
+            " AND ref.hp * 2 < ref.mx) FROM choices GROUP BY 1, 2"
+        ).fetchall():
+            rec = acc["rest"].setdefault(choice, [0, 0, 0])
+            rec[0] += n
+            rec[1] += wins
+            rec[2] += low
+            crest = acc["char_rest"].setdefault(ps_char, {})
+            crest[choice] = crest.get(choice, 0) + n
+
+        for rid, chosen, offered in con.execute(
+            "WITH offers AS (SELECT coalesce((ac.u).TextKey,"
+            " CASE WHEN (ac.u).title.\"key\" LIKE '%.%' THEN"
+            ' substr((ac.u).title."key", strpos((ac.u).title."key", \'.\') + 1)'
+            ' ELSE (ac.u).title."key" END) AS rid, (ac.u).was_chosen AS wc'
+            " FROM pfloors, LATERAL (SELECT unnest((p).ancient_choice) AS u) ac)"
+            " SELECT rid, count(*) FILTER (coalesce(wc, false)), count(*) FROM offers"
+            " WHERE rid IS NOT NULL AND rid <> '' AND upper(rid) NOT LIKE 'NONE%'"
+            " GROUP BY 1"
+        ).fetchall():
+            acc["ancient"][rid] = [chosen, offered]
+
+        for cid, hopper, ps_char, n in con.execute(
+            "WITH rem AS (SELECT hopper_floor,"
+            " coalesce(pc.character, f.run_char) AS ps_char,"
+            " coalesce(json_extract_string(cr.u, '$.card.id'),"
+            " json_extract_string(cr.u, '$.id'),"
+            " CASE WHEN json_type(cr.u) = 'VARCHAR' THEN cr.u::VARCHAR END) AS raw"
+            " FROM pfloors f LEFT JOIN pid_char pc ON f.run_hash = pc.run_hash"
+            " AND (f.p).player_id = pc.player_id,"
+            " LATERAL (SELECT unnest((f.p).cards_removed) AS u) cr)"
+            " SELECT CASE WHEN upper(split_part(raw, '.', -1)) LIKE 'STRIKE_%'"
+            " THEN 'STRIKE' WHEN upper(split_part(raw, '.', -1)) LIKE 'DEFEND_%'"
+            " THEN 'DEFEND' ELSE upper(split_part(raw, '.', -1)) END,"
+            " hopper_floor, ps_char, count(*) FROM rem"
+            " WHERE raw IS NOT NULL AND raw <> ''"
+            " AND upper(split_part(raw, '.', -1)) NOT LIKE 'NONE%' GROUP BY 1, 2, 3"
+        ).fetchall():
+            if hopper:
+                acc["stolen"][cid] = acc["stolen"].get(cid, 0) + n
+            else:
+                acc["removed"][cid] = acc["removed"].get(cid, 0) + n
+                acc["char_removes"][ps_char] = acc["char_removes"].get(ps_char, 0) + n
+
+        screens, skips = con.execute(
+            "SELECT count(*), count(*) FILTER (NOT list_bool_or("
+            "[coalesce(c.was_picked, false) FOR c IN (p).card_choices]))"
+            " FROM pfloors WHERE len((p).card_choices) > 0"
+        ).fetchone()
+        acc["reward_screens"] = screens
+        acc["reward_skips"] = skips
+
+        rec = con.execute(
+            "WITH rr AS (SELECT * FROM eligible WHERE game_mode = 'standard'"
+            " AND NOT has_modifiers)"
+            " SELECT (SELECT min(run_time) FROM rr WHERE win AND run_time > 0),"
+            " (SELECT arg_min(run_hash, run_time) FROM rr WHERE win AND run_time > 0),"
+            " (SELECT max(run_time) FROM rr WHERE run_time > 0),"
+            " (SELECT arg_max(run_hash, run_time) FROM rr WHERE run_time > 0),"
+            f" (SELECT max(p.deck_size) FROM read_parquet('{lake}/players.parquet') p"
+            "  JOIN rr ON p.run_hash = rr.run_hash),"
+            " (SELECT arg_max(p.run_hash, p.deck_size)"
+            f"  FROM read_parquet('{lake}/players.parquet') p"
+            "  JOIN rr ON p.run_hash = rr.run_hash)"
+        ).fetchone()
+        if rec[0] is not None:
+            acc["fastest_win"] = (int(rec[0]), rec[1])
+        if rec[2] is not None:
+            acc["longest_run"] = (int(rec[2]), rec[3])
+        if rec[4]:
+            acc["biggest_deck"] = (int(rec[4]), rec[5])
+
+        payload = cs._finalize_one(acc)
+        payload["data_through"] = str(
+            con.execute(
+                f"SELECT max(submitted_at) FROM read_parquet('{lake}/runs.parquet')"
+            ).fetchone()[0]
+        )
+        return payload
+    finally:
+        con.close()
