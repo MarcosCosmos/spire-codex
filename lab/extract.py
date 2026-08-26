@@ -53,7 +53,7 @@ def _bootstrap() -> None:
     state = {
         "submitted_at": obj["_meta"]["submitted_at"],
         "run_hash": obj["run_hash"],
-        "page_next": int(pages[-1].stem) + 1,
+        "page_next": int(pages[-1].name.split(".")[0]) + 1,
     }
     STATE.write_text(json.dumps(state))
     print(f"state bootstrapped from {pages[-1].name}: {state}")
