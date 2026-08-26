@@ -71,7 +71,23 @@ FROM read_ndjson('/lake/staging/*.jsonl.gz',
   LATERAL (SELECT unnest(p.u.deck) AS u) c
 ) TO '/lake/deck.parquet' (FORMAT parquet, COMPRESSION zstd);
 
+-- Location-level table (one row per visited map point, players kept as a
+-- nested list): floor_events drops roomless locations via its rooms
+-- unnest, so survival and map-danger need this shape.
+COPY (
+SELECT r.run_hash, act.i - 1 AS act, loc.i AS floor_idx,
+  lower(loc.u.map_point_type) AS map_point_type,
+  loc.u.player_stats AS players
+FROM read_ndjson('/lake/staging/*.jsonl.gz',
+  maximum_object_size=33554432, ignore_errors=true,
+  columns={run_hash: 'VARCHAR',
+    map_point_history: 'STRUCT(map_point_type VARCHAR, player_stats STRUCT(current_gold BIGINT, current_hp BIGINT, damage_taken BIGINT, max_hp BIGINT)[])[][]'}) r,
+  LATERAL (SELECT unnest(map_point_history) AS u, generate_subscripts(map_point_history,1) AS i) act,
+  LATERAL (SELECT unnest(act.u) AS u, generate_subscripts(act.u,1) AS i) loc
+) TO '/lake/floors.parquet' (FORMAT parquet, COMPRESSION zstd);
+
 SELECT 'runs' AS t, count(*) AS n FROM read_parquet('/lake/runs.parquet')
 UNION ALL SELECT 'excluded', count(*) FROM read_parquet('/lake/excluded.parquet')
 UNION ALL SELECT 'floor_events', count(*) FROM read_parquet('/lake/floor_events.parquet')
-UNION ALL SELECT 'deck', count(*) FROM read_parquet('/lake/deck.parquet');
+UNION ALL SELECT 'deck', count(*) FROM read_parquet('/lake/deck.parquet')
+UNION ALL SELECT 'floors', count(*) FROM read_parquet('/lake/floors.parquet');
