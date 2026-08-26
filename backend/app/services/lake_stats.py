@@ -1124,7 +1124,7 @@ def refresh_stats_core() -> int:
     where the Mongo aggregation chain took minutes and timed out."""
     from datetime import datetime, timezone
 
-    from . import app_cache
+    from . import cache as app_cache
     from .runs_db_mongo import _filter_key, _summary_coll, seed_stats_counters
 
     coll = _summary_coll()
