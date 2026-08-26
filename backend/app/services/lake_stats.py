@@ -56,7 +56,7 @@ def _connect(build: bool = False):
 
     con = duckdb.connect()
     if build:
-        con.execute("SET memory_limit='1500MB'")
+        con.execute("SET memory_limit='3500MB'")
         con.execute(f"SET temp_directory='{LAKE_DIR}/tmp'")
     else:
         con.execute("SET memory_limit='500MB'")
