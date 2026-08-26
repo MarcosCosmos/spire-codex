@@ -45,18 +45,26 @@ def main() -> None:
     # The rebuilder is retired, so the materialized summaries that fed the
     # home overview and the leaderboards move here: plain Mongo aggregations
     # plus a Redis warm, no snapshot involved.
+    # Core stats (homepage totals / characters / ascensions) come from the
+    # lake in seconds; the legacy Mongo aggregation only tops up the deep
+    # item tables and is allowed to fail until its own conversion lands.
+    try:
+        n = lake_stats.refresh_stats_core()
+        print(f"stats core refreshed ({n} combos)", flush=True)
+    except Exception as e:
+        print(f"stats core failed: {e}", flush=True)
     try:
         from app.services.runs_db_mongo import (
             refresh_leaderboard_summary,
             refresh_stats_summary,
         )
 
-        n = refresh_stats_summary()
-        print(f"stats summary refreshed ({n} combos)", flush=True)
         n = refresh_leaderboard_summary()
         print(f"leaderboard summary refreshed ({n} boards)", flush=True)
+        n = refresh_stats_summary()
+        print(f"legacy deep tables refreshed ({n} combos)", flush=True)
     except Exception as e:
-        print(f"summary refresh failed: {e}", flush=True)
+        print(f"legacy summary refresh failed: {e}", flush=True)
     try:
         from app.services.charts_stats import store_frame_parquet
 
