@@ -1,11 +1,11 @@
-"""Shadow-diff: lake-computed deaths vs the live community-stats payload.
+"""Shadow-diff: lake-computed community-stats vs the live payload.
 
-Reads the JSON files shadow_deaths.sql wrote and compares every id in the
-live top-15 lists (already catalog-filtered by the site) against the lake's
-counts. Exact agreement is only expected right after an incremental extract
--- the live snapshot folds new runs every cycle -- so each row reports its
-drift and the verdict line the worst one, with the Mongo-vs-lake run delta
-as freshness context.
+Reads the raw aggregates shadow_deaths.sql and shadow_community.sql wrote,
+finalizes them with the same arithmetic community_stats.py uses, and diffs
+each section against the live response. Exact agreement is only expected
+right after an incremental extract; each section reports its worst drift
+and the verdict line the overall worst. Count drift is relative (%), rate
+drift is in percentage points (pp).
 
     docker compose -f docker-compose.lab.yml run --rm shadow
 """
@@ -22,6 +22,23 @@ LIVE_URLS = [
     "http://spire-codex-backend:8000/api/runs/community-stats",
     "https://spire-codex.com/api/runs/community-stats",
 ]
+MAX_REAL_FLOOR = 48
+WORST_SHOWN = 5
+OFFICIAL_REST = {
+    "SMITH",
+    "HEAL",
+    "MEND",
+    "DIG",
+    "CLONE",
+    "COOK",
+    "LIFT",
+    "HATCH",
+    "KINDLE",
+}
+
+
+def _pct(part, whole):
+    return round(part / whole * 100, 1) if whole else 0.0
 
 
 def _fetch_live() -> dict:
@@ -39,55 +56,298 @@ def _fetch_live() -> dict:
     raise SystemExit("could not fetch live community-stats")
 
 
-def _freshness(lake_runs: int) -> None:
+def _load(name: str):
+    return json.loads((LAKE / name).read_text())
+
+
+class Section:
+    def __init__(self, name: str):
+        self.name = name
+        self.rows: list[tuple[float, str]] = []
+
+    def count(self, label: str, live, lake) -> None:
+        drift = abs((lake or 0) - (live or 0)) * 100.0 / max(live or 0, 1)
+        self.rows.append(
+            (drift, f"{label}: live {live:,} lake {lake:,} ({drift:.2f}%)")
+        )
+
+    def rate(self, label: str, live, lake) -> None:
+        drift = abs((lake or 0.0) - (live or 0.0))
+        self.rows.append((drift, f"{label}: live {live} lake {lake} ({drift:.2f}pp)"))
+
+    def report(self) -> float:
+        worst = max((d for d, _ in self.rows), default=0.0)
+        print(f"\n== {self.name}: {len(self.rows)} values, worst drift {worst:.2f} ==")
+        for d, line in sorted(self.rows, reverse=True)[:WORST_SHOWN]:
+            print("  " + line)
+        return worst
+
+
+def diff_deaths(live: dict) -> float:
+    worst = 0.0
+    for section, fname in (
+        ("encounters", "shadow_deaths_encounters.json"),
+        ("events", "shadow_deaths_events.json"),
+    ):
+        lake = {r["id"]: r["count"] for r in _load(fname)}
+        s = Section(f"deaths.{section}")
+        for row in live["deaths"][section]:
+            s.count(row["id"], row["count"], lake.get(row["id"], 0))
+        worst = max(worst, s.report())
+    return worst
+
+
+def diff_char_asc(live: dict) -> float:
+    rows = _load("shadow_char_asc.json")
+    total_runs = sum(r["runs"] for r in rows)
+    total_wins = sum(r["wins"] for r in rows)
+
+    s = Section("totals")
+    s.count("total_runs", live["total_runs"], total_runs)
+    s.count("total_wins", live["total_wins"], total_wins)
+    s.count("total_losses", live["total_losses"], total_runs - total_wins)
+    s.rate("win_rate", live["win_rate"], _pct(total_wins, total_runs))
+    worst = s.report()
+
+    by_asc: dict[int, list[int]] = {}
+    by_char: dict[str, list[int]] = {}
+    matrix: dict[tuple[str, int], list[int]] = {}
+    for r in rows:
+        for key, store in (
+            (int(r["ascension"]), by_asc),
+            (r["character"], by_char),
+            ((r["character"], int(r["ascension"])), matrix),
+        ):
+            rec = store.setdefault(key, [0, 0])
+            rec[0] += r["runs"]
+            rec[1] += r["wins"]
+
+    s = Section("by_ascension")
+    for row in live["by_ascension"]:
+        rec = by_asc.get(int(row["ascension"]), [0, 0])
+        s.count(f"A{row['ascension']} runs", row["runs"], rec[0])
+        s.count(f"A{row['ascension']} wins", row["wins"], rec[1])
+    worst = max(worst, s.report())
+
+    s = Section("by_character")
+    for row in live["by_character"]:
+        rec = by_char.get(row["id"], [0, 0])
+        s.count(f"{row['id']} runs", row["runs"], rec[0])
+        s.count(f"{row['id']} wins", row["wins"], rec[1])
+        s.rate(f"{row['id']} share", row["share"], _pct(rec[0], total_runs))
+    worst = max(worst, s.report())
+
+    s = Section("ascension_matrix")
+    for cid, per_asc in (live.get("ascension_matrix") or {}).items():
+        for asc, cell in per_asc.items():
+            rec = matrix.get((cid, int(asc)), [0, 0])
+            s.count(f"{cid} A{asc} runs", cell["runs"], rec[0])
+            s.count(f"{cid} A{asc} wins", cell["wins"], rec[1])
+    return max(worst, s.report())
+
+
+def diff_survival(live: dict) -> float:
+    hist: dict[int, int] = {}
+    for r in _load("shadow_floors_hist.json"):
+        f = min(int(r["floors_reached"]), MAX_REAL_FLOOR)
+        hist[f] = hist.get(f, 0) + r["runs"]
+    total = sum(hist.values())
+    lake_curve = {}
+    remaining = total
+    for f in range(1, max(hist, default=0) + 1):
+        lake_curve[f] = _pct(remaining, total)
+        remaining -= hist.get(f, 0)
+    s = Section("survival")
+    for row in live.get("survival") or []:
+        s.rate(f"floor {row['floor']}", row["alive_pct"], lake_curve.get(row["floor"]))
+    return s.report()
+
+
+def diff_map_danger(live: dict) -> float:
+    lake: dict[tuple[int, str], dict] = {}
+    for r in _load("shadow_map_danger.json"):
+        if r["visits"] < 50:
+            continue
+        lake[(int(r["act"]), r["map_point_type"])] = {
+            "visits": r["visits"],
+            "avg_dmg_pct": round(r["dmg_sum"] / r["visits"], 1),
+            "death_rate": round(r["deaths"] * 100.0 / r["visits"], 2),
+        }
+    s = Section("map_danger")
+    for act_row in live.get("map_danger") or []:
+        for ptype, cell in (act_row.get("types") or {}).items():
+            lk = lake.get((int(act_row["act"]), ptype))
+            if lk is None:
+                s.rows.append(
+                    (100.0, f"act {act_row['act']} {ptype}: missing from lake")
+                )
+                continue
+            s.count(
+                f"act {act_row['act']} {ptype} visits", cell["visits"], lk["visits"]
+            )
+            s.rate(
+                f"act {act_row['act']} {ptype} dmg%",
+                cell["avg_dmg_pct"],
+                lk["avg_dmg_pct"],
+            )
+            s.rate(
+                f"act {act_row['act']} {ptype} deaths%",
+                cell["death_rate"],
+                lk["death_rate"],
+            )
+    return s.report()
+
+
+def diff_events(live: dict) -> float:
+    lake: dict[tuple[str, str], int] = {}
+    for r in _load("shadow_events.json"):
+        lake[(r["event_id"], r["option_id"])] = r["n"]
+    s = Section("events")
+    for ev in (live.get("events") or [])[:12]:
+        opts = ev.get("options") or []
+        total = sum(lake.get((ev["id"], o["id"]), 0) for o in opts)
+        s.count(f"{ev['id']} total", ev["total"], total)
+        for o in opts[:3]:
+            s.count(
+                f"{ev['id']}.{o['id']}", o["count"], lake.get((ev["id"], o["id"]), 0)
+            )
+    return s.report()
+
+
+def diff_rest(live: dict) -> float:
+    agg: dict[str, list[int]] = {}
+    for r in _load("shadow_rest.json"):
+        if r["choice"].upper() not in OFFICIAL_REST:
+            continue
+        rec = agg.setdefault(r["choice"], [0, 0, 0])
+        rec[0] += r["n"]
+        rec[1] += r["wins"]
+        rec[2] += r["low"]
+    total = sum(rec[0] for rec in agg.values())
+    low_total = sum(rec[2] for rec in agg.values())
+    high_total = total - low_total
+    s = Section("rest_sites")
+    for row in live.get("rest_sites") or []:
+        count, wins, low = agg.get(row["id"], [0, 0, 0])
+        s.count(f"{row['id']} count", row["count"], count)
+        s.rate(f"{row['id']} win_rate", row["win_rate"], _pct(wins, count))
+        s.rate(f"{row['id']} pct_low_hp", row["pct_low_hp"], _pct(low, low_total))
+        s.rate(
+            f"{row['id']} pct_high_hp",
+            row["pct_high_hp"],
+            _pct(count - low, high_total),
+        )
+    return s.report()
+
+
+def diff_ancients(live: dict) -> float:
+    lake = {r["rid"]: r for r in _load("shadow_ancient.json")}
+    s = Section("ancient_picks")
+    for row in live.get("ancient_picks") or []:
+        rec = lake.get(row["id"]) or {"chosen": 0, "offered": 0}
+        s.count(f"{row['id']} count", row["count"], rec["chosen"])
+        if row.get("offered"):
+            s.count(f"{row['id']} offered", row["offered"], rec["offered"])
+            s.rate(
+                f"{row['id']} take_rate",
+                row.get("take_rate"),
+                _pct(rec["chosen"], rec["offered"]),
+            )
+    return s.report()
+
+
+def diff_removed(live: dict) -> float:
+    removed: dict[str, int] = {}
+    stolen: dict[str, int] = {}
+    char_removes: dict[str, int] = {}
+    for r in _load("shadow_removed.json"):
+        if r["hopper_floor"]:
+            stolen[r["cid"]] = stolen.get(r["cid"], 0) + r["n"]
+        else:
+            removed[r["cid"]] = removed.get(r["cid"], 0) + r["n"]
+            char_removes[r["ps_char"]] = char_removes.get(r["ps_char"], 0) + r["n"]
+    worst = 0.0
+    s = Section("most_removed")
+    for row in live.get("most_removed") or []:
+        s.count(row["id"], row["count"], removed.get(row["id"], 0))
+    worst = s.report()
+    s = Section("hopper_stolen")
+    for row in live.get("hopper_stolen") or []:
+        s.count(row["id"], row["count"], stolen.get(row["id"], 0))
+    worst = max(worst, s.report())
+
+    reward = _load("shadow_reward.json")[0]
+    s = Section("reward_skip_rate")
+    s.rate(
+        "reward_skip_rate",
+        live.get("reward_skip_rate"),
+        _pct(reward["skips"], reward["screens"]),
+    )
+    worst = max(worst, s.report())
+
+    rests: dict[str, dict[str, int]] = {}
+    for r in _load("shadow_rest.json"):
+        rests.setdefault(r["ps_char"], {})
+        rests[r["ps_char"]][r["choice"]] = (
+            rests[r["ps_char"]].get(r["choice"], 0) + r["n"]
+        )
+    s = Section("character_behavior")
+    for row in live.get("character_behavior") or []:
+        s.count(f"{row['id']} removes", row["removes"], char_removes.get(row["id"], 0))
+        crest = rests.get(row["id"]) or {}
+        rest_total = sum(crest.values())
+        for choice, pct in (row.get("rest") or {}).items():
+            s.rate(
+                f"{row['id']} rest.{choice}",
+                pct,
+                _pct(crest.get(choice, 0), rest_total),
+            )
+    return max(worst, s.report())
+
+
+def diff_records(live: dict) -> float:
+    rec = _load("shadow_records.json")[0]
+    lr = live.get("records") or {}
+    s = Section("records")
+    if lr.get("fastest_win"):
+        s.count("fastest_win", lr["fastest_win"]["run_time"], rec["fastest_win"])
+    if lr.get("longest_run"):
+        s.count("longest_run", lr["longest_run"]["run_time"], rec["longest_run"])
+    if lr.get("biggest_deck"):
+        s.count("biggest_deck", lr["biggest_deck"]["size"], rec["biggest_deck"])
+    return s.report()
+
+
+def _freshness() -> None:
+    meta = _load("shadow_meta.json")[0]
     try:
         from app.services.runs_db_mongo import _get_collection
 
         n = _get_collection().count_documents({})
         print(
-            f"freshness: mongo {n:,} runs vs lake {lake_runs:,} "
-            f"({n - lake_runs:+,} not yet extracted)"
+            f"freshness: mongo {n:,} runs vs lake {meta['lake_runs']:,} "
+            f"({n - meta['lake_runs']:+,} not yet extracted)"
         )
     except Exception as e:
         print(f"freshness check unavailable: {e}")
 
 
-def _diff_section(name: str, live_rows: list[dict], lake_file: str) -> float:
-    lake = {r["id"]: r["count"] for r in json.loads((LAKE / lake_file).read_text())}
-    total = sum(lake.values())
-    print(f"\n== deaths.{name} (live top-{len(live_rows)} vs lake) ==")
-    print(f"{'id':<34} {'live':>9} {'lake':>9} {'diff':>7} {'drift%':>7}")
-    worst = 0.0
-    for row in live_rows:
-        lv, lk = row["count"], lake.get(row["id"], 0)
-        drift = abs(lk - lv) * 100.0 / max(lv, 1)
-        worst = max(worst, drift)
-        print(f"{row['id']:<34} {lv:>9,} {lk:>9,} {lk - lv:>+7,} {drift:>6.2f}%")
-    missing = [i for i in lake if i not in {r["id"] for r in live_rows}]
-    print(
-        f"lake-only ids (below live top-{len(live_rows)} or catalog-filtered): "
-        f"{len(missing)}; lake {name} total: {total:,}"
-    )
-    return worst
-
-
 def main() -> None:
     live = _fetch_live()
-    meta = json.loads((LAKE / "shadow_meta.json").read_text())[0]
-    _freshness(meta["lake_runs"])
-    print(
-        f"lake eligible losses (A0-A10, official, not hidden): {meta['eligible_losses']:,}"
-    )
+    _freshness()
     worst = max(
-        _diff_section(
-            "encounters",
-            live["deaths"]["encounters"],
-            "shadow_deaths_encounters.json",
-        ),
-        _diff_section("events", live["deaths"]["events"], "shadow_deaths_events.json"),
+        diff_deaths(live),
+        diff_char_asc(live),
+        diff_survival(live),
+        diff_map_danger(live),
+        diff_events(live),
+        diff_rest(live),
+        diff_ancients(live),
+        diff_removed(live),
+        diff_records(live),
     )
     print(
-        f"\nVERDICT: worst per-id drift {worst:.2f}% "
+        f"\nVERDICT: worst drift {worst:.2f} "
         f"({'PASS - within fold lag' if worst < 1.0 else 'INVESTIGATE'})"
     )
 

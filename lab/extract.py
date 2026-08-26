@@ -102,6 +102,7 @@ def main() -> None:
         {
             "_id": 1,
             "username": 1,
+            "user_id": 1,
             "hidden": 1,
             "deleted_at": 1,
             "submitted_at": 1,
@@ -138,6 +139,7 @@ def main() -> None:
                 obj["run_hash"] = h
                 obj["_meta"] = {
                     "username": r.get("username"),
+                    "user_id": str(r["user_id"]) if r.get("user_id") else None,
                     "hidden": bool(r.get("hidden")),
                     "deleted": r.get("deleted_at") is not None,
                     "submitted_at": _iso(r.get("submitted_at")),

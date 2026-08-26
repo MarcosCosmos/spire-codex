@@ -18,7 +18,9 @@ SELECT run_hash,
   _meta.player_count AS player_count, build_id, seed, start_time, run_time,
   upper(split_part(killed_by_encounter,'.',-1)) AS killed_by_encounter,
   upper(split_part(killed_by_event,'.',-1)) AS killed_by_event,
-  _meta.username AS username, _meta.hidden AS hidden, _meta.deleted AS deleted,
+  _meta.username AS username, _meta.user_id AS user_id,
+  _meta.hidden AS hidden, _meta.deleted AS deleted,
+  coalesce(len(modifiers), 0) > 0 AS has_modifiers,
   _meta.submitted_at AS submitted_at, _meta.played_at AS played_at
 FROM read_ndjson('/lake/staging/*.jsonl.gz',
   maximum_object_size=33554432, ignore_errors=true,
@@ -28,7 +30,8 @@ FROM read_ndjson('/lake/staging/*.jsonl.gz',
     game_mode: 'VARCHAR', build_id: 'VARCHAR', seed: 'VARCHAR',
     start_time: 'BIGINT', run_time: 'BIGINT',
     killed_by_encounter: 'VARCHAR', killed_by_event: 'VARCHAR',
-    _meta: 'STRUCT(username VARCHAR, hidden BOOLEAN, deleted BOOLEAN, submitted_at TIMESTAMP, played_at TIMESTAMP, player_count BIGINT)'})
+    modifiers: 'VARCHAR[]',
+    _meta: 'STRUCT(username VARCHAR, user_id VARCHAR, hidden BOOLEAN, deleted BOOLEAN, submitted_at TIMESTAMP, played_at TIMESTAMP, player_count BIGINT)'})
 ) TO '/lake/runs.parquet' (FORMAT parquet, COMPRESSION zstd);
 
 -- Sidecar from the extractor's fresh scan, NOT the per-page _meta: hidden
@@ -71,7 +74,38 @@ FROM read_ndjson('/lake/staging/*.jsonl.gz',
   LATERAL (SELECT unnest(p.u.deck) AS u) c
 ) TO '/lake/deck.parquet' (FORMAT parquet, COMPRESSION zstd);
 
+-- Location-level table (one row per visited map point, players kept as a
+-- nested list): floor_events drops roomless locations via its rooms
+-- unnest, so survival and map-danger need this shape.
+COPY (
+SELECT r.run_hash, act.i - 1 AS act, loc.i AS floor_idx,
+  lower(loc.u.map_point_type) AS map_point_type,
+  loc.u.player_stats AS players,
+  [x.model_id FOR x IN loc.u.rooms] AS room_models
+FROM read_ndjson('/lake/staging/*.jsonl.gz',
+  maximum_object_size=33554432, ignore_errors=true,
+  columns={run_hash: 'VARCHAR',
+    map_point_history: 'STRUCT(map_point_type VARCHAR, player_stats STRUCT(player_id BIGINT, current_gold BIGINT, current_hp BIGINT, damage_taken BIGINT, max_hp BIGINT, event_choices STRUCT(title STRUCT("key" VARCHAR, "table" VARCHAR))[], rest_site_choices VARCHAR[], ancient_choice STRUCT(TextKey VARCHAR, title STRUCT("key" VARCHAR, "table" VARCHAR), was_chosen BOOLEAN)[], cards_removed JSON[], card_choices STRUCT(was_picked BOOLEAN)[])[], rooms STRUCT(model_id VARCHAR)[])[][]'}) r,
+  LATERAL (SELECT unnest(map_point_history) AS u, generate_subscripts(map_point_history,1) AS i) act,
+  LATERAL (SELECT unnest(act.u) AS u, generate_subscripts(act.u,1) AS i) loc
+) TO '/lake/floors.parquet' (FORMAT parquet, COMPRESSION zstd);
+
+-- Per-player identity + deck size: keys player_id to a character for the
+-- co-op attributions, and carries deck size for the records section.
+COPY (
+SELECT r.run_hash, p.u.id AS player_id,
+  upper(split_part(p.u.character,'.',-1)) AS character,
+  coalesce(len(p.u.deck), 0) AS deck_size
+FROM read_ndjson('/lake/staging/*.jsonl.gz',
+  maximum_object_size=33554432, ignore_errors=true,
+  columns={run_hash: 'VARCHAR',
+    players: 'STRUCT(id BIGINT, "character" VARCHAR, deck STRUCT(id VARCHAR)[])[]'}) r,
+  LATERAL (SELECT unnest(players) AS u) p
+) TO '/lake/players.parquet' (FORMAT parquet, COMPRESSION zstd);
+
 SELECT 'runs' AS t, count(*) AS n FROM read_parquet('/lake/runs.parquet')
 UNION ALL SELECT 'excluded', count(*) FROM read_parquet('/lake/excluded.parquet')
 UNION ALL SELECT 'floor_events', count(*) FROM read_parquet('/lake/floor_events.parquet')
-UNION ALL SELECT 'deck', count(*) FROM read_parquet('/lake/deck.parquet');
+UNION ALL SELECT 'deck', count(*) FROM read_parquet('/lake/deck.parquet')
+UNION ALL SELECT 'floors', count(*) FROM read_parquet('/lake/floors.parquet')
+UNION ALL SELECT 'players', count(*) FROM read_parquet('/lake/players.parquet');
