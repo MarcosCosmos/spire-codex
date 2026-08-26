@@ -183,7 +183,10 @@ services:
     # went down with it. Capped, a too-large walk fails alone and retries.
     # Requires ENTITY_STATS_REBUILD_WORKERS=1: each parallel worker holds its
     # own accumulators, so 2+ workers will not fit in this cap.
-    mem_limit: 3g
+    # 7g: the 2026-08-25 v26 full walk (1.39M runs, first real charts
+    # accumulation) peaked at 5.59GiB measured via cgroup memory.peak; 3g
+    # was never enough once charts stopped short-circuiting.
+    mem_limit: 7g
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]
     volumes:
       - ./data:/data
@@ -193,6 +196,10 @@ services:
     environment:
       <<: *shared-env
       STATS_REFRESHER: "on"
+      # Weekly repair walks. The 86400 default re-walked the full corpus
+      # every day -- 7h and a 5.6GiB peak per walk at the 2026-08 corpus,
+      # growing ~20k runs/day. Incremental folds cover the steady state.
+      STATS_REPAIR_INTERVAL_SECONDS: "604800"
     depends_on:
       - redis
     networks:
