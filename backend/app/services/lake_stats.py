@@ -47,11 +47,19 @@ def available(*extra: str) -> bool:
     return True
 
 
-def _connect():
+def _connect(build: bool = False):
+    """Serving reads get a small in-memory connection; ingest-time builds
+    get a bigger cap plus a spill directory, because the full-corpus
+    aggregations run far past 500MB and an in-memory connection can't
+    spill (it errors instead)."""
     import duckdb
 
     con = duckdb.connect()
-    con.execute("SET memory_limit='500MB'")
+    if build:
+        con.execute("SET memory_limit='1500MB'")
+        con.execute(f"SET temp_directory='{LAKE_DIR}/tmp'")
+    else:
+        con.execute("SET memory_limit='500MB'")
     con.execute("SET threads=2")
     return con
 
@@ -201,7 +209,7 @@ def _build_community_all() -> dict:
     from . import community_stats as cs
 
     lake = str(LAKE_DIR)
-    con = _connect()
+    con = _connect(build=True)
     try:
         con.execute(_ELIGIBLE_SQL.format(lake=lake))
         con.execute(_PFLOORS_SQL.format(lake=lake))
@@ -566,7 +574,7 @@ def build_entity_store() -> dict | None:
 
     from . import run_entity_stats as res
 
-    con = _connect()
+    con = _connect(build=True)
     try:
         con.execute(_ELIGIBLE_SQL.format(lake=LAKE_DIR))
         entities: dict[str, dict[str, dict]] = {

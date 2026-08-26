@@ -22,7 +22,11 @@ def main() -> None:
     import duckdb
 
     con = duckdb.connect("/lake/build.duckdb")
-    for name in ("build.sql", "shadow_deaths.sql", "shadow_community.sql"):
+    # The shadow SQLs were the migration validation gate; the gate passed,
+    # and the payload builder computes the same sections anyway, so the
+    # nightly run skips them (halves the tail). Run them by hand from
+    # lab/ when a fresh lake-vs-snapshot diff is wanted.
+    for name in ("build.sql",):
         path = pathlib.Path("/lab") / name
         if not path.exists():
             print(f"{name}: not present, skipped", flush=True)
