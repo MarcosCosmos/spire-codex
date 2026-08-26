@@ -344,3 +344,179 @@ def _build_community_all() -> dict:
         return payload
     finally:
         con.close()
+
+
+# ── Codex Elo from the lake ──────────────────────────────────────────────────
+# Both Elos are Bradley-Terry fits over aggregated pair counts, so they are
+# order-independent: extract the same pairs the walk extracts and feed the
+# same solver, and the ratings match by construction.
+
+
+def _ids_temp_table(con, name: str, ids) -> None:
+    con.execute(f"CREATE OR REPLACE TEMP TABLE {name} (cid VARCHAR)")
+    rows = [(i,) for i in ids]
+    if rows:
+        con.executemany(f"INSERT INTO {name} VALUES (?)", rows)
+
+
+def reward_pair_counts(con=None) -> dict[tuple[str, str], int]:
+    """(picked, skipped) -> count over card-reward screens, mirroring the
+    walk: eligible runs only, CARD-namespaced ids, curses/status excluded."""
+    from . import run_entity_stats as res
+
+    own = con is None
+    if own:
+        con = _connect()
+    try:
+        con.execute(_ELIGIBLE_SQL.format(lake=LAKE_DIR))
+        _ids_temp_table(con, "excluded_cards", res._excluded_card_ids())
+        rows = con.execute(
+            f"""
+            WITH choices AS (
+              SELECT f.run_hash, f.act, f.floor_idx, ps.i AS pidx,
+                upper(split_part(cc.u.card.id, '.', -1)) AS cid,
+                coalesce(cc.u.was_picked, false) AS picked
+              FROM read_parquet('{LAKE_DIR}/floors.parquet') f
+              JOIN eligible e ON f.run_hash = e.run_hash,
+              LATERAL (SELECT unnest(f.players) AS u,
+                       generate_subscripts(f.players, 1) AS i) ps,
+              LATERAL (SELECT unnest(ps.u.card_choices) AS u) cc
+              WHERE cc.u.card.id IS NOT NULL
+                AND upper(split_part(cc.u.card.id, '.', 1)) = 'CARD'
+                AND upper(split_part(cc.u.card.id, '.', -1))
+                    NOT IN (SELECT cid FROM excluded_cards)
+            )
+            SELECT w.cid, l.cid, count(*)
+            FROM choices w
+            JOIN choices l ON w.run_hash = l.run_hash AND w.act = l.act
+              AND w.floor_idx = l.floor_idx AND w.pidx = l.pidx
+            WHERE w.picked AND NOT l.picked AND w.cid <> l.cid
+            GROUP BY 1, 2
+            """
+        ).fetchall()
+        return {(w, lo): n for w, lo, n in rows}
+    finally:
+        if own:
+            con.close()
+
+
+def upgrade_pair_counts(con=None) -> dict[tuple[str, str], int]:
+    """(upgraded, eligible-but-skipped) -> count over rest-site Smith
+    decisions, replaying _walk_rest_upgrade_choices set-by-set: the eligible
+    pool is the player's upgradeable final-deck cards present by that floor,
+    minus cards already smithed at an earlier decision this run."""
+    from . import run_entity_stats as res
+
+    upgradeable = res._upgradeable_card_ids()
+    own = con is None
+    if own:
+        con = _connect()
+    try:
+        con.execute(_ELIGIBLE_SQL.format(lake=LAKE_DIR))
+        _ids_temp_table(con, "upg_ids", upgradeable)
+        upg_filter = "IN (SELECT cid FROM upg_ids)" if upgradeable else "IS NOT NULL"
+        rows = con.execute(
+            f"""
+            WITH floors_g AS (
+              SELECT f.run_hash, f.players,
+                row_number() OVER (PARTITION BY f.run_hash
+                  ORDER BY f.act, f.floor_idx) AS gfloor
+              FROM read_parquet('{LAKE_DIR}/floors.parquet') f
+              JOIN eligible e ON f.run_hash = e.run_hash
+            ),
+            pmap AS (
+              SELECT run_hash, player_id, player_idx
+              FROM read_parquet('{LAKE_DIR}/players.parquet')
+              WHERE player_id IS NOT NULL
+            ),
+            nplayers AS (
+              -- Solo is the BLOB's player count, not the runs doc's scalar:
+              -- they disagree on some co-op runs, and the walk trusts the blob.
+              SELECT run_hash, count(*) AS np
+              FROM read_parquet('{LAKE_DIR}/players.parquet') GROUP BY 1
+            ),
+            smith_raw AS (
+              SELECT f.run_hash, f.gfloor, ps.u.player_id AS pid,
+                [upper(split_part(u, '.', -1)) FOR u IN ps.u.upgraded_cards
+                 IF upper(split_part(u, '.', 1)) = 'CARD'] AS winners_raw
+              FROM floors_g f,
+              LATERAL (SELECT unnest(f.players) AS u) ps
+              WHERE list_contains(ps.u.rest_site_choices, 'SMITH')
+                AND len(ps.u.upgraded_cards) > 0
+            ),
+            smith AS (
+              SELECT sr.run_hash,
+                CASE WHEN n.np = 1 THEN 1 ELSE pm.player_idx END AS pidx,
+                sr.gfloor, sr.winners_raw
+              FROM smith_raw sr
+              JOIN nplayers n ON sr.run_hash = n.run_hash
+              LEFT JOIN pmap pm ON sr.run_hash = pm.run_hash
+                AND sr.pid = pm.player_id
+              WHERE n.np = 1 OR pm.player_idx IS NOT NULL
+            ),
+            winners AS (
+              SELECT run_hash, pidx, gfloor, wu.u AS card
+              FROM smith, LATERAL (SELECT unnest(winners_raw) AS u) wu
+              WHERE pidx IS NOT NULL AND wu.u {upg_filter}
+            ),
+            events AS (
+              SELECT DISTINCT run_hash, pidx, gfloor FROM winners
+            ),
+            first_up AS (
+              SELECT run_hash, pidx, card, min(gfloor) AS fu
+              FROM winners GROUP BY 1, 2, 3
+            ),
+            deck_min AS (
+              SELECT d.run_hash, d.player_idx AS pidx, d.card,
+                min(coalesce(d.floor_added, 0)) AS fa
+              FROM read_parquet('{LAKE_DIR}/deck.parquet') d
+              JOIN eligible e ON d.run_hash = e.run_hash
+              WHERE d.card {upg_filter}
+              GROUP BY 1, 2, 3
+            ),
+            losers AS (
+              SELECT ev.run_hash, ev.pidx, ev.gfloor, dm.card
+              FROM events ev
+              JOIN deck_min dm ON ev.run_hash = dm.run_hash AND ev.pidx = dm.pidx
+              LEFT JOIN first_up f2 ON f2.run_hash = ev.run_hash
+                AND f2.pidx = ev.pidx AND f2.card = dm.card
+              LEFT JOIN winners w2 ON w2.run_hash = ev.run_hash
+                AND w2.pidx = ev.pidx AND w2.gfloor = ev.gfloor
+                AND w2.card = dm.card
+              WHERE dm.fa <= ev.gfloor
+                AND (f2.fu IS NULL OR f2.fu >= ev.gfloor)
+                AND w2.card IS NULL
+            )
+            SELECT w.card, l.card, count(*)
+            FROM winners w
+            JOIN losers l ON w.run_hash = l.run_hash AND w.pidx = l.pidx
+              AND w.gfloor = l.gfloor
+            WHERE w.card <> l.card
+            GROUP BY 1, 2
+            """
+        ).fetchall()
+        return {(w, lo): n for w, lo, n in rows}
+    finally:
+        if own:
+            con.close()
+
+
+def compute_lake_elo() -> dict:
+    """Card-reward Elo and upgrade Elo fitted from the lake with the same
+    Bradley-Terry solver the walk uses."""
+    from . import run_entity_stats as res
+
+    con = _connect()
+    try:
+        reward = reward_pair_counts(con)
+        upgrade = upgrade_pair_counts(con)
+    finally:
+        con.close()
+    card_elo, _ = res._compute_codex_elo(reward)
+    upgrade_elo, _ = res._compute_codex_elo(upgrade)
+    return {
+        "card_elo": card_elo,
+        "upgrade_elo": upgrade_elo,
+        "reward_pairs": len(reward),
+        "upgrade_pairs": len(upgrade),
+    }
