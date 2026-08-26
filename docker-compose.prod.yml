@@ -226,6 +226,8 @@ services:
     profiles: ["ops"]
     entrypoint: ["python", "/lab/ingest.py"]
     env_file: .env
+    environment:
+      DATA_DIR: /data
     mem_limit: 3g
     volumes:
       - ./lab:/lab:ro
