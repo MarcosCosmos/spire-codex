@@ -31,8 +31,11 @@ FROM read_ndjson('/lake/staging/*.jsonl.gz',
     _meta: 'STRUCT(username VARCHAR, hidden BOOLEAN, deleted BOOLEAN, submitted_at TIMESTAMP, played_at TIMESTAMP, player_count BIGINT)'})
 ) TO '/lake/runs.parquet' (FORMAT parquet, COMPRESSION zstd);
 
+-- Sidecar from the extractor's fresh scan, NOT the per-page _meta: hidden
+-- and deleted flags mutate after a run's page is written.
 COPY (
-SELECT run_hash FROM read_parquet('/lake/runs.parquet') WHERE hidden OR deleted
+SELECT run_hash FROM read_ndjson('/lake/excluded_current.jsonl.gz',
+  columns={run_hash: 'VARCHAR'})
 ) TO '/lake/excluded.parquet' (FORMAT parquet, COMPRESSION zstd);
 
 COPY (

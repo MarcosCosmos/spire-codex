@@ -21,6 +21,17 @@ services:
     networks:
       - nginx_web-network
 
+  shadow:
+    image: ptrlrd/spire-codex-backend:latest
+    entrypoint: ["python", "/lab/shadow_diff.py"]
+    env_file: .env
+    mem_limit: 512m
+    volumes:
+      - ./lab:/lab:ro
+      - ./lake:/lake:ro
+    networks:
+      - nginx_web-network
+
   duckdb:
     image: duckdb/duckdb:1.5.5
     entrypoint: ["duckdb"]

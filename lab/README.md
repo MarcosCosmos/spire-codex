@@ -27,6 +27,16 @@ Streams every run (Mongo blobs first, file fallback) into
 (username, hidden, deleted, submitted_at, played_at, player_count) — fields
 the HTTP export doesn't carry. Prints progress per page; capped at 1.5GB RAM.
 
+Incremental: `lake/staging/state.json` records the cursor, so re-running
+only appends runs submitted since the last pull (minutes, not hours). Every
+run also refreshes `lake/excluded_current.jsonl.gz`, the full current
+hidden/deleted id set, since those flags mutate after a run's page is
+written. If your staging predates state.json, bootstrap the cursor once:
+
+```
+docker compose -f docker-compose.lab.yml run --rm extract --bootstrap
+```
+
 ## 2. Build the lake
 
 ```
@@ -62,3 +72,23 @@ the site.
 
 Re-run steps 1-2. The extract is a full re-pull (staging pages are
 overwritten); incremental append is a later problem, this is a lab.
+
+## Shadow-diff: lake vs the live site
+
+The migration gate: prove the lake reproduces the live community-stats
+deaths numbers before anything serves from it. Run an incremental extract
+first so the lake is minutes behind the live snapshot, then:
+
+```
+docker compose -f docker-compose.lab.yml run --rm extract
+docker compose -f docker-compose.lab.yml run --rm duckdb /lake/build.duckdb -c ".read /lake/lab/build.sql"
+docker compose -f docker-compose.lab.yml run --rm duckdb /lake/build.duckdb -c ".read /lake/lab/shadow_deaths.sql"
+docker compose -f docker-compose.lab.yml run --rm shadow
+```
+
+`shadow_deaths.sql` replicates the walk's filters (hidden/deleted out via
+the sidecar, A0-A10 only, official characters only, losses only, NONE
+sentinels dropped); `shadow` fetches the live payload (backend-direct, so
+no edge cache) and prints a per-id drift table for both top-15 lists. The
+verdict passes under 1% worst drift — the residual is fold lag between the
+extract and the live snapshot's incremental updates.
