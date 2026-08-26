@@ -38,6 +38,66 @@ _DATA_DIR = Path(
 )
 _RUNS_DIR = _DATA_DIR / "runs"
 
+# Ingest-built frame snapshot: the exact per-run tuples below, dumped to
+# parquet once per ingest so workers load the frame in seconds instead of
+# scanning Mongo for 15 minutes per boot (the scan wedged under any
+# concurrent load and took the chart pages down repeatedly on 2026-08-25/26).
+_FRAME_PARQUET = Path(os.environ.get("LAKE_DIR", "/lake")) / "frame.parquet"
+_FRAME_PARQUET_MAX_AGE = 24 * 3600
+_FRAME_COLS = (
+    "character VARCHAR, win TINYINT, ascension INT, game_mode VARCHAR,"
+    " player_count INT, run_time BIGINT, floors_reached INT, deck_size INT,"
+    " relic_count INT, played_day INT, username VARCHAR, was_abandoned TINYINT,"
+    " acts_completed INT, daily_date VARCHAR, build_id VARCHAR"
+)
+
+
+def _load_frame_parquet() -> list[tuple] | None:
+    """The ingest-built frame, or None (missing, stale, or unreadable)."""
+    try:
+        if not _FRAME_PARQUET.exists():
+            return None
+        if time.time() - _FRAME_PARQUET.stat().st_mtime > _FRAME_PARQUET_MAX_AGE:
+            logger.warning("frame parquet is stale; falling back to the DB scan")
+            return None
+        import duckdb
+
+        con = duckdb.connect()
+        try:
+            rows = con.execute(
+                f"SELECT * FROM read_parquet('{_FRAME_PARQUET}')"
+            ).fetchall()
+        finally:
+            con.close()
+        return rows or None
+    except Exception:
+        logger.warning("frame parquet load failed; falling back", exc_info=True)
+        return None
+
+
+def store_frame_parquet() -> int:
+    """Ingest-time: run the canonical frame builder once and dump the rows
+    to parquet for every worker to load cheaply. Returns the row count."""
+    import duckdb
+
+    rows = _load_frame_from_db()
+    con = duckdb.connect()
+    try:
+        con.execute(f"CREATE TABLE f ({_FRAME_COLS})")
+        con.executemany(f"INSERT INTO f VALUES ({', '.join('?' * 15)})", rows)
+        tmp = _FRAME_PARQUET.with_suffix(".parquet.tmp")
+        con.execute(f"COPY f TO '{tmp}' (FORMAT parquet, COMPRESSION zstd)")
+        tmp.replace(_FRAME_PARQUET)
+    finally:
+        con.close()
+    logger.info(
+        "frame parquet stored: %d rows, %d bytes",
+        len(rows),
+        _FRAME_PARQUET.stat().st_size,
+    )
+    return len(rows)
+
+
 # ── Frame: per-run metadata tuples ───────────────────────────────────────────
 
 # Tuple indices (kept positional to stay light at 200k+ rows).
@@ -124,6 +184,13 @@ def _daily_date(seed: str | None, game_mode: str) -> str:
 
 
 def _load_frame() -> list[tuple]:
+    cached = _load_frame_parquet()
+    if cached is not None:
+        return cached
+    return _load_frame_from_db()
+
+
+def _load_frame_from_db() -> list[tuple]:
     rows: list[tuple] = []
     if os.environ.get("MONGO_URL", "").strip():
         from .runs_db_mongo import _get_collection
