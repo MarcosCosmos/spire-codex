@@ -16,6 +16,11 @@ x-shared-env: &shared-env
   # /api/runs/list version filter, in exchange for fewer per-version Elo
   # fits and blob shards per rebuild/persist.
   ENTITY_STATS_RECENT_VERSIONS_N: ${ENTITY_STATS_RECENT_VERSIONS_N:-}
+  # Lake migration flags: "serve" points /api/runs/community-stats at the
+  # parquet lake; LAKE_STATS_SHADOW=on logs lake-vs-snapshot drift each
+  # summary cycle. Set values in the box .env.
+  LAKE_COMMUNITY_STATS: ${LAKE_COMMUNITY_STATS:-}
+  LAKE_STATS_SHADOW: ${LAKE_STATS_SHADOW:-}
   # How often the leader may rerun the heavy walk (seconds). Default 7200
   # (2h). With the parallel rebuild on, lower it for fresher public numbers,
   # but keep it well above the observed walk time so the box isn't always
