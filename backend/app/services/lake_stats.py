@@ -563,7 +563,6 @@ def build_entity_store() -> dict | None:
     if not available(*_SERVE_FILES[1:]):
         logger.info("entity store skipped: lake incomplete")
         return None
-    import json
 
     from . import run_entity_stats as res
 
