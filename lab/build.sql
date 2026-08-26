@@ -86,7 +86,7 @@ SELECT r.run_hash, act.i - 1 AS act, loc.i AS floor_idx,
 FROM read_ndjson('/lake/staging/*.jsonl.gz',
   maximum_object_size=33554432, ignore_errors=true,
   columns={run_hash: 'VARCHAR',
-    map_point_history: 'STRUCT(map_point_type VARCHAR, player_stats STRUCT(player_id BIGINT, current_gold BIGINT, current_hp BIGINT, damage_taken BIGINT, max_hp BIGINT, event_choices STRUCT(title STRUCT("key" VARCHAR, "table" VARCHAR))[], rest_site_choices VARCHAR[], ancient_choice STRUCT(TextKey VARCHAR, title STRUCT("key" VARCHAR, "table" VARCHAR), was_chosen BOOLEAN)[], cards_removed JSON[], card_choices STRUCT(was_picked BOOLEAN, card STRUCT(id VARCHAR))[])[], rooms STRUCT(model_id VARCHAR)[])[][]'}) r,
+    map_point_history: 'STRUCT(map_point_type VARCHAR, player_stats STRUCT(player_id BIGINT, current_gold BIGINT, current_hp BIGINT, damage_taken BIGINT, max_hp BIGINT, event_choices STRUCT(title STRUCT("key" VARCHAR, "table" VARCHAR))[], rest_site_choices VARCHAR[], upgraded_cards VARCHAR[], ancient_choice STRUCT(TextKey VARCHAR, title STRUCT("key" VARCHAR, "table" VARCHAR), was_chosen BOOLEAN)[], cards_removed JSON[], card_choices STRUCT(was_picked BOOLEAN, card STRUCT(id VARCHAR))[])[], rooms STRUCT(model_id VARCHAR)[])[][]'}) r,
   LATERAL (SELECT unnest(map_point_history) AS u, generate_subscripts(map_point_history,1) AS i) act,
   LATERAL (SELECT unnest(act.u) AS u, generate_subscripts(act.u,1) AS i) loc
 ) TO '/lake/floors.parquet' (FORMAT parquet, COMPRESSION zstd);
@@ -117,14 +117,14 @@ FROM read_ndjson('/lake/staging/*.jsonl.gz',
 -- Per-player identity + deck size: keys player_id to a character for the
 -- co-op attributions, and carries deck size for the records section.
 COPY (
-SELECT r.run_hash, p.u.id AS player_id,
+SELECT r.run_hash, p.i AS player_idx, p.u.id AS player_id,
   upper(split_part(p.u.character,'.',-1)) AS character,
   coalesce(len(p.u.deck), 0) AS deck_size
 FROM read_ndjson('/lake/staging/*.jsonl.gz',
   maximum_object_size=33554432, ignore_errors=true,
   columns={run_hash: 'VARCHAR',
     players: 'STRUCT(id BIGINT, "character" VARCHAR, deck STRUCT(id VARCHAR)[])[]'}) r,
-  LATERAL (SELECT unnest(players) AS u) p
+  LATERAL (SELECT unnest(players) AS u, generate_subscripts(players,1) AS i) p
 ) TO '/lake/players.parquet' (FORMAT parquet, COMPRESSION zstd);
 
 SELECT 'runs' AS t, count(*) AS n FROM read_parquet('/lake/runs.parquet')
