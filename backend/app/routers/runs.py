@@ -1205,6 +1205,16 @@ def community_stats(request: Request, response: Response, bracket: str | None = 
 
         if not is_valid_stat_bracket(bracket):
             raise HTTPException(status_code=400, detail="bad bracket")
+    # Lake serve mode: the payload comes straight from the parquet lake and
+    # never depends on the snapshot walk. Any miss (flag off, unsupported
+    # bracket, lake not built, error) falls through to the snapshot path.
+    from ..services import lake_stats
+
+    if lake_stats.SERVE_ENABLED:
+        lake_payload = lake_stats.community_payload(bracket)
+        if lake_payload is not None:
+            response.headers["Cache-Control"] = "public, max-age=300"
+            return lake_payload
     # An empty shell during a post-deploy rebuild must not stick in the
     # edge cache for 5 minutes on top of the rebuild itself.
     response.headers["Cache-Control"] = (
