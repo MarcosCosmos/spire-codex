@@ -47,14 +47,17 @@ def available(*extra: str) -> bool:
     return True
 
 
+_SCRATCH_DB = "build.duckdb"
+
+
 def _connect(build: bool = False):
-    """Serving reads get a small in-memory connection; ingest-time builds
-    get a bigger cap plus a spill directory, because the full-corpus
-    aggregations run far past 500MB and an in-memory connection can't
-    spill (it errors instead)."""
+    """Serving reads get a small in-memory connection. Ingest-time builds
+    attach to the shared scratch database file, so anything materialized
+    once per ingest (the pfloors unnest) is visible to every builder's
+    connection, with a bigger cap plus a spill directory."""
     import duckdb
 
-    con = duckdb.connect()
+    con = duckdb.connect(str(LAKE_DIR / _SCRATCH_DB)) if build else duckdb.connect()
     if build:
         # Tunable so quiet-box runs can burst (LAKE_BUILD_MEMORY=4500MB with
         # the 5g container leaves the observed ~300-500MB native overhead).
@@ -155,6 +158,55 @@ SELECT run_hash, player_id, lower(character) AS character
 FROM read_parquet('{lake}/players.parquet')
 WHERE player_id IS NOT NULL AND character <> ''
 """
+
+
+def _pfloors_table_exists(con) -> bool:
+    return bool(
+        con.execute(
+            "SELECT count(*) FROM duckdb_tables() WHERE table_name = 'pfloors'"
+        ).fetchone()[0]
+    )
+
+
+def _prepare_sources(con, lake: str) -> None:
+    """Views every builder needs. pfloors is only created as a per-session
+    view when no materialized table exists in the scratch database -- the
+    session prepared by the ingest materializes it once and every later
+    connection reuses it instead of re-unnesting 45M player-floor rows."""
+    con.execute(_ELIGIBLE_SQL.format(lake=lake))
+    con.execute(_CELLS_SQL.format(lake=lake))
+    con.execute(_PID_CHAR_SQL.format(lake=lake))
+    if not _pfloors_table_exists(con):
+        con.execute(_PFLOORS_SQL.format(lake=lake))
+
+
+def prepare_build_session():
+    """Ingest-time: materialize the shared pfloors unnest once. Returns the
+    connection; pair it with cleanup_build_session() when the stores are
+    done."""
+    con = _connect(build=True)
+    lake = str(LAKE_DIR)
+    con.execute(_ELIGIBLE_SQL.format(lake=lake))
+    con.execute(_CELLS_SQL.format(lake=lake))
+    con.execute("DROP TABLE IF EXISTS pfloors")
+    body = _PFLOORS_SQL.format(lake=lake).replace(
+        "CREATE OR REPLACE TEMP VIEW pfloors AS", "CREATE TABLE pfloors AS", 1
+    )
+    con.execute(body)
+    n = con.execute("SELECT count(*) FROM pfloors").fetchone()[0]
+    logger.info("build session prepared: pfloors materialized (%d rows)", n)
+    return con
+
+
+def cleanup_build_session(con=None) -> None:
+    own = con is None
+    if own:
+        con = _connect(build=True)
+    try:
+        con.execute("DROP TABLE IF EXISTS pfloors")
+    finally:
+        if own:
+            con.close()
 
 
 _PAYLOAD_PATH_NAME = "community_payload.json"
@@ -444,10 +496,7 @@ def _build_community_cube() -> dict[str, dict]:
         return a
 
     try:
-        con.execute(_ELIGIBLE_SQL.format(lake=lake))
-        con.execute(_CELLS_SQL.format(lake=lake))
-        con.execute(_PFLOORS_SQL.format(lake=lake))
-        con.execute(_PID_CHAR_SQL.format(lake=lake))
+        _prepare_sources(con, lake)
 
         for cell, char, asc, runs, wins in con.execute(
             "SELECT cell, lower(character), coalesce(ascension, 0)::INT, count(*),"
