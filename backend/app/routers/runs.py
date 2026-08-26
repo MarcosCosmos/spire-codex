@@ -1200,14 +1200,10 @@ def community_stats(request: Request, response: Response, bracket: str | None = 
     # composites, game versions, and any of those composed with a version
     # (solo:wr50:v0.107.1). Shared with the entity endpoints so this route
     # can't drift from what the snapshot actually materializes.
-    if bracket is not None:
-        from ..services.run_entity_stats import is_valid_stat_bracket
-
-        if not is_valid_stat_bracket(bracket):
-            raise HTTPException(status_code=400, detail="bad bracket")
-    # Lake serve mode: the payload comes straight from the parquet lake and
-    # never depends on the snapshot walk. Any miss (flag off, unsupported
-    # bracket, lake not built, error) falls through to the snapshot path.
+    # Lake serve mode first: the cube folds ANY mode x players x skill
+    # combination -- including composites the snapshot never materialized --
+    # so composed brackets must reach the lake before the snapshot-grammar
+    # validation can 400 them. Any miss falls through unchanged.
     from ..services import lake_stats
 
     if lake_stats.SERVE_ENABLED:
@@ -1215,6 +1211,11 @@ def community_stats(request: Request, response: Response, bracket: str | None = 
         if lake_payload is not None:
             response.headers["Cache-Control"] = "public, max-age=300"
             return lake_payload
+    if bracket is not None:
+        from ..services.run_entity_stats import is_valid_stat_bracket
+
+        if not is_valid_stat_bracket(bracket):
+            raise HTTPException(status_code=400, detail="bad bracket")
     # An empty shell during a post-deploy rebuild must not stick in the
     # edge cache for 5 minutes on top of the rebuild itself.
     response.headers["Cache-Control"] = (

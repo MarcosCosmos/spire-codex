@@ -165,7 +165,7 @@ export async function CommunityStatsBody({ lang, bracket }: { lang: string; brac
       </p>
 
       {/* Content bracket: slice every dataset below by skill and/or player count. */}
-      <BracketFilter basePath={basePath} current={bracket} composite />
+      <BracketFilter basePath={basePath} current={bracket} composite modeComposes />
 
       {/* Headline numbers */}
       <section className="mb-10">
