@@ -35,9 +35,9 @@ services:
   duckdb:
     image: duckdb/duckdb:1.5.5
     entrypoint: ["duckdb"]
-    # 3g: DuckDB's internal limit doesn't cover JSON-reader/decompress
-    # buffers; 2g got memcg-killed mid-build on the full corpus.
-    mem_limit: 3g
+    # 5g: the single-parse build holds 3.5g inside duckdb plus native
+    # overhead (2g and 3g both got memcg-killed on earlier designs).
+    mem_limit: 5g
     working_dir: /lake
     volumes:
       - ./lab:/lake/lab:ro
