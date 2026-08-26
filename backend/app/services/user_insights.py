@@ -487,6 +487,41 @@ def _fresh_key(cache_key: str) -> str:
     return f"user_insights:fresh:{cache_key}"
 
 
+def _insights_coll():
+    """Durable store for computed insight payloads: database first, Redis
+    in front. Redis expiry or eviction can never empty a profile again --
+    only a user who has never been computed shows the building state."""
+    from .runs_db_mongo import _get_collection
+
+    return _get_collection().database["user_insights"]
+
+
+def _store_payload(cache_key: str, payload: dict) -> None:
+    try:
+        from datetime import datetime, timezone
+
+        _insights_coll().replace_one(
+            {"_id": cache_key},
+            {
+                "_id": cache_key,
+                "payload": payload,
+                "updated_at": datetime.now(timezone.utc),
+            },
+            upsert=True,
+        )
+    except Exception:
+        logger.warning("insights durable store write failed", exc_info=True)
+
+
+def _load_stored_payload(cache_key: str) -> dict | None:
+    try:
+        doc = _insights_coll().find_one({"_id": cache_key})
+        return doc.get("payload") if doc else None
+    except Exception:
+        logger.warning("insights durable store read failed", exc_info=True)
+        return None
+
+
 def get_user_insights(
     user_id: str,
     username: str | None = None,
@@ -511,6 +546,12 @@ def get_user_insights(
     if payload is not None and app_cache.get_json(_fresh_key(cache_key)) is not None:
         _cache_put(cache_key, payload)
         return payload
+    if payload is None:
+        # Redis miss: the database is the store of record. Serve the stored
+        # copy immediately and let the background refresh recompute it.
+        payload = _load_stored_payload(cache_key)
+        if payload is not None:
+            app_cache.set_json(_payload_key(cache_key), payload, _STALE_REDIS_TTL)
     _kick_refresh(cache_key, user_id, username, character, ascension, version, players)
     if payload is not None:
         return payload
@@ -530,6 +571,8 @@ def prewarm_user_insights(user_id: str, username: str | None = None) -> None:
     if _cache_get(cache_key) is not None:
         return
     if app_cache.get_json(_payload_key(cache_key)) is not None:
+        return
+    if _load_stored_payload(cache_key) is not None:
         return
     _kick_refresh(cache_key, user_id, username, None, None, None, None)
 
@@ -588,6 +631,7 @@ def _kick_refresh(
                     app_cache.set_json(_payload_key(key), enc, _STALE_REDIS_TTL)
                     app_cache.set_json(_fresh_key(key), 1, int(_CACHE_TTL))
                     _cache_put(key, enc)
+                    _store_payload(key, enc)
                 return
             payload = jsonable_encoder(
                 _compute_insights(
@@ -602,6 +646,7 @@ def _kick_refresh(
             app_cache.set_json(_payload_key(cache_key), payload, _STALE_REDIS_TTL)
             app_cache.set_json(_fresh_key(cache_key), 1, int(_CACHE_TTL))
             _cache_put(cache_key, payload)
+            _store_payload(cache_key, payload)
         except Exception:
             logger.warning("user-insights refresh failed", exc_info=True)
         finally:
