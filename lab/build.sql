@@ -65,11 +65,12 @@ SELECT r.run_hash, p.i AS player_idx,
   upper(split_part(p.u.character,'.',-1)) AS character,
   upper(split_part(c.u.id,'.',-1)) AS card,
   c.u.floor_added_to_deck AS floor_added,
-  c.u.current_upgrade_level AS upgrade_level
+  c.u.current_upgrade_level AS upgrade_level,
+  upper(split_part(c.u.enchantment.id, '.', -1)) AS enchantment
 FROM read_ndjson('/lake/staging/*.jsonl.gz',
   maximum_object_size=33554432, ignore_errors=true,
   columns={run_hash: 'VARCHAR',
-    players: 'STRUCT("character" VARCHAR, deck STRUCT(floor_added_to_deck BIGINT, id VARCHAR, current_upgrade_level BIGINT)[])[]'}) r,
+    players: 'STRUCT("character" VARCHAR, deck STRUCT(floor_added_to_deck BIGINT, id VARCHAR, current_upgrade_level BIGINT, enchantment STRUCT(id VARCHAR))[])[]'}) r,
   LATERAL (SELECT unnest(players) AS u, generate_subscripts(players,1) AS i) p,
   LATERAL (SELECT unnest(p.u.deck) AS u) c
 ) TO '/lake/deck.parquet' (FORMAT parquet, COMPRESSION zstd);
@@ -85,10 +86,33 @@ SELECT r.run_hash, act.i - 1 AS act, loc.i AS floor_idx,
 FROM read_ndjson('/lake/staging/*.jsonl.gz',
   maximum_object_size=33554432, ignore_errors=true,
   columns={run_hash: 'VARCHAR',
-    map_point_history: 'STRUCT(map_point_type VARCHAR, player_stats STRUCT(player_id BIGINT, current_gold BIGINT, current_hp BIGINT, damage_taken BIGINT, max_hp BIGINT, event_choices STRUCT(title STRUCT("key" VARCHAR, "table" VARCHAR))[], rest_site_choices VARCHAR[], ancient_choice STRUCT(TextKey VARCHAR, title STRUCT("key" VARCHAR, "table" VARCHAR), was_chosen BOOLEAN)[], cards_removed JSON[], card_choices STRUCT(was_picked BOOLEAN)[])[], rooms STRUCT(model_id VARCHAR)[])[][]'}) r,
+    map_point_history: 'STRUCT(map_point_type VARCHAR, player_stats STRUCT(player_id BIGINT, current_gold BIGINT, current_hp BIGINT, damage_taken BIGINT, max_hp BIGINT, event_choices STRUCT(title STRUCT("key" VARCHAR, "table" VARCHAR))[], rest_site_choices VARCHAR[], ancient_choice STRUCT(TextKey VARCHAR, title STRUCT("key" VARCHAR, "table" VARCHAR), was_chosen BOOLEAN)[], cards_removed JSON[], card_choices STRUCT(was_picked BOOLEAN, card STRUCT(id VARCHAR))[])[], rooms STRUCT(model_id VARCHAR)[])[][]'}) r,
   LATERAL (SELECT unnest(map_point_history) AS u, generate_subscripts(map_point_history,1) AS i) act,
   LATERAL (SELECT unnest(act.u) AS u, generate_subscripts(act.u,1) AS i) loc
 ) TO '/lake/floors.parquet' (FORMAT parquet, COMPRESSION zstd);
+
+COPY (
+SELECT r.run_hash, p.i AS player_idx,
+  upper(split_part(rel.u.id, '.', -1)) AS relic,
+  rel.u.floor_added_to_deck AS floor_added
+FROM read_ndjson('/lake/staging/*.jsonl.gz',
+  maximum_object_size=33554432, ignore_errors=true,
+  columns={run_hash: 'VARCHAR',
+    players: 'STRUCT(relics STRUCT(id VARCHAR, floor_added_to_deck BIGINT)[])[]'}) r,
+  LATERAL (SELECT unnest(players) AS u, generate_subscripts(players,1) AS i) p,
+  LATERAL (SELECT unnest(p.u.relics) AS u) rel
+) TO '/lake/relics.parquet' (FORMAT parquet, COMPRESSION zstd);
+
+COPY (
+SELECT r.run_hash, p.i AS player_idx,
+  upper(split_part(pot.u.id, '.', -1)) AS potion
+FROM read_ndjson('/lake/staging/*.jsonl.gz',
+  maximum_object_size=33554432, ignore_errors=true,
+  columns={run_hash: 'VARCHAR',
+    players: 'STRUCT(potions STRUCT(id VARCHAR)[])[]'}) r,
+  LATERAL (SELECT unnest(players) AS u, generate_subscripts(players,1) AS i) p,
+  LATERAL (SELECT unnest(p.u.potions) AS u) pot
+) TO '/lake/potions.parquet' (FORMAT parquet, COMPRESSION zstd);
 
 -- Per-player identity + deck size: keys player_id to a character for the
 -- co-op attributions, and carries deck size for the records section.
@@ -108,4 +132,6 @@ UNION ALL SELECT 'excluded', count(*) FROM read_parquet('/lake/excluded.parquet'
 UNION ALL SELECT 'floor_events', count(*) FROM read_parquet('/lake/floor_events.parquet')
 UNION ALL SELECT 'deck', count(*) FROM read_parquet('/lake/deck.parquet')
 UNION ALL SELECT 'floors', count(*) FROM read_parquet('/lake/floors.parquet')
-UNION ALL SELECT 'players', count(*) FROM read_parquet('/lake/players.parquet');
+UNION ALL SELECT 'players', count(*) FROM read_parquet('/lake/players.parquet')
+UNION ALL SELECT 'relics', count(*) FROM read_parquet('/lake/relics.parquet')
+UNION ALL SELECT 'potions', count(*) FROM read_parquet('/lake/potions.parquet');
