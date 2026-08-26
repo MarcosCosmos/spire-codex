@@ -18,7 +18,8 @@ SELECT run_hash,
   _meta.player_count AS player_count, build_id, seed, start_time, run_time,
   upper(split_part(killed_by_encounter,'.',-1)) AS killed_by_encounter,
   upper(split_part(killed_by_event,'.',-1)) AS killed_by_event,
-  _meta.username AS username, _meta.hidden AS hidden, _meta.deleted AS deleted,
+  _meta.username AS username, _meta.user_id AS user_id,
+  _meta.hidden AS hidden, _meta.deleted AS deleted,
   coalesce(len(modifiers), 0) > 0 AS has_modifiers,
   _meta.submitted_at AS submitted_at, _meta.played_at AS played_at
 FROM read_ndjson('/lake/staging/*.jsonl.gz',
@@ -30,7 +31,7 @@ FROM read_ndjson('/lake/staging/*.jsonl.gz',
     start_time: 'BIGINT', run_time: 'BIGINT',
     killed_by_encounter: 'VARCHAR', killed_by_event: 'VARCHAR',
     modifiers: 'VARCHAR[]',
-    _meta: 'STRUCT(username VARCHAR, hidden BOOLEAN, deleted BOOLEAN, submitted_at TIMESTAMP, played_at TIMESTAMP, player_count BIGINT)'})
+    _meta: 'STRUCT(username VARCHAR, user_id VARCHAR, hidden BOOLEAN, deleted BOOLEAN, submitted_at TIMESTAMP, played_at TIMESTAMP, player_count BIGINT)'})
 ) TO '/lake/runs.parquet' (FORMAT parquet, COMPRESSION zstd);
 
 -- Sidecar from the extractor's fresh scan, NOT the per-page _meta: hidden
