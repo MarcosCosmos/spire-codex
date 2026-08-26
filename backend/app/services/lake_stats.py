@@ -58,6 +58,7 @@ def _connect(build: bool = False):
     if build:
         con.execute("SET memory_limit='3500MB'")
         con.execute(f"SET temp_directory='{LAKE_DIR}/tmp'")
+        con.execute("SET preserve_insertion_order=false")
     else:
         con.execute("SET memory_limit='500MB'")
     con.execute("SET threads=2")
@@ -612,7 +613,7 @@ def reward_pair_counts(con=None) -> dict[tuple[str, str], int]:
 
     own = con is None
     if own:
-        con = _connect()
+        con = _connect(build=True)
     try:
         con.execute(_ELIGIBLE_SQL.format(lake=LAKE_DIR))
         _ids_temp_table(con, "excluded_cards", res._excluded_card_ids())
@@ -656,7 +657,7 @@ def upgrade_pair_counts(con=None) -> dict[tuple[str, str], int]:
     upgradeable = res._upgradeable_card_ids()
     own = con is None
     if own:
-        con = _connect()
+        con = _connect(build=True)
     try:
         con.execute(_ELIGIBLE_SQL.format(lake=LAKE_DIR))
         _ids_temp_table(con, "upg_ids", upgradeable)
@@ -718,6 +719,7 @@ def upgrade_pair_counts(con=None) -> dict[tuple[str, str], int]:
               FROM read_parquet('{LAKE_DIR}/deck.parquet') d
               JOIN eligible e ON d.run_hash = e.run_hash
               WHERE d.card {upg_filter}
+                AND d.run_hash IN (SELECT run_hash FROM events)
               GROUP BY 1, 2, 3
             ),
             losers AS (
@@ -752,12 +754,8 @@ def compute_lake_elo() -> dict:
     Bradley-Terry solver the walk uses."""
     from . import run_entity_stats as res
 
-    con = _connect()
-    try:
-        reward = reward_pair_counts(con)
-        upgrade = upgrade_pair_counts(con)
-    finally:
-        con.close()
+    reward = reward_pair_counts()
+    upgrade = upgrade_pair_counts()
     card_elo, _ = res._compute_codex_elo(reward)
     upgrade_elo, _ = res._compute_codex_elo(upgrade)
     return {
@@ -940,20 +938,28 @@ def build_entity_store() -> dict | None:
                 f"SELECT max(submitted_at) FROM read_parquet('{LAKE_DIR}/runs.parquet')"
             ).fetchone()[0]
         )
-        reward = reward_pair_counts(con)
-        upgrade = upgrade_pair_counts(con)
     finally:
         con.close()
 
-    card_elo, _ = res._compute_codex_elo(reward)
-    upgrade_elo, _ = res._compute_codex_elo(upgrade)
-    for eid, elo in card_elo.items():
-        if eid in entities["cards"]:
-            entities["cards"][eid]["elo"] = elo
-    for eid, elo in upgrade_elo.items():
-        upg = entities["cards"].get(eid, {}).get("upg")
-        if upg is not None:
-            upg["elo"] = elo
+    # Each Elo pair extraction gets its own fresh connection: two hours of
+    # session state must not sit under the heaviest joins in the build. A
+    # failed fit skips Elo (nullable everywhere it serves) instead of
+    # destroying everything computed above.
+    try:
+        card_elo, _ = res._compute_codex_elo(reward_pair_counts())
+        for eid, elo in card_elo.items():
+            if eid in entities["cards"]:
+                entities["cards"][eid]["elo"] = elo
+    except Exception:
+        logger.warning("reward Elo skipped for this store build", exc_info=True)
+    try:
+        upgrade_elo, _ = res._compute_codex_elo(upgrade_pair_counts())
+        for eid, elo in upgrade_elo.items():
+            upg = entities["cards"].get(eid, {}).get("upg")
+            if upg is not None:
+                upg["elo"] = elo
+    except Exception:
+        logger.warning("upgrade Elo skipped for this store build", exc_info=True)
 
     baselines = {}
     for etype, entries_ in entities.items():
