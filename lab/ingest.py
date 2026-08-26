@@ -72,6 +72,46 @@ def main() -> None:
         print(f"frame parquet stored ({n} rows)", flush=True)
     except Exception as e:
         print(f"frame parquet failed: {e}", flush=True)
+    # The edge is the last stale layer: origin freshness means nothing while
+    # Cloudflare serves yesterday's JSON. Purge exactly the URLs this run
+    # refreshed (CF_TOKEN/CF_ZONE come from the same .env the admin tab uses).
+    try:
+        import os
+
+        import httpx
+
+        token = os.environ.get("CF_TOKEN", "").strip()
+        zone = os.environ.get("CF_ZONE", "").strip()
+        if token and zone:
+            site = os.environ.get("PUBLIC_SITE_BASE", "https://spire-codex.com").rstrip(
+                "/"
+            )
+            files = [
+                f"{site}{p}"
+                for p in (
+                    "/api/runs/stats",
+                    "/api/runs/community-stats",
+                    "/api/runs/leaderboard",
+                    "/api/runs/scores/cards",
+                    "/api/runs/scores/relics",
+                    "/api/runs/scores/potions",
+                    "/api/runs/metrics/cards",
+                    "/api/runs/metrics/relics",
+                    "/api/runs/metrics/potions",
+                )
+            ]
+            resp = httpx.post(
+                f"https://api.cloudflare.com/client/v4/zones/{zone}/purge_cache",
+                headers={"Authorization": f"Bearer {token}"},
+                json={"files": files},
+                timeout=15,
+            )
+            ok = resp.status_code == 200 and resp.json().get("success") is True
+            print(f"edge purge: ok={ok} ({len(files)} urls)", flush=True)
+        else:
+            print("edge purge skipped: CF_TOKEN/CF_ZONE not set", flush=True)
+    except Exception as e:
+        print(f"edge purge failed: {e}", flush=True)
     print("ingest complete", flush=True)
 
 
