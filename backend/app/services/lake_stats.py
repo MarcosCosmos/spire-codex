@@ -1012,3 +1012,159 @@ def entity_store_with_mtime() -> tuple[float, dict] | None:
     except Exception:
         logger.warning("entity store load failed", exc_info=True)
         return None
+
+
+# ── Stats-summary core: the homepage numbers, from the lake ──────────────────
+
+
+def _stats_core_results() -> list[tuple[dict, dict]]:
+    """(filters, core-result) for every materialized stats combo, computed
+    from one pass over runs.parquet with get_stats' exact core semantics:
+    ascension clamped to 0-10, no hidden filter, characters[] built without
+    the character filter and restricted to official ids, win_rate rounded
+    to one decimal."""
+    from .runs_db_mongo import (
+        ASCENSION_FILTER_COMBOS,
+        HOT_FILTER_COMBOS,
+        OFFICIAL_CHARACTERS,
+    )
+
+    con = _connect()
+    try:
+        cells = con.execute(
+            f"""
+            SELECT coalesce(upper(character), '') AS ch,
+              coalesce(ascension, 0)::INT AS asc,
+              count(*) AS n, count(*) FILTER (win) AS w,
+              count(*) FILTER (was_abandoned) AS ab
+            FROM read_parquet('{LAKE_DIR}/runs.parquet')
+            WHERE ascension BETWEEN 0 AND 10
+            GROUP BY 1, 2
+            """
+        ).fetchall()
+    finally:
+        con.close()
+
+    def pct(w: int, n: int) -> float:
+        return round(w / n * 100, 1) if n > 0 else 0
+
+    out: list[tuple[dict, dict]] = []
+    for f in [*HOT_FILTER_COMBOS, *ASCENSION_FILTER_COMBOS]:
+        char_f = f.get("character")
+        asc_f = int(f["ascension"]) if "ascension" in f else None
+        filters = {
+            "character": char_f,
+            "win": None,
+            "ascension": f.get("ascension"),
+            "game_mode": None,
+            "players": None,
+            "username": None,
+        }
+        rows = [
+            c
+            for c in cells
+            if (char_f is None or c[0] == char_f) and (asc_f is None or c[1] == asc_f)
+        ]
+        total = sum(c[2] for c in rows)
+        if total == 0:
+            out.append((f, {"total_runs": 0, "filters": filters}))
+            continue
+        wins = sum(c[3] for c in rows)
+        abandoned = sum(c[4] for c in rows)
+        no_char = [c for c in cells if asc_f is None or c[1] == asc_f]
+        char_totals: dict[str, list[int]] = {}
+        for c in no_char:
+            rec = char_totals.setdefault(c[0], [0, 0])
+            rec[0] += c[2]
+            rec[1] += c[3]
+        asc_totals: dict[int, list[int]] = {}
+        for c in rows:
+            rec = asc_totals.setdefault(c[1], [0, 0])
+            rec[0] += c[2]
+            rec[1] += c[3]
+        out.append(
+            (
+                f,
+                {
+                    "total_runs": total,
+                    "total_wins": wins,
+                    "total_abandoned": abandoned,
+                    "win_rate": pct(wins, total),
+                    "filters": filters,
+                    "characters": [
+                        {
+                            "character": ch,
+                            "total": t,
+                            "wins": w,
+                            "win_rate": pct(w, t),
+                        }
+                        for ch, (t, w) in sorted(
+                            char_totals.items(), key=lambda kv: -kv[1][0]
+                        )
+                        if ch in OFFICIAL_CHARACTERS
+                    ],
+                    "ascensions": [
+                        {
+                            "level": a,
+                            "total": t,
+                            "wins": w,
+                            "win_rate": pct(w, t),
+                        }
+                        for a, (t, w) in sorted(asc_totals.items())
+                    ],
+                },
+            )
+        )
+    return out
+
+
+def refresh_stats_core() -> int:
+    """Merge lake-computed core fields into every materialized stats doc,
+    preserving the legacy deep tables until their own conversion. Sub-second
+    where the Mongo aggregation chain took minutes and timed out."""
+    from datetime import datetime, timezone
+
+    from . import app_cache
+    from .runs_db_mongo import _filter_key, _summary_coll, seed_stats_counters
+
+    coll = _summary_coll()
+    written = 0
+    for filters, result in _stats_core_results():
+        key = _filter_key(**filters_compact(filters))
+        if result.get("total_runs"):
+            existing = coll.find_one({"_id": key}) or {}
+            merged = {
+                **existing,
+                **result,
+                "_id": key,
+                "updated_at": datetime.now(timezone.utc),
+            }
+        else:
+            merged = {
+                **result,
+                "_id": key,
+                "updated_at": datetime.now(timezone.utc),
+            }
+        coll.replace_one({"_id": key}, merged, upsert=True)
+        cache_doc = {k: v for k, v in merged.items() if k not in ("_id", "updated_at")}
+        try:
+            app_cache.set_json(
+                app_cache.stats_key(**filters_compact(filters)),
+                cache_doc,
+                ttl_seconds=app_cache.WARM_TTL_SECONDS,
+            )
+        except Exception:
+            logger.warning("stats core redis warm failed", exc_info=True)
+        if not filters_compact(filters):
+            try:
+                seed_stats_counters(result)
+            except Exception:
+                logger.warning("stats counters seed failed", exc_info=True)
+        written += 1
+    logger.info("lake stats core refreshed: %d combos", written)
+    return written
+
+
+def filters_compact(filters: dict) -> dict:
+    """The sparse combo form the legacy key/cache helpers expect."""
+    return {k: v for k, v in filters.items() if v is not None}

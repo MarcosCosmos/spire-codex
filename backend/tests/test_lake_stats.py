@@ -35,8 +35,14 @@ def test_community_payload_none_without_lake(monkeypatch, tmp_path):
     assert lake_stats.community_payload() is None
 
 
-def test_community_payload_none_for_unsupported_bracket(monkeypatch):
+def test_community_payload_none_for_unsupported_bracket(monkeypatch, tmp_path):
+    # wr50 is cube-served now; versions and unknown keys are the fallbacks.
     monkeypatch.setattr(lake_stats, "SERVE_ENABLED", True)
+    monkeypatch.setattr(lake_stats, "LAKE_DIR", tmp_path)
+    monkeypatch.setattr(lake_stats, "_cube_cache", None)
+    assert lake_stats.community_payload("v0.1.0") is None
+    assert lake_stats.community_payload("junk") is None
+    # cube-supported bracket but no cube built yet -> clean fallback too
     assert lake_stats.community_payload("wr50") is None
 
 
