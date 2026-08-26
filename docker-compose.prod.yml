@@ -211,6 +211,22 @@ services:
         max-file: "5"
 
 
+  # Nightly analytics-lake ingest (incremental extract + parquet rebuild).
+  # profiles: never started by `up -d`; host cron runs it, e.g.
+  #   17 9 * * * cd /var/www/spire-codex && docker compose -f docker-compose.prod.yml run --rm lake-ingest >> /var/log/lake-ingest.log 2>&1
+  lake-ingest:
+    image: ptrlrd/spire-codex-backend:latest
+    profiles: ["ops"]
+    entrypoint: ["python", "/lab/ingest.py"]
+    env_file: .env
+    mem_limit: 3g
+    volumes:
+      - ./lab:/lab:ro
+      - ./data:/data:ro
+      - ./lake:/lake
+    networks:
+      - nginx_web-network
+
   redis:
     image: redis:7-alpine
     # Must stay ABOVE redis's own --maxmemory so it evicts by LRU (its
