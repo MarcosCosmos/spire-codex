@@ -1832,9 +1832,15 @@ def refresh_stats_summary() -> int:
     Called by the leader-only loop."""
     summary = _summary_coll()
 
+    # 120s per combo was calibrated to a smaller corpus; at 1.4M runs the
+    # heavy combos time out and write nothing (2026-08-26: 15 minutes of
+    # aggregation, zero docs). The refresher runs off-request, so a long
+    # budget only costs the cron cycle, never a user.
+    max_time = int(os.environ.get("STATS_SUMMARY_MAX_TIME_MS", "") or 600_000)
+
     def _refresh_one(filters: dict) -> int:
         try:
-            result = get_stats(**filters, max_time_ms=120_000)
+            result = get_stats(**filters, max_time_ms=max_time)
             key = _filter_key(**filters)
             doc = {**result, "_id": key, "updated_at": datetime.now(timezone.utc)}
             summary.replace_one({"_id": key}, doc, upsert=True)
