@@ -548,3 +548,217 @@ def compute_lake_elo() -> dict:
         "reward_pairs": len(reward),
         "upgrade_pairs": len(upgrade),
     }
+
+
+# ── Entity store: the snapshot cache's per-entity aggregates, from the lake ──
+
+_ENTITY_STORE_NAME = "entity_store.json"
+
+
+def build_entity_store() -> dict | None:
+    """Compute the all-bracket per-entity aggregates (picks, wins,
+    by-character, reward metrics, Elos, base/upgraded, relic act buckets)
+    and store them beside the parquet. Ingest-time only; the serving swap
+    reads this instead of the walked snapshot."""
+    if not available(*_SERVE_FILES[1:]):
+        logger.info("entity store skipped: lake incomplete")
+        return None
+
+    from . import run_entity_stats as res
+
+    con = _connect()
+    try:
+        con.execute(_ELIGIBLE_SQL.format(lake=LAKE_DIR))
+        entities: dict[str, dict[str, dict]] = {
+            "cards": {},
+            "relics": {},
+            "potions": {},
+        }
+
+        def entry(etype: str, eid: str) -> dict:
+            return entities[etype].setdefault(
+                eid,
+                {
+                    "picks": 0,
+                    "wins": 0,
+                    "by_character": {},
+                    "last_submitted_at": None,
+                    "last_run_hash": None,
+                },
+            )
+
+        # Per-instance membership + per-character splits + last-seen, one
+        # query per membership table.
+        for etype, table, col in (
+            ("cards", "deck", "card"),
+            ("relics", "relics", "relic"),
+            ("potions", "potions", "potion"),
+        ):
+            for eid, char, picks, wins, last_ts, last_hash in con.execute(
+                f"""
+                SELECT m.{col}, e.character, count(*), count(*) FILTER (e.win),
+                  max(e.submitted_at), arg_max(m.run_hash, e.submitted_at)
+                FROM read_parquet('{LAKE_DIR}/{table}.parquet') m
+                JOIN eligible e ON m.run_hash = e.run_hash
+                WHERE m.{col} IS NOT NULL AND m.{col} <> ''
+                GROUP BY 1, 2
+                """
+            ).fetchall():
+                a = entry(etype, eid)
+                a["picks"] += picks
+                a["wins"] += wins
+                ch = (char or "").lower()
+                sub = a["by_character"].setdefault(ch, {"picks": 0, "wins": 0})
+                sub["picks"] += picks
+                sub["wins"] += wins
+                ts = str(last_ts) if last_ts is not None else None
+                if ts and (a["last_submitted_at"] or "") < ts:
+                    a["last_submitted_at"] = ts
+                    a["last_run_hash"] = last_hash
+
+        # Card-reward offer/pick counts with 3 act buckets (A1/A2/A3+).
+        _ids_temp_table(con, "excluded_cards", res._excluded_card_ids())
+        for eid, bucket, offered, picked in con.execute(
+            f"""
+            SELECT upper(split_part(cc.u.card.id, '.', -1)),
+              least(f.act, 2), count(*),
+              count(*) FILTER (coalesce(cc.u.was_picked, false))
+            FROM read_parquet('{LAKE_DIR}/floors.parquet') f
+            JOIN eligible e ON f.run_hash = e.run_hash,
+            LATERAL (SELECT unnest(f.players) AS u) ps,
+            LATERAL (SELECT unnest(ps.u.card_choices) AS u) cc
+            WHERE cc.u.card.id IS NOT NULL
+              AND upper(split_part(cc.u.card.id, '.', 1)) = 'CARD'
+              AND upper(split_part(cc.u.card.id, '.', -1))
+                  NOT IN (SELECT cid FROM excluded_cards)
+            GROUP BY 1, 2
+            """
+        ).fetchall():
+            a = entry("cards", eid)
+            if "offered" not in a:
+                a.update(
+                    {
+                        "offered": 0,
+                        "picked": 0,
+                        "off_act": [0, 0, 0],
+                        "pick_act": [0, 0, 0],
+                    }
+                )
+            a["offered"] += offered
+            a["picked"] += picked
+            a["off_act"][bucket] += offered
+            a["pick_act"][bucket] += picked
+
+        # Base vs upgraded deck membership: run-set semantics.
+        for eid, upgraded, picks, wins in con.execute(
+            f"""
+            WITH sets AS (
+              SELECT DISTINCT d.run_hash, d.card,
+                coalesce(d.upgrade_level, 0) > 0 AS upgraded
+              FROM read_parquet('{LAKE_DIR}/deck.parquet') d
+              JOIN eligible e ON d.run_hash = e.run_hash
+            )
+            SELECT s.card, s.upgraded, count(*), count(*) FILTER (e.win)
+            FROM sets s JOIN eligible e ON s.run_hash = e.run_hash
+            GROUP BY 1, 2
+            """
+        ).fetchall():
+            a = entry("cards", eid)
+            a["upg" if upgraded else "base"] = {"picks": picks, "wins": wins}
+
+        # Relic acquisition acts: per-run dedupe, act bounds from the floors
+        # table, modded-relic runs skipped entirely (their pickup floors lie).
+        official_relics = res._official_relic_ids()
+        _ids_temp_table(con, "official_relics", official_relics)
+        modded_guard = (
+            "AND r.run_hash NOT IN (SELECT DISTINCT run_hash"
+            f" FROM read_parquet('{LAKE_DIR}/relics.parquet')"
+            " WHERE relic NOT IN (SELECT cid FROM official_relics))"
+            if official_relics
+            else ""
+        )
+        for eid, bucket, picks, wins in con.execute(
+            f"""
+            WITH bounds AS (
+              SELECT f.run_hash, f.act, max(cum) AS bound FROM (
+                SELECT run_hash, act,
+                  count(*) OVER (PARTITION BY run_hash
+                    ORDER BY act, floor_idx) AS cum
+                FROM read_parquet('{LAKE_DIR}/floors.parquet')
+              ) f GROUP BY 1, 2
+            ),
+            picks AS (
+              SELECT DISTINCT r.run_hash, r.relic,
+                coalesce(least((SELECT min(b.act) FROM bounds b
+                  WHERE b.run_hash = r.run_hash AND r.floor_added <= b.bound),
+                  2), 2) AS bucket
+              FROM read_parquet('{LAKE_DIR}/relics.parquet') r
+              JOIN eligible e ON r.run_hash = e.run_hash
+              WHERE r.floor_added IS NOT NULL AND r.floor_added >= 1
+                {modded_guard}
+            )
+            SELECT p.relic, p.bucket, count(*), count(*) FILTER (e.win)
+            FROM picks p JOIN eligible e ON p.run_hash = e.run_hash
+            GROUP BY 1, 2
+            """
+        ).fetchall():
+            a = entry("relics", eid)
+            if "act_picks" not in a:
+                a["act_picks"] = [0, 0, 0]
+                a["act_wins"] = [0, 0, 0]
+            a["act_picks"][int(bucket)] += picks
+            a["act_wins"][int(bucket)] += wins
+
+        totals = dict(
+            zip(
+                ("total_runs", "total_wins"),
+                con.execute(
+                    "SELECT count(*), count(*) FILTER (win) FROM eligible"
+                ).fetchone(),
+            )
+        )
+        data_through = str(
+            con.execute(
+                f"SELECT max(submitted_at) FROM read_parquet('{LAKE_DIR}/runs.parquet')"
+            ).fetchone()[0]
+        )
+        reward = reward_pair_counts(con)
+        upgrade = upgrade_pair_counts(con)
+    finally:
+        con.close()
+
+    card_elo, _ = res._compute_codex_elo(reward)
+    upgrade_elo, _ = res._compute_codex_elo(upgrade)
+    for eid, elo in card_elo.items():
+        if eid in entities["cards"]:
+            entities["cards"][eid]["elo"] = elo
+    for eid, elo in upgrade_elo.items():
+        upg = entities["cards"].get(eid, {}).get("upg")
+        if upg is not None:
+            upg["elo"] = elo
+
+    baselines = {}
+    for etype, entries_ in entities.items():
+        picks = sum(a["picks"] for a in entries_.values())
+        wins = sum(a["wins"] for a in entries_.values())
+        baselines[etype] = (wins / picks) if picks else 0.0
+
+    store = {
+        "entities": entities,
+        "totals": totals,
+        "baselines": baselines,
+        "data_through": data_through,
+    }
+    import json as _json
+
+    tmp = LAKE_DIR / (_ENTITY_STORE_NAME + ".tmp")
+    tmp.write_text(_json.dumps(store, separators=(",", ":")))
+    tmp.replace(LAKE_DIR / _ENTITY_STORE_NAME)
+    logger.info(
+        "lake entity store: %d cards / %d relics / %d potions (%d bytes)",
+        len(entities["cards"]),
+        len(entities["relics"]),
+        len(entities["potions"]),
+        (LAKE_DIR / _ENTITY_STORE_NAME).stat().st_size,
+    )
+    return store
