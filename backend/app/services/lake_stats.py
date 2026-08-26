@@ -178,7 +178,8 @@ SELECT e.*,
   (CASE WHEN coalesce(e.ascension, 0) = 10 AND u.wr > 0.75 THEN 3
         WHEN coalesce(e.ascension, 0) = 10 AND u.wr > 0.50 THEN 2
         WHEN coalesce(e.ascension, 0) = 10 AND u.wr > 0.30 THEN 1
-        ELSE 0 END)::VARCHAR AS cell
+        ELSE 0 END)::VARCHAR || '|' ||
+  coalesce(trim(e.build_id), '') AS cell
 FROM eligible e
 LEFT JOIN user_wr u ON lower(e.username) = u.uname
 """
@@ -191,13 +192,21 @@ _SKILL_KEYS = {"a10": 0, "wr30": 1, "wr50": 2, "wr75": 3}
 _cube_cache: tuple[float, dict, dict] | None = None
 
 
+_VERSION_RE = None
+
+
 def _parse_lake_bracket(bracket: str | None):
-    """(mode, player, skill) slots, (None, None, None) for all, or None when
-    any part is outside the cube's axes (versions, unknown keys) -- those
-    fall back to the snapshot path."""
+    """(mode, player, skill, version) slots, all-None for the plain payload,
+    or None when any part is outside the cube's axes -- those fall back to
+    the snapshot path."""
+    global _VERSION_RE
+    if _VERSION_RE is None:
+        import re
+
+        _VERSION_RE = re.compile(r"v\d+(\.\d+)*")
     if bracket in (None, "", "all"):
-        return (None, None, None)
-    mode = player = skill = None
+        return (None, None, None, None)
+    mode = player = skill = version = None
     for part in bracket.split(":"):
         if part == "all" or part == "":
             continue
@@ -207,9 +216,11 @@ def _parse_lake_bracket(bracket: str | None):
             player = _PLAYER_KEYS[part]
         elif part in _SKILL_KEYS and skill is None:
             skill = _SKILL_KEYS[part]
+        elif _VERSION_RE.fullmatch(part) and version is None:
+            version = part
         else:
             return None
-    return (mode, player, skill)
+    return (mode, player, skill, version)
 
 
 def community_payload(bracket: str | None = None) -> dict | None:
@@ -226,8 +237,8 @@ def community_payload(bracket: str | None = None) -> dict | None:
             return None
         import json
 
-        mode, player, skill = parsed
-        if parsed == (None, None, None):
+        mode, player, skill, version = parsed
+        if parsed == (None, None, None, None):
             path = LAKE_DIR / _PAYLOAD_PATH_NAME
             if not path.exists():
                 return None
@@ -250,13 +261,18 @@ def community_payload(bracket: str | None = None) -> dict | None:
             with gzip.open(path, "rt", encoding="utf-8") as f:
                 _cube_cache = (mtime, json.load(f), {})
         _, raw, folded = _cube_cache
-        ckey = f"{mode}|{player}|{skill}"
+        ckey = f"{mode}|{player}|{skill}|{version}"
         hit = folded.get(ckey)
         if hit is not None:
             return hit
         accs = []
         for cell_id, acc_raw in (raw.get("cells") or {}).items():
-            m, pc, a10, band = cell_id.split("|")
+            parts = cell_id.split("|")
+            if len(parts) == 4 and version is not None:
+                # pre-version cube on disk: can't answer version slices yet
+                return None
+            m, pc, a10, band = parts[:4]
+            ver = parts[4] if len(parts) > 4 else ""
             if mode is not None and m != mode:
                 continue
             if player is not None and pc != player:
@@ -266,6 +282,8 @@ def community_payload(bracket: str | None = None) -> dict | None:
                     continue
                 if skill > 0 and int(band) < skill:
                     continue
+            if version is not None and ver != version:
+                continue
             accs.append(_acc_from_json(acc_raw))
         from . import community_stats as cs
 
