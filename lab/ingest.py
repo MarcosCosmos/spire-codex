@@ -42,6 +42,21 @@ def main() -> None:
         print("entity store stored", flush=True)
     except Exception as e:
         print(f"community payload build failed: {e}", flush=True)
+    # The rebuilder is retired, so the materialized summaries that fed the
+    # home overview and the leaderboards move here: plain Mongo aggregations
+    # plus a Redis warm, no snapshot involved.
+    try:
+        from app.services.runs_db_mongo import (
+            refresh_leaderboard_summary,
+            refresh_stats_summary,
+        )
+
+        n = refresh_stats_summary()
+        print(f"stats summary refreshed ({n} combos)", flush=True)
+        n = refresh_leaderboard_summary()
+        print(f"leaderboard summary refreshed ({n} boards)", flush=True)
+    except Exception as e:
+        print(f"summary refresh failed: {e}", flush=True)
     print("ingest complete", flush=True)
 
 
