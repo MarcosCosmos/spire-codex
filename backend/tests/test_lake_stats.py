@@ -83,3 +83,33 @@ def test_lake_entity_overlay(monkeypatch, tmp_path):
     finally:
         res._cache.pop(("cards", "ZAP"), None)
         res._type_baselines.pop("cards", None)
+
+
+def test_stats_core_excludes_modded_characters(monkeypatch):
+    cells = [
+        ("IRONCLAD", 0, 100, 30, 5),
+        ("SILENT", 10, 50, 20, 2),
+        ("THE_MODDED_ONE", 0, 40, 39, 0),
+    ]
+    monkeypatch.setattr(lake_stats, "_connect", lambda build=False: None)
+
+    class FakeCon:
+        def execute(self, *a):
+            return self
+
+        def fetchall(self):
+            return cells
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(lake_stats, "_connect", lambda build=False: FakeCon())
+    results = dict(
+        (tuple(sorted(lake_stats.filters_compact(f).items())), r)
+        for f, r in lake_stats._stats_core_results()
+    )
+    g = results[()]
+    assert g["total_runs"] == 150, "modded character runs must not count"
+    assert g["total_wins"] == 50
+    assert sum(c["total"] for c in g["characters"]) == g["total_runs"]
+    assert all("abandoned" in c for c in g["characters"])

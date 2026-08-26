@@ -133,7 +133,7 @@ export default function HomeStatsLive({
                       <span className="wr-fill" style={{ width: `${relPct}%`, background: charColor }} />
                     </span>
                     <span className="wr-wl">
-                      {c.wins}W / {c.total - c.wins}L
+                      {c.wins}W / {c.total - c.wins - (c.abandoned || 0)}L
                     </span>
                     <span className="wr-num" style={{ color: winRateColor(c.win_rate) }}>
                       {c.win_rate}%

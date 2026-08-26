@@ -13,7 +13,7 @@ export interface CommunityStats {
   total_wins: number;
   total_abandoned: number;
   win_rate: number;
-  characters: { character: string; total: number; wins: number; win_rate: number }[];
+  characters: { character: string; total: number; wins: number; abandoned?: number; win_rate: number }[];
 }
 
 async function loadStats(): Promise<CommunityStats | null> {
