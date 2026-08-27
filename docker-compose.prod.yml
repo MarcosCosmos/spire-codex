@@ -48,12 +48,17 @@ services:
     image: ptrlrd/spire-codex-backend:latest
     container_name: spire-codex-backend
     restart: unless-stopped
-    # Memory budget, 15.6G box: mongo 5G + backend 5G + lake-ingest 5G
+    # Memory budget, 15.6G box: mongo 5G + backend 6G + lake-ingest 5G
     # (one-shot, not resident) + redis 2.5G + frontend 1G. Caps, not
     # reservations — real steady usage is well under total, and redis
     # never approaches its cap. Each of the 4 web workers holds its own copy
-    # of the entity-stats snapshot, which is what puts this at ~4.5G.
-    mem_limit: 5g
+    # of the entity-stats snapshot (~4.5G total), which left a 5g cap with
+    # near-zero headroom: profile-insight walks (all blobs for one account
+    # in a worker) pushed workers into swap and crawled for 15+ minutes
+    # (2026-08-27). 6g gives walks real room; the lasting fix is retiring
+    # the per-worker snapshot copies once entity brackets serve from the
+    # lake.
+    mem_limit: 6g
     # Multiple workers so a burst of POST /api/runs (Overwolf launch
     # backfills) doesn't serialise behind a single thread and block
     # everything else (GET /api/runs/stats, /api/runs/list etc.).
