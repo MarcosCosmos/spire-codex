@@ -77,9 +77,11 @@ def player_insights(
         version=version,
         players=players,
     )
-    # Never let the edge cache a building placeholder: CF would pin it for
-    # 5 minutes and every viewer's poll loop would spin against it.
+    # Never let the edge cache a building placeholder OR an empty profile:
+    # CF would pin it for 5 minutes — poll loops would spin against a
+    # placeholder, and a just-claimed account would look empty long after
+    # its walk landed.
     response.headers["Cache-Control"] = (
-        "no-store" if data.get("building") else "public, max-age=300"
+        "public, max-age=300" if data.get("runs_walked") else "no-store"
     )
     return {"username": user.get("username"), **data}
