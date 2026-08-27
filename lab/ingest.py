@@ -7,17 +7,41 @@ present, so the nightly log carries fresh comparison inputs for free.
     docker compose -f docker-compose.prod.yml run --rm lake-ingest
 """
 
+import json
 import pathlib
 import sys
+import time
 
 sys.path.insert(0, "/lab")
 sys.path.insert(0, "/app")
 
 import extract
 
+LAKE = pathlib.Path("/lake")
+
+
+def _utc(ts: float) -> str:
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(ts))
+
 
 def main() -> None:
-    extract.main()
+    # One ingest at a time: an overlapping cron start would race the shared
+    # scratch DB and double the box's memory pressure. The lock lives for
+    # the process; a crashed run releases it automatically.
+    import fcntl
+
+    lock = open(LAKE / "ingest.lock", "w")
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        print("another ingest holds /lake/ingest.lock; exiting", flush=True)
+        sys.exit(1)
+
+    t0 = time.time()
+    generation_id = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime(t0))
+    print(f"generation {generation_id} starting", flush=True)
+    extracted = extract.main() or (0, 0)
+    t_extract = time.time()
 
     import duckdb
 
@@ -33,6 +57,7 @@ def main() -> None:
             continue
         con.execute(path.read_text())
         print(f"{name}: done", flush=True)
+    t_build = time.time()
     try:
         from app.services import lake_stats
 
@@ -75,6 +100,7 @@ def main() -> None:
     # The edge is the last stale layer: origin freshness means nothing while
     # Cloudflare serves yesterday's JSON. Purge exactly the URLs this run
     # refreshed (CF_TOKEN/CF_ZONE come from the same .env the admin tab uses).
+    purge_ok = None
     try:
         import os
 
@@ -106,12 +132,74 @@ def main() -> None:
                 json={"files": files},
                 timeout=15,
             )
-            ok = resp.status_code == 200 and resp.json().get("success") is True
-            print(f"edge purge: ok={ok} ({len(files)} urls)", flush=True)
+            purge_ok = resp.status_code == 200 and resp.json().get("success") is True
+            print(f"edge purge: ok={purge_ok} ({len(files)} urls)", flush=True)
         else:
             print("edge purge skipped: CF_TOKEN/CF_ZONE not set", flush=True)
     except Exception as e:
+        purge_ok = False
         print(f"edge purge failed: {e}", flush=True)
+
+    # Cycle record. Stages publish independently (each store is its own
+    # atomic rename), so the generation manifest is the completeness
+    # contract: it only advances when every serving artifact this cycle
+    # owns was rebuilt after the cycle started. /health reports it; a
+    # cycle that lost a stage leaves the previous manifest in place and
+    # shows up in ingest_metrics.jsonl with complete=false.
+    published = time.time()
+    manifest: dict = {
+        "generation_id": generation_id,
+        "cycle_started_at": _utc(t0),
+        "source_watermark": None,
+        "rows_added": extracted[0],
+        "rows_skipped": extracted[1],
+        "extract_seconds": round(t_extract - t0, 1),
+        "build_sql_seconds": round(t_build - t_extract, 1),
+        "stores_seconds": round(published - t_build, 1),
+        "total_seconds": round(published - t0, 1),
+        "purge_ok": purge_ok,
+        "published_at": _utc(published),
+        "artifacts": {},
+    }
+    try:
+        st = json.loads((LAKE / "staging" / "state.json").read_text())
+        manifest["source_watermark"] = st.get("submitted_at")
+    except Exception:
+        pass
+    required = ("community_payload.json", "entity_store.json", "frame.parquet")
+    for name in required + ("community_cube.json.gz",):
+        try:
+            s = (LAKE / name).stat()
+            manifest["artifacts"][name] = {
+                "bytes": s.st_size,
+                "modified_at": _utc(s.st_mtime),
+            }
+        except OSError:
+            manifest["artifacts"][name] = None
+    manifest["complete"] = all(
+        (a := manifest["artifacts"].get(n)) and a["modified_at"] >= _utc(t0)
+        for n in required
+    )
+    with open(LAKE / "ingest_metrics.jsonl", "a", encoding="utf-8") as f:
+        f.write(json.dumps(manifest, separators=(",", ":")) + "\n")
+    if manifest["complete"]:
+        tmp = LAKE / "generation.json.tmp"
+        tmp.write_text(json.dumps(manifest, indent=1))
+        tmp.replace(LAKE / "generation.json")
+        print(f"generation {generation_id} published", flush=True)
+    else:
+        missing = [
+            n
+            for n in required
+            if not (
+                (a := manifest["artifacts"].get(n)) and a["modified_at"] >= _utc(t0)
+            )
+        ]
+        print(
+            f"generation {generation_id} INCOMPLETE (stale: {', '.join(missing)}); "
+            "manifest not advanced",
+            flush=True,
+        )
     print("ingest complete", flush=True)
 
 

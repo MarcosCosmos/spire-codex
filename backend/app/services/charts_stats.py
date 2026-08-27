@@ -327,7 +327,14 @@ def frame_loading() -> bool:
 
 
 def _frame_fresh() -> bool:
-    return _FRAME_OK and time.time() - _FRAME_TS < _FRAME_TTL
+    if not (_FRAME_OK and time.time() - _FRAME_TS < _FRAME_TTL):
+        return False
+    # A newly published frame.parquet must be picked up without waiting out
+    # the TTL or restarting workers — the ingest cadence depends on it.
+    try:
+        return _FRAME_PARQUET.stat().st_mtime <= _FRAME_TS
+    except OSError:
+        return True
 
 
 def get_frame(wait: bool = False) -> list[tuple]:

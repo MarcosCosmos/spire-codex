@@ -72,11 +72,12 @@ def _refresh_excluded(coll) -> None:
     print(f"excluded sidecar refreshed: {n:,} hidden/deleted runs", flush=True)
 
 
-def main() -> None:
+def main() -> tuple[int, int]:
+    """Returns (written, skipped) so the ingest can record cycle metrics."""
     STAGING.mkdir(parents=True, exist_ok=True)
     if "--bootstrap" in sys.argv:
         _bootstrap()
-        return
+        return (0, 0)
     coll = _get_collection()
     _refresh_excluded(coll)
 
@@ -186,6 +187,7 @@ def main() -> None:
         f"{(time.time() - t0) / 60:.1f} min",
         flush=True,
     )
+    return (written, skipped)
 
 
 if __name__ == "__main__":
