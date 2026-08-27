@@ -1,7 +1,7 @@
 name: spire-codex
 
-# Env shared verbatim by the backend and rebuilder services: both must see
-# the same data dirs and stats knobs so they build the same snapshot shape.
+# Env shared verbatim by the backend and lake-ingest services: both must see
+# the same data dirs and stats knobs so they build the same store shapes.
 x-shared-env: &shared-env
   DATA_DIR: /data
   BETA_DATA_DIR: /data-beta
@@ -48,9 +48,9 @@ services:
     image: ptrlrd/spire-codex-backend:latest
     container_name: spire-codex-backend
     restart: unless-stopped
-    # Memory budget, 15.6G box (see the rebuilder note below for why these
-    # exist): mongo 5G + backend 5G + rebuilder 3G + redis 2.5G + frontend 1G.
-    # Caps, not reservations — real steady usage is ~10G total, and redis
+    # Memory budget, 15.6G box: mongo 5G + backend 5G + lake-ingest 5G
+    # (one-shot, not resident) + redis 2.5G + frontend 1G. Caps, not
+    # reservations — real steady usage is well under total, and redis
     # never approaches its cap. Each of the 4 web workers holds its own copy
     # of the entity-stats snapshot, which is what puts this at ~4.5G.
     mem_limit: 5g
@@ -162,52 +162,6 @@ services:
       CF_ACCOUNT_ID: ${CF_ACCOUNT_ID:-}
     # Ordering only (no health condition): the backend must boot fine with
     # Redis down, since the cache layer is fail-safe by design.
-    depends_on:
-      - redis
-    networks:
-      - nginx_web-network
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "5"
-
-  # Dedicated stats-rebuild worker. Same image as the backend, no published
-  # port, single process: it alone holds the refresh lease, so the
-  # 80-minute-plus snapshot walk survives web deploys (compose only
-  # recreates this container when the backend image itself changes).
-  # KEEP THIS SERVICE IN THE DEPLOY SCRIPT'S `up` LIST - a rebuilder left
-  # on an old image would keep writing old-version snapshots and the
-  # current version would never build.
-  rebuilder:
-    image: ptrlrd/spire-codex-backend:latest
-    container_name: spire-codex-rebuilder
-    restart: unless-stopped
-    # Hard cap so a full snapshot walk can never starve the box. Without it,
-    # the v26 rebuild OOM-killed this container on 2026-08-21/22/23, and
-    # because the kernel OOM was machine-wide (constraint=CONSTRAINT_NONE)
-    # nginx, mongod and next-server were failing allocations too — the site
-    # went down with it. Capped, a too-large walk fails alone and retries.
-    # Requires ENTITY_STATS_REBUILD_WORKERS=1: each parallel worker holds its
-    # own accumulators, so 2+ workers will not fit in this cap.
-    # 7g: the 2026-08-25 v26 full walk (1.39M runs, first real charts
-    # accumulation) peaked at 5.59GiB measured via cgroup memory.peak; 3g
-    # was never enough once charts stopped short-circuiting.
-    mem_limit: 7g
-    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]
-    volumes:
-      - ./data:/data
-      - ./data-beta:/data-beta:ro
-      - ./backend/static:/app/static:ro
-      - ./lake:/lake:ro
-      - ./.secrets:/secrets:ro
-    environment:
-      <<: *shared-env
-      STATS_REFRESHER: "on"
-      # Weekly repair walks. The 86400 default re-walked the full corpus
-      # every day -- 7h and a 5.6GiB peak per walk at the 2026-08 corpus,
-      # growing ~20k runs/day. Incremental folds cover the steady state.
-      STATS_REPAIR_INTERVAL_SECONDS: "604800"
     depends_on:
       - redis
     networks:
