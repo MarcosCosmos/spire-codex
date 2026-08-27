@@ -8,8 +8,13 @@ on:
 
 # Supersede in-flight runs when a PR gets a new push; never cancel main
 # (a cancelled build job could leave :latest and :sha tags half-pushed).
+# Main pushes get a PER-SHA group: with a shared group, GitHub keeps only
+# the newest QUEUED run, so a rapid merge batch silently dropped the runs
+# between the in-flight one and the last — #944's frontend build never
+# happened (2026-08-27) and prod ran the old frontend. Per-SHA groups make
+# every main push build; the self-hosted runner serializes them anyway.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.ref }}${{ github.ref == 'refs/heads/main' && format('-{0}', github.sha) || '' }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
