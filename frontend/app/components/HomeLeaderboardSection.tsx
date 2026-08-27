@@ -1,4 +1,5 @@
 import HomeLeaderboardLive from "./HomeLeaderboardLive";
+import { dedupePartyRows } from "@/lib/party-dedupe";
 
 const API = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const RUNS_HOST = "";
@@ -37,7 +38,7 @@ interface RunListResponse {
 async function loadFastestWins(): Promise<FastestBlock> {
   try {
     const res = await fetch(
-      `${RUNS_API}/api/runs/leaderboard?category=fastest&ascension_min=${TARGET_ASCENSION}&limit=5`,
+      `${RUNS_API}/api/runs/leaderboard?category=fastest&ascension_min=${TARGET_ASCENSION}&players=single&game_mode=standard&limit=5`,
       { next: { revalidate: REVALIDATE } },
     );
     if (!res.ok) return { runs: [], ascension: null };
@@ -65,12 +66,12 @@ async function loadRecentRuns(): Promise<RunRow[]> {
 async function loadDailyClimb(): Promise<RunRow[]> {
   try {
     const res = await fetch(
-      `${RUNS_API}/api/runs/leaderboard?category=highest_ascension&game_mode=daily&today=true&limit=5`,
+      `${RUNS_API}/api/runs/leaderboard?category=highest_ascension&game_mode=daily&today=true&limit=15`,
       { next: { revalidate: REVALIDATE } },
     );
     if (!res.ok) return [];
     const data = (await res.json()) as { runs: RunRow[] };
-    return (data.runs ?? []).slice(0, 5);
+    return dedupePartyRows(data.runs ?? []).slice(0, 5);
   } catch {
     return [];
   }

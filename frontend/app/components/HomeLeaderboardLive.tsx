@@ -6,6 +6,7 @@ import { t } from "@/lib/ui-translations";
 import { imageUrl } from "@/lib/image-url";
 import { characterHex } from "@/lib/character-colors";
 import type { FastestBlock, RunRow } from "./HomeLeaderboardSection";
+import { dedupePartyRows } from "@/lib/party-dedupe";
 
 const TARGET_ASCENSION = 10;
 const POLL_MS = 20_000;
@@ -98,14 +99,14 @@ export default function HomeLeaderboardLive({
       fetch(url).then((r) => (r.ok ? r.json() : null)).catch(() => null);
     const load = () => {
       if (document.hidden) return;
-      grab(`${pollBase}/api/runs/leaderboard?category=fastest&ascension_min=${TARGET_ASCENSION}&limit=5`).then((d) => {
+      grab(`${pollBase}/api/runs/leaderboard?category=fastest&ascension_min=${TARGET_ASCENSION}&players=single&game_mode=standard&limit=5`).then((d) => {
         if (active && d?.runs) {
           const runs = (d.runs as RunRow[]).filter((r) => r.win === 1).slice(0, 5);
           if (runs.length) setFastest({ runs, ascension: TARGET_ASCENSION });
         }
       });
-      grab(`${pollBase}/api/runs/leaderboard?category=highest_ascension&game_mode=daily&today=true&limit=5`).then((d) => {
-        if (active && d?.runs) setDaily((d.runs as RunRow[]).slice(0, 5));
+      grab(`${pollBase}/api/runs/leaderboard?category=highest_ascension&game_mode=daily&today=true&limit=15`).then((d) => {
+        if (active && d?.runs) setDaily(dedupePartyRows(d.runs as RunRow[]).slice(0, 5));
       });
       grab(`${pollBase}/api/runs/list?limit=5&sort=newest`).then((d) => {
         if (active && d?.runs) setRecent(d.runs as RunRow[]);

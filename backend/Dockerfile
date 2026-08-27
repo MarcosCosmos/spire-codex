@@ -19,6 +19,11 @@ COPY app/ app/
 # without copying files into a running container.
 COPY scripts/ scripts/
 
+# Deploy identity: CI passes the commit SHA so /health can report exactly
+# which build is running (last layer, so it never busts the cache above).
+ARG GIT_SHA=""
+ENV GIT_SHA=$GIT_SHA
+
 EXPOSE 8000
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
