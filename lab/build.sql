@@ -10,6 +10,25 @@ SET threads=2;
 SET temp_directory='/lake/tmp';
 SET preserve_insertion_order=false;
 
+-- Parse the staging JSON exactly ONCE into a scratch table carrying the
+-- superset of every field any output table needs; the eight extractions
+-- below then read columnar storage instead of re-parsing 33GB of JSON per
+-- table (the old design's workaround for a memory cap that no longer
+-- exists).
+CREATE OR REPLACE TABLE raw AS
+SELECT * FROM read_ndjson('/lake/staging/*.jsonl.gz',
+  maximum_object_size=33554432, ignore_errors=true,
+  columns={run_hash: 'VARCHAR',
+    win: 'BOOLEAN', was_abandoned: 'BOOLEAN', ascension: 'BIGINT',
+    game_mode: 'VARCHAR', build_id: 'VARCHAR', seed: 'VARCHAR',
+    start_time: 'BIGINT', run_time: 'BIGINT',
+    killed_by_encounter: 'VARCHAR', killed_by_event: 'VARCHAR',
+    modifiers: 'VARCHAR[]',
+    players: 'STRUCT(id BIGINT, "character" VARCHAR, deck STRUCT(floor_added_to_deck BIGINT, id VARCHAR, current_upgrade_level BIGINT, enchantment STRUCT(id VARCHAR))[], relics STRUCT(id VARCHAR, floor_added_to_deck BIGINT)[], potions STRUCT(id VARCHAR)[])[]',
+    map_point_history: 'STRUCT(map_point_type VARCHAR, player_stats STRUCT(player_id BIGINT, current_gold BIGINT, current_hp BIGINT, damage_taken BIGINT, max_hp BIGINT, event_choices STRUCT(title STRUCT("key" VARCHAR, "table" VARCHAR))[], rest_site_choices VARCHAR[], upgraded_cards VARCHAR[], ancient_choice STRUCT(TextKey VARCHAR, title STRUCT("key" VARCHAR, "table" VARCHAR), was_chosen BOOLEAN)[], cards_removed JSON[], card_choices STRUCT(was_picked BOOLEAN, card STRUCT(id VARCHAR))[])[], rooms STRUCT(model_id VARCHAR, room_type VARCHAR, turns_taken BIGINT)[])[][]',
+    _meta: 'STRUCT(username VARCHAR, user_id VARCHAR, hidden BOOLEAN, deleted BOOLEAN, submitted_at TIMESTAMP, played_at TIMESTAMP, player_count BIGINT)'});
+
+
 COPY (
 SELECT run_hash,
   upper(split_part(players[1].character,'.',-1)) AS character,
@@ -22,16 +41,7 @@ SELECT run_hash,
   _meta.hidden AS hidden, _meta.deleted AS deleted,
   coalesce(len(modifiers), 0) > 0 AS has_modifiers,
   _meta.submitted_at AS submitted_at, _meta.played_at AS played_at
-FROM read_ndjson('/lake/staging/*.jsonl.gz',
-  maximum_object_size=33554432, ignore_errors=true,
-  columns={run_hash: 'VARCHAR',
-    players: 'STRUCT("character" VARCHAR)[]',
-    win: 'BOOLEAN', was_abandoned: 'BOOLEAN', ascension: 'BIGINT',
-    game_mode: 'VARCHAR', build_id: 'VARCHAR', seed: 'VARCHAR',
-    start_time: 'BIGINT', run_time: 'BIGINT',
-    killed_by_encounter: 'VARCHAR', killed_by_event: 'VARCHAR',
-    modifiers: 'VARCHAR[]',
-    _meta: 'STRUCT(username VARCHAR, user_id VARCHAR, hidden BOOLEAN, deleted BOOLEAN, submitted_at TIMESTAMP, played_at TIMESTAMP, player_count BIGINT)'})
+FROM raw
 ) TO '/lake/runs.parquet' (FORMAT parquet, COMPRESSION zstd);
 
 -- Sidecar from the extractor's fresh scan, NOT the per-page _meta: hidden
@@ -51,10 +61,7 @@ SELECT r.run_hash, act.i AS act, loc.i AS floor_idx,
   loc.u.player_stats[1].current_hp AS p1_hp,
   loc.u.player_stats[1].max_hp AS p1_max_hp,
   loc.u.player_stats[1].current_gold AS p1_gold
-FROM read_ndjson('/lake/staging/*.jsonl.gz',
-  maximum_object_size=33554432, ignore_errors=true,
-  columns={run_hash: 'VARCHAR',
-    map_point_history: 'STRUCT(map_point_type VARCHAR, player_stats STRUCT(current_gold BIGINT, current_hp BIGINT, damage_taken BIGINT, max_hp BIGINT)[], rooms STRUCT(model_id VARCHAR, room_type VARCHAR, turns_taken BIGINT)[])[][]'}) r,
+FROM raw r,
   LATERAL (SELECT unnest(map_point_history) AS u, generate_subscripts(map_point_history,1) AS i) act,
   LATERAL (SELECT unnest(act.u) AS u, generate_subscripts(act.u,1) AS i) loc,
   LATERAL (SELECT unnest(loc.u.rooms) AS u) room
@@ -67,10 +74,7 @@ SELECT r.run_hash, p.i AS player_idx,
   c.u.floor_added_to_deck AS floor_added,
   c.u.current_upgrade_level AS upgrade_level,
   upper(split_part(c.u.enchantment.id, '.', -1)) AS enchantment
-FROM read_ndjson('/lake/staging/*.jsonl.gz',
-  maximum_object_size=33554432, ignore_errors=true,
-  columns={run_hash: 'VARCHAR',
-    players: 'STRUCT("character" VARCHAR, deck STRUCT(floor_added_to_deck BIGINT, id VARCHAR, current_upgrade_level BIGINT, enchantment STRUCT(id VARCHAR))[])[]'}) r,
+FROM raw r,
   LATERAL (SELECT unnest(players) AS u, generate_subscripts(players,1) AS i) p,
   LATERAL (SELECT unnest(p.u.deck) AS u) c
 ) TO '/lake/deck.parquet' (FORMAT parquet, COMPRESSION zstd);
@@ -83,10 +87,7 @@ SELECT r.run_hash, act.i - 1 AS act, loc.i AS floor_idx,
   lower(loc.u.map_point_type) AS map_point_type,
   loc.u.player_stats AS players,
   [x.model_id FOR x IN loc.u.rooms] AS room_models
-FROM read_ndjson('/lake/staging/*.jsonl.gz',
-  maximum_object_size=33554432, ignore_errors=true,
-  columns={run_hash: 'VARCHAR',
-    map_point_history: 'STRUCT(map_point_type VARCHAR, player_stats STRUCT(player_id BIGINT, current_gold BIGINT, current_hp BIGINT, damage_taken BIGINT, max_hp BIGINT, event_choices STRUCT(title STRUCT("key" VARCHAR, "table" VARCHAR))[], rest_site_choices VARCHAR[], upgraded_cards VARCHAR[], ancient_choice STRUCT(TextKey VARCHAR, title STRUCT("key" VARCHAR, "table" VARCHAR), was_chosen BOOLEAN)[], cards_removed JSON[], card_choices STRUCT(was_picked BOOLEAN, card STRUCT(id VARCHAR))[])[], rooms STRUCT(model_id VARCHAR)[])[][]'}) r,
+FROM raw r,
   LATERAL (SELECT unnest(map_point_history) AS u, generate_subscripts(map_point_history,1) AS i) act,
   LATERAL (SELECT unnest(act.u) AS u, generate_subscripts(act.u,1) AS i) loc
 ) TO '/lake/floors.parquet' (FORMAT parquet, COMPRESSION zstd);
@@ -95,10 +96,7 @@ COPY (
 SELECT r.run_hash, p.i AS player_idx,
   upper(split_part(rel.u.id, '.', -1)) AS relic,
   rel.u.floor_added_to_deck AS floor_added
-FROM read_ndjson('/lake/staging/*.jsonl.gz',
-  maximum_object_size=33554432, ignore_errors=true,
-  columns={run_hash: 'VARCHAR',
-    players: 'STRUCT(relics STRUCT(id VARCHAR, floor_added_to_deck BIGINT)[])[]'}) r,
+FROM raw r,
   LATERAL (SELECT unnest(players) AS u, generate_subscripts(players,1) AS i) p,
   LATERAL (SELECT unnest(p.u.relics) AS u) rel
 ) TO '/lake/relics.parquet' (FORMAT parquet, COMPRESSION zstd);
@@ -106,10 +104,7 @@ FROM read_ndjson('/lake/staging/*.jsonl.gz',
 COPY (
 SELECT r.run_hash, p.i AS player_idx,
   upper(split_part(pot.u.id, '.', -1)) AS potion
-FROM read_ndjson('/lake/staging/*.jsonl.gz',
-  maximum_object_size=33554432, ignore_errors=true,
-  columns={run_hash: 'VARCHAR',
-    players: 'STRUCT(potions STRUCT(id VARCHAR)[])[]'}) r,
+FROM raw r,
   LATERAL (SELECT unnest(players) AS u, generate_subscripts(players,1) AS i) p,
   LATERAL (SELECT unnest(p.u.potions) AS u) pot
 ) TO '/lake/potions.parquet' (FORMAT parquet, COMPRESSION zstd);
@@ -120,10 +115,7 @@ COPY (
 SELECT r.run_hash, p.i AS player_idx, p.u.id AS player_id,
   upper(split_part(p.u.character,'.',-1)) AS character,
   coalesce(len(p.u.deck), 0) AS deck_size
-FROM read_ndjson('/lake/staging/*.jsonl.gz',
-  maximum_object_size=33554432, ignore_errors=true,
-  columns={run_hash: 'VARCHAR',
-    players: 'STRUCT(id BIGINT, "character" VARCHAR, deck STRUCT(id VARCHAR)[])[]'}) r,
+FROM raw r,
   LATERAL (SELECT unnest(players) AS u, generate_subscripts(players,1) AS i) p
 ) TO '/lake/players.parquet' (FORMAT parquet, COMPRESSION zstd);
 
@@ -156,3 +148,5 @@ UNION ALL SELECT 'floors', count(*) FROM read_parquet('/lake/floors.parquet')
 UNION ALL SELECT 'players', count(*) FROM read_parquet('/lake/players.parquet')
 UNION ALL SELECT 'relics', count(*) FROM read_parquet('/lake/relics.parquet')
 UNION ALL SELECT 'potions', count(*) FROM read_parquet('/lake/potions.parquet');
+
+DROP TABLE raw;
