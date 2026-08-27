@@ -496,7 +496,21 @@ def _insights_coll():
     return _get_collection().database["user_insights"]
 
 
+def _is_hollow(payload: dict | None) -> bool:
+    """A payload claiming runs but walking none means the blob fetch failed
+    underneath the walk — an artifact of database pressure, not a real
+    profile. Such payloads must never be stored, cached, or served: treat
+    them as absent everywhere so the next view rebuilds instead. (A user
+    with zero claimed runs walking zero is a REAL empty profile.)"""
+    return bool(
+        payload and payload.get("claimed_runs") and not payload.get("runs_walked")
+    )
+
+
 def _store_payload(cache_key: str, payload: dict) -> None:
+    if _is_hollow(payload):
+        logger.warning("refusing to durably store a hollow profile: %s", cache_key)
+        return
     try:
         from datetime import datetime, timezone
 
@@ -540,9 +554,11 @@ def get_user_insights(
     version = (version or "").strip() or None
     cache_key = f"{user_id}{_filters_suffix(character, ascension, version, players)}"
     local = _cache_get(cache_key)
-    if local is not None:
+    if local is not None and not _is_hollow(local):
         return local
     payload = app_cache.get_json(_payload_key(cache_key))
+    if _is_hollow(payload):
+        payload = None
     if payload is not None and app_cache.get_json(_fresh_key(cache_key)) is not None:
         _cache_put(cache_key, payload)
         return payload
@@ -550,6 +566,8 @@ def get_user_insights(
         # Redis miss: the database is the store of record. Serve the stored
         # copy immediately and let the background refresh recompute it.
         payload = _load_stored_payload(cache_key)
+        if _is_hollow(payload):
+            payload = None
         if payload is not None:
             app_cache.set_json(_payload_key(cache_key), payload, _STALE_REDIS_TTL)
     _kick_refresh(cache_key, user_id, username, character, ascension, version, players)
@@ -956,5 +974,6 @@ def _assemble_payload(
     mine["version"] = version
     mine["players"] = players
     mine["runs_walked"] = walked
+    mine["claimed_runs"] = len(rows)
     mine["runs_capped"] = len(rows) >= _MAX_RUNS
     return mine

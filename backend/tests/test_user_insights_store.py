@@ -77,3 +77,20 @@ def test_invalidate_clears_prewarmed_fresh_markers(monkeypatch):
         f"user_insights:fresh:u1{ui._filters_suffix(None, None, None, None)}" in deleted
     )
     assert len(deleted) == 8
+
+
+def test_hollow_payloads_are_never_stored_or_served(monkeypatch):
+    hollow = {"claimed_runs": 162, "runs_walked": 0}
+    legit_empty = {"claimed_runs": 0, "runs_walked": 0}
+    real = {"claimed_runs": 162, "runs_walked": 160}
+    assert ui._is_hollow(hollow)
+    assert not ui._is_hollow(legit_empty)
+    assert not ui._is_hollow(real)
+    assert not ui._is_hollow(None)
+
+    fake = FakeColl()
+    monkeypatch.setattr(ui, "_insights_coll", lambda: fake)
+    ui._store_payload("u9:", hollow)
+    assert "u9:" not in fake.docs
+    ui._store_payload("u9:", real)
+    assert fake.docs["u9:"]["payload"] == real
