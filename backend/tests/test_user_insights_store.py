@@ -46,3 +46,34 @@ def test_store_write_failure_is_soft(monkeypatch):
 
     monkeypatch.setattr(ui, "_insights_coll", lambda: Boom())
     ui._store_payload("k", {"x": 1})  # must not raise
+
+
+def test_hollow_blob_fetch_refuses_to_build():
+    rows = [{"run_hash": f"h{i}"} for i in range(100)]
+    ui._require_blob_coverage([], {})
+    ui._require_blob_coverage(rows, {f"h{i}": {} for i in range(100)})
+    ui._require_blob_coverage(rows, {f"h{i}": {} for i in range(95)})
+    import pytest
+
+    with pytest.raises(RuntimeError):
+        ui._require_blob_coverage(rows, {})
+    with pytest.raises(RuntimeError):
+        ui._require_blob_coverage(rows, {f"h{i}": {} for i in range(85)})
+
+
+def test_invalidate_clears_prewarmed_fresh_markers(monkeypatch):
+    deleted = []
+
+    class FakeCache:
+        @staticmethod
+        def delete(key):
+            deleted.append(key)
+
+    import app.services.cache as app_cache
+
+    monkeypatch.setattr(app_cache, "delete", FakeCache.delete)
+    ui.invalidate_user_insights("u1")
+    assert (
+        f"user_insights:fresh:u1{ui._filters_suffix(None, None, None, None)}" in deleted
+    )
+    assert len(deleted) == 8
