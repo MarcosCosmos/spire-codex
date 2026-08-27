@@ -63,7 +63,14 @@ def _connect(build: bool = False):
         # the 5g container leaves the observed ~300-500MB native overhead).
         mem = os.environ.get("LAKE_BUILD_MEMORY", "") or "3500MB"
         con.execute(f"SET memory_limit='{mem}'")
-        con.execute(f"SET temp_directory='{LAKE_DIR}/tmp'")
+        # The shared on-disk scratch keeps one temp dir per process: once any
+        # connection has spilled (build.sql does), DuckDB refuses to set it
+        # again — even to the same path. First connection wins; later ones
+        # inherit it, so a refusal here is fine.
+        try:
+            con.execute(f"SET temp_directory='{LAKE_DIR}/tmp'")
+        except Exception:
+            pass
         con.execute("SET preserve_insertion_order=false")
     else:
         con.execute("SET memory_limit='500MB'")
