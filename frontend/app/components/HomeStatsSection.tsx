@@ -18,7 +18,7 @@ export interface CommunityStats {
 
 async function loadStats(): Promise<CommunityStats | null> {
   try {
-    const res = await fetch(`${RUNS_API}/api/runs/stats`, { next: { revalidate: REVALIDATE } });
+    const res = await fetch(`${RUNS_API}/api/runs/stats?compact=1`, { next: { revalidate: REVALIDATE } });
     if (!res.ok) return null;
     return (await res.json()) as CommunityStats;
   } catch {

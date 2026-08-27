@@ -1,9 +1,11 @@
 """Spire Codex API - FastAPI Application."""
 
+import json
 import logging
 import os
 import re
 import time
+from datetime import datetime, timezone
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -748,15 +750,52 @@ def stats(request: Request, lang: str = Depends(get_lang)):
 
 @app.get("/health", tags=["Health"])
 def health(request: Request):
-    """Health check — verifies the API is running and data is accessible."""
+    """Health check — verifies the API is running and data is accessible.
+
+    Also reports deploy + data identity: the git SHA the image was built
+    from and the lake stores' freshness, so "is the box actually running
+    the merged code / fresh data" is one curl instead of docker inspect.
+    """
     data_dir = Path(
         os.environ.get("DATA_DIR", Path(__file__).resolve().parents[1] / "data")
     )
     eng_dir = data_dir / "eng"
     data_ok = eng_dir.exists() and any(eng_dir.glob("*.json"))
+
+    lake_dir = Path(os.environ.get("LAKE_DIR", "/lake"))
+    lake: dict[str, str | None] = {}
+    for label, name in (
+        ("community_payload", "community_payload.json"),
+        ("entity_store", "entity_store.json"),
+        ("frame_parquet", "frame.parquet"),
+    ):
+        try:
+            ts = (lake_dir / name).stat().st_mtime
+            lake[label] = datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
+        except OSError:
+            lake[label] = None
+    data_through = None
+    try:
+        state = json.loads((lake_dir / "staging" / "state.json").read_text())
+        data_through = state.get("submitted_at")
+    except Exception:
+        pass
+    # The ingest publishes this manifest last, after every artifact of a
+    # cycle landed, so it names the newest COMPLETE generation; individual
+    # store mtimes above can run ahead of it mid-cycle.
+    generation = None
+    try:
+        generation = json.loads((lake_dir / "generation.json").read_text())
+    except Exception:
+        pass
+
     return {
         "status": "ok" if data_ok else "degraded",
         "data_available": data_ok,
+        "git_sha": os.environ.get("GIT_SHA") or None,
+        "lake": lake,
+        "data_through": data_through,
+        "generation": generation,
     }
 
 

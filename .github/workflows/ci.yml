@@ -189,6 +189,8 @@ jobs:
         with:
           context: ./backend
           push: true
+          build-args: |
+            GIT_SHA=${{ github.sha }}
           tags: |
             ptrlrd/spire-codex-backend:latest
             ptrlrd/spire-codex-backend:${{ github.sha }}

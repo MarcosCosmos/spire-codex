@@ -758,6 +758,7 @@ def get_run_rank(request: Request, run_hash: str, category: str = "fastest"):
 )
 def get_encounter_stats_endpoint(
     request: Request,
+    response: Response,
     act: str | None = None,
     room_type: str | None = None,
     multiplayer: str | None = None,
@@ -821,7 +822,7 @@ def get_encounter_stats_endpoint(
         if room_type
         else None
     )
-    return _get_encounter_stats(
+    result = _get_encounter_stats(
         acts=acts,
         room_types=room_types,
         multiplayer=multiplayer,
@@ -830,6 +831,11 @@ def get_encounter_stats_endpoint(
         bracket=bracket,
         build_id=build_id,
     )
+    # A not-yet-built snapshot answers empty; don't let the edge cache that
+    # for an hour and keep serving zeros after the data lands.
+    if not result.get("encounters"):
+        response.headers["Cache-Control"] = "no-store"
+    return result
 
 
 @router.get("/versions", tags=["Runs"])
@@ -1588,6 +1594,15 @@ def start_stats_refresher() -> None:
     threading.Thread(target=_loop, daemon=True, name="stats-refresher").start()
 
 
+# The homepage needs only the headline numbers + character table; these four
+# arrays are ~4.2MB of the ~4.3MB payload and only the stats page reads them.
+_HEAVY_STATS_KEYS = ("top_cards", "pick_rates", "top_relics", "top_potions")
+
+
+def _compact_stats(doc: dict) -> dict:
+    return {k: v for k, v in doc.items() if k not in _HEAVY_STATS_KEYS}
+
+
 @router.get("/stats", tags=["Runs"])
 @limiter.limit(
     rate_limit_config.endpoint_limit("runs.get_community_stats", "120/minute")
@@ -1600,6 +1615,7 @@ def get_community_stats(
     game_mode: str | None = None,
     players: str | None = None,
     username: str | None = None,
+    compact: bool = False,
 ):
     """Get aggregated run stats. Community-wide by default; pass
     `username` to narrow to a single uploader.
@@ -1616,6 +1632,11 @@ def get_community_stats(
     # keyed and matched on the lowercased name).
     if username:
         username = username.strip().lower()
+    if ascension is not None and ascension.strip():
+        try:
+            int(ascension)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="ascension must be an integer")
     # 0. Redis layer: one cluster-wide copy per filter combo, refreshed on
     # the same cadence as the refresher cycle. Misses fall through to the
     # existing chain unchanged.
@@ -1629,7 +1650,7 @@ def get_community_stats(
     )
     redis_cached = app_cache.get_json(redis_key)
     if redis_cached is not None:
-        return redis_cached
+        return _compact_stats(redis_cached) if compact else redis_cached
 
     # 1. Materialized view path
     try:
@@ -1645,7 +1666,7 @@ def get_community_stats(
         )
         if materialized is not None:
             app_cache.set_json(redis_key, materialized, ttl_seconds=60)
-            return materialized
+            return _compact_stats(materialized) if compact else materialized
     except Exception:
         # Not on the Mongo path (SQLite fallback) — keep going.
         pass
@@ -1655,7 +1676,7 @@ def get_community_stats(
     now = time.monotonic()
     hit = _stats_fallback_cache.get(cache_key)
     if hit and now - hit[0] < _STATS_FALLBACK_TTL_SECONDS:
-        return hit[1]
+        return _compact_stats(hit[1]) if compact else hit[1]
     for k in [
         k
         for k, (t, _) in _stats_fallback_cache.items()
@@ -1677,7 +1698,7 @@ def get_community_stats(
             time.sleep(0.25)
             winner = app_cache.get_json(redis_key)
             if winner is not None:
-                return winner
+                return _compact_stats(winner) if compact else winner
 
     try:
         # Bounded so an aggregation that outgrew the data can never hold the
@@ -1729,7 +1750,7 @@ def get_community_stats(
         if lock_acquired:
             app_cache.delete(lock_key)
 
-    return result
+    return _compact_stats(result) if compact else result
 
 
 @router.get("/{run_hash}/similar", tags=["Runs"])
