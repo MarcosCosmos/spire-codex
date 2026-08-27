@@ -1116,6 +1116,11 @@ def _stats_core_results() -> list[tuple[dict, dict]]:
         return round(w / n * 100, 1) if n > 0 else 0
 
     out: list[tuple[dict, dict]] = []
+    # Canonical counting (ruling 2026-08-27): totals cover OFFICIAL
+    # characters only, so every headline equals the sum of its character
+    # table; abandons stay their own visible number, never folded into
+    # losses; win_rate remains wins over total attempts.
+    cells = [c for c in cells if c[0] in OFFICIAL_CHARACTERS]
     for f in [*HOT_FILTER_COMBOS, *ASCENSION_FILTER_COMBOS]:
         char_f = f.get("character")
         asc_f = int(f["ascension"]) if "ascension" in f else None
@@ -1141,14 +1146,16 @@ def _stats_core_results() -> list[tuple[dict, dict]]:
         no_char = [c for c in cells if asc_f is None or c[1] == asc_f]
         char_totals: dict[str, list[int]] = {}
         for c in no_char:
-            rec = char_totals.setdefault(c[0], [0, 0])
+            rec = char_totals.setdefault(c[0], [0, 0, 0])
             rec[0] += c[2]
             rec[1] += c[3]
+            rec[2] += c[4]
         asc_totals: dict[int, list[int]] = {}
         for c in rows:
-            rec = asc_totals.setdefault(c[1], [0, 0])
+            rec = asc_totals.setdefault(c[1], [0, 0, 0])
             rec[0] += c[2]
             rec[1] += c[3]
+            rec[2] += c[4]
         out.append(
             (
                 f,
@@ -1163,21 +1170,22 @@ def _stats_core_results() -> list[tuple[dict, dict]]:
                             "character": ch,
                             "total": t,
                             "wins": w,
+                            "abandoned": ab,
                             "win_rate": pct(w, t),
                         }
-                        for ch, (t, w) in sorted(
+                        for ch, (t, w, ab) in sorted(
                             char_totals.items(), key=lambda kv: -kv[1][0]
                         )
-                        if ch in OFFICIAL_CHARACTERS
                     ],
                     "ascensions": [
                         {
                             "level": a,
                             "total": t,
                             "wins": w,
+                            "abandoned": ab,
                             "win_rate": pct(w, t),
                         }
-                        for a, (t, w) in sorted(asc_totals.items())
+                        for a, (t, w, ab) in sorted(asc_totals.items())
                     ],
                 },
             )

@@ -107,8 +107,8 @@ export interface CommunityStats {
     game_mode: string | null;
     players: string | null;
   };
-  characters: { character: string; total: number; wins: number; win_rate: number }[];
-  ascensions: { level: number; total: number; wins: number; win_rate: number }[];
+  characters: { character: string; total: number; wins: number; abandoned?: number; win_rate: number }[];
+  ascensions: { level: number; total: number; wins: number; abandoned?: number; win_rate: number }[];
   top_cards: {
     card_id: string;
     count: number;
@@ -1140,7 +1140,7 @@ function OverviewTab({
   return (
     <div className="space-y-4">
       <div className="bg-[var(--bg-card)] rounded-xl border border-[var(--border-subtle)] p-5">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center">
           <div className="bg-[var(--bg-primary)] rounded-lg p-3">
             <div className="text-2xl font-bold text-[var(--text-primary)]">
               {stats.total_runs}
@@ -1154,6 +1154,12 @@ function OverviewTab({
           <div className="bg-[var(--bg-primary)] rounded-lg p-3">
             <div className="text-2xl font-bold text-red-400">{losses}</div>
             <div className="text-xs text-[var(--text-muted)]">{t("Losses", lang)}</div>
+          </div>
+          <div className="bg-[var(--bg-primary)] rounded-lg p-3">
+            <div className="text-2xl font-bold text-[var(--text-secondary)]">
+              {stats.total_abandoned || 0}
+            </div>
+            <div className="text-xs text-[var(--text-muted)]">{t("Abandoned", lang)}</div>
           </div>
           <div className="bg-[var(--bg-primary)] rounded-lg p-3">
             <div className="text-2xl font-bold text-[var(--accent-gold)]">
@@ -1195,7 +1201,8 @@ function OverviewTab({
                     </span>
                     <div className="flex items-center gap-3 text-xs">
                       <span className="text-[var(--text-muted)]">
-                        {c.wins}W / {c.total - c.wins}L
+                        {c.wins}W / {c.total - c.wins - (c.abandoned || 0)}L
+                        {c.abandoned ? ` / ${c.abandoned}A` : ""}
                       </span>
                       <span
                         className="font-semibold tabular-nums"
@@ -1252,7 +1259,7 @@ function OverviewTab({
                   </td>
                   <td className="py-2 text-right text-emerald-400 tabular-nums">{a.wins}</td>
                   <td className="py-2 text-right text-red-400 tabular-nums">
-                    {a.total - a.wins}
+                    {a.total - a.wins - (a.abandoned || 0)}
                   </td>
                   <td
                     className="py-2 text-right font-semibold tabular-nums"
