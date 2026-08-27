@@ -780,6 +780,14 @@ def health(request: Request):
         data_through = state.get("submitted_at")
     except Exception:
         pass
+    # The ingest publishes this manifest last, after every artifact of a
+    # cycle landed, so it names the newest COMPLETE generation; individual
+    # store mtimes above can run ahead of it mid-cycle.
+    generation = None
+    try:
+        generation = json.loads((lake_dir / "generation.json").read_text())
+    except Exception:
+        pass
 
     return {
         "status": "ok" if data_ok else "degraded",
@@ -787,6 +795,7 @@ def health(request: Request):
         "git_sha": os.environ.get("GIT_SHA") or None,
         "lake": lake,
         "data_through": data_through,
+        "generation": generation,
     }
 
 
