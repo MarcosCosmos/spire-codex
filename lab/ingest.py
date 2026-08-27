@@ -40,23 +40,51 @@ def main() -> None:
     t0 = time.time()
     generation_id = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime(t0))
     print(f"generation {generation_id} starting", flush=True)
-    extracted = extract.main() or (0, 0)
-    t_extract = time.time()
 
-    import duckdb
+    # Fresh scratch every cycle: a DuckDB file never returns freed pages to
+    # the OS, so a persistent scratch keeps last cycle's high-water mark on
+    # disk forever. Nothing outside a cycle reads it (pfloors is rebuilt per
+    # ingest), and the spill dir can hold orphans from a killed run.
+    import shutil
 
-    con = duckdb.connect("/lake/build.duckdb")
-    # The shadow SQLs were the migration validation gate; the gate passed,
-    # and the payload builder computes the same sections anyway, so the
-    # nightly run skips them (halves the tail). Run them by hand from
-    # lab/ when a fresh lake-vs-snapshot diff is wanted.
-    for name in ("build.sql",):
-        path = pathlib.Path("/lab") / name
-        if not path.exists():
-            print(f"{name}: not present, skipped", flush=True)
-            continue
-        con.execute(path.read_text())
-        print(f"{name}: done", flush=True)
+    (LAKE / "build.duckdb").unlink(missing_ok=True)
+    (LAKE / "build.duckdb.wal").unlink(missing_ok=True)
+    shutil.rmtree(LAKE / "tmp", ignore_errors=True)
+
+    # Extract and the SQL build have no per-stage soft-fail like the store
+    # stages below, so a crash here must still leave a metrics record and a
+    # nonzero exit for cron to notice.
+    try:
+        extracted = extract.main() or (0, 0)
+        t_extract = time.time()
+
+        import duckdb
+
+        con = duckdb.connect("/lake/build.duckdb")
+        # The shadow SQLs were the migration validation gate; the gate
+        # passed, and the payload builder computes the same sections anyway,
+        # so the nightly run skips them (halves the tail). Run them by hand
+        # from lab/ when a fresh lake-vs-snapshot diff is wanted.
+        for name in ("build.sql",):
+            path = pathlib.Path("/lab") / name
+            if not path.exists():
+                print(f"{name}: not present, skipped", flush=True)
+                continue
+            con.execute(path.read_text())
+            print(f"{name}: done", flush=True)
+    except Exception as e:
+        record = {
+            "generation_id": generation_id,
+            "cycle_started_at": _utc(t0),
+            "failed_stage": "extract/build",
+            "error": str(e)[:500],
+            "complete": False,
+            "published_at": _utc(time.time()),
+        }
+        with open(LAKE / "ingest_metrics.jsonl", "a", encoding="utf-8") as f:
+            f.write(json.dumps(record, separators=(",", ":")) + "\n")
+        print(f"generation {generation_id} FAILED in extract/build: {e}", flush=True)
+        sys.exit(1)
     t_build = time.time()
     try:
         from app.services import lake_stats
@@ -117,28 +145,30 @@ def main() -> None:
             site = os.environ.get("PUBLIC_SITE_BASE", "https://spire-codex.com").rstrip(
                 "/"
             )
-            files = [
-                f"{site}{p}"
+            # Prefix purge, not exact URLs: Cloudflare's cache key includes
+            # the query string, so exact purges missed every filtered
+            # variant (?compact=1, brackets, leaderboard filters). A prefix
+            # also covers sub-paths like /stats/<entity>/<id>.
+            host = site.split("://", 1)[-1]
+            prefixes = [
+                f"{host}{p}"
                 for p in (
                     "/api/runs/stats",
                     "/api/runs/community-stats",
                     "/api/runs/leaderboard",
-                    "/api/runs/scores/cards",
-                    "/api/runs/scores/relics",
-                    "/api/runs/scores/potions",
-                    "/api/runs/metrics/cards",
-                    "/api/runs/metrics/relics",
-                    "/api/runs/metrics/potions",
+                    "/api/runs/scores/",
+                    "/api/runs/metrics/",
+                    "/api/runs/encounter-stats",
                 )
             ]
             resp = httpx.post(
                 f"https://api.cloudflare.com/client/v4/zones/{zone}/purge_cache",
                 headers={"Authorization": f"Bearer {token}"},
-                json={"files": files},
+                json={"prefixes": prefixes},
                 timeout=15,
             )
             purge_ok = resp.status_code == 200 and resp.json().get("success") is True
-            print(f"edge purge: ok={purge_ok} ({len(files)} urls)", flush=True)
+            print(f"edge purge: ok={purge_ok} ({len(prefixes)} prefixes)", flush=True)
         else:
             print("edge purge skipped: CF_TOKEN/CF_ZONE not set", flush=True)
     except Exception as e:
@@ -172,6 +202,7 @@ def main() -> None:
     except Exception:
         pass
     required = ("community_payload.json", "entity_store.json", "frame.parquet")
+    mtimes: dict[str, float] = {}
     for name in required + ("community_cube.json.gz",):
         try:
             s = (LAKE / name).stat()
@@ -179,12 +210,12 @@ def main() -> None:
                 "bytes": s.st_size,
                 "modified_at": _utc(s.st_mtime),
             }
+            mtimes[name] = s.st_mtime
         except OSError:
             manifest["artifacts"][name] = None
-    manifest["complete"] = all(
-        (a := manifest["artifacts"].get(n)) and a["modified_at"] >= _utc(t0)
-        for n in required
-    )
+    # Numeric comparison: the ISO strings are second-truncated, so an old
+    # artifact written earlier in the cycle's start second could pass.
+    manifest["complete"] = all(mtimes.get(n, 0.0) >= t0 for n in required)
     with open(LAKE / "ingest_metrics.jsonl", "a", encoding="utf-8") as f:
         f.write(json.dumps(manifest, separators=(",", ":")) + "\n")
     if manifest["complete"]:
@@ -192,20 +223,15 @@ def main() -> None:
         tmp.write_text(json.dumps(manifest, indent=1))
         tmp.replace(LAKE / "generation.json")
         print(f"generation {generation_id} published", flush=True)
+        print("ingest complete", flush=True)
     else:
-        missing = [
-            n
-            for n in required
-            if not (
-                (a := manifest["artifacts"].get(n)) and a["modified_at"] >= _utc(t0)
-            )
-        ]
+        missing = [n for n in required if mtimes.get(n, 0.0) < t0]
         print(
             f"generation {generation_id} INCOMPLETE (stale: {', '.join(missing)}); "
             "manifest not advanced",
             flush=True,
         )
-    print("ingest complete", flush=True)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

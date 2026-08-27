@@ -788,6 +788,28 @@ def health(request: Request):
         generation = json.loads((lake_dir / "generation.json").read_text())
     except Exception:
         pass
+    # The newest ATTEMPT, complete or not — a failing cron would otherwise
+    # be invisible here (the manifest only ever shows the last success).
+    latest_attempt = None
+    try:
+        with open(lake_dir / "ingest_metrics.jsonl", "rb") as f:
+            f.seek(0, 2)
+            f.seek(max(0, f.tell() - 8192))
+            lines = f.read().splitlines()
+        if lines:
+            rec = json.loads(lines[-1])
+            latest_attempt = {
+                k: rec.get(k)
+                for k in (
+                    "generation_id",
+                    "cycle_started_at",
+                    "published_at",
+                    "complete",
+                    "failed_stage",
+                )
+            }
+    except Exception:
+        pass
 
     return {
         "status": "ok" if data_ok else "degraded",
@@ -796,6 +818,7 @@ def health(request: Request):
         "lake": lake,
         "data_through": data_through,
         "generation": generation,
+        "latest_attempt": latest_attempt,
     }
 
 

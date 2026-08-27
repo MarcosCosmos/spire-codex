@@ -52,12 +52,21 @@ _FRAME_COLS = (
 )
 
 
+# mtime of the parquet actually loaded into _FRAME (0.0 = loaded from the
+# DB scan). Freshness must compare file identity, not wall-clock load time:
+# a load that finishes just after the ingest replaced the file would
+# otherwise stamp old rows as newer than the new file for a whole TTL.
+_FRAME_SRC_MTIME = 0.0
+
+
 def _load_frame_parquet() -> list[tuple] | None:
     """The ingest-built frame, or None (missing, stale, or unreadable)."""
+    global _FRAME_SRC_MTIME
     try:
         if not _FRAME_PARQUET.exists():
             return None
-        if time.time() - _FRAME_PARQUET.stat().st_mtime > _FRAME_PARQUET_MAX_AGE:
+        mtime = _FRAME_PARQUET.stat().st_mtime
+        if time.time() - mtime > _FRAME_PARQUET_MAX_AGE:
             logger.warning("frame parquet is stale; falling back to the DB scan")
             return None
         import duckdb
@@ -69,6 +78,8 @@ def _load_frame_parquet() -> list[tuple] | None:
             ).fetchall()
         finally:
             con.close()
+        if rows:
+            _FRAME_SRC_MTIME = mtime
         return rows or None
     except Exception:
         logger.warning("frame parquet load failed; falling back", exc_info=True)
@@ -331,10 +342,16 @@ def _frame_fresh() -> bool:
         return False
     # A newly published frame.parquet must be picked up without waiting out
     # the TTL or restarting workers — the ingest cadence depends on it.
+    # Compare against the mtime of the file we actually loaded (not the
+    # wall-clock load time): a load finishing just after an ingest replaced
+    # the file would otherwise pass as fresh for a whole TTL.
     try:
-        return _FRAME_PARQUET.stat().st_mtime <= _FRAME_TS
+        disk_mtime = _FRAME_PARQUET.stat().st_mtime
     except OSError:
         return True
+    if _FRAME_SRC_MTIME:
+        return disk_mtime == _FRAME_SRC_MTIME
+    return disk_mtime <= _FRAME_TS
 
 
 def get_frame(wait: bool = False) -> list[tuple]:
