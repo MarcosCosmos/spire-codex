@@ -479,6 +479,7 @@ export default function MetricsClient({
                   onMouseLeave={() => setPreview(null)}
                 >
                   <Link
+                    prefetch={false}
                     href={`${lp}/cards/${r.id.toLowerCase()}`}
                     className={`font-medium hover:underline ${colorTextClass(r.color)}`}
                   >

@@ -113,6 +113,7 @@ export default function SimilarRuns({ hash }: { hash: string }) {
           <div className="flex flex-wrap gap-1.5">
             {data.winners_also_took.map((w) => (
               <Link
+                prefetch={false}
                 key={`${w.etype}-${w.id}`}
                 href={`${lp}/${w.etype}/${w.id.toLowerCase()}`}
                 className="text-xs px-2.5 py-1 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-[var(--text-secondary)] hover:border-[var(--accent-gold)]/50 hover:text-[var(--accent-gold)] transition-colors"

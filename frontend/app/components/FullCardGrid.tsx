@@ -45,7 +45,7 @@ function FullCardItem({ card, stat }: { card: Card; stat?: CardStat }) {
           <BetaBadge />
         </span>
       )}
-      <Link href={href} className="block">
+      <Link prefetch={false} href={href} className="block">
         <img
           src={src}
           alt={`${card.name}${showUpgraded ? "+" : ""} - Slay the Spire 2`}
@@ -57,7 +57,7 @@ function FullCardItem({ card, stat }: { card: Card; stat?: CardStat }) {
       </Link>
       {stat && (
         // Win rate + pick count in place of a name (score-sorted view).
-        <Link href={href} className="mt-1 flex items-center justify-center gap-2 text-[11px] leading-none">
+        <Link prefetch={false} href={href} className="mt-1 flex items-center justify-center gap-2 text-[11px] leading-none">
           {stat.win_rate != null && (
             <span className="font-semibold text-[var(--accent-gold)]">
               {Math.round(stat.win_rate)}% WR

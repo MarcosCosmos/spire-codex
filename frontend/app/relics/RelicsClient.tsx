@@ -193,6 +193,7 @@ function RelicsClientInner({ initialRelics }: { initialRelics: Relic[] }) {
             "border-[var(--border-subtle)] text-gray-400";
           return (
             <Link
+              prefetch={false}
               key={relic.id}
               href={
                 relic.beta

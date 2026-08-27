@@ -244,6 +244,7 @@ function EntityRowPill({
 
   return (
     <Link
+      prefetch={false}
       href={href}
       className={linkClass}
       onMouseEnter={() => setShow(true)}
