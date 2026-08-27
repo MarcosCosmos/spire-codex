@@ -52,7 +52,7 @@ export default function HomeStatsLive({
     let active = true;
     const load = () => {
       if (document.hidden) return;
-      fetch(`${pollBase}/api/runs/stats`)
+      fetch(`${pollBase}/api/runs/stats?compact=1`)
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => {
           if (active && d?.total_runs) setStats(d as CommunityStats);
