@@ -26,12 +26,15 @@ SELECT * FROM read_ndjson('/lake/staging/*.jsonl.gz',
     modifiers: 'VARCHAR[]',
     players: 'STRUCT(id BIGINT, "character" VARCHAR, deck STRUCT(floor_added_to_deck BIGINT, id VARCHAR, current_upgrade_level BIGINT, enchantment STRUCT(id VARCHAR))[], relics STRUCT(id VARCHAR, floor_added_to_deck BIGINT)[], potions STRUCT(id VARCHAR)[])[]',
     map_point_history: 'STRUCT(map_point_type VARCHAR, player_stats STRUCT(player_id BIGINT, current_gold BIGINT, current_hp BIGINT, damage_taken BIGINT, max_hp BIGINT, event_choices STRUCT(title STRUCT("key" VARCHAR, "table" VARCHAR))[], rest_site_choices VARCHAR[], upgraded_cards VARCHAR[], ancient_choice STRUCT(TextKey VARCHAR, title STRUCT("key" VARCHAR, "table" VARCHAR), was_chosen BOOLEAN)[], cards_removed JSON[], card_choices STRUCT(was_picked BOOLEAN, card STRUCT(id VARCHAR))[])[], rooms STRUCT(model_id VARCHAR, room_type VARCHAR, turns_taken BIGINT)[])[][]',
-    _meta: 'STRUCT(username VARCHAR, user_id VARCHAR, hidden BOOLEAN, deleted BOOLEAN, submitted_at TIMESTAMP, played_at TIMESTAMP, player_count BIGINT)'});
+    _meta: 'STRUCT(username VARCHAR, user_id VARCHAR, hidden BOOLEAN, deleted BOOLEAN, submitted_at TIMESTAMP, played_at TIMESTAMP, player_count BIGINT, "character" VARCHAR)'});
 
 
 COPY (
+-- _meta.character is THIS document's player (party siblings share one blob
+-- where players[1] is only right for player 1); the blob fallback covers
+-- pages extracted before the field existed — re-extract to fix history.
 SELECT run_hash,
-  upper(split_part(players[1].character,'.',-1)) AS character,
+  coalesce(upper(_meta."character"), upper(split_part(players[1].character,'.',-1))) AS character,
   win, coalesce(was_abandoned, false) AS was_abandoned,
   ascension, lower(coalesce(game_mode,'standard')) AS game_mode,
   _meta.player_count AS player_count, build_id, seed, start_time, run_time,
