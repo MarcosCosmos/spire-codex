@@ -156,6 +156,15 @@ def _ensure_indexes(coll) -> None:
     """Create indexes if absent. Idempotent — pymongo's create_index is a
     no-op when an equivalent index already exists."""
     coll.create_index([("character", ASCENDING)])
+    # Compound filter+sort indexes for the run browser: without them a
+    # filtered list (character=DEFECT, newest first) either in-memory sorts
+    # hundreds of thousands of index keys or walks the date index — measured
+    # at 12.8s per cache miss on 1.4M docs (2026-08-27). With them a miss is
+    # an index seek. Pre-build on the box before deploying (create_index
+    # blocks the caller): see the PR body for the one-shot.
+    coll.create_index([("character", ASCENDING), ("submitted_at", DESCENDING)])
+    coll.create_index([("ascension", ASCENDING), ("submitted_at", DESCENDING)])
+    coll.create_index([("game_mode", ASCENDING), ("submitted_at", DESCENDING)])
     coll.create_index([("username", ASCENDING), ("submitted_at", DESCENDING)])
     # Case-insensitive username matching (stats/list/leaderboard filter on
     # username_lower). The compound prefix serves the stats equality match; the
