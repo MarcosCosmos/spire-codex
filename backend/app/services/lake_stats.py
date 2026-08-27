@@ -74,10 +74,10 @@ def _connect(build: bool = False):
         con.execute("SET preserve_insertion_order=false")
     else:
         con.execute("SET memory_limit='500MB'")
-    # Builds get the container's third core — the cgroup CPU weight already
-    # makes the ingest yield to serving, so a lower thread count here was a
-    # second, redundant brake. Serving reads stay at 2.
-    con.execute("SET threads=3" if build else "SET threads=2")
+    # Builds use the container's full 5-core allowance — the cgroup CPU
+    # weight already makes the ingest yield to serving, so a lower thread
+    # count here was a second, redundant brake. Serving reads stay at 2.
+    con.execute("SET threads=5" if build else "SET threads=2")
     return con
 
 

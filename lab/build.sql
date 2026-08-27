@@ -10,7 +10,7 @@
 -- upgrade and starved the parse into ~300GB of disk spill per cycle.
 -- Standalone lab runs must supply their own prelude:
 --   docker compose -f docker-compose.lab.yml run --rm duckdb /lake/build.duckdb \
---     -c "SET memory_limit='4500MB'; SET threads=3; SET temp_directory='/lake/tmp'; SET preserve_insertion_order=false" \
+--     -c "SET memory_limit='4500MB'; SET threads=5; SET temp_directory='/lake/tmp'; SET preserve_insertion_order=false" \
 --     -c ".read /lake/lab/build.sql"
 
 -- Parse the staging JSON exactly ONCE into a scratch table carrying the

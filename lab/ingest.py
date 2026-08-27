@@ -67,7 +67,7 @@ def main() -> None:
 
         mem = _os.environ.get("LAKE_BUILD_MEMORY", "") or "3500MB"
         con.execute(f"SET memory_limit='{mem}'")
-        con.execute("SET threads=3")
+        con.execute("SET threads=5")
         con.execute("SET temp_directory='/lake/tmp'")
         con.execute("SET preserve_insertion_order=false")
         # The shadow SQLs were the migration validation gate; the gate
