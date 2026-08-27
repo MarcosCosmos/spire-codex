@@ -191,10 +191,11 @@ services:
     # ingest is the box's main computer, so it gets real memory instead of
     # spilling every heavy aggregate to disk.
     mem_limit: 5g
-    # Serving always wins the box: 3 of 4 cores at most, and an eighth of
+    # Serving always wins the box: 5 of the 8 cores at most (the hostname's
+    # "4vcpu" is the droplet's birth name — nproc says 8), and an eighth of
     # the default CPU weight so under contention the kernel hands cycles to
     # the backend/Mongo first. An idle box still runs the ingest full speed.
-    cpus: 3
+    cpus: 5
     cpu_shares: 128
     volumes:
       - ./lab:/lab:ro

@@ -4,11 +4,14 @@
 -- (auto-inference held ~30k sample lines and blew both a 2g and 3g cap).
 -- Missing fields in old runs become NULL; a line that can't convert is
 -- dropped (ignore_errors) -- the final counts surface any aggregate loss.
---   docker compose -f docker-compose.lab.yml run --rm duckdb /lake/build.duckdb -c ".read /lake/lab/build.sql"
-SET memory_limit='1800MB';
-SET threads=2;
-SET temp_directory='/lake/tmp';
-SET preserve_insertion_order=false;
+-- Connection settings (memory_limit, threads, temp_directory) come from the
+-- caller: the ingest sets LAKE_BUILD_MEMORY-sized limits before executing
+-- this script. The old hard-coded 1800MB/2-thread block predated the box
+-- upgrade and starved the parse into ~300GB of disk spill per cycle.
+-- Standalone lab runs must supply their own prelude:
+--   docker compose -f docker-compose.lab.yml run --rm duckdb /lake/build.duckdb \
+--     -c "SET memory_limit='4500MB'; SET threads=5; SET temp_directory='/lake/tmp'; SET preserve_insertion_order=false" \
+--     -c ".read /lake/lab/build.sql"
 
 -- Parse the staging JSON exactly ONCE into a scratch table carrying the
 -- superset of every field any output table needs; the eight extractions
