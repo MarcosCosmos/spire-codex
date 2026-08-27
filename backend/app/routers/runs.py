@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import re
 import time
 from functools import lru_cache
 from pathlib import Path
@@ -564,6 +565,21 @@ def get_leaderboard(
     Single-player and multiplayer runs aren't directly comparable, so the
     frontend reads them as disjoint pools.
     """
+    # Same canonicalize-before-keys rule as /stats: reject unknown spellings
+    # instead of minting per-spelling cache keys (an invalid category used to
+    # silently get fastest semantics under its own key).
+    if category not in ("fastest", "highest_ascension"):
+        raise HTTPException(status_code=400, detail="bad category")
+    if players not in (None, "", "single", "multi", "1", "2", "3", "4"):
+        raise HTTPException(status_code=400, detail="bad players")
+    if game_mode not in (None, "", "standard", "daily", "custom"):
+        raise HTTPException(status_code=400, detail="bad game_mode")
+    if character:
+        character = character.strip().upper()
+        if not re.fullmatch(r"[A-Z0-9_]{1,40}", character):
+            raise HTTPException(status_code=400, detail="bad character")
+    if build_id is not None and not re.fullmatch(r"v[0-9.]{1,15}", build_id):
+        raise HTTPException(status_code=400, detail="bad build_id")
     # Edge/browser caching: 30s of ladder staleness is invisible and lets
     # Cloudflare absorb repeat hits now that the frontend stopped cache-busting.
     response.headers["Cache-Control"] = "public, max-age=30"
@@ -1627,16 +1643,33 @@ def get_community_stats(
          materialized yet, fall through to a process-local TTL cache.
       3. On cache miss, run the live aggregation (slow, ~5-10s).
     """
-    # Normalize once so the Redis key, the materialized-summary key, and the DB
-    # filter all key off the same case-insensitive value (the per-user docs are
-    # keyed and matched on the lowercased name).
+    # Canonicalize every filter BEFORE any key is built from it. Each raw
+    # spelling otherwise mints its own Redis key, lock, TTL-cache entry, and
+    # permanent stats_summary document — an unauthenticated amplification
+    # vector (e.g. every out-of-range ascension aliased to the same official
+    # query under a distinct durable key).
     if username:
         username = username.strip().lower()
+        if not re.fullmatch(r"[a-z0-9_\- ]{1,32}", username):
+            raise HTTPException(status_code=400, detail="bad username")
+    if character:
+        character = character.strip().upper()
+        if not re.fullmatch(r"[A-Z0-9_]{1,40}", character):
+            raise HTTPException(status_code=400, detail="bad character")
+    if win not in (None, "", "true", "false", "abandoned"):
+        raise HTTPException(status_code=400, detail="bad win filter")
+    if game_mode not in (None, "", "standard", "daily", "custom"):
+        raise HTTPException(status_code=400, detail="bad game_mode")
+    if players not in (None, "", "single", "multi", "1", "2", "3", "4"):
+        raise HTTPException(status_code=400, detail="bad players")
     if ascension is not None and ascension.strip():
         try:
-            int(ascension)
+            asc = int(ascension)
         except ValueError:
             raise HTTPException(status_code=400, detail="ascension must be an integer")
+        if not 0 <= asc <= 10:
+            raise HTTPException(status_code=400, detail="ascension must be 0-10")
+        ascension = str(asc)
     # 0. Redis layer: one cluster-wide copy per filter combo, refreshed on
     # the same cadence as the refresher cycle. Misses fall through to the
     # existing chain unchanged.
@@ -1735,15 +1768,18 @@ def get_community_stats(
         try:
             from ..services.runs_db_mongo import write_stats_summary
 
-            write_stats_summary(
-                result,
-                character=character,
-                win=win,
-                ascension=ascension,
-                game_mode=game_mode,
-                players=players,
-                username=username,
-            )
+            # Empty results (junk username, no matching runs) aren't worth a
+            # permanent summary document; Redis's 60s copy absorbs repeats.
+            if result.get("total_runs"):
+                write_stats_summary(
+                    result,
+                    character=character,
+                    win=win,
+                    ascension=ascension,
+                    game_mode=game_mode,
+                    players=players,
+                    username=username,
+                )
         except Exception:
             pass
     finally:

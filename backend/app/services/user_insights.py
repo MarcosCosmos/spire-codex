@@ -558,6 +558,15 @@ def get_user_insights(
     return {"building": True}
 
 
+def _prewarm_slices() -> list[tuple]:
+    """The filter slices with durable standing: the unfiltered profile plus
+    the dropdown picks the prewarmer builds (each character, A10, Solo)."""
+    slices: list[tuple] = [(None, None, None, None)]
+    slices += [(c, None, None, None) for c in _PREWARM_CHARACTERS]
+    slices += [(None, 10, None, None), (None, None, None, 1)]
+    return slices
+
+
 def invalidate_user_insights(user_id: str) -> None:
     """Mark an account's insight slices stale after it gains runs (submit
     or claim). The stored payload keeps serving instantly; the next profile
@@ -567,10 +576,7 @@ def invalidate_user_insights(user_id: str) -> None:
     slices' fresh markers expire on their own short TTL."""
     from . import cache as app_cache
 
-    slices: list[tuple] = [(None, None, None, None)]
-    slices += [(c, None, None, None) for c in _PREWARM_CHARACTERS]
-    slices += [(None, 10, None, None), (None, None, None, 1)]
-    for c, a, v, p in slices:
+    for c, a, v, p in _prewarm_slices():
         key = f"{user_id}{_filters_suffix(c, a, v, p)}"
         try:
             app_cache.delete(_fresh_key(key))
@@ -670,7 +676,12 @@ def _kick_refresh(
             app_cache.set_json(_payload_key(cache_key), payload, _STALE_REDIS_TTL)
             app_cache.set_json(_fresh_key(cache_key), 1, int(_CACHE_TTL))
             _cache_put(cache_key, payload)
-            _store_payload(cache_key, payload)
+            # Durable standing is reserved for the prewarmed slices; an
+            # ad-hoc tuple (arbitrary version/ascension spellings on the
+            # public endpoint) lives in Redis only, so unauthenticated
+            # requests can't mint permanent user_insights documents.
+            if (character, ascension, version, players) in set(_prewarm_slices()):
+                _store_payload(cache_key, payload)
         except Exception:
             logger.warning("user-insights refresh failed", exc_info=True)
         finally:
