@@ -27,7 +27,7 @@ x-shared-env: &shared-env
   # but keep it well above the observed walk time so the box isn't always
   # mid-rebuild. Floored at 300s in code.
   ENTITY_STATS_REBUILD_INTERVAL_SECONDS: ${ENTITY_STATS_REBUILD_INTERVAL_SECONDS:-7200}
-  # One-shot files -> run_blobs backfill on the first lease cycle after
+  # Startup files -> run_blobs backfill on the first lease cycle after
   # boot; only the refresh-lease holder runs it. Set to off to skip (e.g.
   # while diagnosing Mongo load).
   RUN_BLOBS_STARTUP_BACKFILL: "${RUN_BLOBS_STARTUP_BACKFILL:-on}"
@@ -49,7 +49,7 @@ services:
     container_name: spire-codex-backend
     restart: unless-stopped
     # Memory budget, 15.6G box: mongo 5G + backend 6G + lake-ingest 5G
-    # (one-shot, not resident) + redis 2.5G + frontend 1G. Caps, not
+    # (runs to completion, not resident) + redis 2.5G + frontend 1G. Caps, not
     # reservations — real steady usage is well under total, and redis
     # never approaches its cap. Each of the 4 web workers holds its own copy
     # of the entity-stats snapshot (~4.5G total), which left a 5g cap with

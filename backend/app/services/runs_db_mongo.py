@@ -161,7 +161,7 @@ def _ensure_indexes(coll) -> None:
     # hundreds of thousands of index keys or walks the date index — measured
     # at 12.8s per cache miss on 1.4M docs (2026-08-27). With them a miss is
     # an index seek. Pre-build on the box before deploying (create_index
-    # blocks the caller): see the PR body for the one-shot.
+    # blocks the caller): see the PR body for the pre-build command.
     coll.create_index([("character", ASCENDING), ("submitted_at", DESCENDING)])
     coll.create_index([("ascension", ASCENDING), ("submitted_at", DESCENDING)])
     coll.create_index([("game_mode", ASCENDING), ("submitted_at", DESCENDING)])
@@ -966,7 +966,7 @@ def backfill_user_runs(
 
 
 def backfill_played_at() -> int:
-    """One-shot: stamp played_at on existing docs from the stored blob's
+    """Backfill: stamp played_at on existing docs from the stored blob's
     start_time (raw.start_time, epoch seconds). Same bounds as ingest —
     [2020, now+1d] — with submitted_at as the fallback, so every doc ends up
     sortable. Server-side pipeline update, idempotent (only touches docs

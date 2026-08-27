@@ -1,6 +1,6 @@
 """Nightly lake ingest: incremental extract, then rebuild the parquet lake.
 
-One-shot for host cron, using the backend image (pymongo for the extract,
+Runs to completion for host cron, using the backend image (pymongo for the extract,
 the pinned duckdb for the build). The shadow SQL files run too when
 present, so the nightly log carries fresh comparison inputs for free.
 

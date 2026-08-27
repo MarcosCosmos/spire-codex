@@ -1,6 +1,6 @@
 """Steam OpenID 2.0 sign-in — server-mediated for Overwolf clients.
 
-Compendium (the Tauri desktop app) does OpenID directly: it binds a one-shot
+Compendium (the Tauri desktop app) does OpenID directly: it binds a single-use
 local listener and uses that as the OpenID return_to URL. Overwolf
 extensions can't bind sockets, so the overlay needs a backend to act as
 the relying party. The flow:

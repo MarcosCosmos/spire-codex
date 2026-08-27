@@ -1526,7 +1526,7 @@ def start_stats_refresher() -> None:
         # Stats aggregations run after the tick: its finalize pins the GIL and
         # pegs Mongo for minutes, so anything kicked before it just races it.
         _kick_side_job("home_stats", refresh_home_stats)
-        # One-shot files -> run_blobs backfill, first leader cycle only.
+        # Startup files -> run_blobs backfill, first leader cycle only.
         _maybe_kick_blob_backfill()
 
         if (
