@@ -1123,10 +1123,11 @@ def entity_store_with_mtime() -> tuple[float, dict] | None:
 
 def _stats_core_results() -> list[tuple[dict, dict]]:
     """(filters, core-result) for every materialized stats combo, computed
-    from one pass over runs.parquet with get_stats' exact core semantics:
-    ascension clamped to 0-10, no hidden filter, characters[] built without
-    the character filter and restricted to official ids, win_rate rounded
-    to one decimal."""
+    from one pass over runs.parquet with get_stats' core semantics:
+    ascension clamped to 0-10, hidden/deleted runs excluded via the sidecar
+    (matching every other lake surface), characters[] built without the
+    character filter and restricted to official ids, win_rate rounded to
+    one decimal."""
     from .runs_db_mongo import (
         ASCENSION_FILTER_COMBOS,
         HOT_FILTER_COMBOS,
@@ -1137,12 +1138,14 @@ def _stats_core_results() -> list[tuple[dict, dict]]:
     try:
         cells = con.execute(
             f"""
-            SELECT coalesce(upper(character), '') AS ch,
-              coalesce(ascension, 0)::INT AS asc,
-              count(*) AS n, count(*) FILTER (win) AS w,
-              count(*) FILTER (was_abandoned) AS ab
-            FROM read_parquet('{LAKE_DIR}/runs.parquet')
-            WHERE ascension BETWEEN 0 AND 10
+            SELECT coalesce(upper(r.character), '') AS ch,
+              coalesce(r.ascension, 0)::INT AS asc,
+              count(*) AS n, count(*) FILTER (r.win) AS w,
+              count(*) FILTER (r.was_abandoned) AS ab
+            FROM read_parquet('{LAKE_DIR}/runs.parquet') r
+            ANTI JOIN read_parquet('{LAKE_DIR}/excluded.parquet') x
+              ON r.run_hash = x.run_hash
+            WHERE r.ascension BETWEEN 0 AND 10
             GROUP BY 1, 2
             """
         ).fetchall()
