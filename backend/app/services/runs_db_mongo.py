@@ -527,6 +527,14 @@ def submit_run(
                 # The upsert inside makes the duplicate-submission case cheap.
                 save_run_blob(run_hash, data)
 
+    if linked_user_id is not None and any(r.get("success") for r in results):
+        try:
+            from .user_insights import invalidate_user_insights
+
+            invalidate_user_insights(str(linked_user_id))
+        except Exception:
+            pass
+
     return results[0]
 
 
@@ -1158,6 +1166,15 @@ def claim_runs(username: str, hashes: list[str]) -> dict:
             {"_id": {"$in": unclaimed}, "$or": [{"username": None}, {"username": ""}]},
             {"$set": {"username": username, "username_lower": username.lower()}},
         )
+        try:
+            from .user_insights import invalidate_user_insights
+            from .users_db import get_user_by_username
+
+            owner = get_user_by_username(username)
+            if owner:
+                invalidate_user_insights(str(owner["_id"]))
+        except Exception:
+            pass
 
     return {
         "claimed": len(unclaimed),

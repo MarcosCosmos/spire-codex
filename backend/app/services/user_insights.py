@@ -558,6 +558,26 @@ def get_user_insights(
     return {"building": True}
 
 
+def invalidate_user_insights(user_id: str) -> None:
+    """Mark an account's insight slices stale after it gains runs (submit
+    or claim). The stored payload keeps serving instantly; the next profile
+    view sees the missing fresh marker and kicks a background re-walk, so
+    the profile looks current right after your own upload without paying a
+    walk per submission. Only the prewarmed slices need clearing — ad-hoc
+    slices' fresh markers expire on their own short TTL."""
+    from . import cache as app_cache
+
+    slices: list[tuple] = [(None, None, None, None)]
+    slices += [(c, None, None, None) for c in _PREWARM_CHARACTERS]
+    slices += [(None, 10, None, None), (None, None, None, 1)]
+    for c, a, v, p in slices:
+        key = f"{user_id}{_filters_suffix(c, a, v, p)}"
+        try:
+            app_cache.delete(_fresh_key(key))
+        except Exception:
+            return
+
+
 def prewarm_user_insights(user_id: str, username: str | None = None) -> None:
     """Fill a cold cache before the user ever opens their profile (called from
     /me, which fires on every page load). Kicks the background walk only when
@@ -572,7 +592,11 @@ def prewarm_user_insights(user_id: str, username: str | None = None) -> None:
         return
     if app_cache.get_json(_payload_key(cache_key)) is not None:
         return
-    if _load_stored_payload(cache_key) is not None:
+    stored = _load_stored_payload(cache_key)
+    if stored is not None:
+        # Re-warm Redis (not marked fresh) so the next /me hits Redis
+        # instead of repeating this Mongo read on every page load.
+        app_cache.set_json(_payload_key(cache_key), stored, _STALE_REDIS_TTL)
         return
     _kick_refresh(cache_key, user_id, username, None, None, None, None)
 
@@ -696,6 +720,7 @@ def _compute_insights(
     rows = _apply_row_filters(rows, character, ascension, version, players)
     t1 = time.time()
     blobs = _fetch_blobs(rows)
+    _require_blob_coverage(rows, blobs)
     t2 = time.time()
     acc = community_stats._new_acc_one()
     walked = _accumulate_rows(rows, blobs, acc)
@@ -724,6 +749,22 @@ def _compute_insights(
 
 
 _PREWARM_CHARACTERS = ("IRONCLAD", "SILENT", "DEFECT", "NECROBINDER", "REGENT")
+
+
+def _require_blob_coverage(rows: list[dict], blobs: dict[str, dict]) -> None:
+    """get_run_blobs degrades quietly under Mongo pressure (other callers
+    have a per-file fallback; this walk doesn't), so a hollow or heavily
+    partial fetch means Mongo was unavailable — not that the runs vanished.
+    Refuse to build the payload rather than durably store an empty profile
+    over a real one. The slack covers the few known-corrupt blobless runs."""
+    if not rows:
+        return
+    have = sum(1 for r in rows if r["run_hash"] in blobs)
+    if have < len(rows) * 0.9:
+        raise RuntimeError(
+            f"insights blob fetch returned {have}/{len(rows)} runs; "
+            "refusing to build a hollow profile"
+        )
 
 
 def _fetch_blobs(rows: list[dict]) -> dict[str, dict]:
@@ -794,6 +835,7 @@ def _compute_insights_all_slices(user_id: str, username: str | None) -> dict[str
         elo_block = None
     t1 = time.time()
     blobs = _fetch_blobs(rows)
+    _require_blob_coverage(rows, blobs)
     t2 = time.time()
 
     slices: list[tuple[tuple, list[dict]]] = [((None, None, None, None), rows)]
