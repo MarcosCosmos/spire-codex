@@ -1108,6 +1108,155 @@ def build_entity_store() -> dict | None:
 _entity_store_cache: tuple[float, dict] | None = None
 
 
+_ENCOUNTER_STORE_NAME = "encounter_store.json"
+
+
+def _encounter_blob_keys(cell: str, recent: frozenset[str]) -> list[str]:
+    """The encounter-blob bracket keys one cube cell contributes to,
+    mirroring encounter_stats.new_accumulator: the 9 content brackets
+    (mode is not an encounter axis — 'all' spans every mode), ver:<v> for
+    recent versions, and <bracket>:<v> composites. Skill brackets are
+    A10-gated and cumulative (wr30 includes the wr50/wr75 cohorts), the
+    same fold rule the community cube uses."""
+    parts = (cell or "").split("|")
+    if len(parts) != 5:
+        return []
+    _mode, pc, a10, band, ver = parts
+    keys = ["all"]
+    pkey = {"1": "solo", "2": "2p", "3": "3p", "4": "4p"}.get(pc)
+    if pkey:
+        keys.append(pkey)
+    if a10 == "1":
+        keys.append("a10")
+        try:
+            b = int(band or 0)
+        except ValueError:
+            b = 0
+        if b >= 1:
+            keys.append("wr30")
+        if b >= 2:
+            keys.append("wr50")
+        if b >= 3:
+            keys.append("wr75")
+    if ver in recent:
+        composites = [f"{k}:{ver}" for k in keys if k != "all"]
+        keys.append(f"ver:{ver}")
+        keys.extend(composites)
+    return keys
+
+
+def build_encounter_store(con=None) -> dict:
+    """Per-bracket encounter-stats blob from the lake, in encounter_stats'
+    finalized snapshot shape ({key: {"version": N, "cells": [[enc, act,
+    room_type, character, mp, total, fatal, dmg, turns], ...]}}) so
+    get_encounter_stats can rollup() from it unchanged. floor_events rows
+    carry the walk's exact semantics (per-location party damage summed to
+    the room, 1-based acts, prefix-stripped encounter ids), and a fatal is
+    counted per visited room whose encounter matches the run's killer on a
+    loss — the accumulator's rule, replicated."""
+    from . import encounter_stats as es
+
+    own = con is None
+    if own:
+        con = _connect(build=True)
+    try:
+        _prepare_sources(con, str(LAKE_DIR))
+        recent = frozenset(
+            r[0]
+            for r in con.execute(
+                "SELECT build_id FROM eligible WHERE build_id IS NOT NULL "
+                "AND trim(build_id) <> '' GROUP BY 1 "
+                "ORDER BY max(submitted_at) DESC LIMIT 6"
+            ).fetchall()
+        )
+        rows = con.execute(
+            f"""
+            SELECT f.encounter, f.act, f.room_type, upper(e.character) AS ch,
+              CASE WHEN coalesce(e.player_count, 1) > 1
+                   THEN 'multi' ELSE 'solo' END AS mp,
+              e.cell,
+              count(*) AS total,
+              count(*) FILTER (
+                NOT e.win AND e.killed_by_encounter = f.encounter
+              ) AS fatal,
+              sum(coalesce(f.damage_taken, 0)) AS dmg,
+              sum(coalesce(f.turns, 0)) AS turns
+            FROM read_parquet('{LAKE_DIR}/floor_events.parquet') f
+            JOIN cells e ON f.run_hash = e.run_hash
+            WHERE f.room_type IN ('monster', 'elite', 'boss')
+              AND f.encounter IS NOT NULL AND f.encounter <> ''
+            GROUP BY 1, 2, 3, 4, 5, 6
+            """
+        ).fetchall()
+        data_through = str(
+            con.execute(
+                f"SELECT max(submitted_at) FROM read_parquet('{LAKE_DIR}/runs.parquet')"
+            ).fetchone()[0]
+        )
+    finally:
+        if own:
+            con.close()
+
+    accs: dict[str, dict] = {}
+    for enc, act, rt, ch, mp, cell, t, fa, d, tu in rows:
+        ck = (enc, act, rt, ch, mp)
+        for key in _encounter_blob_keys(cell, recent):
+            cells = accs.setdefault(key, {})
+            cur = cells.get(ck)
+            if cur is None:
+                cells[ck] = [t, fa, float(d or 0), float(tu or 0)]
+            else:
+                cur[0] += t
+                cur[1] += fa
+                cur[2] += float(d or 0)
+                cur[3] += float(tu or 0)
+    store: dict = {
+        key: {
+            "version": es.ENCOUNTER_VERSION,
+            "cells": [
+                [enc, act, rt, ch, mp, t, fa, round(d, 1), round(tu, 1)]
+                for (enc, act, rt, ch, mp), (t, fa, d, tu) in cells.items()
+            ],
+        }
+        for key, cells in accs.items()
+    }
+    store["data_through"] = data_through
+    import json as _json
+
+    tmp = LAKE_DIR / (_ENCOUNTER_STORE_NAME + ".tmp")
+    tmp.write_text(_json.dumps(store, separators=(",", ":")))
+    tmp.replace(LAKE_DIR / _ENCOUNTER_STORE_NAME)
+    logger.info(
+        "lake encounter store: %d bracket keys, %d bytes",
+        len(accs),
+        (LAKE_DIR / _ENCOUNTER_STORE_NAME).stat().st_size,
+    )
+    return store
+
+
+_encounter_store_cache: tuple[float, dict] | None = None
+
+
+def encounter_store_with_mtime() -> tuple[float, dict] | None:
+    """Mtime-cached load of the ingest-built encounter store, or None."""
+    global _encounter_store_cache
+    try:
+        path = LAKE_DIR / _ENCOUNTER_STORE_NAME
+        if not path.exists():
+            return None
+        mtime = path.stat().st_mtime
+        if _encounter_store_cache and _encounter_store_cache[0] == mtime:
+            return _encounter_store_cache
+        import json
+
+        store = json.loads(path.read_text())
+        _encounter_store_cache = (mtime, store)
+        return _encounter_store_cache
+    except Exception:
+        logger.warning("encounter store load failed", exc_info=True)
+        return None
+
+
 def entity_store_with_mtime() -> tuple[float, dict] | None:
     """Mtime-cached load of the ingest-built entity store, or None."""
     global _entity_store_cache
