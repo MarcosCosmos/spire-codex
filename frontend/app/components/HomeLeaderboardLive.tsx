@@ -105,7 +105,7 @@ export default function HomeLeaderboardLive({
           if (runs.length) setFastest({ runs, ascension: TARGET_ASCENSION });
         }
       });
-      grab(`${pollBase}/api/runs/leaderboard?category=highest_ascension&game_mode=daily&today=true&limit=15`).then((d) => {
+      grab(`${pollBase}/api/runs/leaderboard?category=highest_ascension&game_mode=daily&today=true&limit=20`).then((d) => {
         if (active && d?.runs) setDaily(dedupePartyRows(d.runs as RunRow[]).slice(0, 5));
       });
       grab(`${pollBase}/api/runs/list?limit=5&sort=newest`).then((d) => {

@@ -89,7 +89,7 @@ export default function HomeStatsLive({
             </Link>
           </div>
 
-          <div className="statgrid five">
+          <div className="statgrid six">
             <div className="stat">
               <span className="stat-v">{stats.total_runs}</span>
               <span className="stat-k">{t("Runs", lang)}</span>
@@ -101,6 +101,10 @@ export default function HomeStatsLive({
             <div className="stat">
               <span className="stat-v" style={{ color: "var(--warn)" }}>{losses}</span>
               <span className="stat-k">{t("Losses", lang)}</span>
+            </div>
+            <div className="stat">
+              <span className="stat-v" style={{ color: "var(--text-3)" }}>{stats.total_abandoned || 0}</span>
+              <span className="stat-k">{t("Abandoned", lang)}</span>
             </div>
             <div className="stat">
               <span className="stat-v">{stats.win_rate}%</span>
@@ -134,6 +138,7 @@ export default function HomeStatsLive({
                     </span>
                     <span className="wr-wl">
                       {c.wins}W / {c.total - c.wins - (c.abandoned || 0)}L
+                      {c.abandoned ? ` / ${c.abandoned}A` : ""}
                     </span>
                     <span className="wr-num" style={{ color: winRateColor(c.win_rate) }}>
                       {c.win_rate}%

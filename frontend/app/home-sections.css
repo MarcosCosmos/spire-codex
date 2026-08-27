@@ -24,8 +24,9 @@
 .rvmp .lb-sub { font-size: 11px; color: var(--text-3); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rvmp .lb-empty { padding: 14px 4px 6px; font-size: 13px; color: var(--text-3); }
 
-/* Stats: 5-tile strip + character win-rate rows with a W/L column. */
+/* Stats: 6-tile strip + character win-rate rows with a W/L/A column. */
 .rvmp .statgrid.five { grid-template-columns: repeat(5, 1fr); }
+.rvmp .statgrid.six { grid-template-columns: repeat(6, 1fr); }
 .rvmp .wr-row.wr-stat { grid-template-columns: 92px 1fr auto auto; }
 .rvmp .wr-wl { font-size: 11.5px; color: var(--text-3); font-variant-numeric: tabular-nums; text-align: right; }
 
@@ -43,4 +44,5 @@
   .rvmp .hb { padding: 0 15px; }
   .rvmp .lbgrid { grid-template-columns: minmax(0, 1fr); }
   .rvmp .statgrid.five { grid-template-columns: repeat(2, 1fr); }
+  .rvmp .statgrid.six { grid-template-columns: repeat(2, 1fr); }
 }
