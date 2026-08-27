@@ -36,10 +36,14 @@ def main() -> None:
     try:
         from app.services import lake_stats
 
+        session = lake_stats.prepare_build_session()
+        session.close()
+        print("build session prepared (pfloors materialized)", flush=True)
         lake_stats.build_and_store_payload()
         print("community payload stored", flush=True)
         lake_stats.build_entity_store()
         print("entity store stored", flush=True)
+        lake_stats.cleanup_build_session()
     except Exception as e:
         print(f"community payload build failed: {e}", flush=True)
     # The rebuilder is retired, so the materialized summaries that fed the
