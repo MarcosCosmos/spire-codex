@@ -22,9 +22,11 @@ def _validate_insight_filters(
 
     from fastapi import HTTPException
 
-    if ascension is not None and not (0 <= ascension <= 20):
+    if ascension is not None and not (0 <= ascension <= 10):
         raise HTTPException(status_code=400, detail="ascension out of range")
-    if version is not None and not re.fullmatch(r"v\d+(\.\d+){0,3}", version):
+    if version is not None and (
+        len(version) > 16 or not re.fullmatch(r"v\d{1,2}(\.\d{1,4}){0,3}", version)
+    ):
         raise HTTPException(status_code=400, detail="bad version")
     if players is not None and players not in (1, 2, 3, 4):
         raise HTTPException(status_code=400, detail="players must be 1-4")
