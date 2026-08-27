@@ -139,6 +139,24 @@ def main() -> None:
         print(f"frame parquet stored ({n} rows)", flush=True)
     except Exception as e:
         print(f"frame parquet failed: {e}", flush=True)
+    # Profile insights: re-walk only accounts with runs newer than their
+    # stored payload (skip-if-current), so each cycle refreshes just that
+    # window's active uploaders — seconds per account with the winrate
+    # ranking pinned. This is what keeps every profile cycle-fresh; the
+    # in-worker walk is only a best-effort accelerant for the owner's view.
+    profiles = None
+    try:
+        import precompute_insights
+
+        t_profiles = time.time()
+        profiles = precompute_insights.refresh_profiles()
+        print(
+            f"profiles refreshed ({profiles[0]} stored, {profiles[1]} current, "
+            f"{profiles[2]} failed) in {time.time() - t_profiles:.0f}s",
+            flush=True,
+        )
+    except Exception as e:
+        print(f"profile refresh failed: {e}", flush=True)
     # The edge is the last stale layer: origin freshness means nothing while
     # Cloudflare serves yesterday's JSON. Purge exactly the URLs this run
     # refreshed (CF_TOKEN/CF_ZONE come from the same .env the admin tab uses).
@@ -201,6 +219,7 @@ def main() -> None:
         "build_sql_seconds": round(t_build - t_extract, 1),
         "stores_seconds": round(published - t_build, 1),
         "total_seconds": round(published - t0, 1),
+        "profiles_refreshed": profiles,
         "purge_ok": purge_ok,
         "published_at": _utc(published),
         "artifacts": {},

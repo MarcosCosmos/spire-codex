@@ -1,5 +1,5 @@
-"""Compute and durably store profile insights for EVERY account
-with claimed runs, most recently active first.
+"""Compute and durably store profile insights for every account with
+claimed runs, most recently active first.
 
 Runs in its own container (the backend image, same env the ingest uses), so
 the walk gets a whole process instead of a thread inside a serving worker —
@@ -10,6 +10,15 @@ reads them (Redis re-warms from the store on view, submit/claim
 invalidation keeps them fresh). Does NOT take the ingest lock: it only
 reads Mongo and writes the store, so it can run beside a cycle.
 
+Skip-if-current makes reruns cheap: only accounts whose newest run
+postdates their stored payload are re-walked, so the ingest cycle calls
+refresh_profiles() as a stage and each cycle touches just that window's
+active uploaders. (A claim of OLD runs doesn't bump the newest-run
+timestamp — the submit/claim invalidation path covers that case when the
+owner next views their profile.)
+
+Standalone (full hydration or manual refresh):
+
     docker compose -f docker-compose.prod.yml run -T --rm --entrypoint python lake-ingest /lab/precompute_insights.py
 """
 
@@ -19,7 +28,9 @@ import time
 sys.path.insert(0, "/app")
 
 
-def main() -> None:
+def refresh_profiles() -> tuple[int, int, int]:
+    """Walk every account whose newest run postdates its stored payload and
+    store the refreshed slices. Returns (stored, already_current, failed)."""
     from fastapi.encoders import jsonable_encoder
 
     from app.services import runs_db_mongo as rdm
@@ -28,8 +39,8 @@ def main() -> None:
     coll = rdm._get_collection()
 
     # The per-account killer: _percentiles needs the site-wide winrate
-    # ranking, whose Redis cache lives 5 minutes while an account takes ~6 —
-    # so every account missed the cache and repaid a full aggregation
+    # ranking, whose Redis cache lives 5 minutes while a cold account took
+    # ~6 — so every account missed the cache and repaid a full aggregation
     # (~340s flat, measured 2026-08-27). The ranking barely moves during
     # this pass: build it once and pin it for the whole run.
     ranking = rdm.get_user_winrates() or {}
@@ -53,14 +64,11 @@ def main() -> None:
         )
     )
     print(f"{len(users)} accounts with claimed runs", flush=True)
-    done = failed = 0
+    done = failed = skipped = 0
     t0 = time.time()
-    skipped = 0
     for u in users:
         uid = str(u["_id"])
         try:
-            # Restart-safe: an account whose stored payload postdates its
-            # newest run is already done — skip it instead of recomputing.
             doc = ui._insights_coll().find_one({"_id": f"{uid}:"}, {"updated_at": 1})
             stored_at = (doc or {}).get("updated_at")
             if stored_at is not None and u.get("last") is not None:
@@ -86,6 +94,11 @@ def main() -> None:
         f"in {(time.time() - t0) / 60:.1f} min",
         flush=True,
     )
+    return (done, skipped, failed)
+
+
+def main() -> None:
+    refresh_profiles()
 
 
 if __name__ == "__main__":
