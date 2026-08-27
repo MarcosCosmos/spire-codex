@@ -3185,6 +3185,29 @@ def get_encounter_stats(
         key = f"ver:{build_id}"
     else:
         key = bracket
+    # Lake path: the ingest-built encounter store carries the same finalized
+    # per-bracket shape, refreshed every cycle — the snapshot below froze
+    # when the rebuilder retired. Missing store or key falls through.
+    if _LAKE_ENTITY_SERVE:
+        try:
+            from . import lake_stats
+
+            hit = lake_stats.encounter_store_with_mtime()
+            if hit is not None:
+                sub = hit[1].get(key or "all")
+                if sub is not None:
+                    return encounter_stats.rollup(
+                        sub,
+                        acts=acts,
+                        room_types=room_types,
+                        multiplayer=multiplayer,
+                        page=page,
+                        limit=limit,
+                    )
+        except Exception:
+            logger.warning(
+                "lake encounter store failed; snapshot fallback", exc_info=True
+            )
     sub = _pick_bracket_blob(
         _encounter_blob_stats or encounter_stats.empty(),
         key,

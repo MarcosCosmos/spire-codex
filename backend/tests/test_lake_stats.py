@@ -113,3 +113,24 @@ def test_stats_core_excludes_modded_characters(monkeypatch):
     assert g["total_wins"] == 50
     assert sum(c["total"] for c in g["characters"]) == g["total_runs"]
     assert all("abandoned" in c for c in g["characters"])
+
+
+def test_encounter_blob_keys_fold():
+    from app.services.lake_stats import _encounter_blob_keys
+
+    recent = frozenset({"v0.111.0"})
+    ks = _encounter_blob_keys("standard|1|1|2|v0.111.0", recent)
+    assert set(ks) == {
+        "all",
+        "solo",
+        "a10",
+        "wr30",
+        "wr50",
+        "ver:v0.111.0",
+        "solo:v0.111.0",
+        "a10:v0.111.0",
+        "wr30:v0.111.0",
+        "wr50:v0.111.0",
+    }
+    assert _encounter_blob_keys("custom|4|0|0|v9", recent) == ["all", "4p"]
+    assert _encounter_blob_keys("garbage", recent) == []
