@@ -388,7 +388,10 @@ def list_runs(
         username = username.strip().lower()
     # Browser/edge caching: new runs arrive constantly, but 30s of staleness
     # on a browse page is invisible and lets Cloudflare absorb repeat hits.
-    response.headers["Cache-Control"] = "public, max-age=30"
+    # stale-while-revalidate makes expiry a background refresh instead of one
+    # unlucky visitor paying the full origin cost (no s-maxage: Cloudflare
+    # disables async revalidation when it's present).
+    response.headers["Cache-Control"] = "public, max-age=30, stale-while-revalidate=120"
     # Redis layer (60s TTL): the default landing view and any repeated or
     # shared search serve from cache; the long tail of unique filter combos
     # falls through to Mongo, which the bounded counts + indexes keep fast.
@@ -580,9 +583,10 @@ def get_leaderboard(
             raise HTTPException(status_code=400, detail="bad character")
     if build_id is not None and not re.fullmatch(r"v[0-9.]{1,15}", build_id):
         raise HTTPException(status_code=400, detail="bad build_id")
-    # Edge/browser caching: 30s of ladder staleness is invisible and lets
-    # Cloudflare absorb repeat hits now that the frontend stopped cache-busting.
-    response.headers["Cache-Control"] = "public, max-age=30"
+    # Edge/browser caching: a minute of ladder staleness is invisible and lets
+    # Cloudflare absorb repeat hits; stale-while-revalidate turns expiry into
+    # a background refresh instead of a blocking origin round trip.
+    response.headers["Cache-Control"] = "public, max-age=60, stale-while-revalidate=300"
     # Redis layer (60s TTL, matching the refresher cycle): one cluster-wide
     # copy per filter combination instead of per-worker recomputation. Misses
     # fall straight through to the existing data paths.
@@ -1625,6 +1629,7 @@ def _compact_stats(doc: dict) -> dict:
 )
 def get_community_stats(
     request: Request,
+    response: Response,
     character: str | None = None,
     win: str | None = None,
     ascension: str | None = None,
@@ -1643,6 +1648,13 @@ def get_community_stats(
          materialized yet, fall through to a process-local TTL cache.
       3. On cache miss, run the live aggregation (slow, ~5-10s).
     """
+    # The stats payload changes on the ingest cycle, and the ingest purges
+    # this prefix at the edge when it publishes — so serve it long-lived
+    # with background revalidation instead of the generic 30s (whose every
+    # expiry made one visitor pay the full multi-second origin cost).
+    response.headers["Cache-Control"] = (
+        "public, max-age=300, stale-while-revalidate=3600"
+    )
     # Canonicalize every filter BEFORE any key is built from it. Each raw
     # spelling otherwise mints its own Redis key, lock, TTL-cache entry, and
     # permanent stats_summary document — an unauthenticated amplification

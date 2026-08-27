@@ -392,7 +392,12 @@ class CORSStaticMiddleware(BaseHTTPMiddleware):
             # froze the first-ever empty response at the edge (2026-06-12).
             response.headers["Cache-Control"] = "no-store"
         elif path.startswith("/api/runs/"):
-            response.headers["Cache-Control"] = "public, max-age=30, s-maxage=30"
+            # No s-maxage on purpose: its presence makes Cloudflare block on
+            # revalidation at expiry; with max-age + stale-while-revalidate
+            # the edge serves stale and refreshes in the background.
+            response.headers["Cache-Control"] = (
+                "public, max-age=30, stale-while-revalidate=120"
+            )
         elif path.startswith("/api/keys") or path.startswith("/api/admin"):
             # Per-user (API keys) and operator (admin) responses must never land
             # in a shared cache: the public catch-all below let Cloudflare cache
