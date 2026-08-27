@@ -219,9 +219,13 @@ services:
         max-file: "5"
 
 
-  # Nightly analytics-lake ingest (incremental extract + parquet rebuild).
-  # profiles: never started by `up -d`; host cron runs it, e.g.
-  #   17 9 * * * cd /var/www/spire-codex && docker compose -f docker-compose.prod.yml run --rm lake-ingest >> /var/log/lake-ingest.log 2>&1
+  # Analytics-lake ingest (incremental extract + parquet + store rebuild).
+  # profiles: never started by `up -d`; host cron runs it every 6 hours:
+  #   17 */6 * * * cd /var/www/spire-codex && docker compose -f docker-compose.prod.yml run --rm lake-ingest >> /var/log/lake-ingest.log 2>&1
+  # Overlap-safe: the ingest takes /lake/ingest.lock (flock) and exits if a
+  # prior run still holds it. Keep 6h until three consecutive cycles publish
+  # complete generations (see /lake/ingest_metrics.jsonl) and the max cycle
+  # time sits well under the interval; only then tighten the cadence.
   lake-ingest:
     image: ptrlrd/spire-codex-backend:latest
     profiles: ["ops"]
