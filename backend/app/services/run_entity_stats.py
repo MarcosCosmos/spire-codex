@@ -3273,6 +3273,40 @@ def get_all_entity_scores(
     # only gates ascension + character, not per-entity content. Drop them for
     # every type; the per-act relic view already does this via _official_relic_ids.
     official = _official_entity_ids(entity_type)
+    # Lake path first: the entity cube folds ANY mode x players x skill x
+    # version bracket (composable, like community stats), not just the
+    # snapshot's fixed buckets — this is what lets the tier pages combine
+    # mode with the other axes. Elo comes from the all-runs store (it isn't
+    # refit per bracket in the lake). Unknown brackets or a missing cube
+    # fall through to the snapshot buckets below.
+    if bracket and _LAKE_ENTITY_SERVE:
+        try:
+            from . import lake_stats
+
+            fold = lake_stats.entity_bracket_fold(entity_type, bracket)
+        except Exception:
+            fold = None
+            logger.warning("lake entity cube fold failed", exc_info=True)
+        if fold:
+            entries = fold["entries"]
+            btot = fold["total_runs"]
+            base_p = sum(pw[0] for pw in entries.values())
+            base_w = sum(pw[1] for pw in entries.values())
+            c_baseline = (base_w / base_p) if base_p else _baseline_win_rate()
+            prior = _bracket_prior(btot) if entity_type == "relics" else None
+            cube_out: dict[str, dict[str, Any]] = {}
+            for eid, (cpicks, cwins) in entries.items():
+                if eid in excluded or (official and eid not in official):
+                    continue
+                cube_out[eid] = {
+                    "score": _compute_score(cwins, cpicks, c_baseline, prior),
+                    "elo": (_cache.get((entity_type, eid)) or {}).get("elo"),
+                    "picks": cpicks,
+                    "wins": cwins,
+                    "win_rate": round(cwins / cpicks * 100, 1) if cpicks else 0.0,
+                    "pick_rate": round(cpicks / btot * 100, 1) if btot else 0.0,
+                }
+            return cube_out
     # Bracket view (the content brackets: a10 / wr30 / wr50 / wr75 etc.): grade
     # each entity against that bracket's baseline using its nested per-bracket
     # counts, mirroring get_entity_metrics_table. character scoping isn't tracked

@@ -134,3 +134,20 @@ def test_encounter_blob_keys_fold():
     }
     assert _encounter_blob_keys("custom|4|0|0|v9", recent) == ["all", "4p"]
     assert _encounter_blob_keys("garbage", recent) == []
+
+
+def test_entity_cube_cell_matching_and_fold_parity():
+    from app.services.lake_stats import _cell_matches, _parse_lake_bracket
+
+    cell = "standard|1|1|2|v0.111.0"
+    assert _parse_lake_bracket("standard") is not None
+    assert _parse_lake_bracket("solo:standard") is not None
+    m, p, s, v = _parse_lake_bracket("solo:standard")
+    assert _cell_matches(cell, m, p, s, v)
+    assert not _cell_matches("custom|1|1|2|v0.111.0", m, p, s, v)
+    m, p, s, v = _parse_lake_bracket("wr50")
+    assert _cell_matches(cell, m, p, s, v)
+    assert not _cell_matches("standard|1|1|1|v0.111.0", m, p, s, v)
+    m, p, s, v = _parse_lake_bracket("2p:a10:standard")
+    assert not _cell_matches(cell, m, p, s, v)
+    assert _cell_matches("standard|2|1|0|v9", m, p, s, v)

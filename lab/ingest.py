@@ -107,6 +107,8 @@ def main() -> None:
         print("entity store stored", flush=True)
         lake_stats.build_encounter_store()
         print("encounter store stored", flush=True)
+        lake_stats.build_entity_cube()
+        print("entity cube stored", flush=True)
         lake_stats.cleanup_build_session()
     except Exception as e:
         print(f"community payload build failed: {e}", flush=True)

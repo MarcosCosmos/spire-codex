@@ -1108,6 +1108,165 @@ def build_entity_store() -> dict | None:
 _entity_store_cache: tuple[float, dict] | None = None
 
 
+_ENTITY_CUBE_NAME = "entity_cube.json.gz"
+
+
+def _cell_matches(
+    cell: str,
+    mode: str | None,
+    player: str | None,
+    skill: int | None,
+    version: str | None,
+) -> bool:
+    """Whether one cube cell (mode|pc|a10|band|build_id) belongs to a parsed
+    bracket — the community cube's fold conditions, shared so the entity
+    cube folds identically."""
+    parts = (cell or "").split("|")
+    if len(parts) != 5:
+        return False
+    cmode, pc, a10, band, ver = parts
+    if mode is not None and cmode != mode:
+        return False
+    if player is not None and pc != player:
+        return False
+    if skill is not None:
+        if a10 != "1":
+            return False
+        try:
+            if skill > 0 and int(band) < skill:
+                return False
+        except ValueError:
+            return False
+    if version is not None and ver != version:
+        return False
+    return True
+
+
+def build_entity_cube(con=None) -> dict:
+    """Per-cell entity pick/win counts for every type, plus per-cell run
+    totals — the tier-list analogue of the community cube. Any mode x
+    players x skill x version bracket folds from these cells at request
+    time, which is what lets the tier pages compose mode with the other
+    axes instead of one replacing the rest."""
+    own = con is None
+    if own:
+        con = _connect(build=True)
+    try:
+        _prepare_sources(con, str(LAKE_DIR))
+        runs_cells = {
+            cell: [t, w]
+            for cell, t, w in con.execute(
+                "SELECT cell, count(*), count(*) FILTER (win) FROM cells GROUP BY 1"
+            ).fetchall()
+        }
+        types: dict[str, dict] = {}
+        for etype, table, col in (
+            ("cards", "deck", "card"),
+            ("relics", "relics", "relic"),
+            ("potions", "potions", "potion"),
+        ):
+            per: dict[str, dict] = {}
+            for cell, eid, p, w in con.execute(
+                f"""
+                SELECT e.cell, m.{col}, count(*), count(*) FILTER (e.win)
+                FROM read_parquet('{LAKE_DIR}/{table}.parquet') m
+                JOIN cells e ON m.run_hash = e.run_hash
+                WHERE m.{col} IS NOT NULL AND m.{col} <> ''
+                GROUP BY 1, 2
+                """
+            ).fetchall():
+                per.setdefault(cell, {})[eid] = [p, w]
+            types[etype] = per
+        data_through = str(
+            con.execute(
+                f"SELECT max(submitted_at) FROM read_parquet('{LAKE_DIR}/runs.parquet')"
+            ).fetchone()[0]
+        )
+    finally:
+        if own:
+            con.close()
+    cube = {"runs": runs_cells, "entities": types, "data_through": data_through}
+    import gzip as _gzip
+    import json as _json
+
+    tmp = LAKE_DIR / (_ENTITY_CUBE_NAME + ".tmp")
+    with _gzip.open(tmp, "wt", encoding="utf-8") as f:
+        f.write(_json.dumps(cube, separators=(",", ":")))
+    tmp.replace(LAKE_DIR / _ENTITY_CUBE_NAME)
+    logger.info(
+        "lake entity cube: %d run cells, %d bytes gz",
+        len(runs_cells),
+        (LAKE_DIR / _ENTITY_CUBE_NAME).stat().st_size,
+    )
+    return cube
+
+
+_entity_cube_cache: tuple[float, dict] | None = None
+
+
+def _entity_cube_with_mtime() -> tuple[float, dict] | None:
+    global _entity_cube_cache
+    try:
+        path = LAKE_DIR / _ENTITY_CUBE_NAME
+        if not path.exists():
+            return None
+        mtime = path.stat().st_mtime
+        if _entity_cube_cache and _entity_cube_cache[0] == mtime:
+            return _entity_cube_cache
+        import gzip as _gzip
+        import json as _json
+
+        with _gzip.open(path, "rt", encoding="utf-8") as f:
+            cube = _json.loads(f.read())
+        _entity_cube_cache = (mtime, cube)
+        return _entity_cube_cache
+    except Exception:
+        logger.warning("entity cube load failed", exc_info=True)
+        return None
+
+
+def entity_bracket_fold(entity_type: str, bracket: str) -> dict | None:
+    """Fold the entity cube for one bracket (any mode x players x skill x
+    version combination): {"entries": {id: [picks, wins]}, "total_runs",
+    "total_wins", "data_through"}. None for unknown brackets or a missing
+    cube (callers fall back to the snapshot's fixed buckets)."""
+    parsed = _parse_lake_bracket(bracket)
+    if parsed is None:
+        return None
+    mode, player, skill, version = parsed
+    hit = _entity_cube_with_mtime()
+    if hit is None:
+        return None
+    cube = hit[1]
+    per = (cube.get("entities") or {}).get(entity_type)
+    if per is None:
+        return None
+    total = wins = 0
+    for cell, tw in (cube.get("runs") or {}).items():
+        if _cell_matches(cell, mode, player, skill, version):
+            total += tw[0]
+            wins += tw[1]
+    if total == 0:
+        return None
+    entries: dict[str, list] = {}
+    for cell, ids in per.items():
+        if not _cell_matches(cell, mode, player, skill, version):
+            continue
+        for eid, pw in ids.items():
+            cur = entries.get(eid)
+            if cur is None:
+                entries[eid] = [pw[0], pw[1]]
+            else:
+                cur[0] += pw[0]
+                cur[1] += pw[1]
+    return {
+        "entries": entries,
+        "total_runs": total,
+        "total_wins": wins,
+        "data_through": cube.get("data_through"),
+    }
+
+
 _ENCOUNTER_STORE_NAME = "encounter_store.json"
 
 
