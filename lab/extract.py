@@ -109,6 +109,7 @@ def main() -> tuple[int, int]:
             "submitted_at": 1,
             "played_at": 1,
             "player_count": 1,
+            "character": 1,
         },
         no_cursor_timeout=True,
     ).sort([("submitted_at", 1), ("_id", 1)])
@@ -146,6 +147,11 @@ def main() -> tuple[int, int]:
                     "submitted_at": _iso(r.get("submitted_at")),
                     "played_at": _iso(r.get("played_at")),
                     "player_count": r.get("player_count") or 1,
+                    # THIS document's character. Party runs fan out to one
+                    # doc per player over the same shared blob, so the
+                    # blob's players[1] is only right for player 1 — every
+                    # sibling was being credited to it.
+                    "character": r.get("character"),
                 }
                 out.write(json.dumps(obj, separators=(",", ":")) + "\n")
                 written += 1
