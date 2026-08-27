@@ -61,6 +61,15 @@ def main() -> None:
         import duckdb
 
         con = duckdb.connect("/lake/build.duckdb")
+        # build.sql inherits THIS connection's settings (its old hard-coded
+        # 1800MB/2-thread block starved the parse into ~300GB of spill).
+        import os as _os
+
+        mem = _os.environ.get("LAKE_BUILD_MEMORY", "") or "3500MB"
+        con.execute(f"SET memory_limit='{mem}'")
+        con.execute("SET threads=3")
+        con.execute("SET temp_directory='/lake/tmp'")
+        con.execute("SET preserve_insertion_order=false")
         # The shadow SQLs were the migration validation gate; the gate
         # passed, and the payload builder computes the same sections anyway,
         # so the nightly run skips them (halves the tail). Run them by hand
