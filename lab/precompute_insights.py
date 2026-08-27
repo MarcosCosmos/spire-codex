@@ -22,10 +22,19 @@ sys.path.insert(0, "/app")
 def main() -> None:
     from fastapi.encoders import jsonable_encoder
 
+    from app.services import runs_db_mongo as rdm
     from app.services import user_insights as ui
-    from app.services.runs_db_mongo import _get_collection
 
-    coll = _get_collection()
+    coll = rdm._get_collection()
+
+    # The per-account killer: _percentiles needs the site-wide winrate
+    # ranking, whose Redis cache lives 5 minutes while an account takes ~6 —
+    # so every account missed the cache and repaid a full aggregation
+    # (~340s flat, measured 2026-08-27). The ranking barely moves during
+    # this pass: build it once and pin it for the whole run.
+    ranking = rdm.get_user_winrates() or {}
+    rdm.get_user_winrates = lambda: ranking
+    print(f"winrate ranking pinned: {len(ranking)} players", flush=True)
     users = list(
         coll.aggregate(
             [
@@ -46,9 +55,18 @@ def main() -> None:
     print(f"{len(users)} accounts with claimed runs", flush=True)
     done = failed = 0
     t0 = time.time()
+    skipped = 0
     for u in users:
         uid = str(u["_id"])
         try:
+            # Restart-safe: an account whose stored payload postdates its
+            # newest run is already done — skip it instead of recomputing.
+            doc = ui._insights_coll().find_one({"_id": f"{uid}:"}, {"updated_at": 1})
+            stored_at = (doc or {}).get("updated_at")
+            if stored_at is not None and u.get("last") is not None:
+                if stored_at.replace(tzinfo=None) >= u["last"]:
+                    skipped += 1
+                    continue
             t = time.time()
             slices = ui._compute_insights_all_slices(uid, u.get("username"))
             for suffix, payload in slices.items():
@@ -64,7 +82,8 @@ def main() -> None:
             failed += 1
             print(f"FAILED {uid}: {type(e).__name__}: {e}", flush=True)
     print(
-        f"done: {done} stored, {failed} failed in {(time.time() - t0) / 60:.1f} min",
+        f"done: {done} stored, {skipped} already current, {failed} failed "
+        f"in {(time.time() - t0) / 60:.1f} min",
         flush=True,
     )
 
