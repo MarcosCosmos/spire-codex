@@ -500,6 +500,7 @@ export default function LeaderboardBrowseClient() {
                           <td className="hidden sm:table-cell py-2.5 px-3 text-[var(--text-secondary)]">{entry.floors_reached}</td>
                           <td className="py-2.5 px-2 sm:px-3">
                             <Link
+                              prefetch={false}
                               href={`${lp}/runs/${entry.run_hash}`}
                               onClick={(e) => e.stopPropagation()}
                               className="text-[var(--accent-gold)] hover:underline text-xs"
@@ -602,6 +603,7 @@ export default function LeaderboardBrowseClient() {
               <div className="space-y-2">
                 {runList.map((r) => (
                   <Link
+                    prefetch={false}
                     key={r.run_hash}
                     href={`${lp}/runs/${r.run_hash}`}
                     className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-3 bg-[var(--bg-card)] rounded-lg border border-[var(--border-subtle)] px-3 sm:px-4 py-3 hover:bg-[var(--bg-card-hover)] transition-colors"

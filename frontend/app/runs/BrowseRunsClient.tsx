@@ -497,6 +497,7 @@ function BrowseRunsClientInner() {
           <div className="space-y-2">
             {runs.map((r) => (
               <Link
+                prefetch={false}
                 key={r.run_hash}
                 href={`${lp}/runs/${r.run_hash}`}
                 className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-3 bg-[var(--bg-card)] rounded-lg border border-[var(--border-subtle)] px-3 sm:px-4 py-3 hover:bg-[var(--bg-card-hover)] transition-colors"

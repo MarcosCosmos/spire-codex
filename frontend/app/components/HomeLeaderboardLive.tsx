@@ -179,7 +179,7 @@ export default function HomeLeaderboardLive({
                       <tr key={r.run_hash}>
                         <td className="rk">{i + 1}</td>
                         <td>
-                          <Link className="ent" href={`${runsBase}/${r.run_hash}`}>
+                          <Link prefetch={false} className="ent" href={`${runsBase}/${r.run_hash}`}>
                             <img crossOrigin="anonymous" className="lb-ico" src={characterIcon(r.character)} alt={characterLabel(r.character, characterNames)} loading="lazy" />
                             <span className="lb-who">
                               <span className="lb-name" style={{ color: characterHex(r.character) || undefined }}>
@@ -224,7 +224,7 @@ export default function HomeLeaderboardLive({
                       <tr key={r.run_hash}>
                         <td className="rk">{i + 1}</td>
                         <td>
-                          <Link className="ent" href={`${runsBase}/${r.run_hash}`}>
+                          <Link prefetch={false} className="ent" href={`${runsBase}/${r.run_hash}`}>
                             <img crossOrigin="anonymous" className="lb-ico" src={characterIcon(r.character)} alt={characterLabel(r.character, characterNames)} loading="lazy" />
                             <span className="lb-who">
                               <span className="lb-name" style={{ color: characterHex(r.character) || undefined }}>
@@ -279,7 +279,7 @@ export default function HomeLeaderboardLive({
                       return (
                         <tr key={r.run_hash}>
                           <td>
-                            <Link className="ent" href={`${runsBase}/${r.run_hash}`}>
+                            <Link prefetch={false} className="ent" href={`${runsBase}/${r.run_hash}`}>
                               <img crossOrigin="anonymous" className="lb-ico" src={characterIcon(r.character)} alt={characterLabel(r.character, characterNames)} loading="lazy" />
                               <span className="lb-who">
                                 <span className="lb-name" style={{ color: characterHex(r.character) || undefined }}>

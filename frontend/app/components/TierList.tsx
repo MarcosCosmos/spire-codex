@@ -150,6 +150,7 @@ export default function TierList({ route, entities, showUnrated = true, valueLab
               route === "cards" ? (
                 // Full game-rendered card for the card tier list.
                 <Link
+                  prefetch={false}
                   key={ent.id}
                   href={`/cards/${ent.id.toLowerCase()}`}
                   title={tileValue(ent) != null ? `${ent.name} (${valueLabel} ${tileValue(ent)})` : ent.name}
@@ -170,6 +171,7 @@ export default function TierList({ route, entities, showUnrated = true, valueLab
                 </Link>
               ) : (
                 <Link
+                  prefetch={false}
                   key={ent.id}
                   href={`/${route}/${ent.id.toLowerCase()}`}
                   title={tileValue(ent) != null ? `${ent.name} (${valueLabel} ${tileValue(ent)})` : ent.name}

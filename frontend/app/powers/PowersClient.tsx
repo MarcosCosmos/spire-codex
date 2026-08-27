@@ -105,6 +105,7 @@ const [powers, setPowers] = useState<Power[]>(initialPowers);
             "border-[var(--border-subtle)] text-gray-400";
           return (
             <Link
+              prefetch={false}
               key={power.id}
               href={
                 betaIds.has(power.id)

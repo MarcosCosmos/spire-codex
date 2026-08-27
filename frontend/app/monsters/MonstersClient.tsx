@@ -136,6 +136,7 @@ function MonstersClientInner({ initialMonsters }: { initialMonsters: Monster[] }
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {filtered.map((monster) => (
           <Link
+            prefetch={false}
             key={monster.id}
             href={
               betaIds.has(monster.id)

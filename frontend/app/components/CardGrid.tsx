@@ -68,6 +68,7 @@ function CardItem({ card }: { card: Card }) {
       } p-4 transition-all hover:bg-[var(--bg-card-hover)] hover:shadow-lg hover:shadow-black/20`}
     >
       <Link
+        prefetch={false}
         href={
           card.beta
             ? `${lp}/beta/cards/${card.id.toLowerCase()}`

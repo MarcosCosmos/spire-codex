@@ -149,6 +149,7 @@ function PotionsClientInner({ initialPotions }: { initialPotions: Potion[] }) {
               "border-[var(--border-subtle)] text-gray-400";
             return (
               <Link
+                prefetch={false}
                 key={potion.id}
                 href={`${lp}/potions/${potion.id.toLowerCase()}`}
                 className={`bg-[var(--bg-card)] rounded-lg border ${style.split(" ")[0]} p-4 hover:bg-[var(--bg-card-hover)] transition-all cursor-pointer block`}

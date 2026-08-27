@@ -89,6 +89,7 @@ function EnchantmentsClientInner({ initialEnchantments }: { initialEnchantments:
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {enchantments.map((ench) => (
           <Link
+            prefetch={false}
             key={ench.id}
             href={`${lp}/enchantments/${ench.id.toLowerCase()}`}
             className="bg-[var(--bg-card)] rounded-lg border border-cyan-800/40 p-4 hover:bg-[var(--bg-card-hover)] transition-all block"

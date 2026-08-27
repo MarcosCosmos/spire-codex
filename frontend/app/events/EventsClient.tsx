@@ -346,6 +346,7 @@ function EventsClientInner({ initialEvents }: { initialEvents: GameEvent[] }) {
                       const relic = relicMap[relicId];
                       return (
                         <Link
+                          prefetch={false}
                           key={relicId}
                           href={`${lp}/relics/${relicId.toLowerCase()}`}
                           onClick={(e) => e.stopPropagation()}
