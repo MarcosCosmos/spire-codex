@@ -1244,6 +1244,7 @@ function OverviewTab({
                 <th className="text-right py-2 font-medium">{t("Runs", lang)}</th>
                 <th className="text-right py-2 font-medium">{t("Wins", lang)}</th>
                 <th className="text-right py-2 font-medium">{t("Losses", lang)}</th>
+                <th className="text-right py-2 font-medium">{t("Abandoned", lang)}</th>
                 <th className="text-right py-2 font-medium">{t("Win Rate", lang)}</th>
               </tr>
             </thead>
@@ -1260,6 +1261,9 @@ function OverviewTab({
                   <td className="py-2 text-right text-emerald-400 tabular-nums">{a.wins}</td>
                   <td className="py-2 text-right text-red-400 tabular-nums">
                     {a.total - a.wins - (a.abandoned || 0)}
+                  </td>
+                  <td className="py-2 text-right text-[var(--text-secondary)] tabular-nums">
+                    {a.abandoned || 0}
                   </td>
                   <td
                     className="py-2 text-right font-semibold tabular-nums"
