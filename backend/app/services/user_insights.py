@@ -421,7 +421,10 @@ def _bare_character(raw: str | None) -> str:
 _STALE_REDIS_TTL = 7 * 24 * 3600
 _LOCK_TTL = 15 * 60
 
-_inflight: set[str] = set()
+# cache_key -> walk start time. Entries EXPIRE after _LOCK_TTL: a wedged or
+# very slow walk thread must not permanently silence a key's refreshes on
+# this worker (an entry that never cleared did exactly that on 2026-08-27).
+_inflight: dict[str, float] = {}
 _inflight_lock = threading.Lock()
 
 
@@ -641,13 +644,14 @@ def _kick_refresh(
     from . import cache as app_cache
 
     with _inflight_lock:
-        if cache_key in _inflight:
+        started = _inflight.get(cache_key)
+        if started is not None and time.time() - started < _LOCK_TTL:
             return
-        _inflight.add(cache_key)
+        _inflight[cache_key] = time.time()
     lock_key = f"user_insights:lock:{cache_key}"
     if not app_cache.acquire_lock(lock_key, _LOCK_TTL):
         with _inflight_lock:
-            _inflight.discard(cache_key)
+            _inflight.pop(cache_key, None)
         return
 
     def _run() -> None:
@@ -660,6 +664,14 @@ def _kick_refresh(
     def _run_locked() -> None:
         from fastapi.encoders import jsonable_encoder
 
+        # Logged BEFORE the work: a walk that hangs or crawls under box
+        # pressure must be visible in the logs, not indistinguishable from
+        # no walk having started at all.
+        logger.info(
+            "user-insights walk starting uid=%s slice=%s",
+            user_id,
+            _filters_suffix(character, ascension, version, players),
+        )
         try:
             unfiltered = (
                 character is None
@@ -705,7 +717,7 @@ def _kick_refresh(
         finally:
             app_cache.delete(lock_key)
             with _inflight_lock:
-                _inflight.discard(cache_key)
+                _inflight.pop(cache_key, None)
 
     threading.Thread(
         target=_run, daemon=True, name=f"insights-{cache_key[:24]}"
