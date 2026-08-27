@@ -1011,17 +1011,45 @@ def build_entity_store() -> dict | None:
     finally:
         con.close()
 
+    def _prior_store_elo() -> tuple[dict, dict]:
+        """(base, upgrade) Elo maps from the store currently on disk — the
+        previous generation's, since this build hasn't published yet."""
+        import json as _json
+
+        try:
+            cards = _json.loads((LAKE_DIR / _ENTITY_STORE_NAME).read_text())[
+                "entities"
+            ]["cards"]
+        except Exception:
+            return {}, {}
+        base = {k: v["elo"] for k, v in cards.items() if v.get("elo") is not None}
+        upg = {
+            k: v["upg"]["elo"]
+            for k, v in cards.items()
+            if v.get("upg") and v["upg"].get("elo") is not None
+        }
+        return base, upg
+
     # Each Elo pair extraction gets its own fresh connection: two hours of
     # session state must not sit under the heaviest joins in the build. A
-    # failed fit skips Elo (nullable everywhere it serves) instead of
-    # destroying everything computed above.
+    # failed fit carries the prior store's ratings forward (slightly stale
+    # Elo beats a published store with holes) instead of destroying
+    # everything computed above.
     try:
         card_elo, _ = res._compute_codex_elo(reward_pair_counts())
         for eid, elo in card_elo.items():
             if eid in entities["cards"]:
                 entities["cards"][eid]["elo"] = elo
     except Exception:
-        logger.warning("reward Elo skipped for this store build", exc_info=True)
+        prior_base, _ = _prior_store_elo()
+        for eid, elo in prior_base.items():
+            if eid in entities["cards"]:
+                entities["cards"][eid]["elo"] = elo
+        logger.warning(
+            "reward Elo fit failed; carried %d ratings forward from the prior store",
+            len(prior_base),
+            exc_info=True,
+        )
     try:
         upgrade_elo, _ = res._compute_codex_elo(upgrade_pair_counts())
         for eid, elo in upgrade_elo.items():
@@ -1029,7 +1057,16 @@ def build_entity_store() -> dict | None:
             if upg is not None:
                 upg["elo"] = elo
     except Exception:
-        logger.warning("upgrade Elo skipped for this store build", exc_info=True)
+        _, prior_upg = _prior_store_elo()
+        for eid, elo in prior_upg.items():
+            upg = entities["cards"].get(eid, {}).get("upg")
+            if upg is not None:
+                upg["elo"] = elo
+        logger.warning(
+            "upgrade Elo fit failed; carried %d ratings forward from the prior store",
+            len(prior_upg),
+            exc_info=True,
+        )
 
     baselines = {}
     for etype, entries_ in entities.items():
