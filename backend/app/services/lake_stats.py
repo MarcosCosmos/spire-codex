@@ -710,15 +710,21 @@ _CHOICES_CTE = """
 
 
 def _ensure_choice_rows(con) -> None:
-    """Materialize the card-choice rows once per connection. The pair query
-    references the extraction five times and the skip counts once more; each
-    reference re-unnests floors.parquet unless the rows are a real table."""
+    """Materialize the card-choice rows once. The pair query references the
+    extraction five times and the skip counts once more; each reference
+    re-unnests floors.parquet unless the rows are a real table.
+
+    A REAL table in the scratch db, not TEMP: temp tables sit inside
+    DuckDB's memory budget, and the ~50M-row materialization plus the pair
+    self-join on top OOM'd the 4.5GB cap mid-cycle (2026-08-28). On-disk it
+    pages through the buffer pool like pfloors, and the next cycle's
+    scratch reset cleans it up."""
     from . import run_entity_stats as res
 
     con.execute(_ELIGIBLE_SQL.format(lake=LAKE_DIR))
     _ids_temp_table(con, "excluded_cards", res._excluded_card_ids())
     con.execute(
-        f"CREATE TEMP TABLE IF NOT EXISTS choice_rows AS "
+        f"CREATE TABLE IF NOT EXISTS choice_rows AS "
         f"WITH {_CHOICES_CTE.format(lake=LAKE_DIR)} SELECT * FROM choices"
     )
 
@@ -1172,6 +1178,12 @@ def build_entity_store() -> dict | None:
                 exc_info=True,
             )
     finally:
+        # The materialized rows are ~1-2GB of scratch disk; nothing after
+        # this point reads them and the upgrade fit wants the headroom.
+        try:
+            ccon.execute("DROP TABLE IF EXISTS choice_rows")
+        except Exception:
+            pass
         ccon.close()
     try:
         upgrade_elo, upg_p = res._compute_codex_elo(
