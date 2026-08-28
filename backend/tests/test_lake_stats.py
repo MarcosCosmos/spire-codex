@@ -169,3 +169,91 @@ def test_encounter_ghost_rows_pruned_from_every_bracket():
     # A legitimately small row in a niche bracket survives: the floor is
     # judged on the ALL bracket, not per bracket.
     assert big in accs["wr75"]
+
+
+def _write_skip_fixture_lake(tmp_path):
+    import duckdb
+
+    con = duckdb.connect()
+    con.execute(
+        f"""COPY (SELECT * FROM (VALUES
+        ('r1', 0, 'IRONCLAD'), ('r2', 0, 'IRONCLAD'))
+        t(run_hash, ascension, character))
+        TO '{tmp_path}/runs.parquet' (FORMAT parquet)"""
+    )
+    con.execute(
+        f"""COPY (SELECT 'x' AS run_hash WHERE false)
+        TO '{tmp_path}/excluded.parquet' (FORMAT parquet)"""
+    )
+    # Screen 1 (act 0): X picked over Y. Screen 2 (act 1): Y and Z, no pick.
+    con.execute(
+        f"""COPY (SELECT * FROM (VALUES
+        ('r1', 0, 1, [{{'card_choices': [
+            {{'was_picked': true, 'card': {{'id': 'CARD.X'}}}},
+            {{'was_picked': false, 'card': {{'id': 'CARD.Y'}}}}]}}]),
+        ('r1', 1, 5, [{{'card_choices': [
+            {{'was_picked': false, 'card': {{'id': 'CARD.Y'}}}},
+            {{'was_picked': false, 'card': {{'id': 'CARD.Z'}}}}]}}]))
+        t(run_hash, act, floor_idx, players))
+        TO '{tmp_path}/floors.parquet' (FORMAT parquet)"""
+    )
+    con.close()
+
+
+def test_reward_pairs_rate_skip_as_competitor(monkeypatch, tmp_path):
+    from app.services import run_entity_stats as res
+
+    _write_skip_fixture_lake(tmp_path)
+    monkeypatch.setattr(lake_stats, "LAKE_DIR", tmp_path)
+    monkeypatch.setattr(res, "_excluded_card_ids", lambda: frozenset())
+    pairs = lake_stats.reward_pair_counts()
+    assert pairs[("X", "Y")] == 1
+    assert pairs[("X", lake_stats.SKIP_ID)] == 1
+    assert pairs[(lake_stats.SKIP_ID, "Y")] == 1
+    assert pairs[(lake_stats.SKIP_ID, "Z")] == 1
+    # The skipped card on the taken screen never plays SKIP directly.
+    assert ("Y", lake_stats.SKIP_ID) not in pairs
+
+
+def test_skip_screen_counts(monkeypatch, tmp_path):
+    from app.services import run_entity_stats as res
+
+    _write_skip_fixture_lake(tmp_path)
+    monkeypatch.setattr(lake_stats, "LAKE_DIR", tmp_path)
+    monkeypatch.setattr(res, "_excluded_card_ids", lambda: frozenset())
+    counts = lake_stats.skip_screen_counts()
+    assert counts == {
+        "offered": 2,
+        "picked": 1,
+        "off_act": [1, 1, 0],
+        "pick_act": [0, 1, 0],
+    }
+
+
+def test_skip_gets_an_elo_in_the_joint_fit():
+    from app.services.run_entity_stats import _compute_codex_elo
+
+    elo, _ = _compute_codex_elo(
+        {("X", "SKIP"): 60, ("SKIP", "Y"): 40, ("X", "Y"): 30, ("Y", "X"): 10}
+    )
+    assert "SKIP" in elo
+    assert elo["X"] > elo["SKIP"] > elo["Y"]
+
+
+def test_skip_summary_reads_the_store_block(monkeypatch, tmp_path):
+    import json
+
+    monkeypatch.setattr(lake_stats, "LAKE_DIR", tmp_path)
+    monkeypatch.setattr(lake_stats, "_entity_store_cache", None)
+    assert lake_stats.skip_summary() is None
+    block = {
+        "offered": 100,
+        "picked": 9,
+        "off_act": [50, 30, 20],
+        "pick_act": [2, 3, 4],
+        "elo": 1493.2,
+    }
+    (tmp_path / "entity_store.json").write_text(
+        json.dumps({"entities": {"cards": {}}, "skip": block})
+    )
+    assert lake_stats.skip_summary() == block

@@ -686,9 +686,38 @@ def _ids_temp_table(con, name: str, ids) -> None:
         con.executemany(f"INSERT INTO {name} VALUES (?)", rows)
 
 
+# The reserved competitor id for "took nothing" on a card-reward screen. Not
+# a real card id (verified against the catalog), so it can never collide.
+SKIP_ID = "SKIP"
+
+# One row per (screen, offered card): who was on the screen and whether they
+# were taken. Requires the `eligible` view and the `excluded_cards` temp table.
+_CHOICES_CTE = """
+            choices AS (
+              SELECT f.run_hash, f.act, f.floor_idx, ps.i AS pidx,
+                upper(split_part(cc.u.card.id, '.', -1)) AS cid,
+                coalesce(cc.u.was_picked, false) AS picked
+              FROM read_parquet('{lake}/floors.parquet') f
+              JOIN eligible e ON f.run_hash = e.run_hash,
+              LATERAL (SELECT unnest(f.players) AS u,
+                       generate_subscripts(f.players, 1) AS i) ps,
+              LATERAL (SELECT unnest(ps.u.card_choices) AS u) cc
+              WHERE cc.u.card.id IS NOT NULL
+                AND upper(split_part(cc.u.card.id, '.', 1)) = 'CARD'
+                AND upper(split_part(cc.u.card.id, '.', -1))
+                    NOT IN (SELECT cid FROM excluded_cards)
+            )"""
+
+
 def reward_pair_counts(con=None) -> dict[tuple[str, str], int]:
     """(picked, skipped) -> count over card-reward screens, mirroring the
-    walk: eligible runs only, CARD-namespaced ids, curses/status excluded."""
+    walk: eligible runs only, CARD-namespaced ids, curses/status excluded.
+
+    SKIP is a rated competitor: every screen implicitly offers "take
+    nothing". A picked card beats SKIP; on a screen where nothing was
+    taken, SKIP beats each offered card. A skipped card vs SKIP on a taken
+    screen is unobserved — the player rejected it in favor of the pick,
+    not in favor of skipping."""
     from . import run_entity_stats as res
 
     own = con is None
@@ -699,19 +728,11 @@ def reward_pair_counts(con=None) -> dict[tuple[str, str], int]:
         _ids_temp_table(con, "excluded_cards", res._excluded_card_ids())
         rows = con.execute(
             f"""
-            WITH choices AS (
-              SELECT f.run_hash, f.act, f.floor_idx, ps.i AS pidx,
-                upper(split_part(cc.u.card.id, '.', -1)) AS cid,
-                coalesce(cc.u.was_picked, false) AS picked
-              FROM read_parquet('{LAKE_DIR}/floors.parquet') f
-              JOIN eligible e ON f.run_hash = e.run_hash,
-              LATERAL (SELECT unnest(f.players) AS u,
-                       generate_subscripts(f.players, 1) AS i) ps,
-              LATERAL (SELECT unnest(ps.u.card_choices) AS u) cc
-              WHERE cc.u.card.id IS NOT NULL
-                AND upper(split_part(cc.u.card.id, '.', 1)) = 'CARD'
-                AND upper(split_part(cc.u.card.id, '.', -1))
-                    NOT IN (SELECT cid FROM excluded_cards)
+            WITH {_CHOICES_CTE.format(lake=LAKE_DIR)},
+            screens AS (
+              SELECT run_hash, act, floor_idx, pidx,
+                bool_or(picked) AS any_pick
+              FROM choices GROUP BY 1, 2, 3, 4
             )
             SELECT w.cid, l.cid, count(*)
             FROM choices w
@@ -719,9 +740,60 @@ def reward_pair_counts(con=None) -> dict[tuple[str, str], int]:
               AND w.floor_idx = l.floor_idx AND w.pidx = l.pidx
             WHERE w.picked AND NOT l.picked AND w.cid <> l.cid
             GROUP BY 1, 2
+            UNION ALL
+            SELECT cid, '{SKIP_ID}', count(*)
+            FROM choices WHERE picked GROUP BY 1
+            UNION ALL
+            SELECT '{SKIP_ID}', c.cid, count(*)
+            FROM choices c
+            JOIN screens s ON c.run_hash = s.run_hash AND c.act = s.act
+              AND c.floor_idx = s.floor_idx AND c.pidx = s.pidx
+            WHERE NOT s.any_pick
+            GROUP BY 2
             """
         ).fetchall()
         return {(w, lo): n for w, lo, n in rows}
+    finally:
+        if own:
+            con.close()
+
+
+def skip_screen_counts(con=None) -> dict:
+    """Card-reward screen totals for the SKIP pseudo-entry: offered = every
+    screen shown, picked = screens where nothing was taken, with the same
+    3-bucket act split the card pick entries use."""
+    from . import run_entity_stats as res
+
+    own = con is None
+    if own:
+        con = _connect(build=True)
+    try:
+        con.execute(_ELIGIBLE_SQL.format(lake=LAKE_DIR))
+        _ids_temp_table(con, "excluded_cards", res._excluded_card_ids())
+        rows = con.execute(
+            f"""
+            WITH {_CHOICES_CTE.format(lake=LAKE_DIR)},
+            screens AS (
+              SELECT run_hash, act, floor_idx, pidx,
+                bool_or(picked) AS any_pick
+              FROM choices GROUP BY 1, 2, 3, 4
+            )
+            SELECT least(act, 2), count(*), count(*) FILTER (NOT any_pick)
+            FROM screens GROUP BY 1
+            """
+        ).fetchall()
+        off_act = [0, 0, 0]
+        pick_act = [0, 0, 0]
+        for bucket, total, skipped in rows:
+            b = min(max(int(bucket or 0), 0), 2)
+            off_act[b] += int(total)
+            pick_act[b] += int(skipped)
+        return {
+            "offered": sum(off_act),
+            "picked": sum(pick_act),
+            "off_act": off_act,
+            "pick_act": pick_act,
+        }
     finally:
         if own:
             con.close()
@@ -1021,40 +1093,54 @@ def build_entity_store() -> dict | None:
     finally:
         con.close()
 
-    def _prior_store_elo() -> tuple[dict, dict]:
-        """(base, upgrade) Elo maps from the store currently on disk — the
-        previous generation's, since this build hasn't published yet."""
+    def _prior_store_elo() -> tuple[dict, dict, dict | None]:
+        """(base, upgrade, skip) Elo maps from the store currently on disk —
+        the previous generation's, since this build hasn't published yet."""
         import json as _json
 
         try:
-            cards = _json.loads((LAKE_DIR / _ENTITY_STORE_NAME).read_text())[
-                "entities"
-            ]["cards"]
+            prior = _json.loads((LAKE_DIR / _ENTITY_STORE_NAME).read_text())
+            cards = prior["entities"]["cards"]
         except Exception:
-            return {}, {}
+            return {}, {}, None
         base = {k: v["elo"] for k, v in cards.items() if v.get("elo") is not None}
         upg = {
             k: v["upg"]["elo"]
             for k, v in cards.items()
             if v.get("upg") and v["upg"].get("elo") is not None
         }
-        return base, upg
+        return base, upg, prior.get("skip")
 
     # Each Elo pair extraction gets its own fresh connection: two hours of
     # session state must not sit under the heaviest joins in the build. A
     # failed fit carries the prior store's ratings forward (slightly stale
     # Elo beats a published store with holes) instead of destroying
     # everything computed above.
+    # SKIP rides the reward fit: the pair counts already contain it, and the
+    # entities loop below ignores it (not a card id), so its rating and the
+    # screen totals live in a dedicated store block instead of a ghost row.
+    try:
+        skip_block: dict | None = dict(skip_screen_counts(), elo=None)
+    except Exception:
+        _, _, skip_block = _prior_store_elo()
+        logger.warning(
+            "skip screen counts failed; carried the prior store's skip block",
+            exc_info=True,
+        )
     try:
         card_elo, _ = res._compute_codex_elo(reward_pair_counts())
         for eid, elo in card_elo.items():
             if eid in entities["cards"]:
                 entities["cards"][eid]["elo"] = elo
+        if skip_block is not None:
+            skip_block["elo"] = card_elo.get(SKIP_ID)
     except Exception:
-        prior_base, _ = _prior_store_elo()
+        prior_base, _, prior_skip = _prior_store_elo()
         for eid, elo in prior_base.items():
             if eid in entities["cards"]:
                 entities["cards"][eid]["elo"] = elo
+        if skip_block is not None and prior_skip:
+            skip_block["elo"] = prior_skip.get("elo")
         logger.warning(
             "reward Elo fit failed; carried %d ratings forward from the prior store",
             len(prior_base),
@@ -1067,7 +1153,7 @@ def build_entity_store() -> dict | None:
             if upg is not None:
                 upg["elo"] = elo
     except Exception:
-        _, prior_upg = _prior_store_elo()
+        _, prior_upg, _ = _prior_store_elo()
         for eid, elo in prior_upg.items():
             upg = entities["cards"].get(eid, {}).get("upg")
             if upg is not None:
@@ -1088,6 +1174,7 @@ def build_entity_store() -> dict | None:
         "entities": entities,
         "totals": totals,
         "baselines": baselines,
+        "skip": skip_block,
         "data_through": data_through,
     }
     import json as _json
@@ -1511,6 +1598,17 @@ def entity_store_with_mtime() -> tuple[float, dict] | None:
     except Exception:
         logger.warning("entity store load failed", exc_info=True)
         return None
+
+
+def skip_summary() -> dict | None:
+    """The reward-screen SKIP block from the entity store: fitted Elo plus
+    screen totals and act buckets. Serves the scores endpoint's opt-in
+    "SKIP" pseudo-entry; None until a store with the block is published."""
+    hit = entity_store_with_mtime()
+    if not hit:
+        return None
+    blk = hit[1].get("skip")
+    return dict(blk) if blk else None
 
 
 # ── Stats-summary core: the homepage numbers, from the lake ──────────────────

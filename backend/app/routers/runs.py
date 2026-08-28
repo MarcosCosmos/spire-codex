@@ -1123,6 +1123,18 @@ def get_entity_scores(
     cohort: str | None = Query(
         None, description="Deprecated alias for `bracket` (the param was renamed)."
     ),
+    include_skip: bool = Query(
+        False,
+        description=(
+            "Cards only: add a reserved SKIP pseudo-entry rating the option of "
+            "taking nothing. Its Elo comes from the same Bradley-Terry fit "
+            "(a picked card beats SKIP; SKIP beats every card on a screen "
+            "where nothing was taken). `offered` counts every reward screen, "
+            "`picked` the screens skipped, so `pick_rate` is the community "
+            "skip rate; off_act/pick_act carry the per-act split. The rating "
+            "is all-runs (like Elo generally) regardless of bracket."
+        ),
+    ),
 ):
     """All Codex Scores for one entity type, keyed by ID.
 
@@ -1178,12 +1190,39 @@ def get_entity_scores(
     )
     cached = app_cache.get_json(cache_key)
     if cached is not None:
-        return cached
-    result = get_all_entity_scores(entity_type, character=char, act=act, bracket=brk)
-    # While the snapshot is rebuilding (post-deploy), the result is an empty
-    # shell; caching it would extend the gap past the rebuild for everyone.
-    if snapshot_loaded():
-        app_cache.set_json(cache_key, result, ttl_seconds=5 * 60)
+        result = cached
+    else:
+        result = get_all_entity_scores(
+            entity_type, character=char, act=act, bracket=brk
+        )
+        # While the snapshot is rebuilding (post-deploy), the result is an empty
+        # shell; caching it would extend the gap past the rebuild for everyone.
+        if snapshot_loaded():
+            app_cache.set_json(cache_key, result, ttl_seconds=5 * 60)
+    # Injected after the cache: the SKIP block is store-cached and all-runs,
+    # so it doesn't need (or want) a per-bracket cache slot of its own.
+    if include_skip and entity_type == "cards":
+        from ..services.lake_stats import skip_summary
+
+        skip = skip_summary()
+        if skip:
+            offered = skip.get("offered") or 0
+            result = dict(result)
+            result["SKIP"] = {
+                "score": None,
+                "elo": skip.get("elo"),
+                "picks": skip.get("picked"),
+                "wins": None,
+                "win_rate": None,
+                "pick_rate": (
+                    round((skip.get("picked") or 0) / offered * 100, 1)
+                    if offered
+                    else 0.0
+                ),
+                "offered": offered,
+                "off_act": skip.get("off_act"),
+                "pick_act": skip.get("pick_act"),
+            }
     return result
 
 
