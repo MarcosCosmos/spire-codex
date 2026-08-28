@@ -147,7 +147,7 @@ export default function HomeLeaderboardLive({
         <div className="hsec">
           <div className="s-head">
             <h2>{t("Leaderboards", lang)}</h2>
-            <Link className="viewmore" href={`${lbBase}/submit`}>
+            <Link prefetch={false} className="viewmore" href={`${lbBase}/submit`}>
               {t("Upload your runs", lang)} {ARROW}
             </Link>
           </div>
@@ -158,7 +158,7 @@ export default function HomeLeaderboardLive({
               <div className="s-head">
                 {ascLabel && <span className="s-kick">{ascLabel}</span>}
                 <h2>{t("Fastest Wins", lang)}</h2>
-                <Link className="viewmore" href={runsBase}>
+                <Link prefetch={false} className="viewmore" href={runsBase}>
                   {t("View more", lang)} {ARROW}
                 </Link>
               </div>
@@ -203,7 +203,7 @@ export default function HomeLeaderboardLive({
               <div className="s-head">
                 <span className="s-kick">{t("resets 00:00 UTC", lang)}</span>
                 <h2>{t("Daily Climb", lang)}</h2>
-                <Link className="viewmore" href={`${runsBase}?win=true&game_mode=daily_today&sort=ascension_desc`}>
+                <Link prefetch={false} className="viewmore" href={`${runsBase}?win=true&game_mode=daily_today&sort=ascension_desc`}>
                   {t("View more", lang)} {ARROW}
                 </Link>
               </div>
@@ -247,7 +247,7 @@ export default function HomeLeaderboardLive({
             <section className="panel">
               <div className="s-head">
                 <h2>{t("Recent Runs", lang)}</h2>
-                <Link className="viewmore" href={runsBase}>
+                <Link prefetch={false} className="viewmore" href={runsBase}>
                   {t("View more", lang)} {ARROW}
                 </Link>
               </div>

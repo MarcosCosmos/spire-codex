@@ -161,6 +161,7 @@ export default function Footer() {
         </a>
         <span className="text-[var(--border-subtle)]" aria-hidden>·</span>
         <Link
+          prefetch={false}
           href="/developers"
           className="hover:text-[var(--accent-gold)] transition-colors"
         >
@@ -202,6 +203,7 @@ export default function Footer() {
         </button>
         <span className="text-[var(--border-subtle)]" aria-hidden>·</span>
         <Link
+          prefetch={false}
           href="/privacy"
           className="hover:text-[var(--accent-gold)] transition-colors"
         >
@@ -223,6 +225,7 @@ export default function Footer() {
         </button>
         <span className="text-[var(--border-subtle)]" aria-hidden>·</span>
         <Link
+          prefetch={false}
           href="/terms"
           className="hover:text-[var(--accent-gold)] transition-colors"
         >
@@ -230,6 +233,7 @@ export default function Footer() {
         </Link>
         <span className="text-[var(--border-subtle)]" aria-hidden>·</span>
         <Link
+          prefetch={false}
           href="/beta"
           className="hover:text-[var(--accent-gold)] transition-colors"
         >

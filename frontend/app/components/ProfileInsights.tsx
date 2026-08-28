@@ -413,6 +413,7 @@ function CardDeltaList({ rows, cards, lang }: { rows: CardDelta[]; cards: Record
         const info = cards[d.id];
         return (
           <Link
+            prefetch={false}
             key={d.id}
             href={`${lp}/cards/${d.id.toLowerCase()}`}
             className="flex items-center gap-3 py-1.5 hover:bg-[var(--bg-card-hover)] rounded px-2 -mx-2 transition-colors"
@@ -462,6 +463,7 @@ function RelicDeltaList({ rows, relics, lang }: { rows: RelicDelta[]; relics: Re
         const info = relics[d.id];
         return (
           <Link
+            prefetch={false}
             key={d.id}
             href={`${lp}/relics/${d.id.toLowerCase()}`}
             className="flex items-center gap-3 py-1.5 hover:bg-[var(--bg-card-hover)] rounded px-2 -mx-2 transition-colors"
@@ -723,7 +725,7 @@ function displayCharacter(id: string): string {
 
 function BestTile({ href, value, label, sub, rank }: { href: string; value: string; label: string; sub?: string; rank?: { rank: number; total: number } | null }) {
   return (
-    <Link href={href} className="bg-[var(--bg-primary)] rounded-lg p-3 text-center hover:bg-[var(--bg-card-hover)] transition-colors">
+    <Link prefetch={false} href={href} className="bg-[var(--bg-primary)] rounded-lg p-3 text-center hover:bg-[var(--bg-card-hover)] transition-colors">
       <p className="text-lg font-bold text-[var(--text-primary)] tabular-nums">{value}</p>
       <p className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] mt-0.5">{label}</p>
       {(sub || rank) && (
@@ -1006,7 +1008,7 @@ export function InsightsPanels({
               <div key={`${d.event_id}-${d.option_id}`} className="space-y-1">
                 <div className="flex items-center justify-between text-sm gap-2">
                   <span className="min-w-0 truncate">
-                    <Link href={`${lp}/events/${d.event_id.toLowerCase()}`} className="text-[var(--text-primary)] hover:text-[var(--accent-gold)] transition-colors">
+                    <Link prefetch={false} href={`${lp}/events/${d.event_id.toLowerCase()}`} className="text-[var(--text-primary)] hover:text-[var(--accent-gold)] transition-colors">
                       {d.event_name || d.event_id.replace(/_/g, " ")}
                     </Link>
                     <span className="text-[var(--text-muted)]"> · {d.option_label || d.option_id.replace(/_/g, " ")}</span>

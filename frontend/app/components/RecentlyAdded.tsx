@@ -80,6 +80,7 @@ export default async function RecentlyAdded({
             {group.map((item) => (
               <li key={item.id}>
                 <Link
+                  prefetch={false}
                   href={`${pathPrefix}/${item.id.toLowerCase()}`}
                   className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg-card)] border border-emerald-800/40 hover:border-emerald-500/60 text-sm text-[var(--text-primary)] hover:text-emerald-300 transition-colors"
                 >

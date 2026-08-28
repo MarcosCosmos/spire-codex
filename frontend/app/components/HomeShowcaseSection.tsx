@@ -76,7 +76,7 @@ export default async function HomeShowcaseSection({
         <div className="hsec">
           <div className="s-head">
             <h2>{t("Showcase", lang)}</h2>
-            <Link className="viewmore" href={`${langPrefix}/showcase`}>
+            <Link prefetch={false} className="viewmore" href={`${langPrefix}/showcase`}>
               {t("View more", lang)} {ARROW}
             </Link>
           </div>

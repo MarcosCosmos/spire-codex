@@ -81,7 +81,7 @@ function displayName(id: string): string {
 
 function EntityRow({ name, imageSrc, stat, href }: { name: string; imageSrc: string | null; stat: string; href: string }) {
   return (
-    <Link href={href} className="flex items-center gap-3 py-1.5 hover:bg-[var(--bg-card-hover)] rounded px-2 -mx-2 transition-colors">
+    <Link prefetch={false} href={href} className="flex items-center gap-3 py-1.5 hover:bg-[var(--bg-card-hover)] rounded px-2 -mx-2 transition-colors">
       <span className="flex-shrink-0 w-8 h-8 rounded bg-[var(--bg-primary)] border border-[var(--border-subtle)] overflow-hidden flex items-center justify-center">
         {imageSrc ? (
           <img src={imageSrc} alt={name} className="w-full h-full object-contain p-0.5" crossOrigin="anonymous" />
@@ -302,6 +302,7 @@ export default function ProfileStats({
                     </span>
                     <span className="flex-1" />
                     <Link
+                      prefetch={false}
                       href={`/runs/${run.run_hash}`}
                       className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors shrink-0"
                     >
@@ -436,6 +437,7 @@ export default function ProfileStats({
         <div>
           <div className="mb-1 flex items-center justify-end">
             <Link
+              prefetch={false}
               href="/tier-list-maker"
               className="text-sm text-sky-400 hover:underline"
             >

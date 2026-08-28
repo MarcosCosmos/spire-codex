@@ -92,7 +92,7 @@ function ReferenceSection<T extends { id: string }>({
             </div>
           );
           return linkPrefix ? (
-            <Link key={item.id} href={`${linkPrefix}/${item.id.toLowerCase()}`} className="block h-full">
+            <Link prefetch={false} key={item.id} href={`${linkPrefix}/${item.id.toLowerCase()}`} className="block h-full">
               {content}
             </Link>
           ) : (

@@ -65,6 +65,7 @@ export default function BracketFilter({
     const base = stripVersion(active);
     const renderPill = (b: ContentBracket) => (
       <Link
+        prefetch={false}
         key={b.key}
         href={hrefFor(b.key === "all" ? version || "all" : version ? `${b.key}:${version}` : b.key)}
         className={pillCls(base === b.key || (b.key === "all" && !base))}
@@ -85,6 +86,7 @@ export default function BracketFilter({
       <div className="flex flex-wrap items-center gap-1.5">
         <span className="w-14 text-xs text-[var(--text-muted)]">Mode</span>
         <Link
+          prefetch={false}
           href={hrefFor(
             base && !MODE_BRACKETS.some((m) => m.key === base)
               ? version
@@ -98,6 +100,7 @@ export default function BracketFilter({
         </Link>
         {MODE_BRACKETS.map((m) => (
           <Link
+            prefetch={false}
             key={m.key}
             href={hrefFor(version ? `${m.key}:${version}` : m.key)}
             className={pillCls(base === m.key)}
@@ -129,6 +132,7 @@ export default function BracketFilter({
           const targetSkill = b.key === "all" ? "" : b.key;
           return (
             <Link
+              prefetch={false}
               key={b.key}
               href={hrefFor(combineBracket(player, targetSkill, version, modeComposes ? mode : ""))}
               className={pillCls(skill === targetSkill)}
@@ -142,6 +146,7 @@ export default function BracketFilter({
         <span className="w-14 text-xs text-[var(--text-muted)]">Players</span>
         {playerOpts.map((b) => (
           <Link
+            prefetch={false}
             key={b.key || "all"}
             href={hrefFor(combineBracket(b.key, skill, version, modeComposes ? mode : ""))}
             className={pillCls(player === b.key)}
@@ -157,6 +162,7 @@ export default function BracketFilter({
             {/* Cube-backed page: mode is a real axis, so every mode pill
                 keeps the player + skill selection and vice versa. */}
             <Link
+              prefetch={false}
               href={hrefFor(combineBracket(player, skill, version))}
               className={pillCls(!mode)}
             >
@@ -164,6 +170,7 @@ export default function BracketFilter({
             </Link>
             {MODE_BRACKETS.map((m) => (
               <Link
+                prefetch={false}
                 key={m.key}
                 href={hrefFor(combineBracket(player, skill, version, m.key))}
                 className={pillCls(mode === m.key)}
@@ -175,6 +182,7 @@ export default function BracketFilter({
         ) : (
           <>
             <Link
+              prefetch={false}
               href={hrefFor(
                 base && !MODE_BRACKETS.some((m) => m.key === base)
                   ? version
@@ -188,6 +196,7 @@ export default function BracketFilter({
             </Link>
             {MODE_BRACKETS.map((m) => (
               <Link
+                prefetch={false}
                 key={m.key}
                 href={hrefFor(version ? `${m.key}:${version}` : m.key)}
                 className={pillCls(base === m.key)}

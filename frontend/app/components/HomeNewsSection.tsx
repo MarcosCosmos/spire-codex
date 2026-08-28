@@ -75,7 +75,7 @@ export default async function HomeNewsSection({
               {t("home_news_heading_prefix", lang)}{" "}
               <span style={{ color: "var(--gold)" }}>Mega Crit</span>
             </h2>
-            <Link className="viewmore" href={newsBase}>
+            <Link prefetch={false} className="viewmore" href={newsBase}>
               {t("View more", lang)} {ARROW}
             </Link>
           </div>
@@ -87,8 +87,8 @@ export default async function HomeNewsSection({
               const date = formatNewsDate(article.date);
               const href = newsSlugForArticle(article.gid, newsBase);
               return (
-                <Link key={article.gid} href={href} className="news">
-                  <img className="news-thumb" src={hero} alt="" loading="lazy" />
+                <Link prefetch={false} key={article.gid} href={href} className="news">
+                  <img className="news-thumb" src={hero} alt="" width={640} height={360} loading="lazy" />
                   <span className="news-src">Mega Crit</span>
                   <span className="news-title">{article.title}</span>
                   {blurb && <span className="news-ex">{blurb}</span>}

@@ -72,7 +72,7 @@ function RelicPill({
 
   return (
     <div className="anc-relic">
-      <Link href={`${lp}/relics/${relic.id.toLowerCase()}`} className="anc-relic-link">
+      <Link prefetch={false} href={`${lp}/relics/${relic.id.toLowerCase()}`} className="anc-relic-link">
         {info?.image_url && (
           <img src={imageUrl(info.image_url)} alt={name} crossOrigin="anonymous" />
         )}

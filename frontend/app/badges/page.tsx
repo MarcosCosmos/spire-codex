@@ -103,6 +103,7 @@ export default async function BadgesPage() {
           <div className="flex flex-wrap gap-2">
             {multiplayerOnly.map((b) => (
               <Link
+                prefetch={false}
                 key={b.id}
                 href={`/badges/${b.id.toLowerCase()}`}
                 className="text-sm px-3 py-1 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:border-[var(--accent-gold)]/50 hover:text-[var(--accent-gold)] transition-colors"
@@ -124,6 +125,7 @@ function BadgeCard({ badge }: { badge: Badge }) {
     "border-[var(--border-subtle)]";
   return (
     <Link
+      prefetch={false}
       href={`/badges/${badge.id.toLowerCase()}`}
       className={`bg-[var(--bg-card)] rounded-lg border ${borderClass} p-4 hover:bg-[var(--bg-card-hover)] hover:border-[var(--border-accent)] transition-all flex gap-4 group`}
     >

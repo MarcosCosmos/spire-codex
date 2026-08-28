@@ -194,6 +194,9 @@ export default function LeaderboardBrowseClient() {
     if (browseBracket !== "all") params.set("bracket", browseBracket);
     const qs = params.toString();
     const url = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+    // Next patches replaceState, and every call re-triggers a prefetch of
+    // all visible links -- skip the no-op call the mount run would make.
+    if (url === window.location.pathname + window.location.search) return;
     window.history.replaceState(null, "", url);
   }, [tab, mode, gameMode, lbChar, browseChar, browseWin, browseUser, browseBuildId, browseBracket]);
 
@@ -287,7 +290,7 @@ export default function LeaderboardBrowseClient() {
     <div className="mx-auto max-w-[1400px] px-3 sm:px-5 py-6">
       <div className="flex items-end justify-between mb-4">
         <h1 className="text-3xl font-bold text-[var(--accent-gold)]">{t("Leaderboards", lang)}</h1>
-        <Link href={`${lp}/runs`} className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
+        <Link prefetch={false} href={`${lp}/runs`} className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
           {t("Browse Runs", lang)} →
         </Link>
       </div>

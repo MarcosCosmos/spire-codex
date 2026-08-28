@@ -58,7 +58,7 @@ export default async function HomeGuidesSection({
         <div className="hsec">
           <div className="s-head">
             <h2>{t("Guides", lang)}</h2>
-            <Link className="viewmore" href={guidesBase}>
+            <Link prefetch={false} className="viewmore" href={guidesBase}>
               {t("View more", lang)} {ARROW}
             </Link>
           </div>
@@ -67,7 +67,7 @@ export default async function HomeGuidesSection({
             {guides.map((g) => {
               const difficulty = g.difficulty ? DIFFICULTY_LABEL[g.difficulty] ?? g.difficulty : null;
               return (
-                <Link key={g.slug} href={`${guidesBase}/${g.slug}`} className="gcard">
+                <Link prefetch={false} key={g.slug} href={`${guidesBase}/${g.slug}`} className="gcard">
                   <span className="gcard-k">
                     {g.category}
                     {difficulty ? ` · ${difficulty}` : ""}

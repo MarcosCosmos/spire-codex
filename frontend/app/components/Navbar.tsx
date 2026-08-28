@@ -324,7 +324,7 @@ export default function Navbar() {
                       </>
                     );
                     return isInternal ? (
-                      <Link key={link.href} href={fullHref} role="menuitem" className={className} onMouseDown={(e) => e.preventDefault()}>{inner}</Link>
+                      <Link prefetch={false} key={link.href} href={fullHref} role="menuitem" className={className} onMouseDown={(e) => e.preventDefault()}>{inner}</Link>
                     ) : (
                       <a key={link.href} href={fullHref} {...(isHttp ? { target: "_blank", rel: "noopener noreferrer" } : {})} role="menuitem" onMouseDown={(e) => e.preventDefault()} className={className}>{inner}</a>
                     );
@@ -342,6 +342,7 @@ export default function Navbar() {
                     const rmeta = DB_META["/" + r.type];
                     return (
                       <Link
+                        prefetch={false}
                         key={`${r.type}-${r.id}`}
                         href={`${langPrefix}/${r.type}/${r.id}`}
                         role="menuitem"
@@ -374,7 +375,7 @@ export default function Navbar() {
         <div className="flex items-center justify-between gap-3 sm:gap-4 h-16">
           {/* Left: logo + nav pushed tight together; the cluster is pushed right */}
           <div className="flex items-center gap-2 sm:gap-6 min-w-0">
-            <Link href={`${langPrefix}/`} className="flex items-center gap-2 shrink-0">
+            <Link prefetch={false} href={`${langPrefix}/`} className="flex items-center gap-2 shrink-0">
               <img
                 src="/spire-codex-white-final.webp"
                 alt="Spire Codex"
@@ -495,6 +496,7 @@ export default function Navbar() {
                     {user.email && <p className="text-xs text-[var(--text-tertiary)] truncate">{user.email}</p>}
                   </div>
                   <Link
+                    prefetch={false}
                     href={`${langPrefix}/profile`}
                     onClick={() => setUserMenuOpen(false)}
                     className="flex items-center gap-2 px-2.5 py-2 text-sm rounded-md hover:bg-[var(--bg-card)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
@@ -502,6 +504,7 @@ export default function Navbar() {
                     {t("Profile", lang)}
                   </Link>
                   <Link
+                    prefetch={false}
                     href={`${langPrefix}/settings`}
                     onClick={() => setUserMenuOpen(false)}
                     className="flex items-center gap-2 px-2.5 py-2 text-sm rounded-md hover:bg-[var(--bg-card)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
@@ -513,6 +516,7 @@ export default function Navbar() {
                       anyone not on the server-side allowlist. */}
                   {user.is_admin && (
                     <Link
+                      prefetch={false}
                       href="/admin"
                       onClick={() => setUserMenuOpen(false)}
                       className="flex items-center gap-2 px-2.5 py-2 text-sm rounded-md hover:bg-[var(--bg-card)] text-[var(--accent-gold)] hover:text-[var(--accent-gold)] transition-colors"
@@ -641,7 +645,7 @@ export default function Navbar() {
                                     </>
                                   );
                                   return isInternal ? (
-                                    <Link key={link.href} href={fullHref} className={cls}>{inner}</Link>
+                                    <Link prefetch={false} key={link.href} href={fullHref} className={cls}>{inner}</Link>
                                   ) : (
                                     <a key={link.href} href={fullHref} {...(isHttp ? { target: "_blank", rel: "noopener noreferrer" } : {})} className={cls}>{inner}</a>
                                   );
