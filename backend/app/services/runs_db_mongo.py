@@ -2582,9 +2582,17 @@ def _leaderboard_live(
     # Counting was the hidden cost: count_documents({}) walks all 216k+
     # heavyweight docs (~8s). Unfiltered uses the instant metadata count;
     # filtered counts stop at 10k, which caps pagination far beyond what
-    # anyone pages through anyway.
+    # anyone pages through anyway. The hidden exclusion is subtracted per
+    # _count_visible rather than kept in the count query: hidden: {$ne: True}
+    # disqualifies the covering index and fetches every candidate doc, a cost
+    # refresh_leaderboard_summary pays for all 24 combos every cycle.
     if q:
-        total = coll.count_documents(q, limit=10_000)
+        base_q = {k: v for k, v in q.items() if k != "hidden"}
+        total = max(
+            coll.count_documents(base_q, limit=10_000)
+            - coll.count_documents({**base_q, "hidden": True}, limit=10_000),
+            0,
+        )
     else:
         total = coll.estimated_document_count()
     per_page = min(limit, 100)
