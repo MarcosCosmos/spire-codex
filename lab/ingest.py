@@ -95,20 +95,35 @@ def main() -> None:
         print(f"generation {generation_id} FAILED in extract/build: {e}", flush=True)
         sys.exit(1)
     t_build = time.time()
+    # Per-stage wall clock for the manifest: total_seconds said the store
+    # tail was ~6.6h of a 7.1h cycle but couldn't say which stage.
+    stage_seconds: dict[str, float] = {}
+    ts = time.time()
+
+    def _mark(name: str) -> None:
+        nonlocal ts
+        stage_seconds[name] = round(time.time() - ts, 1)
+        ts = time.time()
+
     try:
         from app.services import lake_stats
 
         session = lake_stats.prepare_build_session()
         session.close()
         print("build session prepared (pfloors materialized)", flush=True)
+        _mark("prepare_session")
         lake_stats.build_and_store_payload()
         print("community payload stored", flush=True)
+        _mark("community_payload")
         lake_stats.build_entity_store()
         print("entity store stored", flush=True)
+        _mark("entity_store")
         lake_stats.build_encounter_store()
         print("encounter store stored", flush=True)
+        _mark("encounter_store")
         lake_stats.build_entity_cube()
         print("entity cube stored", flush=True)
+        _mark("entity_cube")
         lake_stats.cleanup_build_session()
     except Exception as e:
         print(f"community payload build failed: {e}", flush=True)
@@ -118,11 +133,13 @@ def main() -> None:
     # Core stats (homepage totals / characters / ascensions) come from the
     # lake in seconds; the legacy Mongo aggregation only tops up the deep
     # item tables and is allowed to fail until its own conversion lands.
+    ts = time.time()
     try:
         n = lake_stats.refresh_stats_core()
         print(f"stats core refreshed ({n} combos)", flush=True)
     except Exception as e:
         print(f"stats core failed: {e}", flush=True)
+    _mark("stats_core")
     try:
         from app.services.runs_db_mongo import refresh_leaderboard_summary
 
@@ -136,6 +153,7 @@ def main() -> None:
         # their lake conversion replaces them.
     except Exception as e:
         print(f"legacy summary refresh failed: {e}", flush=True)
+    _mark("leaderboard_summary")
     try:
         from app.services.charts_stats import store_frame_parquet
 
@@ -143,6 +161,7 @@ def main() -> None:
         print(f"frame parquet stored ({n} rows)", flush=True)
     except Exception as e:
         print(f"frame parquet failed: {e}", flush=True)
+    _mark("frame_parquet")
     # Profile insights: re-walk only accounts with runs newer than their
     # stored payload (skip-if-current), so each cycle refreshes just that
     # window's active uploaders — seconds per account with the winrate
@@ -161,6 +180,7 @@ def main() -> None:
         )
     except Exception as e:
         print(f"profile refresh failed: {e}", flush=True)
+    _mark("profiles")
     # The edge is the last stale layer: origin freshness means nothing while
     # Cloudflare serves yesterday's JSON. Purge exactly the URLs this run
     # refreshed (CF_TOKEN/CF_ZONE come from the same .env the admin tab uses).
@@ -222,6 +242,7 @@ def main() -> None:
         "extract_seconds": round(t_extract - t0, 1),
         "build_sql_seconds": round(t_build - t_extract, 1),
         "stores_seconds": round(published - t_build, 1),
+        "stage_seconds": stage_seconds,
         "total_seconds": round(published - t0, 1),
         "profiles_refreshed": profiles,
         "purge_ok": purge_ok,
