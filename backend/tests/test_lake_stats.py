@@ -151,3 +151,21 @@ def test_entity_cube_cell_matching_and_fold_parity():
     m, p, s, v = _parse_lake_bracket("2p:a10:standard")
     assert not _cell_matches(cell, m, p, s, v)
     assert _cell_matches("standard|2|1|0|v9", m, p, s, v)
+
+
+def test_encounter_ghost_rows_pruned_from_every_bracket():
+    from app.services.lake_stats import _prune_ghost_rows
+
+    big = ("AEONGLASS_BOSS", 3, "boss", "IRONCLAD", "solo")
+    ghost = ("AEONGLASS_BOSS", 1, "boss", "IRONCLAD", "solo")
+    accs = {
+        "all": {big: [111398, 28121, 1.0, 1.0], ghost: [16, 13, 1.0, 1.0]},
+        "solo": {big: [90000, 20000, 1.0, 1.0], ghost: [10, 8, 1.0, 1.0]},
+        "wr75": {big: [40, 5, 1.0, 1.0]},
+    }
+    _prune_ghost_rows(accs)
+    assert ghost not in accs["all"] and ghost not in accs["solo"]
+    assert big in accs["all"] and big in accs["solo"]
+    # A legitimately small row in a niche bracket survives: the floor is
+    # judged on the ALL bracket, not per bracket.
+    assert big in accs["wr75"]

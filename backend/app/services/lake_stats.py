@@ -1356,6 +1356,29 @@ def _encounter_blob_keys(cell: str, recent: frozenset[str]) -> list[str]:
     return keys
 
 
+# A (encounter, act, room_type) row needs this many appearances in the ALL
+# bracket to exist at all. Structurally weird runs (custom games starting at
+# a later act put that act's boss in their first act array) created ghost
+# rows like a 16-sample act-1 Aeonglass next to its 111k-sample act-3 row;
+# a triple that's noise globally is a ghost everywhere, so it's dropped
+# from every bracket, while legitimately small rows in niche brackets
+# survive (ruling 2026-08-28).
+_ENCOUNTER_ROW_MIN_ALL = 50
+
+
+def _prune_ghost_rows(accs: dict[str, dict]) -> None:
+    all_totals: dict[tuple, int] = {}
+    for (enc, act, rt, _ch, _mp), vals in (accs.get("all") or {}).items():
+        k = (enc, act, rt)
+        all_totals[k] = all_totals.get(k, 0) + vals[0]
+    ghosts = {k for k, t in all_totals.items() if t < _ENCOUNTER_ROW_MIN_ALL}
+    if not ghosts:
+        return
+    for cells in accs.values():
+        for ck in [k for k in cells if (k[0], k[1], k[2]) in ghosts]:
+            del cells[ck]
+
+
 def build_encounter_store(con=None) -> dict:
     """Per-bracket encounter-stats blob from the lake, in encounter_stats'
     finalized snapshot shape ({key: {"version": N, "cells": [[enc, act,
@@ -1396,6 +1419,7 @@ def build_encounter_store(con=None) -> dict:
             JOIN cells e ON f.run_hash = e.run_hash
             WHERE f.room_type IN ('monster', 'elite', 'boss')
               AND f.encounter IS NOT NULL AND f.encounter <> ''
+              AND f.act BETWEEN 1 AND 3
             GROUP BY 1, 2, 3, 4, 5, 6
             """
         ).fetchall()
@@ -1421,6 +1445,7 @@ def build_encounter_store(con=None) -> dict:
                 cur[1] += fa
                 cur[2] += float(d or 0)
                 cur[3] += float(tu or 0)
+    _prune_ghost_rows(accs)
     store: dict = {
         key: {
             "version": es.ENCOUNTER_VERSION,
