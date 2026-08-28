@@ -57,6 +57,17 @@ SELECT run_hash FROM read_ndjson('/lake/excluded_current.jsonl.gz',
   columns={run_hash: 'VARCHAR'})
 ) TO '/lake/excluded.parquet' (FORMAT parquet, COMPRESSION zstd);
 
+-- Same fresh-scan sidecar pattern: the frame's doc-scalar columns plus the
+-- mutable username/hidden, so frame.parquet builds from the lake.
+COPY (
+SELECT run_hash, floors_reached, deck_size, relic_count, acts_completed,
+  username, hidden
+FROM read_ndjson('/lake/run_scalars_current.jsonl.gz',
+  columns={run_hash: 'VARCHAR', floors_reached: 'INTEGER',
+           deck_size: 'INTEGER', relic_count: 'INTEGER',
+           acts_completed: 'INTEGER', username: 'VARCHAR', hidden: 'BOOLEAN'})
+) TO '/lake/run_scalars.parquet' (FORMAT parquet, COMPRESSION zstd);
+
 COPY (
 SELECT r.run_hash, act.i AS act, loc.i AS floor_idx,
   lower(loc.u.map_point_type) AS map_point_type,

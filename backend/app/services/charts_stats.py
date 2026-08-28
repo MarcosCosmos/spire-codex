@@ -86,11 +86,94 @@ def _load_frame_parquet() -> list[tuple] | None:
         return None
 
 
+def _lake_frame_select(runs_p: Path, scalars_p: Path, with_hash: bool = False) -> str:
+    """The frame as one SQL projection over the lake. Mirrors the Mongo row
+    construction exactly: hidden $ne True (from the fresh sidecar, not the
+    stale extract-time flag), ascension 0-10 with missing excluded, Pacific
+    played_day (connection must be SET TimeZone='UTC' so the naive-as-UTC
+    convention matches pacific_epoch_day), daily seed date, fresh username."""
+    hash_col = "r.run_hash AS run_hash, " if with_hash else ""
+    return f"""
+        SELECT {hash_col}
+          upper(split_part(coalesce(r.character, ''), '.', -1)) AS character,
+          (CASE WHEN coalesce(try_cast(r.win AS BOOLEAN), false)
+            THEN 1 ELSE 0 END)::TINYINT AS win,
+          r.ascension::INT AS ascension,
+          lower(coalesce(r.game_mode, 'standard')) AS game_mode,
+          coalesce(r.player_count, 1)::INT AS player_count,
+          coalesce(r.run_time, 0)::BIGINT AS run_time,
+          coalesce(s.floors_reached, 0)::INT AS floors_reached,
+          coalesce(s.deck_size, 0)::INT AS deck_size,
+          coalesce(s.relic_count, 0)::INT AS relic_count,
+          coalesce((timezone('America/Los_Angeles',
+              coalesce(r.played_at, r.submitted_at)::TIMESTAMP::TIMESTAMPTZ))::date
+            - DATE '1970-01-01', 0)::INT AS played_day,
+          lower(coalesce(s.username, '')) AS username,
+          (CASE WHEN coalesce(try_cast(r.was_abandoned AS BOOLEAN), false)
+            THEN 1 ELSE 0 END)::TINYINT AS was_abandoned,
+          coalesce(s.acts_completed, 0)::INT AS acts_completed,
+          CASE WHEN lower(coalesce(r.game_mode, 'standard')) = 'daily'
+                AND regexp_matches(coalesce(r.seed, ''),
+                    '^[0-9]+_[0-9]+_[0-9]{{4}}(_|$)')
+            THEN string_split(r.seed, '_')[3] || '-'
+              || lpad(string_split(r.seed, '_')[2], 2, '0') || '-'
+              || lpad(string_split(r.seed, '_')[1], 2, '0')
+            ELSE '' END AS daily_date,
+          trim(coalesce(r.build_id, '')) AS build_id
+        FROM read_parquet('{runs_p}') r
+        LEFT JOIN read_parquet('{scalars_p}') s USING (run_hash)
+        WHERE coalesce(s.hidden, false) = false
+          AND r.ascension BETWEEN 0 AND 10
+    """
+
+
+def _store_frame_from_lake() -> int | None:
+    """Build frame.parquet as one DuckDB COPY over the lake instead of the
+    doc-by-doc Mongo walk (measured at 3h of the 6.5h store tail). Returns
+    None when the lake inputs aren't present so the caller can fall back."""
+    import duckdb
+
+    lake_dir = Path(os.environ.get("LAKE_DIR", "/lake"))
+    runs_p = lake_dir / "runs.parquet"
+    scalars_p = lake_dir / "run_scalars.parquet"
+    if not (runs_p.exists() and scalars_p.exists()):
+        return None
+    con = duckdb.connect()
+    try:
+        con.execute("SET TimeZone='UTC'")
+        tmp = _FRAME_PARQUET.with_suffix(".parquet.tmp")
+        con.execute(
+            f"COPY ({_lake_frame_select(runs_p, scalars_p)})"
+            f" TO '{tmp}' (FORMAT parquet, COMPRESSION zstd)"
+        )
+        n = int(
+            con.execute(f"SELECT count(*) FROM read_parquet('{tmp}')").fetchone()[0]
+        )
+        tmp.replace(_FRAME_PARQUET)
+    finally:
+        con.close()
+    logger.info(
+        "frame parquet stored from lake: %d rows, %d bytes",
+        n,
+        _FRAME_PARQUET.stat().st_size,
+    )
+    return n
+
+
 def store_frame_parquet() -> int:
     """Ingest-time: run the canonical frame builder once and dump the rows
     to parquet for every worker to load cheaply. Returns the row count."""
     import duckdb
 
+    if (os.environ.get("FRAME_FROM_LAKE", "") or "").strip().lower() in (
+        "1",
+        "on",
+        "true",
+    ):
+        n = _store_frame_from_lake()
+        if n is not None:
+            return n
+        logger.warning("lake frame inputs missing; falling back to the db walk")
     rows = _load_frame_from_db()
     con = duckdb.connect()
     try:
