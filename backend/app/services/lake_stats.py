@@ -1177,6 +1177,27 @@ def build_entity_cube(con=None) -> dict:
             ).fetchall():
                 per.setdefault(cell, {})[eid] = [p, w]
             types[etype] = per
+        # Card-reward offer/pick counts per cell with the store's 3 act
+        # buckets (floors.parquet acts are 0-based; least(act,2) = A1/A2/A3+),
+        # so the metrics table's Pick% and per-act splits fold per bracket.
+        offers: dict[str, dict] = {}
+        for cell, eid, bucket, offered, picked in con.execute(
+            f"""
+            SELECT e.cell, upper(split_part(cc.u.card.id, '.', -1)),
+              least(f.act, 2), count(*),
+              count(*) FILTER (coalesce(cc.u.was_picked, false))
+            FROM read_parquet('{LAKE_DIR}/floors.parquet') f
+            JOIN cells e ON f.run_hash = e.run_hash,
+            LATERAL (SELECT unnest(f.players) AS u) ps,
+            LATERAL (SELECT unnest(ps.u.card_choices) AS u) cc
+            WHERE cc.u.card.id IS NOT NULL AND cc.u.card.id <> ''
+            GROUP BY 1, 2, 3
+            """
+        ).fetchall():
+            offers.setdefault(cell, {}).setdefault(eid, {})[str(bucket)] = [
+                offered,
+                picked,
+            ]
         data_through = str(
             con.execute(
                 f"SELECT max(submitted_at) FROM read_parquet('{LAKE_DIR}/runs.parquet')"
@@ -1185,7 +1206,12 @@ def build_entity_cube(con=None) -> dict:
     finally:
         if own:
             con.close()
-    cube = {"runs": runs_cells, "entities": types, "data_through": data_through}
+    cube = {
+        "runs": runs_cells,
+        "entities": types,
+        "offers": offers,
+        "data_through": data_through,
+    }
     import gzip as _gzip
     import json as _json
 
@@ -1259,10 +1285,36 @@ def entity_bracket_fold(entity_type: str, bracket: str) -> dict | None:
             else:
                 cur[0] += pw[0]
                 cur[1] += pw[1]
+    # Card-reward metrics (cards only): offered/picked totals plus the
+    # 3-bucket per-act splits, folded from the same matching cells.
+    offers: dict[str, dict] = {}
+    if entity_type == "cards":
+        for cell, ids in (cube.get("offers") or {}).items():
+            if not _cell_matches(cell, mode, player, skill, version):
+                continue
+            for eid, buckets in ids.items():
+                agg = offers.setdefault(
+                    eid,
+                    {
+                        "offered": 0,
+                        "picked": 0,
+                        "off_act": [0, 0, 0],
+                        "pick_act": [0, 0, 0],
+                    },
+                )
+                for b, op in buckets.items():
+                    i = int(b)
+                    if 0 <= i <= 2:
+                        agg["offered"] += op[0]
+                        agg["picked"] += op[1]
+                        agg["off_act"][i] += op[0]
+                        agg["pick_act"][i] += op[1]
     return {
         "entries": entries,
+        "offers": offers,
         "total_runs": total,
         "total_wins": wins,
+        "parsed": (mode, player, skill, version),
         "data_through": cube.get("data_through"),
     }
 

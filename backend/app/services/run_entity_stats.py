@@ -3441,6 +3441,84 @@ def get_entity_metrics_table(
     """
     _maybe_rebuild()
     character = (character or "").strip().upper() or None
+    # Lake path first: the entity cube folds ANY mode x players x skill x
+    # version bracket — including mode composites (solo:standard) the
+    # snapshot never had, and the player:skill composites its frozen copy
+    # never materialized for current versions. Character views keep the
+    # snapshot path (the cube doesn't track per-character splits yet), and
+    # a missing cube or unknown bracket falls through unchanged.
+    if bracket != "all" and character is None and _LAKE_ENTITY_SERVE:
+        try:
+            from . import lake_stats
+
+            fold = lake_stats.entity_bracket_fold(entity_type, bracket)
+        except Exception:
+            fold = None
+            logger.warning("lake metrics fold failed", exc_info=True)
+        if fold:
+            entries = fold["entries"]
+            offers = fold.get("offers") or {}
+            btot = fold["total_runs"]
+            base_p = sum(pw[0] for pw in entries.values())
+            base_w = sum(pw[1] for pw in entries.values())
+            baseline = (base_w / base_p) if base_p else _baseline_win_rate()
+            prior = _bracket_prior(btot) if entity_type == "relics" else None
+            excluded_cards = (
+                _excluded_card_ids() if entity_type == "cards" else frozenset()
+            )
+            solo_cards = (
+                _multiplayer_card_ids()
+                if entity_type == "cards" and fold["parsed"][1] == "1"
+                else frozenset()
+            )
+            official = _official_entity_ids(entity_type)
+            z3 = [0] * _ACT_BUCKETS
+            rows = []
+            for eid, (picks, wins) in entries.items():
+                if eid in excluded_cards or eid in solo_cards:
+                    continue
+                if official and eid not in official:
+                    continue
+                off = offers.get(eid) or {}
+                offered = off.get("offered", 0)
+                picked = off.get("picked", 0)
+                off_act = off.get("off_act") or z3
+                pick_act = off.get("pick_act") or z3
+                score = _compute_score(wins, picks, baseline, prior)
+                rows.append(
+                    {
+                        "id": eid,
+                        "upgraded": False,
+                        "score": score,
+                        "tier": _score_to_tier(score),
+                        "elo": (_cache.get((entity_type, eid)) or {}).get("elo"),
+                        "win_rate": round(wins / picks * 100, 1) if picks else None,
+                        "pick_rate": round(picked / offered * 100, 1)
+                        if offered
+                        else None,
+                        "picks": picks,
+                        "wins": wins,
+                        "losses": picks - wins,
+                        "offered": offered,
+                        "picked": picked,
+                        "pick_rate_by_act": [
+                            round(pick_act[i] / off_act[i] * 100, 1)
+                            if off_act[i]
+                            else None
+                            for i in range(_ACT_BUCKETS)
+                        ],
+                    }
+                )
+            return {
+                "entity_type": entity_type,
+                "bracket": bracket,
+                "character": None,
+                "baseline_win_rate": round(baseline * 100, 1),
+                "total_runs": btot,
+                "character_runs": None,
+                "character_wins": None,
+                "rows": rows,
+            }
     use_bracket = is_valid_stat_bracket(bracket)
     if use_bracket:
         baseline = _bracket_baselines.get(bracket, {}).get(
