@@ -192,6 +192,9 @@ services:
     env_file: .env
     environment:
       DATA_DIR: /data
+      # Build frame.parquet from the lake (one COPY) instead of the 3h Mongo
+      # doc walk. Flip in .env after lab/validate_frame_lake.py passes.
+      FRAME_FROM_LAKE: ${FRAME_FROM_LAKE:-}
     # 5g container / 3.5g duckdb: with the rebuilder headed for deletion the
     # ingest is the box's main computer, so it gets real memory instead of
     # spilling every heavy aggregate to disk.

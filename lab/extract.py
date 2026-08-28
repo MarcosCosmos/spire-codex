@@ -72,6 +72,45 @@ def _refresh_excluded(coll) -> None:
     print(f"excluded sidecar refreshed: {n:,} hidden/deleted runs", flush=True)
 
 
+def _refresh_scalars(coll) -> None:
+    """Frame inputs that exist only as doc scalars, plus the two mutable
+    fields (username, hidden) the frame needs fresh. Full projection scan
+    like the excluded sidecar, so frame.parquet can build from the lake
+    instead of walking every Mongo doc through Python."""
+    n = 0
+    tmp = pathlib.Path("/lake/run_scalars_current.jsonl.gz.tmp")
+    with gzip.open(tmp, "wt", encoding="utf-8") as out:
+        for doc in coll.find(
+            {},
+            {
+                "_id": 1,
+                "floors_reached": 1,
+                "deck_size": 1,
+                "relic_count": 1,
+                "acts_completed": 1,
+                "username": 1,
+                "hidden": 1,
+            },
+        ):
+            out.write(
+                json.dumps(
+                    {
+                        "run_hash": doc["_id"],
+                        "floors_reached": doc.get("floors_reached"),
+                        "deck_size": doc.get("deck_size"),
+                        "relic_count": doc.get("relic_count"),
+                        "acts_completed": doc.get("acts_completed"),
+                        "username": doc.get("username"),
+                        "hidden": bool(doc.get("hidden")),
+                    }
+                )
+                + "\n"
+            )
+            n += 1
+    tmp.replace(pathlib.Path("/lake/run_scalars_current.jsonl.gz"))
+    print(f"run-scalars sidecar refreshed: {n:,} runs", flush=True)
+
+
 def main() -> tuple[int, int]:
     """Returns (written, skipped) so the ingest can record cycle metrics."""
     STAGING.mkdir(parents=True, exist_ok=True)
@@ -80,6 +119,7 @@ def main() -> tuple[int, int]:
         return (0, 0)
     coll = _get_collection()
     _refresh_excluded(coll)
+    _refresh_scalars(coll)
 
     query: dict = {}
     page = 0
