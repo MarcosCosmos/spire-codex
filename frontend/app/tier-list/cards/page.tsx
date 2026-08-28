@@ -304,6 +304,7 @@ export default async function CardsTierListPage({ searchParams }: PageProps) {
         current={bracket}
         extraParams={{ color, sort: sort === "elo" ? "elo" : undefined }}
         composite
+        modeComposes
       />
 
       <TierList route="cards" entities={entities} valueLabel={sort === "elo" ? "Elo" : "Score"} />

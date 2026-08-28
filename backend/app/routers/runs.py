@@ -1159,8 +1159,18 @@ def get_entity_scores(
     if stat_filter:
         bracket = _STAT_FILTER_TO_BRACKET.get(stat_filter.strip().lower(), bracket)
     # Unknown bracket -> None so it grades against all runs (and shares that
-    # cache slot) rather than 400ing.
+    # cache slot) rather than 400ing. Lake-foldable brackets (mode axes and
+    # composites like solo:standard) pass through even though the snapshot's
+    # validator doesn't know them — the entity cube folds them.
     brk = bracket if is_valid_stat_bracket(bracket) else None
+    if brk is None and bracket:
+        try:
+            from ..services.lake_stats import _parse_lake_bracket
+
+            if _parse_lake_bracket(bracket) is not None:
+                brk = bracket
+        except Exception:
+            pass
     # Redis layer (5min TTL): hit constantly by tier-list pages and detail
     # sort columns. Key carries every response-shaping param.
     cache_key = app_cache.entity_scores_key(

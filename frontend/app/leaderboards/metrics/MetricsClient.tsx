@@ -54,9 +54,10 @@ const COLOR_FILTERS = [
 ];
 
 
-// The run-bracket filter has two combinable axes (player count x skill tier),
-// served as a "player:skill" composite (solo:wr50), plus a mutually-exclusive
-// game-mode axis. Keep keys in sync with _BRACKET_KEYS in run_entity_stats.py.
+// The run-bracket filter has four combinable axes (player count x skill tier
+// x game mode x version), served as a colon-joined composite (solo:a10:standard)
+// the lake entity cube folds server-side. Keep keys in sync with the lake's
+// bracket parser (lake_stats._parse_lake_bracket).
 const PLAYER_AXIS = [
   { key: "", label: "All" },
   { key: "solo", label: "Solo" },
@@ -73,6 +74,7 @@ const SKILL_AXIS = [
 ];
 const MODE_AXIS = [
   { key: "", label: "All" },
+  { key: "standard", label: "Standard" },
   { key: "daily", label: "Daily" },
   { key: "custom", label: "Custom" },
 ];
@@ -90,30 +92,22 @@ function parseBracket(b: string): {
   mode: string;
   version: string;
 } {
-  let version = "";
-  const i = b.lastIndexOf(":");
-  if (i > 0 && /^v\d/.test(b.slice(i + 1))) {
-    version = b.slice(i + 1);
-    b = b.slice(0, i);
-  } else if (/^v\d/.test(b)) {
-    return { player: "", skill: "", mode: "", version: b };
+  // Token scan: axes join with ":" in any order, matching the lake parser.
+  const out = { player: "", skill: "", mode: "", version: "" };
+  for (const part of b.split(":")) {
+    if (/^v\d/.test(part)) out.version = part;
+    else if (PLAYER_KEYS.includes(part)) out.player = part;
+    else if (SKILL_KEYS.includes(part)) out.skill = part;
+    else if (MODE_KEYS.includes(part)) out.mode = part;
   }
-  if (b.includes(":")) {
-    const [p, s] = b.split(":");
-    return { player: p, skill: s, mode: "", version };
-  }
-  if (PLAYER_KEYS.includes(b)) return { player: b, skill: "", mode: "", version };
-  if (SKILL_KEYS.includes(b)) return { player: "", skill: b, mode: "", version };
-  if (MODE_KEYS.includes(b)) return { player: "", skill: "", mode: b, version };
-  return { player: "", skill: "", mode: "", version };
+  return out;
 }
 
-// Mode is exclusive with player/skill (there are no daily/custom player
-// composites), but the version composes with any of them.
+// Every axis composes: player, skill, mode, and version join freely — the
+// lake entity cube folds any combination server-side.
 function combineBracket(player: string, skill: string, mode: string, version = ""): string {
-  const base = mode || [player, skill].filter(Boolean).join(":");
-  if (base && version) return `${base}:${version}`;
-  return base || version || "all";
+  const base = [player, skill, mode, version].filter(Boolean).join(":");
+  return base || "all";
 }
 
 function bracketLabel(b: string, lang: string): string {
@@ -227,9 +221,9 @@ export default function MetricsClient({
   };
   // Player and skill combine; picking either clears the exclusive mode axis.
   // Every pill keeps the version selection.
-  const pickPlayer = (p: string) => nav(combineBracket(p, sel.skill, "", sel.version));
-  const pickSkill = (s: string) => nav(combineBracket(sel.player, s, "", sel.version));
-  const pickMode = (m: string) => nav(combineBracket("", "", m, sel.version));
+  const pickPlayer = (p: string) => nav(combineBracket(p, sel.skill, sel.mode, sel.version));
+  const pickSkill = (s: string) => nav(combineBracket(sel.player, s, sel.mode, sel.version));
+  const pickMode = (m: string) => nav(combineBracket(sel.player, sel.skill, m, sel.version));
   const pickVersion = (v: string) =>
     nav(combineBracket(sel.player, sel.skill, sel.mode, v));
   // "Played by": server-side character re-scope (that character's runs), on top
