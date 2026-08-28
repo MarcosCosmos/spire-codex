@@ -201,6 +201,7 @@ export default async function CardsPage() {
               </h2>
             </div>
             <Link
+              prefetch={false}
               href="/tier-list/cards"
               className="text-xs text-[var(--accent-gold)] hover:underline whitespace-nowrap"
             >
@@ -216,7 +217,7 @@ export default async function CardsPage() {
           <ul className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             {topByScore.map(({ card, score }) => (
               <li key={card.id}>
-                <Link href={`/cards/${card.id.toLowerCase()}`} className="block group">
+                <Link prefetch={false} href={`/cards/${card.id.toLowerCase()}`} className="block group">
                   <img
                     src={fullCardUrl(card.id.toLowerCase())}
                     alt={`${card.name} - Slay the Spire 2 card`}
@@ -250,6 +251,7 @@ export default async function CardsPage() {
           {cardsByCharacter.map((char) => (
             <li key={char.id}>
               <Link
+                prefetch={false}
                 href={`/cards?color=${char.id}`}
                 className="block p-3 rounded-lg border border-[var(--border-subtle)] hover:border-[var(--accent-gold)] transition-colors"
               >
@@ -269,6 +271,7 @@ export default async function CardsPage() {
         <p className="text-sm text-[var(--text-muted)] mt-4">
           Looking for tier rankings? See the full{" "}
           <Link
+            prefetch={false}
             href="/tier-list/cards"
             className="text-[var(--accent-gold)] hover:underline"
           >
@@ -276,6 +279,7 @@ export default async function CardsPage() {
           </Link>{" "}
           for S-through-F tiers, or check the{" "}
           <Link
+            prefetch={false}
             href="/leaderboards/stats"
             className="text-[var(--accent-gold)] hover:underline"
           >

@@ -63,6 +63,7 @@ function EntityCard({ entity, type, lp }: { entity: UnlockEntity; type: string; 
 
   return (
     <Link
+      prefetch={false}
       href={href}
       className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-subtle)] hover:border-[var(--accent-gold)]/50 transition-colors group"
     >
@@ -226,6 +227,7 @@ export default function UnlocksClient() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {data.characters.map((char) => (
               <Link
+                prefetch={false}
                 key={char.id}
                 href={`${lp}/characters/${char.id.toLowerCase()}`}
                 className="flex items-center gap-3 px-3 py-3 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-subtle)] hover:border-[var(--accent-gold)]/50 transition-colors group"

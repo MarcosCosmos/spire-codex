@@ -47,7 +47,7 @@ function renderAnnouncement(message: string): ReactNode[] {
     const [, label, href] = m;
     out.push(
       href.startsWith("/") ? (
-        <Link key={m.index} href={href} className={linkClass}>
+        <Link prefetch={false} key={m.index} href={href} className={linkClass}>
           {label}
         </Link>
       ) : (
@@ -100,6 +100,7 @@ export default function AlertTicker() {
               )}{" "}
             </span>
             <Link
+              prefetch={false}
               href="/overlay"
               className="text-[var(--accent-gold)] hover:underline font-medium whitespace-nowrap"
             >
@@ -168,6 +169,7 @@ export default function AlertTicker() {
             </a>
             . Servants! Fetch tea for{" "}
             <Link
+              prefetch={false}
               href="/thank-you"
               className="font-medium not-italic text-emerald-200 underline hover:text-white transition-colors"
             >

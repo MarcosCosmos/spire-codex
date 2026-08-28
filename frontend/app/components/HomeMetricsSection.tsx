@@ -114,7 +114,7 @@ export default async function HomeMetricsSection({
           <div className="s-head">
             <span className="s-kick">{t("A10 · by Codex Elo", lang)}</span>
             <h2>{t("Card Metrics", lang)}</h2>
-            <Link className="viewmore" href={href}>
+            <Link prefetch={false} className="viewmore" href={href}>
               {t("View Card metrics", lang)} {ARROW}
             </Link>
           </div>
@@ -134,7 +134,7 @@ export default async function HomeMetricsSection({
                 <tr key={c.id}>
                   <td className="rk">{i + 1}</td>
                   <td className="ent">
-                    <Link href={`${langPrefix}/cards/${c.id.toLowerCase()}`} style={{ color: cardHex(c.color) }}>
+                    <Link prefetch={false} href={`${langPrefix}/cards/${c.id.toLowerCase()}`} style={{ color: cardHex(c.color) }}>
                       {c.name}
                     </Link>
                   </td>

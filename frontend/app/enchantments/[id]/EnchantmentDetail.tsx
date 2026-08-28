@@ -89,7 +89,7 @@ export default function EnchantmentDetail({
     return (
       <div className="max-w-2xl mx-auto px-4 py-12 text-center">
         <p className="text-[var(--text-muted)] mb-4">Enchantment not found.</p>
-        <Link href={`${lp}/enchantments`} className="text-[var(--accent-gold)] hover:underline">
+        <Link prefetch={false} href={`${lp}/enchantments`} className="text-[var(--accent-gold)] hover:underline">
           &larr; {t("Back to", lang)} {t("Enchantments", lang)}
         </Link>
       </div>
@@ -184,7 +184,7 @@ export default function EnchantmentDetail({
                     .replace(/_/g, " ")
                     .replace(/\b\w/g, (c) => c.toUpperCase());
                   return (
-                    <Link key={cid} href={`${lp}/cards/${cid}`} className="ench-cell">
+                    <Link prefetch={false} key={cid} href={`${lp}/cards/${cid}`} className="ench-cell">
                       <img
                         src={enchantedCardUrl(cid, id, false, "stable", lang)}
                         alt={`${cid} with ${enchantment.name} - Slay the Spire 2`}

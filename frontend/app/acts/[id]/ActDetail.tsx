@@ -71,7 +71,7 @@ export default function ActDetail({ initialAct }: { initialAct?: Act | null } = 
     return (
       <div className="max-w-3xl mx-auto px-4 py-12 text-center">
         <p className="text-[var(--text-muted)] mb-4">Act not found.</p>
-        <Link href={`${lp}/reference`} className="text-[var(--accent-gold)] hover:underline">
+        <Link prefetch={false} href={`${lp}/reference`} className="text-[var(--accent-gold)] hover:underline">
           &larr; Back to Reference
         </Link>
       </div>
@@ -135,7 +135,7 @@ export default function ActDetail({ initialAct }: { initialAct?: Act | null } = 
               <h2>Bosses ({act.bosses.length})</h2>
               <div className="chips">
                 {act.bosses.map((b) => (
-                  <Link key={b} href={`${lp}/encounters/${b.toLowerCase()}`} className="chip">
+                  <Link prefetch={false} key={b} href={`${lp}/encounters/${b.toLowerCase()}`} className="chip">
                     <span className="pip" style={{ background: "#b3423a" }} />
                     {titleCase(b).replace(/ Boss$/, "")}
                   </Link>
@@ -150,7 +150,7 @@ export default function ActDetail({ initialAct }: { initialAct?: Act | null } = 
               <h2>Encounters ({act.encounters.length})</h2>
               <div className="chips">
                 {act.encounters.map((e) => (
-                  <Link key={e} href={`${lp}/encounters/${e.toLowerCase()}`} className="chip">
+                  <Link prefetch={false} key={e} href={`${lp}/encounters/${e.toLowerCase()}`} className="chip">
                     <span className="pip" />
                     {titleCase(e).replace(/ (Normal|Weak|Elite|Boss)$/, "")}
                   </Link>
@@ -165,7 +165,7 @@ export default function ActDetail({ initialAct }: { initialAct?: Act | null } = 
               <h2>Events ({act.events.length})</h2>
               <div className="chips">
                 {act.events.map((e) => (
-                  <Link key={e} href={`${lp}/events/${e.toLowerCase()}`} className="chip">
+                  <Link prefetch={false} key={e} href={`${lp}/events/${e.toLowerCase()}`} className="chip">
                     <span className="pip" style={{ background: "#4f7fb3" }} />
                     {titleCase(e)}
                   </Link>

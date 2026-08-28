@@ -91,7 +91,7 @@ export default function EncounterDetail({ initialEncounter, encounterStat }: { i
     return (
       <div className="max-w-2xl mx-auto px-4 py-12 text-center">
         <p className="text-[var(--text-muted)] mb-4">Encounter not found.</p>
-        <Link href={`${lp}/encounters`} className="text-[var(--accent-gold)] hover:underline">
+        <Link prefetch={false} href={`${lp}/encounters`} className="text-[var(--accent-gold)] hover:underline">
           &larr; {t("Back to", lang)} {t("Encounters", lang)}
         </Link>
       </div>
@@ -187,7 +187,7 @@ export default function EncounterDetail({ initialEncounter, encounterStat }: { i
               <p className="h-note">The enemies you fight in this encounter.</p>
               <div className="chips">
                 {encounter.monsters!.map((m) => (
-                  <Link key={m.id} href={`${lp}/monsters/${m.id}`} className="chip">
+                  <Link prefetch={false} key={m.id} href={`${lp}/monsters/${m.id}`} className="chip">
                     <span className="pip" />
                     <span className="cn">{m.name}</span>
                   </Link>

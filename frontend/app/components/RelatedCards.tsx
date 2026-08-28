@@ -95,6 +95,7 @@ export default function RelatedCards({ currentId, keywords, tags, color }: Relat
               <li key={card.id}>
                 <HoverTooltip title={card.name} content={card.description} image={card.image_url}>
                   <Link
+                    prefetch={false}
                     href={`${lp}/cards/${card.id.toLowerCase()}`}
                     className="text-sm text-[var(--text-secondary)] hover:text-[var(--accent-gold)] transition-colors"
                   >

@@ -5,6 +5,13 @@ const LANGS = "deu|esp|fra|ita|jpn|kor|pol|ptb|rus|spa|tha|tur|zhs|zht";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // Without this, dynamic-route prefetches are stale on arrival
+  // (staleTimes.dynamic defaults to 0), so the router re-issues the same
+  // origin request for every visible link on each ping — measured 8-9
+  // fetches of the same footer link per page view in prod.
+  experimental: {
+    staleTimes: { dynamic: 180, static: 300 },
+  },
   // NitroPay hosts our ads.txt so exchange entries stay current without
   // deploys; the 301 is their recommended setup.
   async redirects() {

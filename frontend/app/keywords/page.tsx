@@ -85,6 +85,7 @@ export default async function KeywordsPage() {
           .filter((k) => k.id !== "PERIOD")
           .map((kw) => (
             <Link
+              prefetch={false}
               key={kw.id}
               href={`/keywords/${kw.id.toLowerCase()}`}
               className="bg-[var(--bg-card)] rounded-xl border border-[var(--border-subtle)] p-5 hover:bg-[var(--bg-card-hover)] hover:border-[var(--border-accent)] transition-all"
@@ -112,6 +113,7 @@ export default async function KeywordsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {terms.map((term) => (
                 <Link
+                  prefetch={false}
                   key={term.id}
                   href={`/keywords/${term.id.toLowerCase()}`}
                   className="bg-[var(--bg-card)] rounded-lg border border-[var(--border-subtle)] p-4 hover:bg-[var(--bg-card-hover)] hover:border-[var(--border-accent)] transition-all"

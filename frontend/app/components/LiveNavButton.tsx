@@ -59,7 +59,7 @@ export default function LiveNavButton({
 
   if (variant === "mobile") {
     return (
-      <Link href="/live" className="flex items-center gap-2 text-lg font-semibold text-[var(--color-silent)]">
+      <Link prefetch={false} href="/live" className="flex items-center gap-2 text-lg font-semibold text-[var(--color-silent)]">
         <LiveCircle />
         <span className="tabular-nums">{count > 0 ? `(${count}) Live` : "Live"}</span>
       </Link>
@@ -68,6 +68,7 @@ export default function LiveNavButton({
 
   return (
     <Link
+      prefetch={false}
       href="/live"
       title="Watch players live"
       className="inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-[var(--color-silent)] hover:bg-[var(--bg-card)] transition-colors shrink-0"

@@ -232,6 +232,7 @@ export default async function ArchetypesPage() {
                     <div className="flex flex-wrap gap-1.5">
                       {a.defining_cards.map((e) => (
                         <Link
+                          prefetch={false}
                           key={e.id}
                           href={`/cards/${e.id.toLowerCase()}`}
                           className="text-xs px-2 py-0.5 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-[var(--text-secondary)] hover:border-[var(--accent-gold)]/50 hover:text-[var(--accent-gold)] transition-colors"
@@ -241,6 +242,7 @@ export default async function ArchetypesPage() {
                       ))}
                       {a.defining_relics.map((e) => (
                         <Link
+                          prefetch={false}
                           key={e.id}
                           href={`/relics/${e.id.toLowerCase()}`}
                           className="text-xs px-2 py-0.5 rounded-md border border-sky-900/50 bg-[var(--bg-primary)] text-sky-300 hover:border-sky-500/60 transition-colors"
@@ -256,6 +258,7 @@ export default async function ArchetypesPage() {
                           <span key={h}>
                             {j > 0 && ", "}
                             <Link
+                              prefetch={false}
                               href={`/runs/${h}`}
                               className="text-[var(--accent-gold)] hover:underline font-mono"
                             >

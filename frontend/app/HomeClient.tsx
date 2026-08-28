@@ -239,7 +239,7 @@ export default function HomeClient({ initialStats, initialTranslations }: HomeCl
             const inner = (<><span className="act-ico">{c.icon}</span><span className="act-t">{c.title}</span><span className="act-d">{c.desc}</span></>);
             return c.ext
               ? (<a key={c.title} href={c.href} target="_blank" rel="noopener noreferrer" className="act">{inner}</a>)
-              : (<Link key={c.title} href={c.href} className="act">{inner}</Link>);
+              : (<Link prefetch={false} key={c.title} href={c.href} className="act">{inner}</Link>);
           })}
         </div>
       </section>
@@ -248,13 +248,13 @@ export default function HomeClient({ initialStats, initialTranslations }: HomeCl
       <section className="hsec">
         <div className="s-head">
           <h2>{t("Characters", lang)}</h2>
-          <Link className="viewmore" href={`${langPrefix}/characters`}>{t("All characters", lang)} {ARROW}</Link>
+          <Link prefetch={false} className="viewmore" href={`${langPrefix}/characters`}>{t("All characters", lang)} {ARROW}</Link>
         </div>
         <div className="charbar">
           {CHARACTERS.map((char, i) => {
             const charName = translations.character_names?.[char.id] ?? char.id.charAt(0).toUpperCase() + char.id.slice(1);
             return (
-              <Link key={char.id} href={`${langPrefix}/characters/${char.id.toLowerCase()}`} className="charp" style={{ ["--cc"]: char.cssColor } as CSSProperties}>
+              <Link prefetch={false} key={char.id} href={`${langPrefix}/characters/${char.id.toLowerCase()}`} className="charp" style={{ ["--cc"]: char.cssColor } as CSSProperties}>
                 <span className="charp-art">
                   {/* The first combat portraits are the page's LCP candidates:
                       hint the browser to fetch them ahead of the below-fold art. */}
@@ -276,7 +276,7 @@ export default function HomeClient({ initialStats, initialTranslations }: HomeCl
         <div className="bgrid">
           {sections.map((s, i) => {
             const tile = (
-              <Link key={s.href} href={`${langPrefix}${s.href}`} className="btile" style={{ ["--cc"]: s.color } as CSSProperties}>
+              <Link prefetch={false} key={s.href} href={`${langPrefix}${s.href}`} className="btile" style={{ ["--cc"]: s.color } as CSSProperties}>
                 <div className="bt-top">
                   <span className="bt-name">{sectionKey(s.key)}</span>
                   {s.count != null && <span className="bt-count">{s.count}</span>}
@@ -289,7 +289,7 @@ export default function HomeClient({ initialStats, initialTranslations }: HomeCl
             if (i === 6) {
               return [
                 tile,
-                <Link key="ow-promo" href={`${langPrefix}/overlay`} className="promo">
+                <Link prefetch={false} key="ow-promo" href={`${langPrefix}/overlay`} className="promo">
                   <img className="promo-img" src="/overwolf-logo.png" alt="Overwolf" loading="lazy" />
                   <div className="promo-body">
                     <span className="promo-kick">{t("New · Overwolf companion", lang)}</span>

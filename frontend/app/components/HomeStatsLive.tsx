@@ -84,7 +84,7 @@ export default function HomeStatsLive({
           <div className="s-head">
             <span className="s-kick">{t("Overview", lang)}</span>
             <h2>{t("Stats", lang)}</h2>
-            <Link className="viewmore" href={`${runsHost}${langPrefix}/leaderboards/stats`}>
+            <Link prefetch={false} className="viewmore" href={`${runsHost}${langPrefix}/leaderboards/stats`}>
               {t("View all stats", lang)} {ARROW}
             </Link>
           </div>

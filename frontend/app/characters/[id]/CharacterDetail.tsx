@@ -81,7 +81,7 @@ function TopPicks({
       <ul className="picks">
         {resolved.map(({ it, ent }) => (
           <li key={it.entity_id}>
-            <Link href={`${hrefBase}/${ent.id.toLowerCase()}`} className="pick">
+            <Link prefetch={false} href={`${hrefBase}/${ent.id.toLowerCase()}`} className="pick">
               {ent.image_url && (
                 <img
                   src={imageUrl(ent.image_url)}
@@ -240,7 +240,7 @@ export default function CharacterDetail({ initialCharacter }: { initialCharacter
     return (
       <div className="max-w-4xl mx-auto px-4 py-12 text-center">
         <p className="text-[var(--text-muted)] mb-4">Character not found.</p>
-        <Link href="/characters" className="text-[var(--accent-gold)] hover:underline">
+        <Link prefetch={false} href="/characters" className="text-[var(--accent-gold)] hover:underline">
           &larr; Back to Characters
         </Link>
       </div>
@@ -412,6 +412,7 @@ export default function CharacterDetail({ initialCharacter }: { initialCharacter
                   if (!cardData) return null;
                   return (
                     <Link
+                      prefetch={false}
                       key={`${cardName}-${i}`}
                       href={`/cards/${cardData.id.toLowerCase()}`}
                       title={cardData.name}
@@ -438,6 +439,7 @@ export default function CharacterDetail({ initialCharacter }: { initialCharacter
                   const relicData = relics[toUpperSnake(relicName)];
                   return (
                     <Link
+                      prefetch={false}
                       key={relicName}
                       href={relicData ? `/relics/${relicData.id.toLowerCase()}` : "#"}
                       className="kit-row"
@@ -547,6 +549,7 @@ export default function CharacterDetail({ initialCharacter }: { initialCharacter
                 <div className="kit-list">
                   {sortedPoolRelics.map((relic) => (
                     <Link
+                      prefetch={false}
                       key={relic.id}
                       href={`/relics/${relic.id.toLowerCase()}`}
                       className="kit-row"

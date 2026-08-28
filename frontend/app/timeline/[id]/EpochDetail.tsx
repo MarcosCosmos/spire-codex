@@ -114,7 +114,7 @@ export default function EpochDetail({ initialEpoch }: { initialEpoch?: Epoch | n
   if (notFound || !epoch) {
     return (
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Link href="/timeline" className="text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
+        <Link prefetch={false} href="/timeline" className="text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
           &larr; Back to Timeline
         </Link>
         <div className="text-center py-12">
@@ -216,7 +216,7 @@ export default function EpochDetail({ initialEpoch }: { initialEpoch?: Epoch | n
                       {epoch.unlocks_cards.map((cid) => {
                         const card = cardMap[cid];
                         return (
-                          <Link key={cid} href={`/cards/${cid.toLowerCase()}`} className="chip">
+                          <Link prefetch={false} key={cid} href={`/cards/${cid.toLowerCase()}`} className="chip">
                             <span className="pip" style={{ background: "#4f7fb3" }} />
                             {card?.name || cid.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
                           </Link>
@@ -232,7 +232,7 @@ export default function EpochDetail({ initialEpoch }: { initialEpoch?: Epoch | n
                       {epoch.unlocks_relics.map((rid) => {
                         const relic = relicMap[rid];
                         return (
-                          <Link key={rid} href={`/relics/${rid.toLowerCase()}`} className="chip">
+                          <Link prefetch={false} key={rid} href={`/relics/${rid.toLowerCase()}`} className="chip">
                             <span className="pip" style={{ background: "#c79a3a" }} />
                             {relic?.name || rid.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
                           </Link>
@@ -248,7 +248,7 @@ export default function EpochDetail({ initialEpoch }: { initialEpoch?: Epoch | n
                       {epoch.unlocks_potions.map((pid) => {
                         const potion = potionMap[pid];
                         return (
-                          <Link key={pid} href={`/potions/${pid.toLowerCase()}`} className="chip">
+                          <Link prefetch={false} key={pid} href={`/potions/${pid.toLowerCase()}`} className="chip">
                             <span className="pip" style={{ background: "#3ca47a" }} />
                             {potion?.name || pid.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
                           </Link>
@@ -267,7 +267,7 @@ export default function EpochDetail({ initialEpoch }: { initialEpoch?: Epoch | n
               <h2>Expands timeline</h2>
               <div className="chips">
                 {epoch.expands_timeline.map((eid) => (
-                  <Link key={eid} href={`/timeline/${eid.toLowerCase()}`} className="chip">
+                  <Link prefetch={false} key={eid} href={`/timeline/${eid.toLowerCase()}`} className="chip">
                     <span className="pip" style={{ background: "#8a5cc4" }} />
                     {epochTitleMap[eid] || eid.replace(/_EPOCH$/, "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
                   </Link>
