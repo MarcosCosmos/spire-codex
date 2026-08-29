@@ -312,7 +312,10 @@ def charts_meta(request: Request):
         ],
         "stats": [{"key": k, "label": v["label"]} for k, v in cs.STATS.items()],
         "characters": [{"id": cid, "name": name} for cid, name in chars.items()],
-        "events": cs.event_list(get_charts_blob_stats()),
+        # The blob is bracket-keyed ({all: ..., a10: ...}); event_list wants
+        # one bracket's stats. Passing the outer dict made the event picker
+        # permanently empty.
+        "events": cs.event_list((get_charts_blob_stats() or {}).get("all") or {}),
     }
 
 

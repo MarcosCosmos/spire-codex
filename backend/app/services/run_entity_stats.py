@@ -2977,6 +2977,12 @@ def _maybe_overlay_lake_entities() -> None:
                 _cache[key] = new_entry
                 n += 1
         _type_baselines.update(store.get("baselines") or {})
+        # The store's run totals must ride along: live picks divided by the
+        # frozen snapshot's total_runs skewed every headline pick rate, the
+        # /pulse baseline, and the relic bracket prior (2026-08-29 audit).
+        totals = store.get("totals") or {}
+        if totals.get("total_runs"):
+            _global_totals.update(totals)
         _lake_overlay_mtime = mtime
         logger.info("lake entity overlay applied: %d entities", n)
     except Exception:
@@ -3141,18 +3147,34 @@ def is_valid_stat_bracket(bracket: str | None) -> bool:
     if not bracket:
         return False
     _maybe_rebuild()
-    if bracket in _BRACKET_KEYS or bracket in _recent_stat_versions:
+    versions = set(get_recent_stat_versions())
+    if bracket in _BRACKET_KEYS or bracket in versions:
         return True
     base, sep, ver = bracket.rpartition(":")
-    return bool(sep) and ver in _recent_stat_versions and base in _BRACKET_KEYS
+    return bool(sep) and ver in versions and base in _BRACKET_KEYS
 
 
 def get_recent_stat_versions() -> list[str]:
-    """Game versions (build_ids) the encounter blob carries a per-version slice
-    for, newest first — the options the stats-page version dropdown offers.
-    Empty until a v15+ snapshot is built/loaded."""
+    """Game versions for the version dropdowns, newest first. Lake-first:
+    the cube's versions keep new patches selectable (the snapshot's frozen
+    list silently dropped every patch shipped after the rebuilder retired,
+    2026-08-29 audit), unioned with the snapshot list so any version only
+    the old blob can still slice stays reachable."""
     _maybe_rebuild()
-    return list(_recent_stat_versions)
+    merged = list(_recent_stat_versions)
+    if _LAKE_ENTITY_SERVE:
+        try:
+            from . import lake_stats
+
+            for v in lake_stats.cube_versions():
+                if v not in merged:
+                    merged.append(v)
+        except Exception:
+            logger.warning("cube version list failed", exc_info=True)
+    import re as _re
+
+    merged.sort(key=lambda v: [int(x) for x in _re.findall(r"\d+", v)], reverse=True)
+    return merged
 
 
 def get_encounter_stats(
@@ -3569,27 +3591,25 @@ def get_entity_metrics_table(
                 character_wins = ch.get("wins")
                 break
 
-    # Player=All rows blend the per-player Elos (equal weight) instead of the
-    # pooled fit, so a card's "All players" rating reflects every mode rather
-    # than being dominated by solo volume. Maps the requested bracket to the
-    # player brackets to average; None for player-specific / composite brackets,
-    # which keep their own stored Elo.
-    avg_siblings = {
-        "all": list(_PLAYER_BRACKETS),
-        "a10": [f"{p}:a10" for p in _PLAYER_BRACKETS],
-        "wr30": [f"{p}:wr30" for p in _PLAYER_BRACKETS],
-        "wr50": [f"{p}:wr50" for p in _PLAYER_BRACKETS],
-        "wr75": [f"{p}:wr75" for p in _PLAYER_BRACKETS],
-    }.get(bracket)
+    # The old "average the per-player-bracket Elos" blend is retired: it
+    # read the frozen snapshot's bracket cells, so the default metrics view
+    # disagreed with the tier list's live rating for the same card
+    # (2026-08-29 audit). Rows now carry the live store rating — the
+    # per-bracket fit when the view has a skill component, all-runs
+    # otherwise — matching /scores exactly.
+    _skill_bmap: dict | None = None
+    if bracket in _SKILL_BRACKETS:
+        try:
+            from . import lake_stats as _ls
 
-    def _avg_player_elo(agg: dict) -> float | None:
-        brackets = agg.get("brackets") or {}
-        vals = [
-            brackets[b]["elo"]
-            for b in avg_siblings or []
-            if brackets.get(b) and brackets[b].get("elo") is not None
-        ]
-        return round(sum(vals) / len(vals), 1) if vals else None
+            _skill_bmap = _ls.bracket_elo_for(bracket)
+        except Exception:
+            _skill_bmap = None
+
+    def _live_elo(agg: dict, eid: str, fallback) -> float | None:
+        if _skill_bmap is not None:
+            return _skill_bmap.get(eid)
+        return fallback
 
     z3 = [0] * _ACT_BUCKETS
 
@@ -3668,7 +3688,7 @@ def get_entity_metrics_table(
                     eid,
                     data.get("picks", 0),
                     data.get("wins", 0),
-                    elo=_avg_player_elo(agg) if avg_siblings else data.get("elo"),
+                    elo=_live_elo(agg, eid, data.get("elo")),
                     offered=data.get("offered", 0),
                     picked=data.get("picked", 0),
                     off_act=data.get("off_act") or z3,
@@ -3688,7 +3708,7 @@ def get_entity_metrics_table(
                     eid,
                     base["picks"],
                     base["wins"],
-                    elo=_avg_player_elo(agg) if avg_siblings else agg.get("elo"),
+                    elo=_live_elo(agg, eid, agg.get("elo")),
                     offered=agg.get("offered", 0),
                     picked=agg.get("picked", 0),
                     off_act=agg.get("off_act") or z3,
@@ -3720,7 +3740,7 @@ def get_entity_metrics_table(
                     eid,
                     agg.get("picks", 0),
                     agg.get("wins", 0),
-                    elo=_avg_player_elo(agg) if avg_siblings else agg.get("elo"),
+                    elo=_live_elo(agg, eid, agg.get("elo")),
                     offered=agg.get("offered", 0),
                     picked=agg.get("picked", 0),
                     off_act=agg.get("off_act") or z3,
