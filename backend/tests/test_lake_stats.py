@@ -332,3 +332,49 @@ def test_cube_versions_and_fold_cache(monkeypatch):
     assert f1 is f2, "second fold must come from the mtime-keyed cache"
     assert f1["entries"]["X"] == [10, 6]
     assert f1["total_runs"] == 1400
+
+
+def test_overlay_carries_store_totals(monkeypatch, tmp_path):
+    import json
+
+    from app.services import run_entity_stats as res
+
+    monkeypatch.setattr(lake_stats, "LAKE_DIR", tmp_path)
+    monkeypatch.setattr(lake_stats, "_entity_store_cache", None)
+    (tmp_path / "entity_store.json").write_text(
+        json.dumps(
+            {
+                "entities": {"cards": {}},
+                "baselines": {},
+                "totals": {"total_runs": 123456, "total_wins": 45678},
+            }
+        )
+    )
+    monkeypatch.setattr(res, "_LAKE_ENTITY_SERVE", True)
+    monkeypatch.setattr(res, "_lake_overlay_checked", 0.0)
+    monkeypatch.setattr(res, "_lake_overlay_mtime", 0.0)
+    old = dict(res._global_totals)
+    try:
+        res._maybe_overlay_lake_entities()
+        assert res._global_totals["total_runs"] == 123456
+        assert res._global_totals["total_wins"] == 45678
+    finally:
+        res._global_totals.clear()
+        res._global_totals.update(old)
+
+
+def test_recent_versions_include_cube_and_validate(monkeypatch):
+    from app.services import run_entity_stats as res
+
+    cube = {
+        "runs": {"standard|1|0|0|v0.112.0": [600, 1]},
+        "entities": {},
+        "offers": {},
+    }
+    monkeypatch.setattr(lake_stats, "_entity_cube_with_mtime", lambda: (1.0, cube))
+    monkeypatch.setattr(res, "_LAKE_ENTITY_SERVE", True)
+    monkeypatch.setattr(res, "_recent_stat_versions", ["v0.110.2"])
+    monkeypatch.setattr(res, "_maybe_rebuild", lambda: None)
+    assert res.get_recent_stat_versions() == ["v0.112.0", "v0.110.2"]
+    assert res.is_valid_stat_bracket("v0.112.0")
+    assert res.is_valid_stat_bracket("a10:v0.112.0")
