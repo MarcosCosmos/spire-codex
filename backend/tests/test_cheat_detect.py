@@ -59,3 +59,39 @@ def test_normal_turn_counts_and_non_boss_rooms_are_clean():
         ],
     }
     assert one_turn_bosses(data) == []
+
+
+def test_coop_card_in_solo_deck_flags():
+    from app.services.cheat_detect import coop_cards_in_solo
+
+    data = {"players": [{"deck": [{"id": "CARD.MIDNIGHT"}, {"id": "CARD.STRIKE"}]}]}
+    assert coop_cards_in_solo(data, coop_ids=frozenset({"MIDNIGHT"})) == [
+        "coop_card_solo:MIDNIGHT"
+    ]
+
+
+def test_coop_card_in_actual_coop_run_is_clean():
+    from app.services.cheat_detect import coop_cards_in_solo
+
+    data = {
+        "players": [
+            {"deck": [{"id": "CARD.MIDNIGHT"}]},
+            {"deck": [{"id": "CARD.STRIKE"}]},
+        ]
+    }
+    assert coop_cards_in_solo(data, coop_ids=frozenset({"MIDNIGHT"})) == []
+
+
+def test_solo_run_without_coop_cards_is_clean():
+    from app.services.cheat_detect import coop_cards_in_solo
+
+    data = {"players": [{"deck": [{"id": "CARD.STRIKE"}]}]}
+    assert coop_cards_in_solo(data, coop_ids=frozenset({"MIDNIGHT"})) == []
+
+
+def test_detect_cheats_carries_the_coop_solo_signal(monkeypatch):
+    from app.services import run_entity_stats as res
+
+    monkeypatch.setattr(res, "_multiplayer_card_ids", lambda: frozenset({"MIDNIGHT"}))
+    data = {"players": [{"deck": [{"id": "card.midnight"}]}]}
+    assert "coop_card_solo:MIDNIGHT" in detect_cheats(data)

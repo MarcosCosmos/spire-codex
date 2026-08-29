@@ -2440,6 +2440,49 @@ def rehide_one_turn_boss_runs(dry_run: bool = False) -> dict:
     return {"candidates": checked, "hidden": len(hidden_runs), "hashes": hidden_runs}
 
 
+def rehide_coop_card_solo_runs(dry_run: bool = False) -> dict:
+    """Backfill for the co-op-card-in-solo cheat signal: sweep stored solo
+    runs whose decks contain a co-op-only card (submit-time detection only
+    covers new uploads). The Mongo prefilter matches deck ids against the
+    catalog's co-op set case-insensitively; the shared detector then
+    re-checks per doc off the blob's own player list. Returns counts;
+    dry_run only reports."""
+    import re as _re
+
+    from .cheat_detect import coop_cards_in_solo
+    from .run_entity_stats import _multiplayer_card_ids
+
+    coop_ids = _multiplayer_card_ids()
+    if not coop_ids:
+        return {"candidates": 0, "hidden": 0, "hashes": []}
+    patterns = [
+        _re.compile(rf"^CARD\.{_re.escape(cid)}$", _re.IGNORECASE)
+        for cid in sorted(coop_ids)
+    ]
+    coll = _get_collection()
+    cursor = coll.find(
+        {
+            "hidden": {"$ne": True},
+            "player_count": 1,
+            "players.deck.id": {"$in": patterns},
+        },
+        {"players.deck.id": 1, "run_hash": 1},
+    )
+    checked = 0
+    hidden_runs: list[str] = []
+    for doc in cursor:
+        checked += 1
+        run_hash = doc.get("run_hash") or doc["_id"]
+        reasons = coop_cards_in_solo({"players": doc.get("players")}, coop_ids)
+        if not reasons:
+            continue
+        hidden_runs.append(run_hash)
+        if not dry_run:
+            set_run_hidden(run_hash, True, reason="auto:" + ",".join(reasons[:4]))
+            logger.info("auto-hid coop-card-solo run %s: %s", run_hash, reasons[:4])
+    return {"candidates": checked, "hidden": len(hidden_runs), "hashes": hidden_runs}
+
+
 def leaderboard(
     category: str = "fastest",
     character: str | None = None,
