@@ -746,32 +746,44 @@ def reward_pair_counts(con=None) -> dict[tuple[str, str], int]:
         con = _connect(build=True)
     try:
         _ensure_choice_rows(con)
-        rows = con.execute(
-            f"""
-            WITH screens AS (
-              SELECT run_hash, act, floor_idx, pidx,
-                bool_or(picked) AS any_pick
-              FROM choice_rows GROUP BY 1, 2, 3, 4
-            )
+        # Three sequential statements, NOT one UNION ALL: bundled, the
+        # pairwise self-join and the skip-screens join run concurrently and
+        # split the memory budget, which wedged the stage in a spill loop
+        # (2026-08-28). Alone, each join gets the full cap — the pairwise
+        # one is the shape that ran for months.
+        pairs: dict[tuple[str, str], int] = {}
+        for w, lo, n in con.execute(
+            """
             SELECT w.cid, l.cid, count(*)
             FROM choice_rows w
             JOIN choice_rows l ON w.run_hash = l.run_hash AND w.act = l.act
               AND w.floor_idx = l.floor_idx AND w.pidx = l.pidx
             WHERE w.picked AND NOT l.picked AND w.cid <> l.cid
             GROUP BY 1, 2
-            UNION ALL
-            SELECT cid, '{SKIP_ID}', count(*)
-            FROM choice_rows WHERE picked GROUP BY 1
-            UNION ALL
-            SELECT '{SKIP_ID}', c.cid, count(*)
-            FROM choice_rows c
-            JOIN screens s ON c.run_hash = s.run_hash AND c.act = s.act
-              AND c.floor_idx = s.floor_idx AND c.pidx = s.pidx
-            WHERE NOT s.any_pick
-            GROUP BY 2
             """
-        ).fetchall()
-        return {(w, lo): n for w, lo, n in rows}
+        ).fetchall():
+            pairs[(w, lo)] = n
+        for cid, n in con.execute(
+            "SELECT cid, count(*) FROM choice_rows WHERE picked GROUP BY 1"
+        ).fetchall():
+            pairs[(cid, SKIP_ID)] = n
+        for cid, n in con.execute(
+            """
+            WITH skipped_screens AS (
+              SELECT run_hash, act, floor_idx, pidx
+              FROM choice_rows GROUP BY 1, 2, 3, 4
+              HAVING NOT bool_or(picked)
+            )
+            SELECT c.cid, count(*)
+            FROM choice_rows c
+            JOIN skipped_screens s ON c.run_hash = s.run_hash
+              AND c.act = s.act AND c.floor_idx = s.floor_idx
+              AND c.pidx = s.pidx
+            GROUP BY 1
+            """
+        ).fetchall():
+            pairs[(SKIP_ID, cid)] = n
+        return pairs
     finally:
         if own:
             con.close()
