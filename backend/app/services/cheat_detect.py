@@ -1,11 +1,14 @@
 """Submit-time cheated-run detection.
 
-Three high-confidence signals, all from real cheated submissions:
+Four high-confidence signals, all from real cheated submissions:
 stacked copies of one relic (a savegame editor artifact; 21x Infused Core),
 boss-teleport wins where an act's visited path is a floor or two instead
-of the ~16 a real act takes, and boss fights cleared in a single turn.
-Flagged runs are stored hidden with a reason so they never enter
-leaderboards or stats but stay inspectable in the admin console."""
+of the ~16 a real act takes, boss fights cleared in a single turn, and
+co-op-only cards in a single-player deck (the pools never offer them solo,
+so their presence is console tampering — found via a co-op card posting a
+"solo win rate" from 8 tampered runs, 2026-08-28). Flagged runs are stored
+hidden with a reason so they never enter leaderboards or stats but stay
+inspectable in the admin console."""
 
 from __future__ import annotations
 
@@ -55,6 +58,31 @@ def one_turn_bosses(data: dict) -> list[str]:
     return reasons
 
 
+def coop_cards_in_solo(data: dict, coop_ids=None) -> list[str]:
+    """Co-op-only cards in a single-player run's deck — impossible without
+    console tampering. The catalog set can be injected (tests, the rehide
+    backfill); submit-time loads it lazily and fails open when the catalog
+    can't be read, since a missed flag must never block a submission."""
+    players = data.get("players") or []
+    if len(players) != 1:
+        return []
+    if coop_ids is None:
+        try:
+            from .run_entity_stats import _multiplayer_card_ids
+
+            coop_ids = _multiplayer_card_ids()
+        except Exception:
+            return []
+    if not coop_ids:
+        return []
+    found: set[str] = set()
+    for c in players[0].get("deck") or []:
+        cid = _bare((c or {}).get("id", "")).upper()
+        if cid in coop_ids:
+            found.add(cid)
+    return [f"coop_card_solo:{cid}" for cid in sorted(found)]
+
+
 def detect_cheats(data: dict) -> list[str]:
     """Reasons this submission looks cheated; empty list = clean."""
     reasons: list[str] = []
@@ -96,4 +124,5 @@ def detect_cheats(data: dict) -> list[str]:
         ):
             reasons.append(f"missing_acts:{boss_acts}of3bosses")
     reasons.extend(one_turn_bosses(data))
+    reasons.extend(coop_cards_in_solo(data))
     return reasons
