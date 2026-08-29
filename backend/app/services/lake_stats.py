@@ -66,8 +66,11 @@ def _connect(build: bool = False):
         # The shared on-disk scratch keeps one temp dir per process: once any
         # connection has spilled (build.sql does), DuckDB refuses to set it
         # again — even to the same path. First connection wins; later ones
-        # inherit it, so a refusal here is fine.
+        # inherit it, so a refusal here is fine. The mkdir is load-bearing:
+        # the cycle start rmtree's the spill dir, and a standalone stage run
+        # that can't spill turns every over-cap sort into an OOM.
         try:
+            (LAKE_DIR / "tmp").mkdir(parents=True, exist_ok=True)
             con.execute(f"SET temp_directory='{LAKE_DIR}/tmp'")
         except Exception:
             pass
@@ -1053,17 +1056,18 @@ def build_entity_store() -> dict | None:
         )
         for eid, bucket, picks, wins in con.execute(
             f"""
-            WITH per_act AS (
-              SELECT run_hash, act, count(*) AS n
-              FROM read_parquet('{LAKE_DIR}/floors.parquet') GROUP BY 1, 2
-            ),
-            bounds AS (
-              -- Cumulative floors through each act. The old form computed
-              -- this with a row-level window over all of floors.parquet,
-              -- a full 50M+-row sort that spilled under the memory cap.
-              SELECT run_hash, act,
-                sum(n) OVER (PARTITION BY run_hash ORDER BY act) AS bound
-              FROM per_act
+            WITH bounds AS (
+              -- The proven form: a row-level window over floors.parquet that
+              -- spills under the cap. A cheaper GROUP BY variant OOM'd this
+              -- stage twice on 2026-08-28 (passes in isolation, dies on the
+              -- build connection's real buffer-pool state) — don't retry it
+              -- without reproducing that state.
+              SELECT f.run_hash, f.act, max(cum) AS bound FROM (
+                SELECT run_hash, act,
+                  count(*) OVER (PARTITION BY run_hash
+                    ORDER BY act, floor_idx) AS cum
+                FROM read_parquet('{LAKE_DIR}/floors.parquet')
+              ) f GROUP BY 1, 2
             ),
             picks AS (
               SELECT DISTINCT r.run_hash, r.relic,
