@@ -3625,6 +3625,14 @@ def get_entity_metrics_table(
             _skill_bmap = _ls.bracket_elo_for(bracket)
         except Exception:
             _skill_bmap = None
+    _char_fold: dict | None = None
+    if character and use_bracket:
+        try:
+            from . import lake_stats as _ls
+
+            _char_fold = _ls.entity_character_fold(entity_type, bracket)
+        except Exception:
+            _char_fold = None
 
     def _live_elo(agg: dict, eid: str, fallback) -> float | None:
         if _skill_bmap is not None:
@@ -3676,12 +3684,17 @@ def get_entity_metrics_table(
         # the zhs metrics page).
         if eid in solo_excluded_cards:
             continue
-        # Character view: one merged row per entity from the bracket's (or the
-        # top-level) by_character split. Score + Win% only — Elo/Pick%/per-act
+        # Character view: one merged row per entity. Bracketed views fold
+        # from the cube's character axis (the fossil bracket cells are gone
+        # per the fallback ruling); the all-runs view reads the live
+        # store-overlaid split. Score + Win% only — Elo/Pick%/per-act
         # aren't tracked per character — and no base/upg split either.
         if character:
-            src = (agg.get("brackets") or {}).get(bracket) if use_bracket else agg
-            cb = ((src or {}).get("by_character") or {}).get(character)
+            if use_bracket:
+                cb_pw = ((_char_fold or {}).get(eid) or {}).get(character)
+                cb = {"picks": cb_pw[0], "wins": cb_pw[1]} if cb_pw else None
+            else:
+                cb = (agg.get("by_character") or {}).get(character)
             if not cb or not cb.get("picks"):
                 continue
             rows.append(
@@ -3976,7 +3989,22 @@ def get_entity_stats(entity_type: str, entity_id: str) -> dict[str, Any] | None:
                 if entity_type == "cards":
                     bmap = lake_stats.bracket_elo_for(ck)
                     celo = bmap.get(eid) if bmap is not None else agg.get("elo")
-                prev = brackets.get(ck) or {}
+                try:
+                    cfold = lake_stats.entity_character_fold(entity_type, ck)
+                except Exception:
+                    cfold = None
+                chars = (cfold or {}).get(eid) or {}
+                by_char_rows = [
+                    {
+                        "character": ch2,
+                        "picks": pw2[0],
+                        "wins": pw2[1],
+                        "win_rate": round(pw2[1] / pw2[0] * 100, 1) if pw2[0] else 0.0,
+                    }
+                    for ch2, pw2 in sorted(
+                        chars.items(), key=lambda kv: kv[1][0], reverse=True
+                    )
+                ]
                 brackets[ck] = {
                     "picks": cp,
                     "wins": cw,
@@ -3990,7 +4018,7 @@ def get_entity_stats(entity_type: str, entity_id: str) -> dict[str, Any] | None:
                     ),
                     "total_runs": ctot,
                     "pick_rate": round(cp / ctot * 100, 1) if ctot else 0.0,
-                    "by_character": prev.get("by_character") or [],
+                    "by_character": by_char_rows,
                 }
         except Exception:
             logger.warning("lake bracket overlay failed", exc_info=True)

@@ -1393,23 +1393,34 @@ def build_entity_cube(con=None) -> dict:
             ).fetchall()
         }
         types: dict[str, dict] = {}
+        by_char: dict[str, dict] = {}
         for etype, table, col in (
             ("cards", "deck", "card"),
             ("relics", "relics", "relic"),
             ("potions", "potions", "potion"),
         ):
             per: dict[str, dict] = {}
-            for cell, eid, p, w in con.execute(
+            per_char: dict[str, dict] = {}
+            # One scan grouped by character yields both sections: the
+            # entity cells (summed over characters) and the character axis
+            # that gives bracketed by-character views a live source.
+            for cell, eid, ch, p, w in con.execute(
                 f"""
-                SELECT e.cell, m.{col}, count(*), count(*) FILTER (e.win)
+                SELECT e.cell, m.{col}, coalesce(m.character, ''),
+                  count(*), count(*) FILTER (e.win)
                 FROM read_parquet('{LAKE_DIR}/{table}.parquet') m
                 JOIN cells e ON m.run_hash = e.run_hash
                 WHERE m.{col} IS NOT NULL AND m.{col} <> ''
-                GROUP BY 1, 2
+                GROUP BY 1, 2, 3
                 """
             ).fetchall():
-                per.setdefault(cell, {})[eid] = [p, w]
+                cur = per.setdefault(cell, {}).setdefault(eid, [0, 0])
+                cur[0] += p
+                cur[1] += w
+                if ch:
+                    per_char.setdefault(cell, {}).setdefault(eid, {})[ch] = [p, w]
             types[etype] = per
+            by_char[etype] = per_char
         # Card-reward offer/pick counts per cell with the store's 3 act
         # buckets (floors.parquet acts are 0-based; least(act,2) = A1/A2/A3+),
         # so the metrics table's Pick% and per-act splits fold per bracket.
@@ -1442,6 +1453,7 @@ def build_entity_cube(con=None) -> dict:
     cube = {
         "runs": runs_cells,
         "entities": types,
+        "by_character": by_char,
         "offers": offers,
         "data_through": data_through,
     }
@@ -1499,6 +1511,43 @@ def entity_bracket_fold(entity_type: str, bracket: str) -> dict | None:
     if cached is not None and cached[0] == hit[0]:
         return cached[1]
     fold = _entity_bracket_fold_uncached(entity_type, bracket)
+    if len(_fold_cache) > 512:
+        _fold_cache.clear()
+    _fold_cache[key] = (hit[0], fold)
+    return fold
+
+
+def entity_character_fold(entity_type: str, bracket: str) -> dict | None:
+    """{eid: {CHARACTER: [picks, wins]}} folded from the cube's character
+    axis for one bracket, fold-cached like entity_bracket_fold. None until
+    a cube with the axis is published or for unfoldable brackets."""
+    hit = _entity_cube_with_mtime()
+    if hit is None:
+        return None
+    key = (f"char:{entity_type}", bracket)
+    cached = _fold_cache.get(key)
+    if cached is not None and cached[0] == hit[0]:
+        return cached[1]
+    parsed = _parse_lake_bracket(bracket)
+    per = ((hit[1].get("by_character") or {}).get(entity_type)) or None
+    fold: dict | None = None
+    if parsed is not None and per is not None:
+        mode, player, skill, version = parsed
+        fold = {}
+        for cell, ids in per.items():
+            if not _cell_matches(cell, mode, player, skill, version):
+                continue
+            for eid, chars in ids.items():
+                slot = fold.setdefault(eid, {})
+                for ch, pw in chars.items():
+                    cur = slot.get(ch)
+                    if cur is None:
+                        slot[ch] = [pw[0], pw[1]]
+                    else:
+                        cur[0] += pw[0]
+                        cur[1] += pw[1]
+        if not fold:
+            fold = None
     if len(_fold_cache) > 512:
         _fold_cache.clear()
     _fold_cache[key] = (hit[0], fold)
