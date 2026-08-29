@@ -3894,6 +3894,66 @@ def get_entity_stats(entity_type: str, entity_id: str) -> dict[str, Any] | None:
             "pick_rate": round(cp / ctot * 100, 1) if ctot else 0.0,
             "by_character": _shape_chars(cd.get("by_character") or {}),
         }
+    # Live overlay: every bracket cell the cube can fold replaces the
+    # frozen snapshot's number (the retired rebuilder left agg_brackets
+    # permanently stale — a card page showed a weeks-old 82.1% next to the
+    # live path's 89.5%, 2026-08-29). Character splits ride along from the
+    # fossil where present (the cube has no per-character cells), and the
+    # version keys come from the cube so new patches appear without a
+    # snapshot rebuild. Skill brackets read the store's per-bracket Elo.
+    if _LAKE_ENTITY_SERVE:
+        try:
+            from . import lake_stats
+
+            eid = key[1]
+            lake_versions = lake_stats.cube_versions()
+            lake_keys = [
+                "a10",
+                "wr30",
+                "wr50",
+                "wr75",
+                *_PLAYER_BRACKETS,
+                *_COMPOSITE_BRACKETS,
+                *lake_versions,
+                *(f"a10:{v}" for v in lake_versions),
+            ]
+            for ck in lake_keys:
+                fold = lake_stats.entity_bracket_fold(entity_type, ck)
+                if not fold:
+                    continue
+                pw = (fold.get("entries") or {}).get(eid)
+                if not pw or not pw[0]:
+                    # The live corpus says this entity has no picks in the
+                    # bracket; a lingering fossil cell would resurrect them.
+                    brackets.pop(ck, None)
+                    continue
+                cp, cw = int(pw[0]), int(pw[1])
+                base_p = sum(x[0] for x in fold["entries"].values())
+                base_w = sum(x[1] for x in fold["entries"].values())
+                cbase = (base_w / base_p) if base_p else _baseline_win_rate()
+                ctot = fold["total_runs"]
+                celo = None
+                if entity_type == "cards":
+                    bmap = lake_stats.bracket_elo_for(ck)
+                    celo = bmap.get(eid) if bmap is not None else agg.get("elo")
+                prev = brackets.get(ck) or {}
+                brackets[ck] = {
+                    "picks": cp,
+                    "wins": cw,
+                    "win_rate": round(cw / cp * 100, 1) if cp else 0.0,
+                    "elo": celo,
+                    "score": _compute_score(
+                        cw,
+                        cp,
+                        cbase,
+                        _bracket_prior(ctot) if entity_type == "relics" else None,
+                    ),
+                    "total_runs": ctot,
+                    "pick_rate": round(cp / ctot * 100, 1) if ctot else 0.0,
+                    "by_character": prev.get("by_character") or [],
+                }
+        except Exception:
+            logger.warning("lake bracket overlay failed", exc_info=True)
     return {
         "entity_type": entity_type,
         "entity_id": entity_id.upper(),
