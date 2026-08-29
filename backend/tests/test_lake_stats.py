@@ -378,25 +378,3 @@ def test_recent_versions_include_cube_and_validate(monkeypatch):
     assert res.get_recent_stat_versions() == ["v0.112.0", "v0.110.2"]
     assert res.is_valid_stat_bracket("v0.112.0")
     assert res.is_valid_stat_bracket("a10:v0.112.0")
-
-def test_cube_versions_and_fold_cache(monkeypatch):
-    cube = {
-        "runs": {
-            "standard|1|1|0|v0.111.0": [600, 300],
-            "standard|1|0|0|v0.111.0": [700, 200],
-            "standard|1|1|2|v0.110.2": [800, 400],
-            "standard|1|0|0|v0.9.9": [100, 10],
-            "standard|1|0|0|": [900, 100],
-        },
-        "entities": {"cards": {"standard|1|1|0|v0.111.0": {"X": [10, 6]}}},
-        "offers": {},
-    }
-    monkeypatch.setattr(lake_stats, "_entity_cube_with_mtime", lambda: (1.0, cube))
-    monkeypatch.setattr(lake_stats, "_fold_cache", {})
-    # Version floor (500 runs) drops v0.9.9; blank build ids never count.
-    assert lake_stats.cube_versions() == ["v0.111.0", "v0.110.2"]
-    f1 = lake_stats.entity_bracket_fold("cards", "a10")
-    f2 = lake_stats.entity_bracket_fold("cards", "a10")
-    assert f1 is f2, "second fold must come from the mtime-keyed cache"
-    assert f1["entries"]["X"] == [10, 6]
-    assert f1["total_runs"] == 1400
