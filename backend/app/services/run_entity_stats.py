@@ -3114,9 +3114,19 @@ def _pick_bracket_blob(blob: dict, bracket: str | None, empty_one):
 
 def get_community_stats(bracket: str | None = None) -> dict[str, Any]:
     """Community / fun stats (event decisions, deaths, headline numbers,
-    records) for one content bracket. Built in the same walk as the entity
-    cache and carried through the snapshot, so this is an O(1) read. Empty
-    shape before the first snapshot exists."""
+    records) for one content bracket. Lake-first: the ingest-built payload
+    and cube serve every foldable bracket, and the frozen snapshot blob
+    only backfills what the lake can't fold — the insights comparisons and
+    the player-Elo anchors read this function and were silently frozen
+    while only the router had the lake hook (2026-08-29 audit)."""
+    try:
+        from . import lake_stats
+
+        live = lake_stats.community_payload(bracket)
+        if live is not None:
+            return live
+    except Exception:
+        logger.warning("lake community payload failed", exc_info=True)
     _maybe_rebuild()
     from . import community_stats
 
@@ -3582,9 +3592,10 @@ def get_entity_metrics_table(
     # community blob, so those honestly return null instead of a guess.
     character_runs = character_wins = None
     if character:
-        from . import community_stats
-
-        blob = _pick_bracket_blob(_community_stats, bracket, community_stats.empty_one)
+        # Through the lake-first accessor: the raw fossil blob returned None
+        # character_runs for any bracket the frozen snapshot lacked, which
+        # blanked the insights relic-comparison panel (2026-08-29 audit).
+        blob = get_community_stats(bracket)
         for ch in blob.get("by_character") or []:
             if ch.get("id") == character.lower():
                 character_runs = ch.get("runs")
