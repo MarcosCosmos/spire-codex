@@ -119,7 +119,8 @@ ORDER BY 1, 2, 3
 COPY (
 SELECT r.run_hash, p.i AS player_idx,
   upper(split_part(rel.u.id, '.', -1)) AS relic,
-  rel.u.floor_added_to_deck AS floor_added
+  rel.u.floor_added_to_deck AS floor_added,
+  upper(split_part(p.u.character,'.',-1)) AS character
 FROM raw r,
   LATERAL (SELECT unnest(players) AS u, generate_subscripts(players,1) AS i) p,
   LATERAL (SELECT unnest(p.u.relics) AS u) rel
@@ -128,7 +129,8 @@ ORDER BY 1
 
 COPY (
 SELECT r.run_hash, p.i AS player_idx,
-  upper(split_part(pot.u.id, '.', -1)) AS potion
+  upper(split_part(pot.u.id, '.', -1)) AS potion,
+  upper(split_part(p.u.character,'.',-1)) AS character
 FROM raw r,
   LATERAL (SELECT unnest(players) AS u, generate_subscripts(players,1) AS i) p,
   LATERAL (SELECT unnest(p.u.potions) AS u) pot

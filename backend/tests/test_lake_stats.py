@@ -391,3 +391,32 @@ def test_get_community_stats_is_lake_first(monkeypatch):
     monkeypatch.setattr(res, "_maybe_rebuild", lambda: None)
     out = res.get_community_stats("solo")
     assert isinstance(out, dict) and out is not live
+
+
+def test_entity_character_fold(monkeypatch):
+    cube = {
+        "runs": {"standard|1|1|0|v1": [100, 50], "standard|2|1|0|v1": [40, 10]},
+        "entities": {},
+        "by_character": {
+            "cards": {
+                "standard|1|1|0|v1": {"X": {"IRONCLAD": [10, 6], "SILENT": [4, 1]}},
+                "standard|2|1|0|v1": {"X": {"IRONCLAD": [3, 2]}},
+            }
+        },
+        "offers": {},
+    }
+    monkeypatch.setattr(lake_stats, "_entity_cube_with_mtime", lambda: (2.0, cube))
+    monkeypatch.setattr(lake_stats, "_fold_cache", {})
+    fold = lake_stats.entity_character_fold("cards", "a10")
+    assert fold["X"]["IRONCLAD"] == [13, 8]
+    assert fold["X"]["SILENT"] == [4, 1]
+    solo = lake_stats.entity_character_fold("cards", "solo")
+    assert solo["X"]["IRONCLAD"] == [10, 6]
+    # Cube without the axis (pre-upgrade store) -> None, callers go empty.
+    monkeypatch.setattr(
+        lake_stats,
+        "_entity_cube_with_mtime",
+        lambda: (3.0, {"runs": {}, "entities": {}, "offers": {}}),
+    )
+    monkeypatch.setattr(lake_stats, "_fold_cache", {})
+    assert lake_stats.entity_character_fold("cards", "a10") is None
