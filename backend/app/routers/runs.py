@@ -1202,15 +1202,29 @@ def get_entity_scores(
     # Injected after the cache: the SKIP block is store-cached and all-runs,
     # so it doesn't need (or want) a per-bracket cache slot of its own.
     if include_skip and entity_type == "cards":
-        from ..services.lake_stats import skip_summary
+        from ..services.lake_stats import (
+            _SKILL_BRACKET_NAMES,
+            _parse_lake_bracket,
+            skip_summary,
+        )
 
         skip = skip_summary()
         if skip:
+            # Skill brackets get the skip rating from that bracket's own
+            # fit; other brackets (and stores predating per-bracket fits)
+            # serve the all-runs rating.
+            skip_elo = skip.get("elo")
+            parsed = _parse_lake_bracket(brk)
+            if parsed and parsed[2] is not None:
+                by_bracket = skip.get("elo_by_bracket") or {}
+                skip_elo = by_bracket.get(_SKILL_BRACKET_NAMES[parsed[2]], skip_elo)
             offered = skip.get("offered") or 0
             result = dict(result)
             result["SKIP"] = {
                 "score": None,
-                "elo": skip.get("elo"),
+                "elo": skip_elo,
+                "elo_source": skip.get("elo_source") or "fit",
+                "elo_by_bracket": skip.get("elo_by_bracket"),
                 "picks": skip.get("picked"),
                 "wins": None,
                 "win_rate": None,

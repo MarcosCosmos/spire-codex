@@ -175,23 +175,28 @@ def _write_skip_fixture_lake(tmp_path):
     import duckdb
 
     con = duckdb.connect()
+    # r1 is an A10 run (lands in tier a10=1, band 0 — no ranked username),
+    # r2 is A0 (tier 0,0); both carry the columns the cube's cells SQL reads.
     con.execute(
         f"""COPY (SELECT * FROM (VALUES
-        ('r1', 0, 'IRONCLAD'), ('r2', 0, 'IRONCLAD'))
-        t(run_hash, ascension, character))
+        ('r1', 10, 'IRONCLAD', NULL::VARCHAR, true, 'standard', 1, ''),
+        ('r2', 0, 'IRONCLAD', NULL::VARCHAR, false, 'standard', 1, ''))
+        t(run_hash, ascension, character, username, win, game_mode,
+          player_count, build_id))
         TO '{tmp_path}/runs.parquet' (FORMAT parquet)"""
     )
     con.execute(
         f"""COPY (SELECT 'x' AS run_hash WHERE false)
         TO '{tmp_path}/excluded.parquet' (FORMAT parquet)"""
     )
-    # Screen 1 (act 0): X picked over Y. Screen 2 (act 1): Y and Z, no pick.
+    # Screen 1 (act 0, r1): X picked over Y. Screen 2 (act 1, r2): Y and
+    # Z offered, nothing taken — a skip screen in the A0 tier.
     con.execute(
         f"""COPY (SELECT * FROM (VALUES
         ('r1', 0, 1, [{{'card_choices': [
             {{'was_picked': true, 'card': {{'id': 'CARD.X'}}}},
             {{'was_picked': false, 'card': {{'id': 'CARD.Y'}}}}]}}]),
-        ('r1', 1, 5, [{{'card_choices': [
+        ('r2', 1, 5, [{{'card_choices': [
             {{'was_picked': false, 'card': {{'id': 'CARD.Y'}}}},
             {{'was_picked': false, 'card': {{'id': 'CARD.Z'}}}}]}}]))
         t(run_hash, act, floor_idx, players))
@@ -257,3 +262,50 @@ def test_skip_summary_reads_the_store_block(monkeypatch, tmp_path):
         json.dumps({"entities": {"cards": {}}, "skip": block})
     )
     assert lake_stats.skip_summary() == block
+
+
+def test_reward_pairs_by_tier_and_cumulative_fold(monkeypatch, tmp_path):
+    from app.services import run_entity_stats as res
+
+    _write_skip_fixture_lake(tmp_path)
+    monkeypatch.setattr(lake_stats, "LAKE_DIR", tmp_path)
+    monkeypatch.setattr(res, "_excluded_card_ids", lambda: frozenset())
+    tiers = lake_stats.reward_pair_counts_by_tier()
+    # r1 (A10) took X over Y; r2 (A0) skipped Y and Z.
+    assert tiers[(1, 0)][("X", "Y")] == 1
+    assert tiers[(1, 0)][("X", lake_stats.SKIP_ID)] == 1
+    assert tiers[(0, 0)][(lake_stats.SKIP_ID, "Y")] == 1
+    assert tiers[(0, 0)][(lake_stats.SKIP_ID, "Z")] == 1
+    # All-runs fold = both tiers; the a10 fold drops the A0 skip screen.
+    all_pairs = lake_stats.fold_tier_pairs(tiers)
+    assert all_pairs[("X", "Y")] == 1
+    assert all_pairs[(lake_stats.SKIP_ID, "Z")] == 1
+    a10 = lake_stats.fold_tier_pairs(tiers, a10_only=True)
+    assert ("X", "Y") in a10
+    assert (lake_stats.SKIP_ID, "Z") not in a10
+    # wr50 = a10 cells with band >= 2; nothing here qualifies.
+    assert lake_stats.fold_tier_pairs(tiers, a10_only=True, min_band=2) == {}
+
+
+def test_bracket_elo_for(monkeypatch, tmp_path):
+    import json
+
+    monkeypatch.setattr(lake_stats, "LAKE_DIR", tmp_path)
+    monkeypatch.setattr(lake_stats, "_entity_store_cache", None)
+    (tmp_path / "entity_store.json").write_text(
+        json.dumps(
+            {
+                "entities": {"cards": {}},
+                "bracket_elo": {
+                    "a10": {"X": 1600.0},
+                    "wr50": {"X": 1700.0},
+                },
+            }
+        )
+    )
+    assert lake_stats.bracket_elo_for("a10") == {"X": 1600.0}
+    assert lake_stats.bracket_elo_for("solo:wr50") == {"X": 1700.0}
+    # No skill component, unknown key, or a store predating the maps -> None.
+    assert lake_stats.bracket_elo_for("standard") is None
+    assert lake_stats.bracket_elo_for("all") is None
+    assert lake_stats.bracket_elo_for("wr75") is None
