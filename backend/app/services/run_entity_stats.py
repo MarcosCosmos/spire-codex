@@ -3139,12 +3139,21 @@ def get_community_stats(bracket: str | None = None) -> dict[str, Any]:
 
 def get_charts_blob_stats() -> dict[str, Any]:
     """Blob-derived chart cells for /api/charts (per-floor damage, encounter
-    damage, death rooms). Same lifecycle as the community stats: built in the
-    walk, carried through the snapshot, O(1) to read."""
-    _maybe_rebuild()
+    damage, death rooms). Lake-built: current generation, else previous,
+    else the empty shape — per the fallback ruling the frozen snapshot copy
+    is never served (it powered charts that visibly ended at the freeze
+    date, 2026-08-29 audit)."""
+    try:
+        from . import charts_blob_lake
+
+        hit = charts_blob_lake.charts_blob_with_mtime()
+        if hit is not None:
+            return hit[1]
+    except Exception:
+        logger.warning("lake charts blob load failed", exc_info=True)
     from . import charts_stats
 
-    return _charts_blob_stats or charts_stats.empty()
+    return charts_stats.empty()
 
 
 def is_valid_stat_bracket(bracket: str | None) -> bool:
