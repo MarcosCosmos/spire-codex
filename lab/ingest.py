@@ -124,6 +124,11 @@ def main() -> None:
         lake_stats.build_entity_cube()
         print("entity cube stored", flush=True)
         _mark("entity_cube")
+        from app.services import charts_blob_lake
+
+        charts_blob_lake.build_charts_blob()
+        print("charts blob stored", flush=True)
+        _mark("charts_blob")
         lake_stats.cleanup_build_session()
     except Exception as e:
         print(f"community payload build failed: {e}", flush=True)
