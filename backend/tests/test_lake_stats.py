@@ -378,3 +378,16 @@ def test_recent_versions_include_cube_and_validate(monkeypatch):
     assert res.get_recent_stat_versions() == ["v0.112.0", "v0.110.2"]
     assert res.is_valid_stat_bracket("v0.112.0")
     assert res.is_valid_stat_bracket("a10:v0.112.0")
+
+
+def test_get_community_stats_is_lake_first(monkeypatch):
+    from app.services import run_entity_stats as res
+
+    live = {"total_runs": 42, "ascension_matrix": {"ironclad": {}}}
+    monkeypatch.setattr(lake_stats, "community_payload", lambda b=None: live)
+    assert res.get_community_stats("solo") is live
+    # Lake miss falls back to the snapshot blob (empty shape here).
+    monkeypatch.setattr(lake_stats, "community_payload", lambda b=None: None)
+    monkeypatch.setattr(res, "_maybe_rebuild", lambda: None)
+    out = res.get_community_stats("solo")
+    assert isinstance(out, dict) and out is not live
