@@ -3294,13 +3294,25 @@ def get_all_entity_scores(
             base_w = sum(pw[1] for pw in entries.values())
             c_baseline = (base_w / base_p) if base_p else _baseline_win_rate()
             prior = _bracket_prior(btot) if entity_type == "relics" else None
+            # Skill-ladder brackets get their own Elo fit (store bracket_elo
+            # maps); a card missing from the map is below the head-to-head
+            # floor in that slice and stays null. Mode/player/version parts
+            # don't refit — those fall back to the all-runs rating.
+            bmap = None
+            if entity_type == "cards":
+                try:
+                    bmap = lake_stats.bracket_elo_for(bracket)
+                except Exception:
+                    bmap = None
             cube_out: dict[str, dict[str, Any]] = {}
             for eid, (cpicks, cwins) in entries.items():
                 if eid in excluded or (official and eid not in official):
                     continue
                 cube_out[eid] = {
                     "score": _compute_score(cwins, cpicks, c_baseline, prior),
-                    "elo": (_cache.get((entity_type, eid)) or {}).get("elo"),
+                    "elo": bmap.get(eid)
+                    if bmap is not None
+                    else (_cache.get((entity_type, eid)) or {}).get("elo"),
                     "picks": cpicks,
                     "wins": cwins,
                     "win_rate": round(cwins / cpicks * 100, 1) if cpicks else 0.0,
@@ -3472,6 +3484,12 @@ def get_entity_metrics_table(
                 else frozenset()
             )
             official = _official_entity_ids(entity_type)
+            bmap = None
+            if entity_type == "cards":
+                try:
+                    bmap = lake_stats.bracket_elo_for(bracket)
+                except Exception:
+                    bmap = None
             z3 = [0] * _ACT_BUCKETS
             rows = []
             for eid, (picks, wins) in entries.items():
@@ -3491,7 +3509,9 @@ def get_entity_metrics_table(
                         "upgraded": False,
                         "score": score,
                         "tier": _score_to_tier(score),
-                        "elo": (_cache.get((entity_type, eid)) or {}).get("elo"),
+                        "elo": bmap.get(eid)
+                        if bmap is not None
+                        else (_cache.get((entity_type, eid)) or {}).get("elo"),
                         "win_rate": round(wins / picks * 100, 1) if picks else None,
                         "pick_rate": round(picked / offered * 100, 1)
                         if offered

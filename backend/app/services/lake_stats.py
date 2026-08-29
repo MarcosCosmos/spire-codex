@@ -732,9 +732,28 @@ def _ensure_choice_rows(con) -> None:
     )
 
 
-def reward_pair_counts(con=None) -> dict[tuple[str, str], int]:
-    """(picked, skipped) -> count over card-reward screens, mirroring the
-    walk: eligible runs only, CARD-namespaced ids, curses/status excluded.
+def _ensure_run_tiers(con) -> None:
+    """Skill-ladder tier (A10 flag + winrate band) per eligible run, from
+    the same user-winrate cells the community cube uses — so per-bracket
+    Elo agrees with the cube's pick/win slices on who belongs to a
+    bracket. Real table in the scratch db, like choice_rows."""
+    con.execute(_CELLS_SQL.format(lake=LAKE_DIR))
+    con.execute(
+        "CREATE TABLE IF NOT EXISTS run_tiers AS "
+        "SELECT run_hash, split_part(cell, '|', 3)::INT AS a10, "
+        "split_part(cell, '|', 4)::INT AS band FROM cells"
+    )
+
+
+def reward_pair_counts_by_tier(
+    con=None,
+) -> dict[tuple[int, int], dict[tuple[str, str], int]]:
+    """(a10, band) -> {(picked, skipped) -> count} over card-reward
+    screens, mirroring the walk: eligible runs only, CARD-namespaced ids,
+    curses/status excluded. Ladder brackets fold cumulatively from the
+    cells (a10 = every a10 cell, wr50 = a10 cells with band >= 2), and the
+    all-runs pairs are the sum over everything — one grouped extraction
+    serves every fit.
 
     SKIP is a rated competitor: every screen implicitly offers "take
     nothing". A picked card beats SKIP; on a screen where nothing was
@@ -746,47 +765,82 @@ def reward_pair_counts(con=None) -> dict[tuple[str, str], int]:
         con = _connect(build=True)
     try:
         _ensure_choice_rows(con)
+        _ensure_run_tiers(con)
         # Three sequential statements, NOT one UNION ALL: bundled, the
         # pairwise self-join and the skip-screens join run concurrently and
         # split the memory budget, which wedged the stage in a spill loop
         # (2026-08-28). Alone, each join gets the full cap — the pairwise
         # one is the shape that ran for months.
-        pairs: dict[tuple[str, str], int] = {}
-        for w, lo, n in con.execute(
+        tiers: dict[tuple[int, int], dict[tuple[str, str], int]] = {}
+
+        def cell(a10, band):
+            return tiers.setdefault((int(a10), int(band)), {})
+
+        for a10, band, w, lo, n in con.execute(
             """
-            SELECT w.cid, l.cid, count(*)
+            SELECT t.a10, t.band, w.cid, l.cid, count(*)
             FROM choice_rows w
             JOIN choice_rows l ON w.run_hash = l.run_hash AND w.act = l.act
               AND w.floor_idx = l.floor_idx AND w.pidx = l.pidx
+            JOIN run_tiers t ON t.run_hash = w.run_hash
             WHERE w.picked AND NOT l.picked AND w.cid <> l.cid
-            GROUP BY 1, 2
+            GROUP BY 1, 2, 3, 4
             """
         ).fetchall():
-            pairs[(w, lo)] = n
-        for cid, n in con.execute(
-            "SELECT cid, count(*) FROM choice_rows WHERE picked GROUP BY 1"
+            cell(a10, band)[(w, lo)] = n
+        for a10, band, cid, n in con.execute(
+            """
+            SELECT t.a10, t.band, c.cid, count(*)
+            FROM choice_rows c JOIN run_tiers t ON t.run_hash = c.run_hash
+            WHERE c.picked GROUP BY 1, 2, 3
+            """
         ).fetchall():
-            pairs[(cid, SKIP_ID)] = n
-        for cid, n in con.execute(
+            cell(a10, band)[(cid, SKIP_ID)] = n
+        for a10, band, cid, n in con.execute(
             """
             WITH skipped_screens AS (
               SELECT run_hash, act, floor_idx, pidx
               FROM choice_rows GROUP BY 1, 2, 3, 4
               HAVING NOT bool_or(picked)
             )
-            SELECT c.cid, count(*)
+            SELECT t.a10, t.band, c.cid, count(*)
             FROM choice_rows c
             JOIN skipped_screens s ON c.run_hash = s.run_hash
               AND c.act = s.act AND c.floor_idx = s.floor_idx
               AND c.pidx = s.pidx
-            GROUP BY 1
+            JOIN run_tiers t ON t.run_hash = c.run_hash
+            GROUP BY 1, 2, 3
             """
         ).fetchall():
-            pairs[(SKIP_ID, cid)] = n
-        return pairs
+            cell(a10, band)[(SKIP_ID, cid)] = n
+        return tiers
     finally:
         if own:
             con.close()
+
+
+def fold_tier_pairs(
+    tiers: dict[tuple[int, int], dict[tuple[str, str], int]],
+    a10_only: bool = False,
+    min_band: int = 0,
+) -> dict[tuple[str, str], int]:
+    """Cumulative fold of tiered pair counts: the all-runs pairs with the
+    defaults, or a skill-ladder bracket's subset."""
+    out: dict[tuple[str, str], int] = {}
+    for (a10, band), d in tiers.items():
+        if a10_only and a10 != 1:
+            continue
+        if band < min_band:
+            continue
+        for k, n in d.items():
+            out[k] = out.get(k, 0) + n
+    return out
+
+
+def reward_pair_counts(con=None) -> dict[tuple[str, str], int]:
+    """All-runs (picked, skipped) pair counts — the tiered extraction
+    summed over every cell."""
+    return fold_tier_pairs(reward_pair_counts_by_tier(con))
 
 
 def skip_screen_counts(con=None) -> dict:
@@ -1125,25 +1179,31 @@ def build_entity_store() -> dict | None:
     finally:
         con.close()
 
-    def _prior_store_elo() -> tuple[dict, dict, dict | None, dict]:
-        """(base, upgrade, skip, strengths) from the store currently on
-        disk — the previous generation's, since this build hasn't published
-        yet. Strengths are the raw Bradley-Terry fit values, kept for the
-        next cycle's warm start."""
+    def _prior_store_elo() -> tuple[dict, dict, dict | None, dict, dict]:
+        """(base, upgrade, skip, strengths, bracket_elo) from the store
+        currently on disk — the previous generation's, since this build
+        hasn't published yet. Strengths are the raw Bradley-Terry fit
+        values, kept for the next cycle's warm start."""
         import json as _json
 
         try:
             prior = _json.loads((LAKE_DIR / _ENTITY_STORE_NAME).read_text())
             cards = prior["entities"]["cards"]
         except Exception:
-            return {}, {}, None, {}
+            return {}, {}, None, {}, {}
         base = {k: v["elo"] for k, v in cards.items() if v.get("elo") is not None}
         upg = {
             k: v["upg"]["elo"]
             for k, v in cards.items()
             if v.get("upg") and v["upg"].get("elo") is not None
         }
-        return base, upg, prior.get("skip"), prior.get("elo_strengths") or {}
+        return (
+            base,
+            upg,
+            prior.get("skip"),
+            prior.get("elo_strengths") or {},
+            prior.get("bracket_elo") or {},
+        )
 
     # Each Elo pair extraction gets its own fresh connection: two hours of
     # session state must not sit under the heaviest joins in the build. A
@@ -1157,37 +1217,61 @@ def build_entity_store() -> dict | None:
     # choice_rows materialization happens once, not per builder; the prior
     # store's strengths warm-start both fits (a near-identical ladder
     # converges in a few MM iterations instead of hundreds).
-    _, _, _, prior_strengths = _prior_store_elo()
+    _, _, _, prior_strengths, _ = _prior_store_elo()
     strengths_out: dict[str, dict] = {}
     ccon = _connect(build=True)
     try:
         try:
             skip_block: dict | None = dict(skip_screen_counts(ccon), elo=None)
         except Exception:
-            _, _, skip_block, _ = _prior_store_elo()
+            _, _, skip_block, _, _ = _prior_store_elo()
             logger.warning(
                 "skip screen counts failed; carried the prior store's skip block",
                 exc_info=True,
             )
+        bracket_elo: dict[str, dict] = {}
         try:
+            tiers = reward_pair_counts_by_tier(ccon)
             card_elo, card_p = res._compute_codex_elo(
-                reward_pair_counts(ccon), warm=prior_strengths.get("reward")
+                fold_tier_pairs(tiers), warm=prior_strengths.get("reward")
             )
             strengths_out["reward"] = {k: round(v, 5) for k, v in card_p.items()}
             for eid, elo in card_elo.items():
                 if eid in entities["cards"]:
                     entities["cards"][eid]["elo"] = elo
+            # Skill-ladder refits from the same extraction, warm-started
+            # from the fresh all-runs strengths so each converges in a few
+            # iterations. Thin cards drop out per bracket (the min-games
+            # floor), which serving reads as "no Elo in that slice".
+            skip_by_bracket: dict[str, float | None] = {}
+            for name, min_band in (
+                ("a10", 0),
+                ("wr30", 1),
+                ("wr50", 2),
+                ("wr75", 3),
+            ):
+                be, _p = res._compute_codex_elo(
+                    fold_tier_pairs(tiers, a10_only=True, min_band=min_band),
+                    warm=card_p,
+                )
+                skip_by_bracket[name] = be.pop(SKIP_ID, None)
+                bracket_elo[name] = be
             if skip_block is not None:
                 skip_block["elo"] = card_elo.get(SKIP_ID)
+                skip_block["elo_by_bracket"] = skip_by_bracket
+                skip_block["elo_source"] = "fit"
         except Exception:
-            prior_base, _, prior_skip, _ = _prior_store_elo()
+            prior_base, _, prior_skip, _, prior_bracket = _prior_store_elo()
             if prior_strengths.get("reward"):
                 strengths_out["reward"] = prior_strengths["reward"]
             for eid, elo in prior_base.items():
                 if eid in entities["cards"]:
                     entities["cards"][eid]["elo"] = elo
+            bracket_elo = prior_bracket
             if skip_block is not None and prior_skip:
                 skip_block["elo"] = prior_skip.get("elo")
+                skip_block["elo_by_bracket"] = prior_skip.get("elo_by_bracket")
+                skip_block["elo_source"] = "carried"
             logger.warning(
                 "reward Elo fit failed; carried %d ratings forward from the prior store",
                 len(prior_base),
@@ -1211,7 +1295,7 @@ def build_entity_store() -> dict | None:
             if upg is not None:
                 upg["elo"] = elo
     except Exception:
-        _, prior_upg, _, _ = _prior_store_elo()
+        _, prior_upg, _, _, _ = _prior_store_elo()
         if prior_strengths.get("upgrade"):
             strengths_out["upgrade"] = prior_strengths["upgrade"]
         for eid, elo in prior_upg.items():
@@ -1236,6 +1320,7 @@ def build_entity_store() -> dict | None:
         "baselines": baselines,
         "skip": skip_block,
         "elo_strengths": strengths_out,
+        "bracket_elo": bracket_elo,
         "data_through": data_through,
     }
     import json as _json
@@ -1670,6 +1755,26 @@ def skip_summary() -> dict | None:
         return None
     blk = hit[1].get("skip")
     return dict(blk) if blk else None
+
+
+_SKILL_BRACKET_NAMES = {0: "a10", 1: "wr30", 2: "wr50", 3: "wr75"}
+
+
+def bracket_elo_for(bracket: str | None) -> dict | None:
+    """Per-bracket card Elo map for the skill component of a lake bracket
+    (a10/wr30/wr50/wr75, alone or inside a composite), or None when the
+    bracket has no skill part or the store predates per-bracket fits —
+    callers then fall back to the all-runs Elo. A card absent from a
+    returned map is below the head-to-head floor in that slice."""
+    parsed = _parse_lake_bracket(bracket)
+    if not parsed or parsed[2] is None:
+        return None
+    hit = entity_store_with_mtime()
+    if not hit:
+        return None
+    return (hit[1].get("bracket_elo") or {}).get(
+        _SKILL_BRACKET_NAMES[parsed[2]]
+    ) or None
 
 
 # ── Stats-summary core: the homepage numbers, from the lake ──────────────────
