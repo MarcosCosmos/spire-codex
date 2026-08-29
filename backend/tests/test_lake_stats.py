@@ -420,3 +420,38 @@ def test_entity_character_fold(monkeypatch):
     )
     monkeypatch.setattr(lake_stats, "_fold_cache", {})
     assert lake_stats.entity_character_fold("cards", "a10") is None
+
+
+def test_lake_metric_history_appends(monkeypatch):
+    from app.services import run_entity_stats as res
+
+    monkeypatch.setattr(
+        lake_stats,
+        "entity_store_with_mtime",
+        lambda: (1.0, {"entities": {"cards": {"X": {}}}}),
+    )
+    monkeypatch.setattr(res, "_maybe_overlay_lake_entities", lambda: None)
+    monkeypatch.setattr(
+        res,
+        "get_entity_stats",
+        lambda t, e: {
+            "brackets": {
+                "all": {"score": 80, "elo": 1700.0},
+                "wr75": {"score": 90, "elo": None},
+                "empty": {"score": None, "elo": None},
+            }
+        },
+    )
+
+    captured = {}
+
+    class FakeColl:
+        def bulk_write(self, ops, ordered=False):
+            captured["ops"] = ops
+
+    monkeypatch.setattr(res, "_history_coll", lambda: FakeColl())
+    n = res.archive_entity_metric_history_from_lake()
+    assert n == 2
+    ids = sorted(op._filter["_id"] for op in captured["ops"])
+    assert ids[0].startswith("cards:X:all:")
+    assert ids[1].startswith("cards:X:wr75:")

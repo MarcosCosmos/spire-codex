@@ -129,6 +129,13 @@ def main() -> None:
         charts_blob_lake.build_charts_blob()
         print("charts blob stored", flush=True)
         _mark("charts_blob")
+        from app.services.run_entity_stats import (
+            archive_entity_metric_history_from_lake,
+        )
+
+        n_hist = archive_entity_metric_history_from_lake()
+        print(f"metric history archived ({n_hist} rows)", flush=True)
+        _mark("metric_history")
         lake_stats.cleanup_build_session()
     except Exception as e:
         print(f"community payload build failed: {e}", flush=True)
