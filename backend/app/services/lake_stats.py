@@ -1484,7 +1484,50 @@ def _entity_cube_with_mtime() -> tuple[float, dict] | None:
         return None
 
 
+_fold_cache: dict[tuple[str, str], tuple[float, dict | None]] = {}
+
+
 def entity_bracket_fold(entity_type: str, bracket: str) -> dict | None:
+    """Cached fold: the entity detail page reads ~20 brackets per request
+    and every entity shares the same folds, so cache per (type, bracket)
+    keyed on the cube file's mtime."""
+    hit = _entity_cube_with_mtime()
+    if hit is None:
+        return None
+    key = (entity_type, bracket)
+    cached = _fold_cache.get(key)
+    if cached is not None and cached[0] == hit[0]:
+        return cached[1]
+    fold = _entity_bracket_fold_uncached(entity_type, bracket)
+    if len(_fold_cache) > 512:
+        _fold_cache.clear()
+    _fold_cache[key] = (hit[0], fold)
+    return fold
+
+
+def cube_versions(min_runs: int = 500, limit: int = 8) -> list[str]:
+    """Game versions present in the entity cube with at least min_runs
+    eligible runs, newest first. The detail page's version picker reads
+    this now that the snapshot's version list is frozen."""
+    hit = _entity_cube_with_mtime()
+    if hit is None:
+        return []
+    counts: dict[str, int] = {}
+    for cell, tw in (hit[1].get("runs") or {}).items():
+        parts = cell.split("|")
+        ver = parts[4] if len(parts) > 4 else ""
+        if ver.startswith("v"):
+            counts[ver] = counts.get(ver, 0) + tw[0]
+    import re as _re
+
+    def _natural(v: str) -> list[int]:
+        return [int(x) for x in _re.findall(r"\d+", v)]
+
+    vs = [v for v, n in counts.items() if n >= min_runs]
+    return sorted(vs, key=_natural, reverse=True)[:limit]
+
+
+def _entity_bracket_fold_uncached(entity_type: str, bracket: str) -> dict | None:
     """Fold the entity cube for one bracket (any mode x players x skill x
     version combination): {"entries": {id: [picks, wins]}, "total_runs",
     "total_wins", "data_through"}. None for unknown brackets or a missing
