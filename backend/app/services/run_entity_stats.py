@@ -2184,6 +2184,54 @@ def _archive_metric_history() -> None:
         logger.warning("entity metric history archive failed: %s", e)
 
 
+def archive_entity_metric_history_from_lake() -> int:
+    """Ingest-stage revival of the daily score/Elo history appends: the old
+    writer only ran from the retired snapshot rebuilder, so the sparklines
+    froze. get_entity_stats now serves lake-built brackets (overlay + cube
+    folds), so walking the store's entities through it writes the same doc
+    shape the charts already read. Returns rows written."""
+    from pymongo import UpdateOne
+
+    from . import lake_stats
+
+    loaded = lake_stats.entity_store_with_mtime()
+    if not loaded:
+        return 0
+    _maybe_overlay_lake_entities()
+    day = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    day_key = day.strftime("%Y-%m-%d")
+    ops = []
+    for etype, entries in (loaded[1].get("entities") or {}).items():
+        for eid in entries:
+            stats = get_entity_stats(etype, eid)
+            if not stats:
+                continue
+            for bkey, bd in (stats.get("brackets") or {}).items():
+                score, elo = bd.get("score"), bd.get("elo")
+                if score is None and elo is None:
+                    continue
+                ops.append(
+                    UpdateOne(
+                        {"_id": f"{etype}:{eid}:{bkey}:{day_key}"},
+                        {
+                            "$set": {
+                                "entity_type": etype,
+                                "entity_id": eid,
+                                "bracket": bkey,
+                                "date": day,
+                                "score": score,
+                                "elo": elo,
+                            }
+                        },
+                        upsert=True,
+                    )
+                )
+    if ops:
+        _history_coll().bulk_write(ops, ordered=False)
+    logger.info("lake metric history archived: %d rows", len(ops))
+    return len(ops)
+
+
 def get_entity_metric_history(
     entity_type: str, entity_id: str, bracket: str = "all"
 ) -> list[dict]:
