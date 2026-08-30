@@ -1,6 +1,12 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  type ReactNode,
+} from "react";
 import { usePathname } from "next/navigation";
 
 export const LANGUAGES: { code: string; name: string }[] = [
@@ -21,7 +27,7 @@ export const LANGUAGES: { code: string; name: string }[] = [
   { code: "zht", name: "繁體中文" },
 ];
 
-const LANG_CODES = new Set(LANGUAGES.map((l) => l.code).filter((c) => c !== "eng"));
+const LANG_CODES = new Set(LANGUAGES.map((l) => l.code));
 const STORAGE_KEY = "spire-codex-lang";
 
 interface LanguageContextType {
@@ -81,16 +87,12 @@ export function LanguageProvider({
     const first = pathname.split("/")[1];
     if (first && LANG_CODES.has(first)) {
       if (first !== lang) {
+        console.log(
+          "setting language on URL change in language provider because we got a valid language",
+          lang,
+        );
         setLangState(first);
         localStorage.setItem(STORAGE_KEY, first);
-      }
-    } else if (lang !== "eng") {
-      // On English pages, only reset if we navigated away from a lang URL
-      // (don't reset if user manually set lang via selector)
-      const urlHadLang = getLangFromUrl();
-      if (urlHadLang === null && pathname === "/" || !pathname.startsWith(`/${lang}`)) {
-        setLangState("eng");
-        localStorage.setItem(STORAGE_KEY, "eng");
       }
     }
   }, [pathname]);

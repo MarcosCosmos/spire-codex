@@ -22,7 +22,11 @@ export async function generateStaticParams() {
   return SUPPORTED_LANGS.map((lang) => ({ lang }));
 }
 
-export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ lang: string }>;
+}): Promise<Metadata> {
   const { lang } = await params;
   if (!isValidLang(lang)) return {};
 
@@ -36,8 +40,8 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
 
   // Build hreflang alternates: all other localized versions + English
   const languages: Record<string, string> = {
-    "en": `${SITE_URL}/`,
     "x-default": `${SITE_URL}/`,
+    "canonical": `${SITE_URL}/`,
   };
   for (const code of SUPPORTED_LANGS) {
     languages[LANG_HREFLANG[code]] = `${SITE_URL}/${code}`;

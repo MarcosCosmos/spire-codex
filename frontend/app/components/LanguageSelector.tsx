@@ -39,10 +39,10 @@ function switchLangInPath(pathname: string, newLang: string): string {
     parts.shift();
   }
 
-  // Add new lang prefix (unless English)
-  if (newLang === "eng") {
-    return "/" + parts.join("/") || "/";
-  }
+  // // Add new lang prefix (unless English)
+  // if (newLang === "eng") {
+  //   return "/" + parts.join("/") || "/";
+  // }
   return `/${newLang}/${parts.join("/")}`;
 }
 
