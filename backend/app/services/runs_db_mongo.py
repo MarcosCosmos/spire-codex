@@ -466,6 +466,21 @@ def submit_run(
         except Exception:
             # Linking is best-effort; a lookup failure must not drop the run.
             pass
+    if linked_user_id is None and username:
+        # Username-only uploads (Compendium ?username=, mismatched Steam ids)
+        # used to stay invisible on the profile until the next sign-in
+        # backfill hoovered them (Dobo, 2026-08-30: 304 runs, 0 linked).
+        # The sign-in backfill already links by username, so linking the
+        # same way at submit changes when, not whether.
+        try:
+            from .users_db import get_user_by_username
+
+            owner = get_user_by_username(username)
+            if owner:
+                linked_user_id = owner["_id"]
+                linked_username = owner.get("username")
+        except Exception:
+            pass
 
     missing: list[str] = []
     if not data.get("players"):
@@ -1181,6 +1196,15 @@ def claim_runs(username: str, hashes: list[str]) -> dict:
 
             owner = get_user_by_username(username)
             if owner:
+                from bson import ObjectId
+
+                # The profile walk matches user_id, not username, so a claim
+                # must link both or the runs stay profile-invisible until
+                # the next sign-in backfill.
+                coll.update_many(
+                    {"_id": {"$in": unclaimed}, "user_id": None},
+                    {"$set": {"user_id": ObjectId(str(owner["_id"]))}},
+                )
                 invalidate_user_insights(str(owner["_id"]))
                 note_profile_activity(str(owner["_id"]), username)
         except Exception:
