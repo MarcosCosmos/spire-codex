@@ -157,7 +157,21 @@ WHERE r.ascension BETWEEN 0 AND 10
 
 _PFLOORS_SQL = """
 CREATE OR REPLACE TEMP VIEW pfloors AS
-SELECT f.run_hash, f.act, f.floor_idx, ps.u AS p,
+-- p keeps ONLY the struct fields the payload queries read: carrying the
+-- whole player struct (card ids, upgraded_cards, ...) made every scan and
+-- the hp window sort pay for bytes nobody consumed. card_choices collapses
+-- to its was_picked bools (picks_list) -- the one field anything reads.
+SELECT f.run_hash, f.act, f.floor_idx,
+  struct_pack(
+    player_id := ps.u.player_id,
+    current_hp := ps.u.current_hp,
+    max_hp := ps.u.max_hp,
+    event_choices := ps.u.event_choices,
+    rest_site_choices := ps.u.rest_site_choices,
+    ancient_choice := ps.u.ancient_choice,
+    cards_removed := ps.u.cards_removed
+  ) AS p,
+  [coalesce(c.was_picked, false) FOR c IN ps.u.card_choices] AS picks_list,
   e.win, lower(e.character) AS run_char, e.cell,
   len(list_filter(f.room_models, m -> m LIKE '%THIEVING_HOPPER%')) > 0 AS hopper_floor
 FROM read_parquet('{lake}/floors.parquet') f
@@ -171,6 +185,22 @@ SELECT run_hash, player_id, lower(character) AS character
 FROM read_parquet('{lake}/players.parquet')
 WHERE player_id IS NOT NULL AND character <> ''
 """
+
+
+def _cells_table_exists(con) -> bool:
+    return bool(
+        con.execute(
+            "SELECT count(*) FROM duckdb_tables() WHERE table_name = 'cells'"
+        ).fetchone()[0]
+    )
+
+
+def _ensure_cells(con, lake: str) -> None:
+    """The cells view, unless the build session already materialized it as
+    a real table -- every builder re-expanded the view (runs scan + the
+    user_wr aggregation) per query before this."""
+    if not _cells_table_exists(con):
+        con.execute(_CELLS_SQL.format(lake=lake))
 
 
 def _pfloors_table_exists(con) -> bool:
@@ -187,7 +217,7 @@ def _prepare_sources(con, lake: str) -> None:
     session prepared by the ingest materializes it once and every later
     connection reuses it instead of re-unnesting 45M player-floor rows."""
     con.execute(_ELIGIBLE_SQL.format(lake=lake))
-    con.execute(_CELLS_SQL.format(lake=lake))
+    _ensure_cells(con, lake)
     con.execute(_PID_CHAR_SQL.format(lake=lake))
     if not _pfloors_table_exists(con):
         con.execute(_PFLOORS_SQL.format(lake=lake))
@@ -200,7 +230,11 @@ def prepare_build_session():
     con = _connect(build=True)
     lake = str(LAKE_DIR)
     con.execute(_ELIGIBLE_SQL.format(lake=lake))
+    con.execute("DROP TABLE IF EXISTS cells")
     con.execute(_CELLS_SQL.format(lake=lake))
+    con.execute("CREATE TABLE cells_mat AS SELECT * FROM cells")
+    con.execute("DROP VIEW cells")
+    con.execute("ALTER TABLE cells_mat RENAME TO cells")
     con.execute("DROP TABLE IF EXISTS pfloors")
     body = _PFLOORS_SQL.format(lake=lake).replace(
         "CREATE OR REPLACE TEMP VIEW pfloors AS", "CREATE TABLE pfloors AS", 1
@@ -217,6 +251,7 @@ def cleanup_build_session(con=None) -> None:
         con = _connect(build=True)
     try:
         con.execute("DROP TABLE IF EXISTS pfloors")
+        con.execute("DROP TABLE IF EXISTS cells")
     finally:
         if own:
             con.close()
@@ -397,7 +432,7 @@ def build_and_store_payload() -> dict | None:
         "cells": {k: _acc_to_json(a) for k, a in cube.items()},
     }
     tmp = LAKE_DIR / (_CUBE_PATH_NAME + ".tmp")
-    with gzip.open(tmp, "wt", encoding="utf-8") as f:
+    with gzip.open(tmp, "wt", encoding="utf-8", compresslevel=6) as f:
         json.dump(cube_doc, f, separators=(",", ":"))
     tmp.replace(LAKE_DIR / _CUBE_PATH_NAME)
     logger.info(
@@ -643,9 +678,8 @@ def _build_community_cube() -> dict[str, dict]:
                 acc["char_removes"][ps_char] = acc["char_removes"].get(ps_char, 0) + n
 
         for cell, screens, skips in con.execute(
-            "SELECT cell, count(*), count(*) FILTER (NOT list_bool_or("
-            "[coalesce(c.was_picked, false) FOR c IN (p).card_choices]))"
-            " FROM pfloors WHERE len((p).card_choices) > 0 GROUP BY 1"
+            "SELECT cell, count(*), count(*) FILTER (NOT list_bool_or(picks_list))"
+            " FROM pfloors WHERE len(picks_list) > 0 GROUP BY 1"
         ).fetchall():
             acc = acc_for(cell)
             acc["reward_screens"] = screens
@@ -737,7 +771,7 @@ def _ensure_run_tiers(con) -> None:
     the same user-winrate cells the community cube uses — so per-bracket
     Elo agrees with the cube's pick/win slices on who belongs to a
     bracket. Real table in the scratch db, like choice_rows."""
-    con.execute(_CELLS_SQL.format(lake=LAKE_DIR))
+    _ensure_cells(con, str(LAKE_DIR))
     con.execute(
         "CREATE TABLE IF NOT EXISTS run_tiers AS "
         "SELECT run_hash, split_part(cell, '|', 3)::INT AS a10, "
