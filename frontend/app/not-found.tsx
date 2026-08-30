@@ -38,7 +38,6 @@ export default function NotFound() {
       {/* metadata.other doesn't emit <meta http-equiv> correctly in
           every Next 16 build path, explicit tag here as a belt &
           braces. */}
-      <meta httpEquiv="refresh" content="3;url=/" />
       <link rel="canonical" href={SITE_URL} />
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center">
@@ -58,25 +57,46 @@ export default function NotFound() {
           <div className="mt-10 text-sm text-[var(--text-muted)] space-y-2">
             <p>Or browse the database:</p>
             <p className="flex flex-wrap gap-3 justify-center">
-              <Link href="/cards" className="hover:text-[var(--accent-gold)] underline">
+              <Link
+                href="/cards"
+                className="hover:text-[var(--accent-gold)] underline"
+              >
                 Cards
               </Link>
-              <Link href="/relics" className="hover:text-[var(--accent-gold)] underline">
+              <Link
+                href="/relics"
+                className="hover:text-[var(--accent-gold)] underline"
+              >
                 Relics
               </Link>
-              <Link href="/monsters" className="hover:text-[var(--accent-gold)] underline">
+              <Link
+                href="/monsters"
+                className="hover:text-[var(--accent-gold)] underline"
+              >
                 Monsters
               </Link>
-              <Link href="/potions" className="hover:text-[var(--accent-gold)] underline">
+              <Link
+                href="/potions"
+                className="hover:text-[var(--accent-gold)] underline"
+              >
                 Potions
               </Link>
-              <Link href="/characters" className="hover:text-[var(--accent-gold)] underline">
+              <Link
+                href="/characters"
+                className="hover:text-[var(--accent-gold)] underline"
+              >
                 Characters
               </Link>
-              <Link href="/guides" className="hover:text-[var(--accent-gold)] underline">
+              <Link
+                href="/guides"
+                className="hover:text-[var(--accent-gold)] underline"
+              >
                 Guides
               </Link>
-              <Link href="/mechanics" className="hover:text-[var(--accent-gold)] underline">
+              <Link
+                href="/mechanics"
+                className="hover:text-[var(--accent-gold)] underline"
+              >
                 Mechanics
               </Link>
             </p>

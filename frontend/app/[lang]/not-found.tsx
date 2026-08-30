@@ -27,7 +27,6 @@ export const metadata: Metadata = {
 export default function LangNotFound() {
   return (
     <>
-      <meta httpEquiv="refresh" content="3;url=/" />
       <link rel="canonical" href={SITE_URL} />
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center">
