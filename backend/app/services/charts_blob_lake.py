@@ -183,11 +183,17 @@ def build_charts_blob() -> dict | None:
     acc = charts_stats.new_accumulator(versions)
     bracket_cache: dict[str, list[str]] = {}
 
-    fcon = _connect(build=False)
-    dcon = _connect(build=False)
-    rcon = _connect(build=False)
-    pcon = _connect(build=False)
+    # Cursors on the same shared build instance (4.5GB, spill-enabled).
+    # Build connections set preserve_insertion_order=false, which lets a
+    # parquet scan return blocks out of file order — the merge relies on
+    # each run's rows being contiguous, so restore it for the streams; the
+    # next stage's connect flips it back.
+    fcon = _connect(build=True)
+    dcon = _connect(build=True)
+    rcon = _connect(build=True)
+    pcon = _connect(build=True)
     try:
+        fcon.execute("SET preserve_insertion_order=true")
         floors = _RunStream(
             fcon,
             f"""
