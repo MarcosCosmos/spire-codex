@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
-const LANGS = "deu|esp|fra|ita|jpn|kor|pol|ptb|rus|spa|tha|tur|zhs|zht";
+const LANGS = "eng|deu|esp|fra|ita|jpn|kor|pol|ptb|rus|spa|tha|tur|zhs|zht";
 
 const nextConfig: NextConfig = {
   output: "standalone",
@@ -40,7 +40,10 @@ const nextConfig: NextConfig = {
       {
         source: "/widget/:path*",
         headers: [
-          { key: "Cache-Control", value: "public, max-age=86400, s-maxage=604800" },
+          {
+            key: "Cache-Control",
+            value: "public, max-age=86400, s-maxage=604800",
+          },
           { key: "Access-Control-Allow-Origin", value: "*" },
         ],
       },
