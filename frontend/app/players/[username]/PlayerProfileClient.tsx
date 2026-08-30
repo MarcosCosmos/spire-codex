@@ -14,6 +14,7 @@ export default function PlayerProfileClient({ username }: { username: string }) 
   const [data, setData] = useState<PlayerInsights | null>(null);
   const [status, setStatus] = useState<"loading" | "ok" | "missing">("loading");
   const [building, setBuilding] = useState(false);
+  const [claimedRuns, setClaimedRuns] = useState<number | null>(null);
   const [filters, setFilters] = useState<InsightFilters>(EMPTY_INSIGHT_FILTERS);
   const cards = useCardMap();
   const relics = useRelicMap();
@@ -31,6 +32,7 @@ export default function PlayerProfileClient({ username }: { username: string }) 
           if (!alive) return;
           if (d && d.building) {
             setBuilding(true);
+            if (typeof d.claimed_runs === "number") setClaimedRuns(d.claimed_runs);
             timer = setTimeout(load, 5000);
             return;
           }
@@ -54,6 +56,7 @@ export default function PlayerProfileClient({ username }: { username: string }) 
         {building && (
           <p className="text-sm text-[var(--text-secondary)]">
             {t("Crunching your runs. The first load can take a minute or two.", lang)}
+            {claimedRuns ? ` · ${claimedRuns.toLocaleString()} ${t("runs", lang)}` : ""}
           </p>
         )}
         {[...Array(4)].map((_, i) => (

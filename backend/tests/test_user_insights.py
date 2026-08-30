@@ -116,7 +116,7 @@ def test_insights_build_then_cache(monkeypatch):
     # The walk never runs on the request path: the first call kicks the
     # refresh (inline here) and reports building; the next serves the result.
     first = user_insights.get_user_insights("u1")
-    assert first == {"building": True}
+    assert first.get("building") is True
     second = user_insights.get_user_insights("u1")
     assert second.get("building") is None
     assert second["runs_walked"] == 0
