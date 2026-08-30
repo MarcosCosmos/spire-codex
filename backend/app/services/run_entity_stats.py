@@ -907,6 +907,56 @@ def _compute_codex_elo(
     if not nodes:
         return {}, {}
 
+    # Vectorized MM when numpy is available: the interpreted loop was ~50M
+    # float ops per fit and the store now runs five fits per cycle. Same
+    # update, same normalization, same stopping rule -- float summation
+    # order can move a rating by at most the display rounding.
+    try:
+        import numpy as _np
+    except Exception:
+        _np = None
+    if _np is not None:
+        idx = {n: k for k, n in enumerate(nodes)}
+        edges = [(idx[i], idx[j], c) for (i, j), c in pair_wins.items() if c > 0]
+        ei = _np.fromiter((e[0] for e in edges), dtype=_np.int64, count=len(edges))
+        ej = _np.fromiter((e[1] for e in edges), dtype=_np.int64, count=len(edges))
+        en = _np.fromiter(
+            (float(e[2]) for e in edges), dtype=_np.float64, count=len(edges)
+        )
+        p_arr = _np.ones(len(nodes), dtype=_np.float64)
+        if warm:
+            for n, k in idx.items():
+                v = warm.get(n)
+                if v is not None and v > 0:
+                    p_arr[k] = v
+        w_arr = _np.fromiter(
+            (wins.get(n, 0.0) + 1e-3 for n in nodes),
+            dtype=_np.float64,
+            count=len(nodes),
+        )
+        for _ in range(_ELO_MAX_ITERS):
+            contrib = en / (p_arr[ei] + p_arr[ej])
+            denom = _np.zeros(len(nodes), dtype=_np.float64)
+            _np.add.at(denom, ei, contrib)
+            _np.add.at(denom, ej, contrib)
+            new_p = _np.where(denom > 0, w_arr / denom, p_arr)
+            gmean = float(_np.exp(_np.mean(_np.log(_np.maximum(new_p, 1e-300)))))
+            if gmean > 0:
+                new_p = new_p / gmean
+            delta = float(_np.max(_np.abs(new_p - p_arr)))
+            p_arr = new_p
+            if delta < _ELO_TOL:
+                break
+        out_np: dict[str, float] = {}
+        strengths_np: dict[str, float] = {}
+        for n, k in idx.items():
+            strength = float(p_arr[k])
+            strengths_np[n] = strength
+            if total_games.get(n, 0.0) < _ELO_MIN_GAMES or strength <= 0:
+                continue
+            out_np[n] = round(_ELO_ANCHOR + _ELO_SPREAD * math.log10(strength), 1)
+        return out_np, strengths_np
+
     # MM needs strictly-positive wins to be identifiable. A card that was
     # never once preferred (W_i == 0) would collapse to strength 0 and
     # stall the update; seed every card with a tiny pseudo-win so the

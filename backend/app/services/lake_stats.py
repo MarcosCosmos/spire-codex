@@ -1065,22 +1065,15 @@ def build_entity_store() -> dict | None:
                     a["last_submitted_at"] = ts
                     a["last_run_hash"] = last_hash
 
-        # Card-reward offer/pick counts with 3 act buckets (A1/A2/A3+).
-        _ids_temp_table(con, "excluded_cards", res._excluded_card_ids())
+        # Card-reward offer/pick counts with 3 act buckets (A1/A2/A3+),
+        # read off the shared choice_rows materialization -- the pair fits
+        # reuse the same scratch table later on their own connection, so
+        # the floors unnest happens once per cycle instead of twice.
+        _ensure_choice_rows(con)
         for eid, bucket, offered, picked in con.execute(
-            f"""
-            SELECT upper(split_part(cc.u.card.id, '.', -1)),
-              least(f.act, 2), count(*),
-              count(*) FILTER (coalesce(cc.u.was_picked, false))
-            FROM read_parquet('{LAKE_DIR}/floors.parquet') f
-            JOIN eligible e ON f.run_hash = e.run_hash,
-            LATERAL (SELECT unnest(f.players) AS u) ps,
-            LATERAL (SELECT unnest(ps.u.card_choices) AS u) cc
-            WHERE cc.u.card.id IS NOT NULL
-              AND upper(split_part(cc.u.card.id, '.', 1)) = 'CARD'
-              AND upper(split_part(cc.u.card.id, '.', -1))
-                  NOT IN (SELECT cid FROM excluded_cards)
-            GROUP BY 1, 2
+            """
+            SELECT cid, least(act, 2), count(*), count(*) FILTER (picked)
+            FROM choice_rows GROUP BY 1, 2
             """
         ).fetchall():
             a = entry("cards", eid)
