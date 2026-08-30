@@ -185,6 +185,18 @@ _OVERVIEW_TTL_SECONDS = 20.0
 _overview_cache: dict = {"at": 0.0, "data": None}
 
 
+@router.get("/memory")
+def memory(request: Request, top: int = 25):
+    """This worker's heap, measured: RSS, gc census by type, and the exact
+    entry counts and serialized sizes of every module-level cache. Each call
+    lands on one worker; hit it a few times to cover them all. Costs a few
+    seconds of that worker's CPU (the census touches every object)."""
+    _audit(request)
+    from ..services.memory_debug import snapshot
+
+    return snapshot(top=max(5, min(top, 100)))
+
+
 @router.get("/overview")
 def overview(request: Request):
     """Operational vitals: run volume, users, snapshot freshness, Redis, and
