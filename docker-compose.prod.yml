@@ -224,6 +224,10 @@ services:
     # no RDB snapshots). Everything in here is rebuildable from Mongo / the
     # run files on a miss, so losing it on restart costs one warmup, not data.
     command: redis-server --maxmemory 2gb --maxmemory-policy allkeys-lru --appendonly no --save ""
+    # Redis has no auth: REDIS_BIND stays loopback or the VPC private IP
+    # for the ingest box, never 0.0.0.0.
+    ports:
+      - "${REDIS_BIND:-127.0.0.1}:6379:6379"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
