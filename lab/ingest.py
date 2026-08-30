@@ -193,47 +193,12 @@ def main() -> None:
     except Exception as e:
         print(f"profile refresh failed: {e}", flush=True)
     _mark("profiles")
-    # The edge is the last stale layer: origin freshness means nothing while
-    # Cloudflare serves yesterday's JSON. Purge exactly the URLs this run
-    # refreshed (CF_TOKEN/CF_ZONE come from the same .env the admin tab uses).
+    # Split-box: the ingest box has no CF token, the puller purges instead.
     purge_ok = None
     try:
-        import os
+        import edge_purge
 
-        import httpx
-
-        token = os.environ.get("CF_TOKEN", "").strip()
-        zone = os.environ.get("CF_ZONE", "").strip()
-        if token and zone:
-            site = os.environ.get("PUBLIC_SITE_BASE", "https://spire-codex.com").rstrip(
-                "/"
-            )
-            # Prefix purge, not exact URLs: Cloudflare's cache key includes
-            # the query string, so exact purges missed every filtered
-            # variant (?compact=1, brackets, leaderboard filters). A prefix
-            # also covers sub-paths like /stats/<entity>/<id>.
-            host = site.split("://", 1)[-1]
-            prefixes = [
-                f"{host}{p}"
-                for p in (
-                    "/api/runs/stats",
-                    "/api/runs/community-stats",
-                    "/api/runs/leaderboard",
-                    "/api/runs/scores/",
-                    "/api/runs/metrics/",
-                    "/api/runs/encounter-stats",
-                )
-            ]
-            resp = httpx.post(
-                f"https://api.cloudflare.com/client/v4/zones/{zone}/purge_cache",
-                headers={"Authorization": f"Bearer {token}"},
-                json={"prefixes": prefixes},
-                timeout=15,
-            )
-            purge_ok = resp.status_code == 200 and resp.json().get("success") is True
-            print(f"edge purge: ok={purge_ok} ({len(prefixes)} prefixes)", flush=True)
-        else:
-            print("edge purge skipped: CF_TOKEN/CF_ZONE not set", flush=True)
+        purge_ok = edge_purge.purge()
     except Exception as e:
         purge_ok = False
         print(f"edge purge failed: {e}", flush=True)
@@ -288,6 +253,17 @@ def main() -> None:
         tmp.write_text(json.dumps(manifest, indent=1))
         tmp.replace(LAKE / "generation.json")
         print(f"generation {generation_id} published", flush=True)
+        # A failed publish doesn't void the local cycle; the puller's age
+        # warning is the staleness alarm.
+        import os
+
+        if os.environ.get("LAKE_R2_PUBLISH", "").strip().lower() == "on":
+            try:
+                import publish_lake
+
+                publish_lake.publish()
+            except Exception as e:
+                print(f"lake publish failed: {e}", flush=True)
         print("ingest complete", flush=True)
     else:
         missing = [n for n in required if mtimes.get(n, 0.0) < t0]
