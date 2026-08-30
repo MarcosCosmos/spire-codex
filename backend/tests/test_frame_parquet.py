@@ -29,10 +29,29 @@ def test_frame_parquet_roundtrip(monkeypatch, tmp_path):
     monkeypatch.setattr(cs, "_load_frame_from_db", _sample_rows)
     n = cs.store_frame_parquet()
     assert n == 2
-    loaded = cs._load_frame_parquet()
-    assert loaded == _sample_rows()
+    con, count = cs._load_frame_parquet()
+    assert count == 2
+    rows = con.execute(
+        f"SELECT {cs._FRAME_SELECT} FROM frame ORDER BY played_day"
+    ).fetchall()
+    assert rows == _sample_rows()
+    con.close()
     # the public loader prefers the parquet over the DB scan
-    assert cs._load_frame() == _sample_rows()
+    con, count = cs._load_frame()
+    assert count == 2
+    con.close()
+
+
+def test_db_scan_fallback_builds_the_same_tables(monkeypatch, tmp_path):
+    monkeypatch.setattr(cs, "_FRAME_PARQUET", tmp_path / "missing.parquet")
+    monkeypatch.setattr(cs, "_load_frame_from_db", _sample_rows)
+    con, count = cs._load_frame()
+    assert count == 2
+    rows = con.execute(
+        f"SELECT {cs._FRAME_SELECT} FROM frame ORDER BY played_day"
+    ).fetchall()
+    assert rows == _sample_rows()
+    con.close()
 
 
 def test_frame_parquet_stale_falls_back(monkeypatch, tmp_path):
