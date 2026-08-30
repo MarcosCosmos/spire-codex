@@ -2406,10 +2406,18 @@ def _persist_snapshot(
     )
 
 
+def _snapshot_boot_disabled() -> bool:
+    """ENTITY_SNAPSHOT_LOAD=off skips the ~1.1GB-per-worker snapshot load;
+    only lake-served surfaces keep data."""
+    return os.environ.get("ENTITY_SNAPSHOT_LOAD", "on").strip().lower() == "off"
+
+
 def _load_snapshot() -> bool:
     """Load the shared snapshot from Mongo into module globals. Returns
     False if no snapshot exists yet (caller falls back to local build)."""
     global _cache_snapshot_version
+    if _snapshot_boot_disabled():
+        return False
     coll = _snapshot_coll()
     started = time.monotonic()
     meta = coll.find_one({"_id": "__meta__"})
@@ -3045,6 +3053,8 @@ def _maybe_rebuild() -> None:
     _SNAPSHOT_LOAD_SECONDS per worker, forever — hung for the full multi-
     thousand-doc snapshot read."""
     _maybe_overlay_lake_entities()
+    if _USING_MONGO and _snapshot_boot_disabled():
+        return
     global _building
     age = time.time() - _cache_built_at
     if age < _SNAPSHOT_LOAD_SECONDS:
