@@ -36,7 +36,8 @@ def test_never_computed_still_builds(monkeypatch):
     monkeypatch.setattr(ui, "_cache_get", lambda k: None)
     monkeypatch.setattr("app.services.cache.get_json", lambda k: None)
     monkeypatch.setattr(ui, "_kick_refresh", lambda *a: None)
-    assert ui.get_user_insights("nobody") == {"building": True}
+    out = ui.get_user_insights("nobody")
+    assert out.get("building") is True
 
 
 def test_store_write_failure_is_soft(monkeypatch):
@@ -57,8 +58,8 @@ def test_hollow_blob_fetch_refuses_to_build():
 
     with pytest.raises(RuntimeError):
         ui._require_blob_coverage(rows, {})
-    with pytest.raises(RuntimeError):
-        ui._require_blob_coverage(rows, {f"h{i}": {} for i in range(85)})
+    # Heavy-but-nonzero misses build a partial payload now instead of raising.
+    assert ui._require_blob_coverage(rows, {f"h{i}": {} for i in range(85)}) is False
 
 
 def test_invalidate_clears_prewarmed_fresh_markers(monkeypatch):

@@ -1081,6 +1081,7 @@ export default function ProfileInsights({
   const [data, setData] = useState<Insights | null>(null);
   const [loading, setLoading] = useState(true);
   const [building, setBuilding] = useState(false);
+  const [claimedRuns, setClaimedRuns] = useState<number | null>(null);
   const [filters, setFilters] = useState<InsightFilters>(EMPTY_INSIGHT_FILTERS);
   const filtered =
     !!filters.character || !!filters.ascension || !!filters.players || !!filters.version;
@@ -1101,6 +1102,7 @@ export default function ProfileInsights({
           if (!alive) return;
           if (d && d.building) {
             setBuilding(true);
+            if (typeof d.claimed_runs === "number") setClaimedRuns(d.claimed_runs);
             timer = setTimeout(load, 5000);
             return;
           }
@@ -1127,6 +1129,7 @@ export default function ProfileInsights({
         {building && (
           <p className="text-sm text-[var(--text-secondary)]">
             {t("Crunching your runs. The first load can take a minute or two.", lang)}
+            {claimedRuns ? ` · ${claimedRuns.toLocaleString()} ${t("runs", lang)}` : ""}
           </p>
         )}
         {[...Array(4)].map((_, i) => (
