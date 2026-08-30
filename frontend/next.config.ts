@@ -40,7 +40,10 @@ const nextConfig: NextConfig = {
       {
         source: "/widget/:path*",
         headers: [
-          { key: "Cache-Control", value: "public, max-age=86400, s-maxage=604800" },
+          {
+            key: "Cache-Control",
+            value: "public, max-age=86400, s-maxage=604800",
+          },
           { key: "Access-Control-Allow-Origin", value: "*" },
         ],
       },
@@ -59,6 +62,8 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  reactCompiler: true,
+  productionBrowserSourceMaps: true,
 };
 
 export default withSentryConfig(nextConfig, {
