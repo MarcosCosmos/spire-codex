@@ -193,12 +193,19 @@ def main() -> None:
     except Exception as e:
         print(f"profile refresh failed: {e}", flush=True)
     _mark("profiles")
-    # Split-box: the ingest box has no CF token, the puller purges instead.
+    # A box that publishes to R2 must never purge the edge, even if CF creds
+    # leak into its env: purging before the serving box pulls would let the
+    # edge re-cache stale origin data for the whole pull gap.
     purge_ok = None
     try:
+        import os
+
         import edge_purge
 
-        purge_ok = edge_purge.purge()
+        if os.environ.get("LAKE_R2_PUBLISH", "").strip().lower() == "on":
+            print("edge purge skipped: publisher role; the puller purges", flush=True)
+        else:
+            purge_ok = edge_purge.purge()
     except Exception as e:
         purge_ok = False
         print(f"edge purge failed: {e}", flush=True)
