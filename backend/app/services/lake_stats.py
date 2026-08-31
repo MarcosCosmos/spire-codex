@@ -2022,6 +2022,9 @@ def refresh_stats_core() -> int:
 
     coll = _summary_coll()
     written = 0
+    deep: dict[str, dict] = {}
+    if (os.environ.get("LAKE_DEEP_TABLES", "") or "").strip().lower() == "on":
+        deep = deep_tables_by_key()
     for filters, result in _stats_core_results():
         key = _filter_key(**filters_compact(filters))
         if result.get("total_runs"):
@@ -2029,6 +2032,7 @@ def refresh_stats_core() -> int:
             merged = {
                 **existing,
                 **result,
+                **deep.get(key, {}),
                 "_id": key,
                 "updated_at": datetime.now(timezone.utc),
             }
@@ -2061,3 +2065,232 @@ def refresh_stats_core() -> int:
 def filters_compact(filters: dict) -> dict:
     """The sparse combo form the legacy key/cache helpers expect."""
     return {k: v for k, v in filters.items() if v is not None}
+
+
+_DEEP_TABLES_NAME = "deep_tables.json"
+
+
+def _parquet_columns(con, name: str) -> set[str]:
+    res = con.execute(
+        f"SELECT * FROM read_parquet('{LAKE_DIR}/{name}.parquet') LIMIT 0"
+    )
+    return {d[0] for d in res.description}
+
+
+def _fold_deep(rows, char_f, asc_f, official):
+    """Sum grouped (character, ascension, key, *counts) rows into one combo's
+    {key: (counts...)} map. The official filter applies even unfiltered,
+    matching get_stats' _build_match."""
+    out: dict[str, list[int]] = {}
+    for ch, a, key, *counts in rows:
+        if ch not in official:
+            continue
+        if char_f is not None and ch != char_f:
+            continue
+        if asc_f is not None and a != asc_f:
+            continue
+        if key is None:
+            continue
+        rec = out.setdefault(key, [0] * len(counts))
+        for i, c in enumerate(counts):
+            rec[i] += c or 0
+    return out
+
+
+def build_deep_tables() -> int:
+    """Per-combo deep item tables for the materialized stats docs, replacing
+    the retired refresh_stats_summary aggregation (~80 min of Mongo doc
+    scanning per refresh). Five grouped passes over the lake folded across
+    the stats_core combos; refresh_stats_core merges the stored artifact
+    when LAKE_DEEP_TABLES=on. Counting stays per player like the legacy
+    per-player docs (item stats dedupe per run+player+item), except shop
+    potion offers count once per run instead of once per party sibling."""
+    import json as _json
+
+    from .runs_db_mongo import (
+        ASCENSION_FILTER_COMBOS,
+        HOT_FILTER_COMBOS,
+        OFFICIAL_CHARACTERS,
+    )
+
+    if not available():
+        logger.info("deep tables skipped: lake incomplete")
+        return 0
+    runs_p = f"read_parquet('{LAKE_DIR}/runs.parquet')"
+    excl_p = f"read_parquet('{LAKE_DIR}/excluded.parquet')"
+    players_p = f"read_parquet('{LAKE_DIR}/players.parquet')"
+    con = _connect(build=True)
+    try:
+        _ensure_choice_rows(con)
+        deaths = con.execute(
+            f"""
+            SELECT coalesce(upper(r.character), '') AS ch,
+              coalesce(r.ascension, 0)::INT AS a,
+              coalesce(r.killed_by_encounter, r.killed_by_event) AS kb,
+              count(*) AS n
+            FROM {runs_p} r
+            ANTI JOIN {excl_p} x ON r.run_hash = x.run_hash
+            WHERE r.ascension BETWEEN 0 AND 10
+              AND NOT coalesce(r.win, false)
+              AND coalesce(r.killed_by_encounter, r.killed_by_event) IS NOT NULL
+            GROUP BY 1, 2, 3
+            """
+        ).fetchall()
+        picks = con.execute(
+            f"""
+            SELECT p.character AS ch, coalesce(r.ascension, 0)::INT AS a,
+              c.cid, count(*) AS offered, count(*) FILTER (c.picked) AS picked
+            FROM choice_rows c
+            JOIN {players_p} p
+              ON c.run_hash = p.run_hash AND c.pidx = p.player_idx
+            JOIN {runs_p} r ON c.run_hash = r.run_hash
+            GROUP BY 1, 2, 3
+            """
+        ).fetchall()
+
+        def item_rows(table: str, col: str):
+            return con.execute(
+                f"""
+                SELECT ch, a, item, sum(copies)::BIGINT,
+                  coalesce(sum(copies) FILTER (win), 0)::BIGINT,
+                  coalesce(sum(copies) FILTER (NOT win), 0)::BIGINT,
+                  count(*)::BIGINT, count(*) FILTER (win)::BIGINT
+                FROM (
+                  SELECT d.character AS ch, coalesce(r.ascension, 0)::INT AS a,
+                    d.{col} AS item, d.run_hash, d.player_idx,
+                    count(*) AS copies, bool_or(coalesce(r.win, false)) AS win
+                  FROM read_parquet('{LAKE_DIR}/{table}.parquet') d
+                  JOIN {runs_p} r ON d.run_hash = r.run_hash
+                  ANTI JOIN {excl_p} x ON d.run_hash = x.run_hash
+                  WHERE r.ascension BETWEEN 0 AND 10 AND d.{col} IS NOT NULL
+                  GROUP BY 1, 2, 3, d.run_hash, d.player_idx
+                ) GROUP BY 1, 2, 3
+                """
+            ).fetchall()
+
+        cards = item_rows("deck", "card")
+        relics = item_rows("relics", "relic")
+        potions_owned = item_rows("potions", "potion")
+
+        # The potion telemetry columns only exist in lakes built after the
+        # schema gained them; older lakes omit the section and the doc merge
+        # keeps whatever the summary already holds.
+        used = []
+        if "was_used" in _parquet_columns(con, "potions"):
+            used = con.execute(
+                f"""
+                SELECT d.character AS ch, coalesce(r.ascension, 0)::INT AS a,
+                  d.potion AS item, count(*) FILTER (d.was_used)::BIGINT AS used
+                FROM read_parquet('{LAKE_DIR}/potions.parquet') d
+                JOIN {runs_p} r ON d.run_hash = r.run_hash
+                ANTI JOIN {excl_p} x ON d.run_hash = x.run_hash
+                WHERE r.ascension BETWEEN 0 AND 10
+                GROUP BY 1, 2, 3
+                """
+            ).fetchall()
+        shop = []
+        if (LAKE_DIR / "shop_potions.parquet").exists():
+            shop = con.execute(
+                f"""
+                SELECT p.character AS ch, coalesce(r.ascension, 0)::INT AS a,
+                  s.potion AS item, count(*) AS offered,
+                  count(*) FILTER (s.was_picked)::BIGINT AS picked
+                FROM read_parquet('{LAKE_DIR}/shop_potions.parquet') s
+                JOIN {players_p} p
+                  ON s.run_hash = p.run_hash AND s.player_idx = p.player_idx
+                JOIN {runs_p} r ON s.run_hash = r.run_hash
+                ANTI JOIN {excl_p} x ON s.run_hash = x.run_hash
+                WHERE r.ascension BETWEEN 0 AND 10
+                GROUP BY 1, 2, 3
+                """
+            ).fetchall()
+    finally:
+        con.close()
+
+    def pct(a: int, b: int) -> float:
+        return round(a / b * 100, 1) if b > 0 else 0
+
+    official = frozenset(OFFICIAL_CHARACTERS)
+    combos = []
+    for f in [*HOT_FILTER_COMBOS, *ASCENSION_FILTER_COMBOS]:
+        char_f = f.get("character")
+        asc_f = int(f["ascension"]) if "ascension" in f else None
+        d = _fold_deep(deaths, char_f, asc_f, official)
+        pk = _fold_deep(picks, char_f, asc_f, official)
+        cd = _fold_deep(cards, char_f, asc_f, official)
+        rl = _fold_deep(relics, char_f, asc_f, official)
+        tables: dict = {
+            "deadliest": [
+                {"encounter": k, "count": v[0]}
+                for k, v in sorted(d.items(), key=lambda kv: -kv[1][0])[:10]
+            ],
+            "pick_rates": [
+                {
+                    "card_id": k,
+                    "offered": v[0],
+                    "picked": v[1],
+                    "pick_rate": pct(v[1], v[0]),
+                }
+                for k, v in sorted(pk.items(), key=lambda kv: -kv[1][0])
+            ],
+            "top_cards": [
+                {
+                    "card_id": k,
+                    "count": v[0],
+                    "in_wins": v[1],
+                    "in_losses": v[2],
+                    "total_runs_with": v[3],
+                    "win_runs": v[4],
+                }
+                for k, v in sorted(cd.items(), key=lambda kv: -kv[1][0])
+            ],
+            "top_relics": [
+                {
+                    "relic_id": k,
+                    "count": v[0],
+                    "total_runs_with": v[3],
+                    "win_runs": v[4],
+                }
+                for k, v in sorted(rl.items(), key=lambda kv: -kv[1][0])
+            ],
+        }
+        if shop and used:
+            po = _fold_deep(potions_owned, char_f, asc_f, official)
+            us = _fold_deep(used, char_f, asc_f, official)
+            sh = _fold_deep(shop, char_f, asc_f, official)
+            tables["top_potions"] = [
+                {
+                    "potion_id": k,
+                    "offered": v[0],
+                    "picked": v[1],
+                    "used": us.get(k, [0])[0],
+                    "total_runs_with": po.get(k, [0] * 5)[3],
+                    "win_runs": po.get(k, [0] * 5)[4],
+                    "pick_rate": pct(v[1], v[0]),
+                }
+                for k, v in sorted(sh.items(), key=lambda kv: -kv[1][0])
+            ]
+        combos.append({"filters": filters_compact({**f}), "tables": tables})
+
+    doc = {"combos": combos}
+    tmp = LAKE_DIR / (_DEEP_TABLES_NAME + ".tmp")
+    tmp.write_text(_json.dumps(doc, separators=(",", ":")))
+    tmp.replace(LAKE_DIR / _DEEP_TABLES_NAME)
+    logger.info("deep tables stored: %d combos", len(combos))
+    return len(combos)
+
+
+def deep_tables_by_key() -> dict[str, dict]:
+    """{summary-doc key: tables} from the stored artifact; {} when absent."""
+    import json as _json
+
+    from .runs_db_mongo import _filter_key
+
+    try:
+        doc = _json.loads((LAKE_DIR / _DEEP_TABLES_NAME).read_text())
+    except Exception:
+        return {}
+    return {
+        _filter_key(**c.get("filters", {})): c.get("tables", {})
+        for c in doc.get("combos", [])
+    }
