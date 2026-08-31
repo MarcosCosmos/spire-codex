@@ -455,3 +455,26 @@ def test_lake_metric_history_appends(monkeypatch):
     ids = sorted(op._filter["_id"] for op in captured["ops"])
     assert ids[0].startswith("cards:X:all:")
     assert ids[1].startswith("cards:X:wr75:")
+
+
+def test_elo_numpy_path_matches_python_path(monkeypatch):
+    import sys
+
+    from app.services.run_entity_stats import _compute_codex_elo
+
+    pairs = {
+        ("A", "B"): 30,
+        ("B", "C"): 25,
+        ("A", "C"): 10,
+        ("C", "A"): 8,
+        ("A", "SKIP"): 40,
+        ("SKIP", "B"): 22,
+    }
+    elo_np, p_np = _compute_codex_elo(pairs)
+    monkeypatch.setitem(sys.modules, "numpy", None)
+    elo_py, p_py = _compute_codex_elo(pairs)
+    assert set(elo_np) == set(elo_py)
+    for k in elo_np:
+        assert abs(elo_np[k] - elo_py[k]) <= 0.1, k
+    for k in p_np:
+        assert abs(p_np[k] - p_py[k]) < 1e-6, k
