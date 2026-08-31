@@ -21,10 +21,10 @@ from typing import Any
 
 from . import charts_stats
 from .lake_stats import (
-    _CELLS_SQL,
     _ELIGIBLE_SQL,
     LAKE_DIR,
     _connect,
+    _ensure_cells,
     cube_versions,
 )
 
@@ -162,7 +162,7 @@ def build_charts_blob() -> dict | None:
     con = _connect(build=False)
     try:
         con.execute(_ELIGIBLE_SQL.format(lake=LAKE_DIR))
-        con.execute(_CELLS_SQL.format(lake=LAKE_DIR))
+        _ensure_cells(con, str(LAKE_DIR))
         meta: dict[str, tuple] = {}
         for h, ch, win, ab, pc, played, cell in con.execute(
             """
