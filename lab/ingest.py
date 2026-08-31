@@ -124,6 +124,9 @@ def main() -> None:
         lake_stats.build_entity_cube()
         print("entity cube stored", flush=True)
         _mark("entity_cube")
+        n_deep = lake_stats.build_deep_tables()
+        print(f"deep tables stored ({n_deep} combos)", flush=True)
+        _mark("deep_tables")
         from app.services import charts_blob_lake
 
         charts_blob_lake.build_charts_blob()

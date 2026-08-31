@@ -49,6 +49,7 @@ def _stages():
         "entity_store": lake_stats.build_entity_store,
         "encounter_store": lake_stats.build_encounter_store,
         "entity_cube": lake_stats.build_entity_cube,
+        "deep_tables": lake_stats.build_deep_tables,
         "charts_blob": charts_blob_lake.build_charts_blob,
         "stats_core": lake_stats.refresh_stats_core,
         "leaderboard_summary": leaderboard_summary,

@@ -24,6 +24,9 @@ x-shared-env: &shared-env
   LAKE_ENTITY_STATS: ${LAKE_ENTITY_STATS:-}
   # off = workers skip the frozen snapshot load (~1.1GB per worker).
   ENTITY_SNAPSHOT_LOAD: ${ENTITY_SNAPSHOT_LOAD:-on}
+  # on = stats_core merges the lake-built deep item tables (deep_tables.json)
+  # into the summary docs; off keeps the legacy tables in place.
+  LAKE_DEEP_TABLES: ${LAKE_DEEP_TABLES:-}
   # How often the leader may rerun the heavy walk (seconds). Default 7200
   # (2h). With the parallel rebuild on, lower it for fresher public numbers,
   # but keep it well above the observed walk time so the box isn't always
