@@ -116,8 +116,6 @@ def _build_match(start, end, cursor) -> dict:
         range_q["$gte"] = start
     if end is not None:
         range_q["$lt"] = end
-    if range_q:
-        clauses.append({"submitted_at": range_q})
 
     if cursor is not None:
         sa, run_hash = cursor
@@ -133,14 +131,21 @@ def _build_match(start, end, cursor) -> dict:
                 }
             )
         else:
+            # Planner-friendly keyset: the window's lower bound moves up to
+            # the cursor timestamp (one index-boundable range on the
+            # (submitted_at, _id) index) and the $or only trims the boundary
+            # instant. The previous shape (the start range AND a full keyset
+            # $or) lost the index once the window spanned enough rows and
+            # collection-scanned into the gateway timeout (2026-08-31 user
+            # report: start + cursor timed out, either alone was fine).
+            if start is None or sa >= start:
+                range_q["$gte"] = sa
             clauses.append(
-                {
-                    "$or": [
-                        {"submitted_at": {"$gt": sa}},
-                        {"submitted_at": sa, "_id": {"$gt": run_hash}},
-                    ]
-                }
+                {"$or": [{"submitted_at": {"$gt": sa}}, {"_id": {"$gt": run_hash}}]}
             )
+
+    if range_q:
+        clauses.append({"submitted_at": range_q})
 
     return clauses[0] if len(clauses) == 1 else {"$and": clauses}
 

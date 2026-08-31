@@ -129,10 +129,33 @@ def test_build_match_cursor_inside_null_block():
 def test_build_match_cursor_past_nulls():
     sa = datetime(2026, 6, 10, tzinfo=timezone.utc)
     match = _build_match(None, None, (sa, "abc"))
+    # Planner-friendly keyset: the cursor timestamp becomes the range's
+    # lower bound and the $or only trims the boundary instant.
+    range_clause = next(c for c in match["$and"] if "submitted_at" in c)
+    assert range_clause["submitted_at"] == {"$gte": sa}
     or_clause = next(c for c in match["$and"] if "$or" in c)["$or"]
-    # Strictly after (sa, abc) in (submitted_at, _id) order.
     assert {"submitted_at": {"$gt": sa}} in or_clause
-    assert {"submitted_at": sa, "_id": {"$gt": "abc"}} in or_clause
+    assert {"_id": {"$gt": "abc"}} in or_clause
+
+
+def test_build_match_cursor_tightens_start_window():
+    # The 2026-08-31 timeout: start plus a cursor deep inside the window.
+    # The cursor must REPLACE the lower bound (one index-boundable range),
+    # not stack a second submitted_at predicate the planner abandons.
+    start = datetime(2026, 6, 1, tzinfo=timezone.utc)
+    sa = datetime(2026, 7, 15, 15, 43, 22, 695000, tzinfo=timezone.utc)
+    match = _build_match(start, None, (sa, "a31903b18a1472c1"))
+    range_clause = next(c for c in match["$and"] if "submitted_at" in c)
+    assert range_clause["submitted_at"] == {"$gte": sa}
+
+
+def test_build_match_cursor_before_start_keeps_start():
+    # A cursor from an earlier window must not widen [start, end).
+    start = datetime(2026, 7, 1, tzinfo=timezone.utc)
+    sa = datetime(2026, 6, 10, tzinfo=timezone.utc)
+    match = _build_match(start, None, (sa, "abc"))
+    range_clause = next(c for c in match["$and"] if "submitted_at" in c)
+    assert range_clause["submitted_at"] == {"$gte": start}
 
 
 # --- _page_params ------------------------------------------------------------
@@ -200,5 +223,5 @@ def test_stream_survives_poison_runs(tmp_path, monkeypatch):
     )
     assert len(lines) == 2  # both good copies, poison skipped
     assert all(
-        '"run_hash": "good"'.replace(" ", "") in l.replace(" ", "") for l in lines
+        '"run_hash": "good"'.replace(" ", "") in ln.replace(" ", "") for ln in lines
     )
