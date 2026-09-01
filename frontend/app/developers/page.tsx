@@ -170,11 +170,15 @@ export default async function DevelopersPage() {
           REST API
         </h2>
         <p className="text-[var(--text-secondary)] mb-4">
-          Full game database accessible via a public REST API. No authentication required for
-          casual use (rate limited per IP). For scripts and tools, create an API key on your{" "}
+          Full game database accessible via a public REST API. No authentication required:
+          anonymous requests share a generous per-IP allowance sized for browsers and casual
+          use. For scripts and tools, create an API key on your{" "}
           <Link href="/profile" className="text-[var(--accent-gold)] hover:underline">profile page</Link>{" "}
           and send it as the <code className="text-xs bg-[var(--bg-card)] px-1.5 py-0.5 rounded">X-API-Key</code>{" "}
-          header to get your own dedicated rate limit (counted per endpoint) instead of sharing the per-IP cap. Responses carry X-RateLimit-Remaining / X-RateLimit-Reset so you can pace requests.
+          header. A key buckets your requests by identity instead of IP (stable across networks,
+          never shared with other users behind the same NAT) and gives you usage tracking; its
+          tier cap applies per endpoint. Responses carry X-RateLimit-Remaining / X-RateLimit-Reset
+          so you can pace requests.
         </p>
 
         <div className="bg-[var(--bg-card)] rounded-xl border border-[var(--border-subtle)] p-5 mb-4">
@@ -200,7 +204,32 @@ export default async function DevelopersPage() {
             </table>
           </div>
           <p className="mt-3 text-xs text-[var(--text-muted)]">
-            All caps count per endpoint. Watch X-RateLimit-Remaining and back off on 429 (Retry-After is set).
+            All caps count per endpoint: the table is your allowance on each route, not a
+            global pool. A few heavy endpoints carry their own budgets that apply to every
+            caller regardless of key (see the run export below; the language ZIP is 10/hour).
+            Watch X-RateLimit-Remaining and back off on 429 (Retry-After is set).
+          </p>
+        </div>
+
+        <div className="bg-[var(--bg-card)] rounded-xl border border-[var(--border-subtle)] p-5 mb-4">
+          <h3 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">
+            Bulk run export
+          </h3>
+          <pre className="bg-[var(--bg-primary)] rounded-lg p-4 text-sm text-[var(--text-secondary)] overflow-x-auto mb-3">
+            <code>{`GET /api/runs/export?limit=1000&start=2026-06-01T00:00:00Z`}</code>
+          </pre>
+          <p className="text-sm text-[var(--text-secondary)] mb-2">
+            Streams official runs as JSONL, one run per line. <code className="text-xs bg-[var(--bg-primary)] px-1.5 py-0.5 rounded">limit</code>{" "}
+            bounds the page (a full page returns a <code className="text-xs bg-[var(--bg-primary)] px-1.5 py-0.5 rounded">cursor</code> for
+            the next one); <code className="text-xs bg-[var(--bg-primary)] px-1.5 py-0.5 rounded">start</code> /{" "}
+            <code className="text-xs bg-[var(--bg-primary)] px-1.5 py-0.5 rounded">end</code> restrict to a half-open submitted-at window.
+            Keep start/end constant while paging; the cursor does not embed them.
+          </p>
+          <p className="text-xs text-[var(--text-muted)]">
+            This endpoint has its own budget of 120 credits per hour, shared by keyed and
+            anonymous callers alike: a paginated request costs 1 credit, an unbounded pull
+            (no limit) costs 60. Sustained syncing therefore works best as paginated pulls
+            spaced ~30s apart; on 429, honor Retry-After and resume with the same cursor.
           </p>
         </div>
 
@@ -321,7 +350,8 @@ export default async function DevelopersPage() {
             {
               category: "Bulk Downloads",
               endpoints: [
-                { method: "GET", path: "/api/exports/{lang}", desc: "ZIP of all entity JSON for one language" },
+                { method: "GET", path: "/api/runs/export", desc: "JSONL stream of official runs (limit/start/end/cursor pagination; own 120-credits-per-hour budget - see Bulk run export above)" },
+                { method: "GET", path: "/api/exports/{lang}", desc: "ZIP of all entity JSON for one language (10/hour)" },
                 { method: "GET", path: "/api/images", desc: "Image gallery categories" },
                 { method: "GET", path: "/api/images/search", desc: "Search images by filename" },
                 { method: "GET", path: "/api/images/game/{version}/{category}/browse", desc: "Paged folder browsing of a full asset dump (path, offset, limit)" },
