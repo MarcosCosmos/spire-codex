@@ -1,5 +1,7 @@
 "use client";
 
+import { Fragment, type ReactNode } from "react";
+import { getCardProseFacts } from "@/lib/card-display";
 import { useLanguage } from "@/app/contexts/LanguageContext";
 import type {
   Relic,
@@ -50,7 +52,7 @@ interface RelicProseProps { kind: "relic"; relic: Relic; }
 interface PotionProseProps { kind: "potion"; potion: Potion; }
 interface PowerProseProps { kind: "power"; power: Power; appliedByCount: number; }
 interface MonsterProseProps { kind: "monster"; monster: Monster; deadliest?: { name: string; killRate: number } | null; }
-interface CardProseProps { kind: "card"; card: Card; }
+interface CardProseProps { kind: "card"; card: Card; upgraded?: boolean; }
 interface EnchantmentProseProps { kind: "enchantment"; enchantment: Enchantment; }
 interface CharacterProseProps { kind: "character"; character: Character; }
 interface OrbProseProps { kind: "orb"; orb: Orb; }
@@ -104,6 +106,16 @@ function listWords(items: string[]): string {
   if (items.length <= 1) return items[0] ?? "";
   if (items.length === 2) return `${items[0]} and ${items[1]}`;
   return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
+}
+
+function listNodes(items: ReactNode[]): ReactNode {
+  if (items.length <= 1) return items[0] ?? "";
+  return items.map((item, i) => (
+    <Fragment key={i}>
+      {i > 0 && (i === items.length - 1 ? (items.length === 2 ? " and " : ", and ") : ", ")}
+      {item}
+    </Fragment>
+  ));
 }
 
 export default function EntityProse(props: Props) {
@@ -170,19 +182,46 @@ export default function EntityProse(props: Props) {
       return <Prose lead={props.lead} sentences={[`${name} · ${c.rarity} · ${c.type}`]} />;
     }
     const who = pools[c.color] ? ` for the ${pools[c.color]}` : "";
-    const cost = c.is_x_cost ? "X" : `${c.cost}`;
-    const sentences: string[] = [];
-    sentences.push(`${name} is a ${c.rarity} ${c.type} card${who} in Slay the Spire 2, costing ${cost} energy.`);
-    const eff: string[] = [];
-    if (c.damage != null) eff.push(`deals ${c.damage} damage${c.hit_count && c.hit_count > 1 ? ` across ${c.hit_count} hits` : ""}`);
-    if (c.block != null) eff.push(`grants ${c.block} Block`);
+    // The prose tracks the page's upgrade toggle through the same display
+    // model as the card render; upgraded values that differ render in the
+    // render's green.
+    const f = getCardProseFacts(c, !!props.upgraded);
+    const green = (v: ReactNode, changed: boolean) =>
+      f.isUpgraded && changed ? <span className="text-emerald-400">{v}</span> : v;
+    const sentences: ReactNode[] = [];
+    sentences.push(
+      <>
+        {green(f.displayName, true)} is a {c.rarity} {c.type} card{who} in Slay the Spire
+        2, costing {green(f.cost, f.costChanged)} energy.
+      </>,
+    );
+    const eff: ReactNode[] = [];
+    if (f.damage != null)
+      eff.push(
+        <>
+          deals {green(f.damage, f.damageChanged)} damage
+          {f.hitCount && f.hitCount > 1 ? (
+            <> across {green(f.hitCount, f.hitCountChanged)} hits</>
+          ) : f.xTimes ? (
+            " X times"
+          ) : (
+            ""
+          )}
+        </>,
+      );
+    if (f.block != null) eff.push(<>grants {green(f.block, f.blockChanged)} Block</>);
     if (c.cards_draw != null) eff.push(`draws ${c.cards_draw} card${c.cards_draw === 1 ? "" : "s"}`);
     if (c.energy_gain != null) eff.push(`gains ${c.energy_gain} energy`);
     const powerParts = (c.powers_applied || []).map((p) => `${p.amount} ${p.power}`);
     if (powerParts.length) eff.push(`applies ${listWords(powerParts)}`);
-    if (eff.length) sentences.push(`It ${listWords(eff)}.`);
-    if (c.keywords && c.keywords.length) {
-      sentences.push(`It carries the ${listWords(c.keywords)} keyword${c.keywords.length > 1 ? "s" : ""}.`);
+    if (eff.length) sentences.push(<>It {listNodes(eff)}.</>);
+    if (f.keywords.length) {
+      sentences.push(
+        <>
+          It carries the {listNodes(f.keywords.map(({ keyword, added }) => green(keyword, added)))} keyword
+          {f.keywords.length > 1 ? "s" : ""}.
+        </>,
+      );
     }
     return <Prose lead={props.lead} sentences={sentences} />;
   }
@@ -495,7 +534,7 @@ export default function EntityProse(props: Props) {
   return <Prose lead={props.lead} sentences={sentences} />;
 }
 
-function Prose({ sentences, lead }: { sentences: string[]; lead?: boolean }) {
+function Prose({ sentences, lead }: { sentences: ReactNode[]; lead?: boolean }) {
   // lead: rendered as an intro right under a page hero (no top border/rule).
   if (lead) {
     return (

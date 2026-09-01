@@ -242,3 +242,46 @@ export function getCardDisplayModel(card: Card, upgraded: boolean): CardDisplayM
     removedKeywords: keywordDisplay.removedKeywords,
   };
 }
+
+export interface CardProseFacts {
+  displayName: string;
+  isUpgraded: boolean;
+  cost: string;
+  costChanged: boolean;
+  damage: number | null | undefined;
+  damageChanged: boolean;
+  hitCount: number | null | undefined;
+  hitCountChanged: boolean;
+  block: number | null | undefined;
+  blockChanged: boolean;
+  xTimes: boolean;
+  keywords: { keyword: string; added: boolean }[];
+}
+
+/** The prose summary's inputs for one card + toggle state, derived from the
+ * same display model as the card render so the two can never disagree. */
+export function getCardProseFacts(card: Card, upgraded: boolean): CardProseFacts {
+  const display = getCardDisplayModel(card, upgraded);
+  const base = getCardDisplayModel(card, false);
+  const up = display.isUpgraded;
+  const activeDesc = (up && card.upgrade_description) || card.description || "";
+  return {
+    displayName: up ? `${card.name}+` : card.name,
+    isUpgraded: up,
+    cost: card.is_x_cost ? "X" : `${display.cost ?? card.cost}`,
+    costChanged: up && display.cost !== base.cost,
+    damage: display.damage,
+    damageChanged: up && display.damage !== base.damage,
+    hitCount: display.hitCount,
+    hitCountChanged: up && display.hitCount !== base.hitCount,
+    block: display.block,
+    blockChanged: up && display.block !== base.block,
+    // Description-driven, not is_x_cost-gated: Stardust deals damage X
+    // times with X from a resource, not energy.
+    xTimes: /damage(?: to [a-z ]+?)? X(?:\+\d+)? times/i.test(activeDesc),
+    keywords: [
+      ...display.visibleKeywords.map((keyword) => ({ keyword, added: false })),
+      ...display.addedKeywords.map((keyword) => ({ keyword, added: true })),
+    ],
+  };
+}
