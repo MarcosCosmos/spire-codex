@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { LANG_PREFIXES } from "@/lib/languages";
 
+// const knownRoutes = ":lang/cards";
 /** Canonicalise news article URLs.
  *
  *   - Old shape:  /news/{encoded canonical Steam URL}     (PR #96)
@@ -53,10 +54,27 @@ const LANG_CODES = LANG_PREFIXES;
 // Deliberately excludes user-content routes with case-significant ids
 // (/runs hashes, /users, /tier-list-maker).
 const LOWERCASE_DETAIL_TYPES = new Set([
-  "achievements", "acts", "afflictions", "ascensions", "badges", "cards",
-  "characters", "enchantments", "encounters", "events", "guides", "intents",
-  "keywords", "mechanics", "modifiers", "monsters", "orbs", "potions",
-  "powers", "relics", "timeline",
+  "achievements",
+  "acts",
+  "afflictions",
+  "ascensions",
+  "badges",
+  "cards",
+  "characters",
+  "enchantments",
+  "encounters",
+  "events",
+  "guides",
+  "intents",
+  "keywords",
+  "mechanics",
+  "modifiers",
+  "monsters",
+  "orbs",
+  "potions",
+  "powers",
+  "relics",
+  "timeline",
 ]);
 
 function lowercaseRedirect(req: NextRequest): NextResponse | null {
@@ -78,8 +96,16 @@ function lowercaseRedirect(req: NextRequest): NextResponse | null {
 // Entity types with a real /beta/<type>/[id] detail route (force-dynamic
 // pages under app/beta/), exempt from the rewrite below.
 const BETA_DETAIL_TYPES = new Set([
-  "cards", "relics", "monsters", "potions", "enchantments", "encounters",
-  "events", "powers", "keywords", "orbs",
+  "cards",
+  "relics",
+  "monsters",
+  "potions",
+  "enchantments",
+  "encounters",
+  "events",
+  "powers",
+  "keywords",
+  "orbs",
 ]);
 
 /** The beta section reuses the entire existing page tree: /beta/cards/x
@@ -121,7 +147,7 @@ function betaRewrite(req: NextRequest): NextResponse | null {
   return NextResponse.rewrite(url);
 }
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   // Redirect before the beta rewrite so the browser lands on the corrected
   // URL and only then gets rewritten.
   const lower = lowercaseRedirect(req);

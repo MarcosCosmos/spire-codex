@@ -45,8 +45,7 @@ export default function NotFound() {
             Page not found
           </h1>
           <p className="text-[var(--text-muted)] mb-8">
-            That page doesn&apos;t exist on Spire Codex. Sending you home in a
-            moment&hellip;
+            That page doesn&apos;t exist on Spire Codex.
           </p>
           <Link
             href="/"
