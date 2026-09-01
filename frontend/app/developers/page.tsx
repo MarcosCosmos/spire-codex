@@ -48,8 +48,8 @@ async function fetchRateLimits(): Promise<{ browse: string; tiers: Record<string
 }
 
 const TIER_ROWS: { key: string; label: string; how: string }[] = [
-  { key: "general", label: "General", how: "any issued key" },
-  { key: "registered", label: "Registered", how: "create one on your profile" },
+  { key: "general", label: "No API key", how: "" },
+  { key: "registered", label: "Registered User", how: "create one on your profile" },
   { key: "academia", label: "Academia", how: "granted on request" },
   { key: "paid", label: "Paid", how: "supporters" },
 ];
@@ -171,8 +171,8 @@ export default async function DevelopersPage() {
         </h2>
         <p className="text-[var(--text-secondary)] mb-4">
           Full game database accessible via a public REST API. No authentication required:
-          anonymous requests share a generous per-IP allowance sized for browsers and casual
-          use. For scripts and tools, create an API key on your{" "}
+          the per-IP website allowance covers browsing and casual calls, and keyless API
+          usage gets the base rate below. For scripts and tools, create an API key on your{" "}
           <Link href="/profile" className="text-[var(--accent-gold)] hover:underline">profile page</Link>{" "}
           and send it as the <code className="text-xs bg-[var(--bg-card)] px-1.5 py-0.5 rounded">X-API-Key</code>{" "}
           header. A key buckets your requests by identity instead of IP (stable across networks,
@@ -189,7 +189,7 @@ export default async function DevelopersPage() {
             <table className="w-full text-sm">
               <tbody>
                 <tr className="border-b border-[var(--border-subtle)]">
-                  <td className="py-2 pr-4 text-[var(--text-primary)]">No key</td>
+                  <td className="py-2 pr-4 text-[var(--text-primary)]">Website Traffic</td>
                   <td className="py-2 pr-4 font-mono text-[var(--accent-gold)]">{limits.browse}</td>
                   <td className="py-2 text-[var(--text-muted)]">per IP</td>
                 </tr>
