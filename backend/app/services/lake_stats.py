@@ -1,12 +1,10 @@
 """Read-only DuckDB access to the analytics lake.
 
-First production toehold of the lake migration: LAKE_STATS_SHADOW=on makes
-the stats refresher compare lake-computed community-stats deaths against
-the snapshot-served payload once per summary cycle and log the drift, so a
-divergence (stale folds, broken ingest, filter skew) surfaces in the logs
-instead of a user report. Requires the lake mounted at LAKE_DIR (default
-/lake) and the nightly lake-ingest job keeping it fresh. No serving path
-reads the lake yet.
+Every analytics surface serves from here: the community payload and cube,
+the entity store and cube, encounter stats, deep item tables, charts, the
+leaderboard boards, and the frame. Requires the lake mounted at LAKE_DIR
+(default /lake) — built by the ingest box's cycle and delivered by the
+artifact bus. Serving reads stored artifacts; only builders touch parquet.
 """
 
 import logging
@@ -16,14 +14,8 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 LAKE_DIR = Path(os.environ.get("LAKE_DIR", "/lake"))
-SHADOW_ENABLED = (os.environ.get("LAKE_STATS_SHADOW", "") or "").lower() in (
-    "1",
-    "on",
-    "true",
-)
 # "serve": /api/runs/community-stats builds its payload from the lake (the
 # snapshot stays as automatic fallback for unsupported brackets and errors).
-SERVE_ENABLED = (os.environ.get("LAKE_COMMUNITY_STATS", "") or "").lower() == "serve"
 
 _OFFICIAL = "('IRONCLAD','SILENT','DEFECT','NECROBINDER','REGENT')"
 
@@ -82,63 +74,6 @@ def _connect(build: bool = False):
     # count here was a second, redundant brake. Serving reads stay at 2.
     con.execute("SET threads=5" if build else "SET threads=2")
     return con
-
-
-def deaths_counts() -> dict[str, dict[str, int]]:
-    """Deaths per encounter/event id with the walk's eligibility filters."""
-    con = _connect()
-    try:
-        out: dict[str, dict[str, int]] = {}
-        for section, col in (("encounters", "encounter"), ("events", "event")):
-            rows = con.execute(
-                f"""
-                SELECT killed_by_{col} AS id, count(*) AS n
-                FROM read_parquet('{LAKE_DIR}/runs.parquet') r
-                ANTI JOIN read_parquet('{LAKE_DIR}/excluded.parquet') x
-                  ON r.run_hash = x.run_hash
-                WHERE NOT r.win AND r.ascension BETWEEN 0 AND 10
-                  AND r.character IN {_OFFICIAL}
-                  AND killed_by_{col} IS NOT NULL
-                  AND killed_by_{col} NOT LIKE 'NONE%'
-                GROUP BY 1
-                """
-            ).fetchall()
-            out[section] = dict(rows)
-        return out
-    finally:
-        con.close()
-
-
-def shadow_check() -> None:
-    """One log line comparing lake deaths to the served snapshot payload."""
-    try:
-        if not available():
-            logger.info("lake shadow: lake not available, skipped")
-            return
-        from . import run_entity_stats
-
-        live = run_entity_stats.get_community_stats(None)
-        lake = deaths_counts()
-        worst, worst_id, n = 0.0, "", 0
-        for section in ("encounters", "events"):
-            for row in (live.get("deaths") or {}).get(section) or []:
-                lv = row.get("count") or 0
-                lk = lake[section].get(row.get("id"), 0)
-                drift = abs(lk - lv) * 100.0 / max(lv, 1)
-                n += 1
-                if drift > worst:
-                    worst, worst_id = drift, f"{section}:{row.get('id')}"
-        logger.info(
-            "lake shadow: worst drift %.2f%% (%s) across %d ids", worst, worst_id, n
-        )
-        if worst >= 5.0:
-            logger.warning(
-                "lake shadow: drift %.2f%% on %s - lake and snapshot are diverging",
-                worst,
-                worst_id,
-            )
-    except Exception:
-        logger.warning("lake shadow check failed", exc_info=True)
 
 
 # ── Serve mode: the full community-stats payload from the lake ────────────────
@@ -284,6 +219,35 @@ FROM eligible e
 LEFT JOIN user_wr u ON lower(e.username) = u.uname
 """
 
+# Entity membership is RUN-SET, not per-copy: DISTINCT (run, entity) is the
+# walk's per-run dedupe — a deck with 5 Strikes is ONE pick, so win rate
+# stays "win rate when X is in your deck" instead of copy-weighted, and a
+# co-op run where two players hold the same relic still counts once.
+_MEMBERSHIP_SQL = """
+SELECT m.{col}, e.character, count(*), count(*) FILTER (e.win),
+  max(e.submitted_at), arg_max(m.run_hash, e.submitted_at)
+FROM (
+  SELECT DISTINCT run_hash, {col}
+  FROM read_parquet('{lake}/{table}.parquet')
+  WHERE {col} IS NOT NULL AND {col} <> ''
+) m
+JOIN eligible e ON m.run_hash = e.run_hash
+GROUP BY 1, 2
+"""
+
+_CUBE_MEMBERSHIP_SQL = """
+SELECT c.cell, m.{col}, coalesce(el.character, ''),
+  count(*), count(*) FILTER (c.win)
+FROM (
+  SELECT DISTINCT run_hash, {col}
+  FROM read_parquet('{lake}/{table}.parquet')
+  WHERE {col} IS NOT NULL AND {col} <> ''
+) m
+JOIN cells c ON m.run_hash = c.run_hash
+JOIN eligible el ON m.run_hash = el.run_hash
+GROUP BY 1, 2, 3
+"""
+
 
 _MODE_KEYS = frozenset(("standard", "daily", "custom"))
 _PLAYER_KEYS = {"solo": "1", "2p": "2", "3p": "3", "4p": "4"}
@@ -325,13 +289,11 @@ def _parse_lake_bracket(bracket: str | None):
 
 def community_payload(bracket: str | None = None) -> dict | None:
     """Community-stats payload from the ingest-built store: the plain
-    payload file for the all bracket, or any mode x players x skill
-    combination folded from the cube. None (snapshot fallback) for
-    version brackets, unknown keys, missing stores, or any error.
-    Serving never builds from parquet inline."""
+    payload file for the all bracket, or any mode x players x skill x
+    version combination folded from the cube. None (snapshot fallback)
+    for unknown keys, missing stores, or any error. Serving never builds
+    from parquet inline."""
     try:
-        if not SERVE_ENABLED:
-            return None
         parsed = _parse_lake_bracket(bracket)
         if parsed is None:
             return None
@@ -775,7 +737,8 @@ def _ensure_run_tiers(con) -> None:
     con.execute(
         "CREATE TABLE IF NOT EXISTS run_tiers AS "
         "SELECT run_hash, split_part(cell, '|', 3)::INT AS a10, "
-        "split_part(cell, '|', 4)::INT AS band FROM cells"
+        "split_part(cell, '|', 4)::INT AS band, "
+        "split_part(cell, '|', 5) AS ver FROM cells"
     )
 
 
@@ -800,53 +763,57 @@ def reward_pair_counts_by_tier(
     try:
         _ensure_choice_rows(con)
         _ensure_run_tiers(con)
-        # Three sequential statements, NOT one UNION ALL: bundled, the
-        # pairwise self-join and the skip-screens join run concurrently and
-        # split the memory budget, which wedged the stage in a spill loop
-        # (2026-08-28). Alone, each join gets the full cap — the pairwise
-        # one is the shape that ran for months.
+        # Screen-level lists instead of the 50M-row pairwise self-join (the
+        # cycle's spill heavyweight): one grouped pass builds each screen's
+        # picked/passed card lists, and two lateral unnests expand them to
+        # pairs. A real table in the scratch db, same reasoning as
+        # choice_rows; dropped at the end, and a crash leaves it for the
+        # next cycle's scratch reset.
+        con.execute(
+            """
+            CREATE OR REPLACE TABLE pair_screens AS
+            SELECT t.a10, t.band, t.ver,
+              list(c.cid) FILTER (c.picked) AS picks,
+              list(c.cid) FILTER (NOT c.picked) AS passes
+            FROM choice_rows c JOIN run_tiers t ON t.run_hash = c.run_hash
+            GROUP BY c.run_hash, c.act, c.floor_idx, c.pidx,
+              t.a10, t.band, t.ver
+            """
+        )
         tiers: dict[tuple[int, int], dict[tuple[str, str], int]] = {}
 
-        def cell(a10, band):
-            return tiers.setdefault((int(a10), int(band)), {})
+        def cell(a10, band, ver):
+            return tiers.setdefault((int(a10), int(band), ver or ""), {})
 
-        for a10, band, w, lo, n in con.execute(
+        for a10, band, ver, w, lo, n in con.execute(
             """
-            SELECT t.a10, t.band, w.cid, l.cid, count(*)
-            FROM choice_rows w
-            JOIN choice_rows l ON w.run_hash = l.run_hash AND w.act = l.act
-              AND w.floor_idx = l.floor_idx AND w.pidx = l.pidx
-            JOIN run_tiers t ON t.run_hash = w.run_hash
-            WHERE w.picked AND NOT l.picked AND w.cid <> l.cid
+            SELECT s.a10, s.band, s.ver, wp.w, lp.l, count(*)
+            FROM pair_screens s,
+              LATERAL (SELECT unnest(s.picks) AS w) wp,
+              LATERAL (SELECT unnest(s.passes) AS l) lp
+            WHERE wp.w <> lp.l
+            GROUP BY 1, 2, 3, 4, 5
+            """
+        ).fetchall():
+            cell(a10, band, ver)[(w, lo)] = n
+        for a10, band, ver, cid, n in con.execute(
+            """
+            SELECT s.a10, s.band, s.ver, wp.w, count(*)
+            FROM pair_screens s, LATERAL (SELECT unnest(s.picks) AS w) wp
             GROUP BY 1, 2, 3, 4
             """
         ).fetchall():
-            cell(a10, band)[(w, lo)] = n
-        for a10, band, cid, n in con.execute(
+            cell(a10, band, ver)[(cid, SKIP_ID)] = n
+        for a10, band, ver, cid, n in con.execute(
             """
-            SELECT t.a10, t.band, c.cid, count(*)
-            FROM choice_rows c JOIN run_tiers t ON t.run_hash = c.run_hash
-            WHERE c.picked GROUP BY 1, 2, 3
-            """
-        ).fetchall():
-            cell(a10, band)[(cid, SKIP_ID)] = n
-        for a10, band, cid, n in con.execute(
-            """
-            WITH skipped_screens AS (
-              SELECT run_hash, act, floor_idx, pidx
-              FROM choice_rows GROUP BY 1, 2, 3, 4
-              HAVING NOT bool_or(picked)
-            )
-            SELECT t.a10, t.band, c.cid, count(*)
-            FROM choice_rows c
-            JOIN skipped_screens s ON c.run_hash = s.run_hash
-              AND c.act = s.act AND c.floor_idx = s.floor_idx
-              AND c.pidx = s.pidx
-            JOIN run_tiers t ON t.run_hash = c.run_hash
-            GROUP BY 1, 2, 3
+            SELECT s.a10, s.band, s.ver, lp.l, count(*)
+            FROM pair_screens s, LATERAL (SELECT unnest(s.passes) AS l) lp
+            WHERE len(coalesce(s.picks, [])) = 0
+            GROUP BY 1, 2, 3, 4
             """
         ).fetchall():
-            cell(a10, band)[(SKIP_ID, cid)] = n
+            cell(a10, band, ver)[(SKIP_ID, cid)] = n
+        con.execute("DROP TABLE IF EXISTS pair_screens")
         return tiers
     finally:
         if own:
@@ -854,17 +821,20 @@ def reward_pair_counts_by_tier(
 
 
 def fold_tier_pairs(
-    tiers: dict[tuple[int, int], dict[tuple[str, str], int]],
+    tiers: dict[tuple[int, int, str], dict[tuple[str, str], int]],
     a10_only: bool = False,
     min_band: int = 0,
+    version: str | None = None,
 ) -> dict[tuple[str, str], int]:
     """Cumulative fold of tiered pair counts: the all-runs pairs with the
-    defaults, or a skill-ladder bracket's subset."""
+    defaults, a skill-ladder bracket's subset, or one game version's."""
     out: dict[tuple[str, str], int] = {}
-    for (a10, band), d in tiers.items():
+    for (a10, band, ver), d in tiers.items():
         if a10_only and a10 != 1:
             continue
         if band < min_band:
+            continue
+        if version is not None and ver != version:
             continue
         for k, n in d.items():
             out[k] = out.get(k, 0) + n
@@ -1070,22 +1040,15 @@ def build_entity_store() -> dict | None:
                 },
             )
 
-        # Per-instance membership + per-character splits + last-seen, one
-        # query per membership table.
+        # Run-set membership + per-character splits + last-seen, one query
+        # per membership table.
         for etype, table, col in (
             ("cards", "deck", "card"),
             ("relics", "relics", "relic"),
             ("potions", "potions", "potion"),
         ):
             for eid, char, picks, wins, last_ts, last_hash in con.execute(
-                f"""
-                SELECT m.{col}, e.character, count(*), count(*) FILTER (e.win),
-                  max(e.submitted_at), arg_max(m.run_hash, e.submitted_at)
-                FROM read_parquet('{LAKE_DIR}/{table}.parquet') m
-                JOIN eligible e ON m.run_hash = e.run_hash
-                WHERE m.{col} IS NOT NULL AND m.{col} <> ''
-                GROUP BY 1, 2
-                """
+                _MEMBERSHIP_SQL.format(col=col, table=table, lake=LAKE_DIR)
             ).fetchall():
                 a = entry(etype, eid)
                 a["picks"] += picks
@@ -1283,6 +1246,16 @@ def build_entity_store() -> dict | None:
                 )
                 skip_by_bracket[name] = be.pop(SKIP_ID, None)
                 bracket_elo[name] = be
+            # Per-version fits so the metrics page's version charts carry a
+            # real per-patch Elo (the fossil snapshot's composite fits did
+            # this; the lake owes the same).
+            for ver in cube_versions():
+                bev, _pv = res._compute_codex_elo(
+                    fold_tier_pairs(tiers, version=ver), warm=card_p
+                )
+                bev.pop(SKIP_ID, None)
+                if bev:
+                    bracket_elo[f"ver:{ver}"] = bev
             if skip_block is not None:
                 skip_block["elo"] = card_elo.get(SKIP_ID)
                 skip_block["elo_by_bracket"] = skip_by_bracket
@@ -1428,18 +1401,13 @@ def build_entity_cube(con=None) -> dict:
         ):
             per: dict[str, dict] = {}
             per_char: dict[str, dict] = {}
-            # One scan grouped by character yields both sections: the
-            # entity cells (summed over characters) and the character axis
-            # that gives bracketed by-character views a live source.
+            # One scan yields both sections: the entity cells (summed over
+            # characters) and the character axis that gives bracketed
+            # by-character views a live source. The character is the RUN's
+            # (matching the store and the fossil), so each run contributes
+            # exactly once to its cell total.
             for cell, eid, ch, p, w in con.execute(
-                f"""
-                SELECT e.cell, m.{col}, coalesce(m.character, ''),
-                  count(*), count(*) FILTER (e.win)
-                FROM read_parquet('{LAKE_DIR}/{table}.parquet') m
-                JOIN cells e ON m.run_hash = e.run_hash
-                WHERE m.{col} IS NOT NULL AND m.{col} <> ''
-                GROUP BY 1, 2, 3
-                """
+                _CUBE_MEMBERSHIP_SQL.format(col=col, table=table, lake=LAKE_DIR)
             ).fetchall():
                 cur = per.setdefault(cell, {}).setdefault(eid, [0, 0])
                 cur[0] += p
@@ -1880,20 +1848,24 @@ _SKILL_BRACKET_NAMES = {0: "a10", 1: "wr30", 2: "wr50", 3: "wr75"}
 
 
 def bracket_elo_for(bracket: str | None) -> dict | None:
-    """Per-bracket card Elo map for the skill component of a lake bracket
-    (a10/wr30/wr50/wr75, alone or inside a composite), or None when the
-    bracket has no skill part or the store predates per-bracket fits —
+    """Per-bracket card Elo map for a lake bracket: the skill component's
+    fit when the bracket has one (a10/wr30/wr50/wr75, alone or composite),
+    else the game version's fit for version brackets. None otherwise —
     callers then fall back to the all-runs Elo. A card absent from a
     returned map is below the head-to-head floor in that slice."""
     parsed = _parse_lake_bracket(bracket)
-    if not parsed or parsed[2] is None:
+    if not parsed:
         return None
     hit = entity_store_with_mtime()
     if not hit:
         return None
-    return (hit[1].get("bracket_elo") or {}).get(
-        _SKILL_BRACKET_NAMES[parsed[2]]
-    ) or None
+    bmap = hit[1].get("bracket_elo") or {}
+    _mode, _player, skill, version = parsed
+    if skill is not None:
+        return bmap.get(_SKILL_BRACKET_NAMES[skill]) or None
+    if version is not None:
+        return bmap.get(f"ver:{version}") or None
+    return None
 
 
 # ── Stats-summary core: the homepage numbers, from the lake ──────────────────
@@ -2282,6 +2254,123 @@ def build_deep_tables() -> int:
     tmp.replace(LAKE_DIR / _DEEP_TABLES_NAME)
     logger.info("deep tables stored: %d combos", len(combos))
     return len(combos)
+
+
+def leaderboard_boards() -> dict[str, dict] | None:
+    """Every HOT leaderboard combo computed from the lake in one pass over
+    a shared winning-runs table (the Mongo aggregation took ~10 minutes per
+    cycle; this takes seconds). Row shape mirrors _row_to_dict; the total
+    mirrors the legacy 10k count cap. None when the lake is incomplete."""
+    from .runs_db_mongo import (
+        HOT_LEADERBOARD_COMBOS,
+        OFFICIAL_CHARACTERS,
+        _leaderboard_key,
+    )
+
+    if not available():
+        return None
+    con = _connect(build=True)
+    try:
+        con.execute(
+            f"""
+            CREATE OR REPLACE TEMP TABLE lb AS
+            SELECT r.run_hash, upper(r.character) AS character,
+              coalesce(r.ascension, 0)::INT AS ascension,
+              lower(coalesce(r.game_mode, 'standard')) AS game_mode,
+              r.run_time, coalesce(r.player_count, 1)::INT AS player_count,
+              s.floors_reached, s.deck_size, s.relic_count, s.username,
+              r.submitted_at, r.build_id,
+              coalesce(r.was_abandoned, false) AS was_abandoned
+            FROM read_parquet('{LAKE_DIR}/runs.parquet') r
+            LEFT JOIN read_parquet('{LAKE_DIR}/run_scalars.parquet') s
+              USING (run_hash)
+            ANTI JOIN read_parquet('{LAKE_DIR}/excluded.parquet') x
+              ON r.run_hash = x.run_hash
+            WHERE coalesce(try_cast(r.win AS BOOLEAN), false)
+              AND r.ascension BETWEEN 0 AND 10
+            """
+        )
+        cols = (
+            "run_hash, character, ascension, game_mode, run_time,"
+            " floors_reached, deck_size, relic_count, username, submitted_at,"
+            " build_id, was_abandoned"
+        )
+        out: dict[str, dict] = {}
+        for combo in HOT_LEADERBOARD_COMBOS:
+            cat = combo.get("category", "fastest")
+            ch, pl, gm = (
+                combo.get("character"),
+                combo.get("players"),
+                combo.get("game_mode"),
+            )
+            where: list[str] = []
+            args: list = []
+            if ch:
+                where.append("character = ?")
+                args.append(ch.upper())
+            else:
+                ph = ", ".join("?" for _ in OFFICIAL_CHARACTERS)
+                where.append(f"character IN ({ph})")
+                args.extend(OFFICIAL_CHARACTERS)
+            if pl in ("single", "1"):
+                where.append("player_count = 1")
+            elif pl in ("2", "3"):
+                where.append("player_count = ?")
+                args.append(int(pl))
+            elif pl == "4":
+                where.append("player_count >= 4")
+            elif pl == "multi":
+                where.append("player_count > 1")
+            if gm:
+                where.append("game_mode = ?")
+                args.append(gm)
+            wsql = " AND ".join(where)
+            order = (
+                "ascension DESC, run_time ASC"
+                if cat == "highest_ascension"
+                else "run_time ASC"
+            )
+            rows = con.execute(
+                f"SELECT {cols} FROM lb WHERE {wsql} ORDER BY {order} LIMIT 50",
+                args,
+            ).fetchall()
+            total = min(
+                con.execute(f"SELECT count(*) FROM lb WHERE {wsql}", args).fetchone()[
+                    0
+                ],
+                10_000,
+            )
+            runs = [
+                {
+                    "run_hash": r[0],
+                    "character": r[1],
+                    "win": 1,
+                    "was_abandoned": int(bool(r[11])),
+                    "ascension": r[2],
+                    "game_mode": r[3],
+                    "run_time": r[4],
+                    "floors_reached": r[5],
+                    "deck_size": r[6],
+                    "relic_count": r[7],
+                    "username": r[8],
+                    "submitted_at": r[9].isoformat() if r[9] is not None else None,
+                    "build_id": r[10],
+                }
+                for r in rows
+            ]
+            out[
+                _leaderboard_key(category=cat, character=ch, players=pl, game_mode=gm)
+            ] = {
+                "runs": runs,
+                "total": total,
+                "page": 1,
+                "per_page": 50,
+                "total_pages": (total + 49) // 50,
+                "category": cat,
+            }
+        return out
+    finally:
+        con.close()
 
 
 def deep_tables_by_key() -> dict[str, dict]:
