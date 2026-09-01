@@ -7,6 +7,13 @@ import { buildApiUrl } from "@/lib/fetch-cache";
 import { t } from "@/lib/ui-translations";
 import { imageUrl } from "@/lib/image-url";
 
+// The route inventory is GENERATED from the App Router file tree by
+// scripts/generate-site-pages.mjs (predev/prebuild hooks), so new pages
+// show up in search automatically. This map only adds nicer display
+// names and keyword synonyms on top; entries here are optional and
+// nothing breaks when a page ships without one.
+import sitePages from "@/lib/site-pages.json";
+
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 // One row in the results list. Entity/page/guide/etc. rows come from the
@@ -26,17 +33,24 @@ interface SearchSection {
   items: SearchItem[];
 }
 
-// The route inventory is GENERATED from the App Router file tree by
-// scripts/generate-site-pages.mjs (predev/prebuild hooks), so new pages
-// show up in search automatically. This map only adds nicer display
-// names and keyword synonyms on top; entries here are optional and
-// nothing breaks when a page ships without one.
-import sitePages from "@/lib/site-pages.json";
-
 const PAGE_OVERRIDES: Record<string, { name?: string; keywords?: string[] }> = {
   "/cards": { keywords: ["card", "deck", "attack", "skill", "power"] },
-  "/cards/browse": { name: "Card Browse", keywords: ["browse", "filter", "matrix"] },
-  "/characters": { keywords: ["character", "class", "hero", "ironclad", "silent", "defect", "necrobinder", "regent"] },
+  "/cards/browse": {
+    name: "Card Browse",
+    keywords: ["browse", "filter", "matrix"],
+  },
+  "/characters": {
+    keywords: [
+      "character",
+      "class",
+      "hero",
+      "ironclad",
+      "silent",
+      "defect",
+      "necrobinder",
+      "regent",
+    ],
+  },
   "/relics": { keywords: ["relic", "artifact"] },
   "/monsters": { keywords: ["monster", "enemy", "boss", "bestiary"] },
   "/potions": { keywords: ["potion", "flask"] },
@@ -44,53 +58,188 @@ const PAGE_OVERRIDES: Record<string, { name?: string; keywords?: string[] }> = {
   "/enchantments": { keywords: ["enchantment", "enchant"] },
   "/encounters": { keywords: ["encounter", "fight", "combat"] },
   "/events": { keywords: ["event"] },
-  "/merchant": { keywords: ["merchant", "shop", "store", "buy", "sell", "price", "gold", "removal"] },
-  "/ancients": { keywords: ["ancient", "neow", "darv", "orobas", "pael", "tezcatara", "vakuu", "nonupeipe", "tanx", "offering"] },
-  "/unlocks": { keywords: ["unlock", "unlockable", "progression", "epoch", "achievement"] },
-  "/keywords": { keywords: ["keyword", "exhaust", "ethereal", "innate", "retain", "sly", "eternal", "unplayable"] },
-  "/compare": { name: "Compare Characters", keywords: ["compare", "comparison", "versus", "vs"] },
-  "/modifiers": { name: "Custom Mode", keywords: ["modifier", "custom", "mode", "mutator"] },
+  "/merchant": {
+    keywords: [
+      "merchant",
+      "shop",
+      "store",
+      "buy",
+      "sell",
+      "price",
+      "gold",
+      "removal",
+    ],
+  },
+  "/ancients": {
+    keywords: [
+      "ancient",
+      "neow",
+      "darv",
+      "orobas",
+      "pael",
+      "tezcatara",
+      "vakuu",
+      "nonupeipe",
+      "tanx",
+      "offering",
+    ],
+  },
+  "/unlocks": {
+    keywords: ["unlock", "unlockable", "progression", "epoch", "achievement"],
+  },
+  "/keywords": {
+    keywords: [
+      "keyword",
+      "exhaust",
+      "ethereal",
+      "innate",
+      "retain",
+      "sly",
+      "eternal",
+      "unplayable",
+    ],
+  },
+  "/compare": {
+    name: "Compare Characters",
+    keywords: ["compare", "comparison", "versus", "vs"],
+  },
+  "/modifiers": {
+    name: "Custom Mode",
+    keywords: ["modifier", "custom", "mode", "mutator"],
+  },
   "/runs": { keywords: ["run", "upload", "submit", "history", "win", "loss"] },
-  "/tier-list": { keywords: ["tier", "tier list", "ranking", "best", "worst", "s tier"] },
-  "/tier-list/cards": { name: "Card Tier List", keywords: ["tier", "best cards"] },
-  "/tier-list/relics": { name: "Relic Tier List", keywords: ["tier", "best relics", "act"] },
-  "/tier-list/potions": { name: "Potion Tier List", keywords: ["tier", "best potions"] },
-  "/tier-list-maker": { name: "Tier List Maker", keywords: ["tier", "maker", "builder", "custom tier"] },
-  "/leaderboards": { keywords: ["leaderboard", "fastest", "ascension", "ladder", "ranking"] },
-  "/leaderboards/metrics": { name: "Card Metrics", keywords: ["metrics", "elo", "codex elo", "pick rate", "win rate", "table"] },
-  "/leaderboards/scoring": { name: "Codex Score", keywords: ["score", "codex score", "scoring", "methodology", "tier bands"] },
-  "/leaderboards/stats": { name: "Run Stats", keywords: ["stats", "win rate", "pick rate"] },
-  "/leaderboards/encounters": { name: "Encounter Stats", keywords: ["encounter", "deadliest", "stats"] },
-  "/leaderboards/submit": { name: "Submit a Run", keywords: ["submit", "upload", "run file"] },
-  "/community-stats": { keywords: ["community", "stats", "statistics", "event votes", "deadliest", "records"] },
+  "/tier-list": {
+    keywords: ["tier", "tier list", "ranking", "best", "worst", "s tier"],
+  },
+  "/tier-list/cards": {
+    name: "Card Tier List",
+    keywords: ["tier", "best cards"],
+  },
+  "/tier-list/relics": {
+    name: "Relic Tier List",
+    keywords: ["tier", "best relics", "act"],
+  },
+  "/tier-list/potions": {
+    name: "Potion Tier List",
+    keywords: ["tier", "best potions"],
+  },
+  "/tier-list-maker": {
+    name: "Tier List Maker",
+    keywords: ["tier", "maker", "builder", "custom tier"],
+  },
+  "/leaderboards": {
+    keywords: ["leaderboard", "fastest", "ascension", "ladder", "ranking"],
+  },
+  "/leaderboards/metrics": {
+    name: "Card Metrics",
+    keywords: ["metrics", "elo", "codex elo", "pick rate", "win rate", "table"],
+  },
+  "/leaderboards/scoring": {
+    name: "Codex Score",
+    keywords: ["score", "codex score", "scoring", "methodology", "tier bands"],
+  },
+  "/leaderboards/stats": {
+    name: "Run Stats",
+    keywords: ["stats", "win rate", "pick rate"],
+  },
+  "/leaderboards/encounters": {
+    name: "Encounter Stats",
+    keywords: ["encounter", "deadliest", "stats"],
+  },
+  "/leaderboards/submit": {
+    name: "Submit a Run",
+    keywords: ["submit", "upload", "run file"],
+  },
+  "/community-stats": {
+    keywords: [
+      "community",
+      "stats",
+      "statistics",
+      "event votes",
+      "deadliest",
+      "records",
+    ],
+  },
   "/badges": { keywords: ["badge", "frame", "cosmetic"] },
-  "/mechanics": { keywords: ["mechanic", "formula", "odds", "chance", "drop rate", "probability", "rng"] },
-  "/guides": { keywords: ["guide", "strategy", "tip", "walkthrough", "tutorial"] },
-  "/guides/submit": { name: "Submit Guide", keywords: ["submit", "write", "contribute"] },
+  "/mechanics": {
+    keywords: [
+      "mechanic",
+      "formula",
+      "odds",
+      "chance",
+      "drop rate",
+      "probability",
+      "rng",
+    ],
+  },
+  "/guides": {
+    keywords: ["guide", "strategy", "tip", "walkthrough", "tutorial"],
+  },
+  "/guides/submit": {
+    name: "Submit Guide",
+    keywords: ["submit", "write", "contribute"],
+  },
   "/timeline": { keywords: ["timeline", "epoch", "era", "story", "lore"] },
-  "/reference": { keywords: ["reference", "intent", "orb", "affliction", "modifier", "achievement", "ascension", "act"] },
+  "/reference": {
+    keywords: [
+      "reference",
+      "intent",
+      "orb",
+      "affliction",
+      "modifier",
+      "achievement",
+      "ascension",
+      "act",
+    ],
+  },
   "/images": { keywords: ["image", "sprite", "asset", "art", "download"] },
-  "/developers": { keywords: ["developer", "api", "widget", "tooltip", "export", "data"] },
+  "/developers": {
+    keywords: ["developer", "api", "widget", "tooltip", "export", "data"],
+  },
   "/showcase": { keywords: ["showcase", "community", "project", "built with"] },
-  "/changelog": { keywords: ["changelog", "patch", "update", "version", "what changed"] },
+  "/changelog": {
+    keywords: ["changelog", "patch", "update", "version", "what changed"],
+  },
   "/about": { keywords: ["about", "info", "credits"] },
-  "/news": { keywords: ["news", "patch", "patch notes", "announcement", "update", "steam", "press"] },
-  "/knowledge-demon": { name: "Knowledge Demon", keywords: ["discord bot", "bot"] },
-  "/overlay": { keywords: ["overlay", "overwolf", "in-game", "companion", "app"] },
+  "/news": {
+    keywords: [
+      "news",
+      "patch",
+      "patch notes",
+      "announcement",
+      "update",
+      "steam",
+      "press",
+    ],
+  },
+  "/knowledge-demon": {
+    name: "Knowledge Demon",
+    keywords: ["discord bot", "bot"],
+  },
+  "/overlay": {
+    keywords: ["overlay", "overwolf", "in-game", "companion", "app"],
+  },
 };
 
 // Entries that aren't App Router pages (external links).
 const EXTRA_PAGES = [
-  { name: "Discord", path: "https://discord.gg/xMsTBeh", keywords: ["discord", "chat", "community"], external: true },
+  {
+    name: "Discord",
+    path: "https://discord.gg/xMsTBeh",
+    keywords: ["discord", "chat", "community"],
+    external: true,
+  },
 ];
 
 const PAGES = [
-  ...(sitePages as { path: string; name: string; keywords: string[] }[]).map((p) => ({
-    name: PAGE_OVERRIDES[p.path]?.name ?? p.name,
-    path: p.path,
-    keywords: [...p.keywords, ...(PAGE_OVERRIDES[p.path]?.keywords ?? [])],
-    external: false,
-  })),
+  ...(sitePages as { path: string; name: string; keywords: string[] }[]).map(
+    (p) => ({
+      name: PAGE_OVERRIDES[p.path]?.name ?? p.name,
+      path: p.path,
+      keywords: [...p.keywords, ...(PAGE_OVERRIDES[p.path]?.keywords ?? [])],
+      external: false,
+    }),
+  ),
   ...EXTRA_PAGES,
 ];
 
@@ -121,16 +270,31 @@ export default function GlobalSearch() {
 
   // Build flat list of all visible results for keyboard navigation
   const flatResults: SearchItem[] = [
-    ...matchedPages.map((p) => ({ name: p.name, path: p.path, external: p.external })),
+    ...matchedPages.map((p) => ({
+      name: p.name,
+      path: p.path,
+      external: p.external,
+    })),
     ...sections.flatMap((s) => s.items),
   ];
 
   // Keep the latest query + result count in refs so the "committed search"
   // beacon reads current values without stale-closure bugs.
   const queryRef = useRef("");
+  if (queryRef.current === null) {
+    // this once off init is the only type of in-render setting allowed for refs
+    queryRef.current = query;
+  }
+  useEffect(() => {
+    queryRef.current = query;
+  }, [query]);
   const resultsRef = useRef(0);
-  queryRef.current = query;
-  resultsRef.current = flatResults.length;
+  if (resultsRef.current === null) {
+    resultsRef.current = flatResults.length;
+  }
+  useEffect(() => {
+    resultsRef.current = flatResults.length;
+  }, [flatResults.length]);
   const committedRef = useRef<string | null>(null);
 
   // Log a committed search: the user picked a result (clicked) or settled on a
@@ -145,7 +309,12 @@ export default function GlobalSearch() {
         fetch(buildApiUrl(`${API}/api/search/log`), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ q, lang, results: resultsRef.current, clicked }),
+          body: JSON.stringify({
+            q,
+            lang,
+            results: resultsRef.current,
+            clicked,
+          }),
           keepalive: true,
         }).catch(() => {});
       } catch {
@@ -235,7 +404,7 @@ export default function GlobalSearch() {
           (c: { label: string; items: SearchItem[] }) => ({
             label: c.label,
             items: c.items.slice(0, MAX_PER_CATEGORY),
-          })
+          }),
         );
         const imageItems: SearchItem[] = (images as Record<string, unknown>[])
           .slice(0, MAX_PER_CATEGORY)
@@ -246,15 +415,19 @@ export default function GlobalSearch() {
             thumb: imageUrl(im.url as string),
             external: true,
           }));
-        if (imageItems.length > 0) next.push({ label: "Images", items: imageItems });
+        if (imageItems.length > 0)
+          next.push({ label: "Images", items: imageItems });
         const already = new Set(
-          next.flatMap((s) => s.items.map((it) => it.path))
+          next.flatMap((s) => s.items.map((it) => it.path)),
         );
         const semanticItems: SearchItem[] = (
           (semantic.items ?? []) as SearchItem[]
         ).filter((it) => !already.has(it.path));
         if (semanticItems.length > 0) {
-          next.push({ label: t("Best matches", lang), items: semanticItems.slice(0, MAX_PER_CATEGORY) });
+          next.push({
+            label: t("Best matches", lang),
+            items: semanticItems.slice(0, MAX_PER_CATEGORY),
+          });
         }
         setSections(next);
         setSelectedIndex(0);
@@ -276,9 +449,12 @@ export default function GlobalSearch() {
         router.push(item.path);
       }
     },
-    [router, logCommitted]
+    [router, logCommitted],
   );
 
+  const flatResultsLength = flatResults.length;
+  const selectedFlatResult =
+    flatResults.length > 0 ? flatResults[selectedIndex] : null;
   // Keyboard navigation inside modal
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -288,7 +464,7 @@ export default function GlobalSearch() {
       }
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        setSelectedIndex((i) => Math.min(i + 1, flatResults.length - 1));
+        setSelectedIndex((i) => Math.min(i + 1, flatResultsLength - 1));
         return;
       }
       if (e.key === "ArrowUp") {
@@ -296,21 +472,19 @@ export default function GlobalSearch() {
         setSelectedIndex((i) => Math.max(i - 1, 0));
         return;
       }
-      if (e.key === "Enter" && flatResults.length > 0) {
+      if (e.key === "Enter" && selectedFlatResult) {
         e.preventDefault();
-        const selected = flatResults[selectedIndex];
-        if (selected) navigate(selected);
+        if (selectedFlatResult) navigate(selectedFlatResult);
         return;
       }
     },
-    [flatResults, selectedIndex, navigate]
+    [flatResultsLength, selectedFlatResult, navigate],
   );
 
   if (!open) return null;
 
   const totalResults =
-    matchedPages.length +
-    sections.reduce((sum, s) => sum + s.items.length, 0);
+    matchedPages.length + sections.reduce((sum, s) => sum + s.items.length, 0);
 
   return (
     <div
@@ -384,11 +558,27 @@ export default function GlobalSearch() {
                         ? "bg-[var(--bg-card-hover)]"
                         : "hover:bg-[var(--bg-card-hover)]"
                     }`}
-                    onClick={() => navigate({ name: p.name, path: p.path, external: p.external })}
+                    onClick={() =>
+                      navigate({
+                        name: p.name,
+                        path: p.path,
+                        external: p.external,
+                      })
+                    }
                     onMouseEnter={() => setSelectedIndex(i)}
                   >
-                    <svg className="w-4 h-4 text-[var(--text-muted)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    <svg
+                      className="w-4 h-4 text-[var(--text-muted)] shrink-0"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
                     </svg>
                     <span className="text-sm text-[var(--text-primary)]">
                       {p.name}
@@ -445,7 +635,9 @@ export default function GlobalSearch() {
                           </span>
                         )}
                         {item.external && (
-                          <span className="ml-auto text-[10px] text-[var(--text-muted)] shrink-0">↗</span>
+                          <span className="ml-auto text-[10px] text-[var(--text-muted)] shrink-0">
+                            ↗
+                          </span>
                         )}
                       </button>
                     );
@@ -459,12 +651,20 @@ export default function GlobalSearch() {
         {/* Footer */}
         {totalResults > 0 && (
           <div className="px-4 py-2 border-t border-[var(--border-subtle)] text-xs text-[var(--text-muted)] flex items-center gap-4">
-            <span>{totalResults} result{totalResults !== 1 ? "s" : ""}</span>
+            <span>
+              {totalResults} result{totalResults !== 1 ? "s" : ""}
+            </span>
             <span className="ml-auto flex items-center gap-1">
-              <kbd className="border border-[var(--border-subtle)] rounded px-1 py-0.5">&uarr;</kbd>
-              <kbd className="border border-[var(--border-subtle)] rounded px-1 py-0.5">&darr;</kbd>
+              <kbd className="border border-[var(--border-subtle)] rounded px-1 py-0.5">
+                &uarr;
+              </kbd>
+              <kbd className="border border-[var(--border-subtle)] rounded px-1 py-0.5">
+                &darr;
+              </kbd>
               to navigate
-              <kbd className="border border-[var(--border-subtle)] rounded px-1 py-0.5 ml-1">&crarr;</kbd>
+              <kbd className="border border-[var(--border-subtle)] rounded px-1 py-0.5 ml-1">
+                &crarr;
+              </kbd>
               to select
             </span>
           </div>
