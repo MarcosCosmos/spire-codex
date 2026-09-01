@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, type ReactNode } from "react";
-import { getCardDisplayModel } from "@/lib/card-display";
+import { getCardProseFacts } from "@/lib/card-display";
 import { useLanguage } from "@/app/contexts/LanguageContext";
 import type {
   Relic,
@@ -185,51 +185,41 @@ export default function EntityProse(props: Props) {
     // The prose tracks the page's upgrade toggle through the same display
     // model as the card render; upgraded values that differ render in the
     // render's green.
-    const display = getCardDisplayModel(c, !!props.upgraded);
-    const baseModel = getCardDisplayModel(c, false);
-    const up = display.isUpgraded;
+    const f = getCardProseFacts(c, !!props.upgraded);
     const green = (v: ReactNode, changed: boolean) =>
-      up && changed ? <span className="text-emerald-400">{v}</span> : v;
-    const cost = c.is_x_cost ? "X" : `${display.cost ?? c.cost}`;
-    const activeDesc = (up && c.upgrade_description) || c.description || "";
-    const xTimes = !!c.is_x_cost && /\bX times/i.test(activeDesc);
+      f.isUpgraded && changed ? <span className="text-emerald-400">{v}</span> : v;
     const sentences: ReactNode[] = [];
     sentences.push(
       <>
-        {green(`${name}${up ? "+" : ""}`, true)} is a {c.rarity} {c.type} card{who} in Slay
-        the Spire 2, costing {green(cost, display.cost !== baseModel.cost)} energy.
+        {green(f.displayName, true)} is a {c.rarity} {c.type} card{who} in Slay the Spire
+        2, costing {green(f.cost, f.costChanged)} energy.
       </>,
     );
     const eff: ReactNode[] = [];
-    if (display.damage != null)
+    if (f.damage != null)
       eff.push(
         <>
-          deals {green(display.damage, display.damage !== baseModel.damage)} damage
-          {display.hitCount && display.hitCount > 1 ? (
-            <> across {green(display.hitCount, display.hitCount !== baseModel.hitCount)} hits</>
-          ) : xTimes ? (
+          deals {green(f.damage, f.damageChanged)} damage
+          {f.hitCount && f.hitCount > 1 ? (
+            <> across {green(f.hitCount, f.hitCountChanged)} hits</>
+          ) : f.xTimes ? (
             " X times"
           ) : (
             ""
           )}
         </>,
       );
-    if (display.block != null)
-      eff.push(<>grants {green(display.block, display.block !== baseModel.block)} Block</>);
+    if (f.block != null) eff.push(<>grants {green(f.block, f.blockChanged)} Block</>);
     if (c.cards_draw != null) eff.push(`draws ${c.cards_draw} card${c.cards_draw === 1 ? "" : "s"}`);
     if (c.energy_gain != null) eff.push(`gains ${c.energy_gain} energy`);
     const powerParts = (c.powers_applied || []).map((p) => `${p.amount} ${p.power}`);
     if (powerParts.length) eff.push(`applies ${listWords(powerParts)}`);
     if (eff.length) sentences.push(<>It {listNodes(eff)}.</>);
-    const kws = [
-      ...display.visibleKeywords.map((k) => ({ k, added: false })),
-      ...display.addedKeywords.map((k) => ({ k, added: true })),
-    ];
-    if (kws.length) {
+    if (f.keywords.length) {
       sentences.push(
         <>
-          It carries the {listNodes(kws.map(({ k, added }) => green(k, added)))} keyword
-          {kws.length > 1 ? "s" : ""}.
+          It carries the {listNodes(f.keywords.map(({ keyword, added }) => green(keyword, added)))} keyword
+          {f.keywords.length > 1 ? "s" : ""}.
         </>,
       );
     }
