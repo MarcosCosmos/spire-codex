@@ -4,7 +4,15 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "../contexts/LanguageContext";
 import { buildApiUrl } from "@/lib/fetch-cache";
+import { t } from "@/lib/ui-translations";
 import { imageUrl } from "@/lib/image-url";
+
+// The route inventory is GENERATED from the App Router file tree by
+// scripts/generate-site-pages.mjs (predev/prebuild hooks), so new pages
+// show up in search automatically. This map only adds nicer display
+// names and keyword synonyms on top; entries here are optional and
+// nothing breaks when a page ships without one.
+import sitePages from "@/lib/site-pages.json";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -24,14 +32,6 @@ interface SearchSection {
   label: string;
   items: SearchItem[];
 }
-
-// The route inventory is GENERATED from the App Router file tree by
-// scripts/generate-site-pages.mjs (predev/prebuild hooks), so new pages
-// show up in search automatically. This map only adds nicer display
-// names and keyword synonyms on top; entries here are optional and
-// nothing breaks when a page ships without one.
-import sitePages from "@/lib/site-pages.json";
-import { L } from "vitest/dist/chunks/reporters.d.BFLkQcL6.js";
 
 const PAGE_OVERRIDES: Record<string, { name?: string; keywords?: string[] }> = {
   "/cards": { keywords: ["card", "deck", "attack", "skill", "power"] },
