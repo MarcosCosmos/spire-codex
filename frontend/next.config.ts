@@ -23,7 +23,7 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  // The /beta section itself is wired up in middleware.ts, which rewrites
+  // The /beta section itself is wired up in proxy.ts, which rewrites
   // /beta/cards/x to /cards/x?channel=beta. Only the SEO shielding lives
   // here. Decision: /beta carries zero SEO risk, so every beta URL gets a
   // header-level noindex without touching the shared pages.
@@ -40,7 +40,10 @@ const nextConfig: NextConfig = {
       {
         source: "/widget/:path*",
         headers: [
-          { key: "Cache-Control", value: "public, max-age=86400, s-maxage=604800" },
+          {
+            key: "Cache-Control",
+            value: "public, max-age=86400, s-maxage=604800",
+          },
           { key: "Access-Control-Allow-Origin", value: "*" },
         ],
       },
@@ -80,7 +83,7 @@ export default withSentryConfig(nextConfig, {
 
   // Uncomment to route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers.
   // This can increase your server load as well as your hosting bill.
-  // Note: Check that the configured route will not match with your Next.js middleware, otherwise reporting of client-
+  // Note: Check that the configured route will not match with your Next.js proxy.ts, otherwise reporting of client-
   // side errors will fail.
   // tunnelRoute: "/monitoring",
 

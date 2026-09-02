@@ -1,50 +1,19 @@
-import type { Metadata } from "next";
-import Link from "next/link";
-import { SITE_URL, SITE_NAME } from "@/lib/seo";
+import { generateMetadata, default as NotFound } from "../not-found";
 
 /**
  * Locale-scoped 404 page. Mirrors `/not-found.tsx` but bounces back to
- * the home page, `/` covers all locales and the browser will
- * re-route via the user's accept-language if they had been on a
- * locale path.
+ * the home page, `/` covers all locales
  *
  * Like the English variant: canonical → home + meta-refresh after 3s
  * + robots:noindex. Captures the long tail of bogus localized URLs
  * (e.g. `/jpn/cards/<bad-id>` that aren't caught by the entity-detail
  * redirect helper above, plus any `/jpn/<bogus-page>` routes).
+ *
+ * Note: this currently can't localise properly because it dosn't have access to the client side localisation contexts etc (and AFAIK is prebaked once for all usages).
+ * The simplest way to get a localised version will probably be to utilise i18n-next which (hopefully?) provides server side locales.
+ * We'll also need [...notfound] catchalls to route unmatched paths to the localised paths so i18n-next can provide locale information.
+ * See https://next-intl.dev/docs/environments/error-files and https://github.com/vercel/next.js/discussions/50518
  */
 
-export const metadata: Metadata = {
-  title: `Page Not Found - Slay the Spire 2 (sts2) | ${SITE_NAME}`,
-  description:
-    "The page you were looking for doesn't exist on Spire Codex. Redirecting you home.",
-  alternates: { canonical: SITE_URL },
-  robots: { index: false, follow: true },
-  // meta-refresh emitted inline below, `metadata.other` would render
-  // it as `<meta name="..."`, not `<meta http-equiv="...">`.
-};
-
-export default function LangNotFound() {
-  return (
-    <>
-      <link rel="canonical" href={SITE_URL} />
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-3">
-            Page not found
-          </h1>
-          <p className="text-[var(--text-muted)] mb-8">
-            That page doesn&apos;t exist on Spire Codex. Sending you home in a
-            moment&hellip;
-          </p>
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-[var(--accent-gold)] text-[var(--bg-primary)] font-semibold hover:opacity-90 transition-opacity"
-          >
-            Take me home now
-          </Link>
-        </div>
-      </div>
-    </>
-  );
-}
+export { generateMetadata };
+export default NotFound;

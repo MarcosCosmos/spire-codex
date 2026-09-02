@@ -12,11 +12,11 @@ import { LANG_PREFIXES } from "@/lib/languages";
  * The article catchall route ALSO handles the old shape via a runtime
  * `permanentRedirect`, but Next.js dev with Turbopack swallows in-route
  * redirects into an internal re-render so curl / crawlers see a 200 at
- * the legacy URL. Doing it at the middleware layer guarantees a real
+ * the legacy URL. Doing it at the proxy.ts layer guarantees a real
  * 308 hits the wire in both dev and prod, and lets the page route stay
  * a simple "render the article" function.
  *
- * The middleware only fires when the slug looks like an encoded Steam
+ * The proxy.ts only fires when the slug looks like an encoded Steam
  * URL — bare-gid requests skip it entirely, so the cost on the hot path
  * is one regex test per /news/* request. */
 const NEWS_PATH = /^(\/[a-z]{3})?\/news\/(.+)$/;
@@ -113,7 +113,7 @@ const BETA_DETAIL_TYPES = new Set([
  * a real page (the what's-new landing); the localized /{lang}/beta falls
  * back to it.
  *
- * This lives in middleware rather than next.config rewrites because a
+ * This lives in proxy.ts rather than next.config rewrites because a
  * config rewrite's destination query never reaches `searchParams` on the
  * client router's RSC refetch: the page re-renders channel-less, the API
  * 404s for beta-only entities, and redirectMissingEntity bounces the

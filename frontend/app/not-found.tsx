@@ -1,48 +1,63 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { SITE_URL, SITE_NAME } from "@/lib/seo";
-
+import { SITE_NAME } from "@/lib/seo";
+import { LANG_NAMES, LANG_HREFLANG, type LangCode } from "@/lib/languages";
+import { t } from "@/lib/ui-translations";
 /**
  * App-wide 404 page. Two jobs:
  *
  *   1. Tell the user what happened in a friendly way and give them a
  *      one-click route home.
- *   2. Send a meta-refresh to `/` after 3 seconds so casual visitors
- *      bounce back to a working page instead of getting stuck on the
- *      404, and set `<link rel="canonical" href="/">` so Search Console
- *      treats the URL as a duplicate of home (soft-404), which the
- *      site owner has explicitly accepted as a trade-off to capture
- *      stray crawl traffic.
  *
  * NOTE: This file only handles routes that don't match any segment at
  * all (`/some-bogus-page`). Entity-detail routes with unknown IDs
  * (`/cards/<unknown>`) now redirect to the entity list via
  * `redirectMissingEntity()` instead of rendering this page, so search
  * engines see a 308 on those URLs and forward the link equity.
+ *
+ * Note: this currently can't localise properly because it dosn't have access to the client side localisation contexts etc (and AFAIK is prebaked once for all usages).
+ * The simplest way to get a localised version will probably be to utilise i18n-next which (hopefully?) provides server side locales.
+ * We'll also need [...notfound] catchalls to route unmatched paths to the localised paths so i18n-next can provide locale information.
+ * See https://next-intl.dev/docs/environments/error-files and https://github.com/vercel/next.js/discussions/50518
  */
 
-export const metadata: Metadata = {
-  title: `Page Not Found - Slay the Spire 2 (sts2) | ${SITE_NAME}`,
-  description:
-    "The page you were looking for doesn't exist on Spire Codex. Redirecting you home.",
-  alternates: { canonical: SITE_URL },
-  robots: { index: false, follow: true },
-  // NOTE: The browser meta-refresh is emitted directly in JSX below.
-  // Next.js's `metadata.other` would render as `<meta name="..."`,
-  // not `<meta http-equiv="...">`, so it has to be inline.
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const lang = "eng";
+
+  const notFoundText = t("Page Not Found", lang);
+  const description = t(
+    "The page you were looking for doesn't exist on Spire Codex.",
+    lang,
+  );
+
+  const langCode = lang as LangCode;
+  const title = `${notFoundText} | Spire Codex (${LANG_NAMES[langCode]})`;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      type: "website",
+      siteName: SITE_NAME,
+      title,
+      description,
+      locale: LANG_HREFLANG[langCode],
+    },
+    robots: { index: false, follow: true },
+  };
+}
 
 export default function NotFound() {
+  const lang = "eng";
+  const notFoundText = t("Page not Found", lang);
+
+  // todo: needs more detailed localisations but it's not relevant until we switch to i18n-next and can enable them.
   return (
     <>
-      {/* metadata.other doesn't emit <meta http-equiv> correctly in
-          every Next 16 build path, explicit tag here as a belt &
-          braces. */}
-      <link rel="canonical" href={SITE_URL} />
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-3">
-            Page not found
+            {notFoundText}
           </h1>
           <p className="text-[var(--text-muted)] mb-8">
             That page doesn&apos;t exist on Spire Codex.
