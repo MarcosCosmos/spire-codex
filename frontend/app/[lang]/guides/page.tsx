@@ -5,13 +5,7 @@ import JsonLd from "@/app/components/JsonLd";
 import { buildCollectionPageJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import GuidesClient from "@/app/guides/GuidesClient";
 import Link from "next/link";
-import {
-  isValidLang,
-  LANG_GAME_NAME,
-  LANG_NAMES,
-  LANG_HREFLANG,
-  type LangCode,
-} from "@/lib/languages";
+import { isValidLang, LANG_NAMES, LANG_HREFLANG, type LangCode } from "@/lib/languages";
 import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL, buildLanguageAlternates } from "@/lib/seo";
 import { t } from "@/lib/ui-translations";
 
@@ -24,10 +18,9 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   if (!isValidLang(lang)) return {};
 
   const langCode = lang as LangCode;
-  const gameName = LANG_GAME_NAME[langCode];
   const nativeName = LANG_NAMES[langCode];
 
-  const title = `${gameName} ${t("Guides", lang)} | Spire Codex (${nativeName})`;
+  const title = `${t("Guides", lang)}`;
   const description = `${t("guides_tagline", lang)} ${nativeName}.`;
 
   const languages = buildLanguageAlternates(`/${CATEGORY}`);

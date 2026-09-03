@@ -1,26 +1,23 @@
 import type { Metadata } from "next";
-import { buildLanguageAlternates, DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
+import { buildPageMetadata } from "@/lib/seo";
+import { isValidLang } from "@/lib/languages";
+import { t } from "@/lib/ui-translations";
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd } from "@/lib/jsonld";
 
-const title = "Database - About - Slay the Spire 2 (sts2) | Spire Codex";
-const ogDesc = "About Spire Codex, a community-built database for Slay the Spire 2.";
-
-export const metadata: Metadata = {
-  title,
-  description:
-    "About Spire Codex, a community-built database for Slay the Spire 2. Learn about the data pipeline, tech stack, and how the site works.",
-  openGraph: {
-    type: "website",
-    siteName: SITE_NAME,
-    url: `${SITE_URL}/about`,
-    title,
-    description: ogDesc,
-    images: [{ url: DEFAULT_OG_IMAGE }],
-  },
-  twitter: { card: "summary_large_image", title, description: ogDesc },
-  alternates: { canonical: "/about", languages: buildLanguageAlternates("/about") },
-};
+/** Shared with app/[lang]/about/page.tsx, which re-exports this directly. */
+export async function generateMetadata(
+  { params }: { params?: Promise<{ lang?: string }> } = {},
+): Promise<Metadata> {
+  const lang = (await params)?.lang;
+  if (lang && !isValidLang(lang)) return {};
+  return buildPageMetadata({
+    lang,
+    path: "/about",
+    title: t("About", lang ?? "eng"),
+    description: t("about_tagline", lang ?? "eng"),
+  });
+}
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   // /about is a `"use client"` page so JSON-LD has to land in the

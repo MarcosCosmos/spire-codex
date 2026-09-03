@@ -38,7 +38,7 @@ export async function generateMetadata({
   if (!isValidLang(lang)) return {};
   const section = await fetchSection(slug);
   if (!section) return { title: `${t("Not Found", lang)} | ${SITE_NAME}` };
-  const title = `${section.title} - Slay the Spire 2 | ${SITE_NAME}`;
+  const title = `${section.title}`;
   const description = clipMetaDescription(section.description);
   return {
     title,

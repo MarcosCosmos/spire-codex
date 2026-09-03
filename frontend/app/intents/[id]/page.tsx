@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import IntentDetail from "./IntentDetail";
-import { stripTags, stripTagsFlat, clipMetaDescription, buildLanguageAlternates, DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
+import { stripTags, stripTagsFlat, clipMetaDescription, buildPageMetadata } from "@/lib/seo";
+import { t } from "@/lib/ui-translations";
+import { getLangOrDefault, LANG_GAME_NAME, isValidLang } from "@/lib/languages";
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
@@ -8,35 +10,29 @@ import { fetchEntityRes } from "@/lib/entity-fetch";
 
 const API_INTERNAL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-type Props = { params: Promise<{ id: string }> };
+type Props = { params: Promise<{ lang?: string; id: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params;
+  const { id, lang } = await params;
+  if (lang && !isValidLang(lang)) return {};
   try {
-    const res = await fetch(`${API_INTERNAL}/api/intents/${id}`);
-    if (!res.ok) return { title: "Intent Not Found - Slay the Spire 2 (sts2) | Spire Codex" };
-    const intent = await res.json();
-    const desc = stripTagsFlat(intent.description || "");
-    const title = `${intent.name} - Slay the Spire 2 Monster Intent | Spire Codex`;
-    const metaDesc = clipMetaDescription(
-      `${intent.name} is a monster intent in Slay the Spire 2 (sts2)${desc ? `: ${desc}` : "."}`,
-    );
-    return {
+    const res = await fetch(`${API_INTERNAL}/api/intents/${id}${lang ? `?lang=${lang}` : ""}`);
+    if (!res.ok) return { title: "Intent Not Found" };
+    const entity = await res.json();
+    const desc = stripTagsFlat(entity.description || "");
+    const name = entity.name || id;
+    const gameName = LANG_GAME_NAME[getLangOrDefault(lang)];
+    const title = `${name} - ${t("Monster Intent", lang ?? "eng")}`;
+    const meta = buildPageMetadata({
+      lang,
+      path: `/intents/${id}`,
       title,
-      description: metaDesc,
-      openGraph: {
-        type: "article",
-        siteName: SITE_NAME,
-        url: `${SITE_URL}/intents/${id}`,
-        title,
-        description: metaDesc,
-        images: [{ url: DEFAULT_OG_IMAGE }],
-      },
-      twitter: { card: "summary_large_image", title, description: metaDesc },
-      alternates: { canonical: `/intents/${id}`, languages: buildLanguageAlternates(`/intents/${id}`) },
-    };
+      description: clipMetaDescription(`${gameName} monster intent, ${name}${desc ? `: ${desc}` : ""}`),
+      ogType: "article",
+    });
+    return meta;
   } catch {
-    return { title: "Database - Slay the Spire 2 (sts2) | Spire Codex" };
+    return { title: "Database" };
   }
 }
 

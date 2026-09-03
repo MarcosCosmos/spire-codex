@@ -1,11 +1,6 @@
 import type { Metadata } from "next";
-import {
-  isValidLang,
-  LANG_GAME_NAME,
-  LANG_NAMES,
-  type LangCode,
-} from "@/lib/languages";
-import { SITE_URL, SITE_NAME, buildLanguageAlternates } from "@/lib/seo";
+import { isValidLang, type LangCode } from "@/lib/languages";
+import { SITE_URL, buildLanguageAlternates } from "@/lib/seo";
 import TierListHome from "@/app/tier-list-maker/TierListHome";
 
 export async function generateMetadata({
@@ -15,13 +10,8 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { lang } = await params;
   if (!isValidLang(lang)) return {};
-
-  const langCode = lang as LangCode;
-  const gameName = LANG_GAME_NAME[langCode];
-  const nativeName = LANG_NAMES[langCode];
-
   return {
-    title: `${gameName} Tier List Maker | ${SITE_NAME} (${nativeName})`,
+    title: `Tier List Maker`,
     description:
       "Build and share Slay the Spire 2 tier lists. Drag and drop cards, relics, potions, and monsters into custom tiers.",
     alternates: {

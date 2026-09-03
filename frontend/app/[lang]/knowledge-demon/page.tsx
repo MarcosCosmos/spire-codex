@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   const gameName = LANG_GAME_NAME[langCode];
   const nativeName = LANG_NAMES[langCode];
 
-  const title = `Knowledge Demon - ${gameName} Discord Bot | Spire Codex (${nativeName})`;
+  const title = `Knowledge Demon - ${gameName} Discord Bot`;
   const description = `Knowledge Demon, a Discord bot for ${gameName} communities. Slash-command lookups for cards, relics, monsters, and events, plus moderation and news feeds. ${nativeName}.`;
 
   return {

@@ -2,29 +2,26 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import JsonLd from "@/app/components/JsonLd";
 import { buildBreadcrumbJsonLd, buildCollectionPageJsonLd } from "@/lib/jsonld";
-import { buildLanguageAlternates, DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
+import { buildPageMetadata } from "@/lib/seo";
+import { isValidLang } from "@/lib/languages";
+import { t } from "@/lib/ui-translations";
 import LeaderboardBrowseClient from "./LeaderboardBrowseClient";
 
 export const dynamic = "force-dynamic";
 
-const title = "Leaderboards - Slay the Spire 2 (sts2) | Spire Codex";
-const description =
-  "Browse community-submitted Slay the Spire 2 (sts2) runs. Filter by character, ascension level, and outcome. View leaderboards and detailed run breakdowns.";
-
-export const metadata: Metadata = {
-  title,
-  description,
-  openGraph: {
-    type: "website",
-    siteName: SITE_NAME,
-    url: `${SITE_URL}/leaderboards`,
-    title,
-    description,
-    images: [{ url: DEFAULT_OG_IMAGE }],
-  },
-  twitter: { card: "summary_large_image", title, description, images: [DEFAULT_OG_IMAGE] },
-  alternates: { canonical: `${SITE_URL}/leaderboards`, languages: buildLanguageAlternates("/leaderboards") },
-};
+/** Shared with app/[lang]/leaderboards/page.tsx, which re-exports this directly. */
+export async function generateMetadata(
+  { params }: { params?: Promise<{ lang?: string }> } = {},
+): Promise<Metadata> {
+  const lang = (await params)?.lang;
+  if (lang && !isValidLang(lang)) return {};
+  return buildPageMetadata({
+    lang,
+    path: "/leaderboards",
+    title: t("Leaderboards", lang ?? "eng"),
+    description: t("leaderboards_tagline", lang ?? "eng"),
+  });
+}
 
 export default function ToolsPage() {
   const jsonLd = [

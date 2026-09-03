@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import ModifierDetail from "@/app/modifiers/[id]/ModifierDetail";
-import { stripTags, DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL, stripTagsFlat, clipMetaDescription, buildLanguageAlternates } from "@/lib/seo";
+import { stripTags } from "@/lib/seo";
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
-import { isValidLang, LANG_HREFLANG, LANG_NAMES, LANG_GAME_NAME, type LangCode } from "@/lib/languages";
+import { isValidLang, LANG_HREFLANG, type LangCode } from "@/lib/languages";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
 import { fetchEntityRes } from "@/lib/entity-fetch";
 
@@ -11,38 +11,7 @@ const API_INTERNAL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API
 
 type Props = { params: Promise<{ lang: string; id: string }> };
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { lang, id } = await params;
-  if (!isValidLang(lang)) return {};
-  try {
-    const res = await fetch(`${API_INTERNAL}/api/modifiers/${id}?lang=${lang}`);
-    if (!res.ok) return { title: "Modifier Not Found - Slay the Spire 2 (sts2) | Spire Codex" };
-    const entity = await res.json();
-    const desc = stripTagsFlat(entity.description || "");
-    const langCode = lang as LangCode;
-    const gameName = LANG_GAME_NAME[langCode];
-    const name = entity.name || id;
-    const title = `${gameName} ${name} - Modifier | Spire Codex (${LANG_NAMES[langCode]})`;
-    const languages = buildLanguageAlternates(`/modifiers/${id}`);
-    return {
-      title,
-      description: clipMetaDescription(`${gameName} custom-run modifier, ${name}${desc ? `: ${desc}` : ""}`),
-      openGraph: {
-        type: "article",
-        siteName: SITE_NAME,
-        url: `${SITE_URL}/${lang}/modifiers/${id}`,
-        title,
-        description: clipMetaDescription(`${gameName} custom-run modifier, ${name}${desc ? `: ${desc}` : ""}`),
-        locale: LANG_HREFLANG[langCode],
-        images: [{ url: DEFAULT_OG_IMAGE }],
-      },
-      twitter: { card: "summary_large_image", title, description: clipMetaDescription(`${gameName} custom-run modifier, ${name}${desc ? `: ${desc}` : ""}`) },
-      alternates: { canonical: `/${lang}/modifiers/${id}`, languages },
-    };
-  } catch {
-    return { title: "Spire Codex" };
-  }
-}
+export { generateMetadata } from "@/app/modifiers/[id]/page";
 
 export default async function Page({ params }: Props) {
   const { lang, id } = await params;

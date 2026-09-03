@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   const gameName = LANG_GAME_NAME[langCode];
   const nativeName = LANG_NAMES[langCode];
 
-  const title = `${gameName} ${t("Art Exporter", lang)} | Spire Codex (${nativeName})`;
+  const title = `${t("Art Exporter", lang)}`;
   const description = `The tool that generates every image on Spire Codex, free on the Steam Workshop for ${gameName}. Card renders, Spine character art, animations, and texture dumps. ${nativeName}.`;
 
   return {

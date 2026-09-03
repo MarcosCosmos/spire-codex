@@ -25,10 +25,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const entry = SLUG_MAP[slug];
   if (!entry) {
-    return { title: "Not Found - Slay the Spire 2 (sts2) | Spire Codex" };
+    return { title: "Not Found" };
   }
 
-  const title = `${entry.label} - Browse Cards - Slay the Spire 2 (sts2) | Spire Codex`;
+  const title = `${entry.label} - Browse Cards`;
   const description = entry.description;
 
   return {
@@ -38,11 +38,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       type: "website",
       siteName: SITE_NAME,
       url: `${SITE_URL}/cards/browse/${slug}`,
-      title: `${entry.label} - Slay the Spire 2 (sts2) | Spire Codex`,
+      title: `${entry.label}`,
       description,
       images: [{ url: DEFAULT_OG_IMAGE }],
     },
-    twitter: { card: "summary_large_image", title: `${entry.label} - Slay the Spire 2 (sts2) | Spire Codex`, description },
+    twitter: { card: "summary_large_image", title: `${entry.label}`, description },
     alternates: { canonical: `/cards/browse/${slug}`, languages: buildLanguageAlternates(`/cards/browse/${slug}`) },
   };
 }

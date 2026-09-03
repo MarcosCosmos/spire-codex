@@ -4,6 +4,16 @@ import JsonLd from "@/app/components/JsonLd";
 import { buildCollectionPageJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import RecentlyAdded from "@/app/components/RecentlyAdded";
 import EnchantmentsClient from "./EnchantmentsClient";
+import type { Metadata } from "next";
+import { buildPageMetadata } from "@/lib/seo";
+
+export function generateMetadata(): Metadata {
+  return buildPageMetadata({
+    path: "/enchantments",
+    title: "Enchantments - Complete Enchantment List",
+    description: "Every Slay the Spire 2 (sts2) enchantment, effects, card-type restrictions, stackability, and the extra card text added to Attack, Skill, and Power cards.",
+  });
+}
 
 const API = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 

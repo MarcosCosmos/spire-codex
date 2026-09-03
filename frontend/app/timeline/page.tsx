@@ -2,6 +2,16 @@ import type { Epoch, Story, Card, Relic, Potion } from "@/lib/api";
 import JsonLd from "@/app/components/JsonLd";
 import { buildCollectionPageJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import TimelineClient from "./TimelineClient";
+import type { Metadata } from "next";
+import { buildPageMetadata } from "@/lib/seo";
+
+export function generateMetadata(): Metadata {
+  return buildPageMetadata({
+    path: "/timeline",
+    title: "Timeline - Epochs & Unlocks",
+    description: "Slay the Spire 2 timeline covering all epochs, eras, and story arcs. Track unlockable cards, relics, and potions across every story progression path.",
+  });
+}
 
 const API = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 

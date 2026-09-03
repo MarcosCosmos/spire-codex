@@ -4,7 +4,7 @@ import SettingsClient from "./SettingsClient";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Settings | Spire Codex",
+  title: "Settings",
   description: "Manage your display name, email, and connected accounts.",
   robots: { index: false },
 };

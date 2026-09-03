@@ -6,13 +6,7 @@ import {
   buildBreadcrumbJsonLd,
   buildCollectionPageJsonLd,
 } from "@/lib/jsonld";
-import {
-  isValidLang,
-  LANG_GAME_NAME,
-  LANG_NAMES,
-  LANG_HREFLANG,
-  type LangCode,
-} from "@/lib/languages";
+import { isValidLang, LANG_GAME_NAME, LANG_HREFLANG, type LangCode } from "@/lib/languages";
 import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL, buildLanguageAlternates } from "@/lib/seo";
 import { t } from "@/lib/ui-translations";
 import type { Badge } from "@/lib/api";
@@ -43,8 +37,7 @@ export async function generateMetadata({
 
   const langCode = lang as LangCode;
   const gameName = LANG_GAME_NAME[langCode];
-  const nativeName = LANG_NAMES[langCode];
-  const title = `${gameName} ${t("Badges", lang)} | Spire Codex (${nativeName})`;
+  const title = `${t("Badges", lang)}`;
   const description = `${gameName} ${t("Badges", lang)}, ${t("badges_tagline", lang)}`;
 
   const languages = buildLanguageAlternates(`/badges`);

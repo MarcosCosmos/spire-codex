@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import RelicDetail from "./RelicDetail";
 import type { EntityStats } from "@/app/components/EntityRunStats";
 import { fetchEntityStats } from "@/lib/entity-stats";
-import { stripTags, stripTagsFlat, clipMetaDescription, buildLanguageAlternates, SITE_NAME, SITE_URL } from "@/lib/seo";
+import { stripTags, stripTagsFlat, clipMetaDescription, buildPageMetadata } from "@/lib/seo";
+import { getLangOrDefault, LANG_GAME_NAME, isValidLang } from "@/lib/languages";
+import { t } from "@/lib/ui-translations";
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
@@ -18,37 +20,56 @@ export const revalidate = 3600;
 const API_INTERNAL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const API_PUBLIC = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_API_URL || "";
 
-type Props = { params: Promise<{ id: string }> };
+type Props = {
+  params: Promise<{ lang?: string; id: string }>;
+  searchParams?: Promise<{ channel?: string }>;
+};
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params;
+/**
+ * Shared with app/[lang]/relics/[id]/page.tsx, which re-exports this
+ * directly, so relic metadata logic exists in exactly one place.
+ * `searchParams.channel` forwards the /beta rewrite's `&channel=beta`.
+ */
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
+  const { id, lang } = await params;
+  if (lang && !isValidLang(lang)) return {};
   try {
-    const res = await fetch(`${API_INTERNAL}/api/relics/${id}`, {
-      next: { revalidate: 3600 },
-    });
-    if (!res.ok) return { title: "Relic Not Found - Slay the Spire 2 (sts2) | Spire Codex" };
-    const relic = await res.json();
-    const desc = stripTagsFlat(relic.description || "");
-    const title = `${relic.name} - Slay the Spire 2 ${relic.rarity} Relic | Spire Codex`;
-    const metaDesc = clipMetaDescription(
-      `${relic.name} is a ${relic.rarity} relic in Slay the Spire 2 (sts2)${desc ? `: ${desc}` : "."}`,
-    );
-    return {
+    const channel = (await searchParams)?.channel;
+    const extraQs = channel === "beta" ? "&channel=beta" : "";
+    const qs = lang ? `?lang=${lang}${extraQs}` : extraQs ? `?${extraQs.slice(1)}` : "";
+    const res = await fetch(`${API_INTERNAL}/api/relics/${id}${qs}`, lang ? undefined : { next: { revalidate: 3600 } });
+    if (!res.ok) return { title: "Relic Not Found" };
+    const entity = await res.json();
+    const desc = stripTagsFlat(entity.description || "");
+    const name = entity.name || id;
+    const resolvedLang = getLangOrDefault(lang);
+    const gameName = LANG_GAME_NAME[resolvedLang];
+    // entity.rarity is already localized by the API. For starter relics the
+    // localized rarity phrase already means "Starter Relic" (e.g. Spanish
+    // "Reliquia básica"), so appending the relic noun again would double up
+    // — only append when the rarity doesn't already include it.
+    const rarity: string = entity.rarity || "";
+    const relicWord = t("Relic", resolvedLang);
+    const titleSuffix = rarity.toLowerCase().includes(relicWord.toLowerCase())
+      ? rarity
+      : `${rarity} ${relicWord}`;
+    const title = `${name} - ${titleSuffix}`;
+    const meta = buildPageMetadata({
+      lang,
+      path: `/relics/${id}`,
       title,
-      description: metaDesc,
+      description: clipMetaDescription(`${gameName} ${rarity} relic, ${name}${desc ? `: ${desc}` : ""}`),
+      ogType: "article",
+    });
+    return {
+      ...meta,
       openGraph: {
-        type: "article",
-        siteName: SITE_NAME,
-        url: `${SITE_URL}/relics/${id}`,
-        title,
-        description: metaDesc,
-        images: relic.image_url ? [{ url: imageUrl(relic.image_url) }] : [],
+        ...meta.openGraph,
+        images: entity.image_url ? [{ url: imageUrl(entity.image_url) }] : undefined,
       },
-      twitter: { card: "summary_large_image", title, description: metaDesc },
-      alternates: { canonical: `/relics/${id}`, languages: buildLanguageAlternates(`/relics/${id}`) },
     };
   } catch {
-    return { title: "Database - Slay the Spire 2 (sts2) | Spire Codex" };
+    return { title: "Database" };
   }
 }
 

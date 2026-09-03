@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   const relicsWord = LANG_RELICS[langCode];
   const nativeName = LANG_NAMES[langCode];
 
-  const title = `${gameName} ${relicsWord} | Spire Codex (${nativeName})`;
+  const title = `${relicsWord}`;
   const description = `${gameName} ${relicsWord} (${nativeName}). Every relic by rarity and character pool, effects, flavor text, shop prices, and upgraded starters.`;
 
   const languages = buildLanguageAlternates(`/relics`);

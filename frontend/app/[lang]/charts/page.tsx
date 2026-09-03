@@ -1,11 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import {
-  isValidLang,
-  LANG_GAME_NAME,
-  LANG_NAMES,
-  type LangCode,
-} from "@/lib/languages";
+import { isValidLang, LANG_GAME_NAME, type LangCode } from "@/lib/languages";
 import { SITE_URL, SITE_NAME, DEFAULT_OG_IMAGE, buildLanguageAlternates } from "@/lib/seo";
 import JsonLd from "@/app/components/JsonLd";
 import { buildBreadcrumbJsonLd } from "@/lib/jsonld";
@@ -21,10 +16,8 @@ export async function generateMetadata({
 
   const langCode = lang as LangCode;
   const gameName = LANG_GAME_NAME[langCode];
-  const nativeName = LANG_NAMES[langCode];
-
   return {
-    title: `${gameName} Run Charts | ${SITE_NAME} (${nativeName})`,
+    title: `Run Charts`,
     description:
       "Interactive charts over community-submitted Slay the Spire 2 runs: win rate by floor, ascension and over time, damage per encounter, run stat distributions and scatters. Filter by player count, ascension, game mode, or a single player.",
     alternates: {
@@ -32,7 +25,7 @@ export async function generateMetadata({
       languages: buildLanguageAlternates("/charts"),
     },
     openGraph: {
-      title: `${gameName} Run Charts | ${SITE_NAME}`,
+      title: `Run Charts`,
       description:
         "Dig into aggregates of community-submitted Slay the Spire 2 runs with interactive charts.",
       url: `${SITE_URL}/${lang}/charts`,

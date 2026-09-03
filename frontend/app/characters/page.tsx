@@ -2,6 +2,16 @@ import type { Character } from "@/lib/api";
 import JsonLd from "@/app/components/JsonLd";
 import { buildCollectionPageJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import CharactersClient from "./CharactersClient";
+import type { Metadata } from "next";
+import { buildPageMetadata } from "@/lib/seo";
+
+export function generateMetadata(): Metadata {
+  return buildPageMetadata({
+    path: "/characters",
+    title: "Characters - All Playable Characters",
+    description: "All five Slay the Spire 2 (sts2) characters, Ironclad, Silent, Defect, Necrobinder, Regent. Starting decks, starter relic, HP, gold, and energy.",
+  });
+}
 
 const API = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 

@@ -12,6 +12,24 @@ import RecentlyAdded from "@/app/components/RecentlyAdded";
 import CardsClient from "./CardsClient";
 import { fullCardUrl } from "@/lib/image-url";
 import { t } from "@/lib/ui-translations";
+import type { Metadata } from "next";
+import { buildPageMetadata } from "@/lib/seo";
+import { api } from "@/lib/api";
+
+export async function generateMetadata(): Promise<Metadata> {
+  let count = "576+";
+  try {
+    const stats = await api.getStatsBounded();
+    count = String(stats.cards);
+  } catch {
+    // Fall back to the baseline count if the API is unreachable at build time.
+  }
+  return buildPageMetadata({
+    path: "/cards",
+    title: "Cards - Complete Card List",
+    description: `Every Slay the Spire 2 (sts2) card, all ${count}. Filter by character, type, rarity, and keyword. Art, stats, upgrade text, and related cards.`,
+  });
+}
 
 const API =
   process.env.API_INTERNAL_URL ||

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import PowerDetail from "./PowerDetail";
-import { stripTags, stripTagsFlat, clipMetaDescription, buildLanguageAlternates, SITE_NAME, SITE_URL } from "@/lib/seo";
+import { stripTags, stripTagsFlat, clipMetaDescription, buildPageMetadata } from "@/lib/seo";
+import { getLangOrDefault, LANG_GAME_NAME, isValidLang } from "@/lib/languages";
+import { t } from "@/lib/ui-translations";
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
@@ -10,35 +12,38 @@ import { imageUrl } from "@/lib/image-url";
 const API_INTERNAL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const API_PUBLIC = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_API_URL || "";
 
-type Props = { params: Promise<{ id: string }> };
+type Props = { params: Promise<{ lang?: string; id: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params;
+  const { id, lang } = await params;
+  if (lang && !isValidLang(lang)) return {};
   try {
-    const res = await fetch(`${API_INTERNAL}/api/powers/${id}`);
-    if (!res.ok) return { title: "Power Not Found - Slay the Spire 2 (sts2) | Spire Codex" };
-    const power = await res.json();
-    const desc = stripTagsFlat(power.description || "");
-    const title = `${power.name} - Slay the Spire 2 ${power.type} Power | Spire Codex`;
-    const metaDesc = clipMetaDescription(
-      `${power.name} is a ${power.type} power in Slay the Spire 2 (sts2)${desc ? `: ${desc}` : "."}`,
-    );
-    return {
+    const res = await fetch(`${API_INTERNAL}/api/powers/${id}${lang ? `?lang=${lang}` : ""}`);
+    if (!res.ok) return { title: "Power Not Found" };
+    const entity = await res.json();
+    const desc = stripTagsFlat(entity.description || "");
+    const name = entity.name || id;
+    const resolvedLang = getLangOrDefault(lang);
+    const gameName = LANG_GAME_NAME[resolvedLang];
+    // entity.type (Buff/Debuff) is not localized by the API.
+    const typeWord = t(entity.type, resolvedLang);
+    const title = `${name} - ${typeWord} ${t("Power", resolvedLang)}`;
+    const meta = buildPageMetadata({
+      lang,
+      path: `/powers/${id}`,
       title,
-      description: metaDesc,
+      description: clipMetaDescription(`${gameName} ${typeWord} power, ${name}${desc ? `: ${desc}` : ""}`),
+      ogType: "article",
+    });
+    return {
+      ...meta,
       openGraph: {
-        type: "article",
-        siteName: SITE_NAME,
-        url: `${SITE_URL}/powers/${id}`,
-        title,
-        description: metaDesc,
-        images: power.image_url ? [{ url: imageUrl(power.image_url) }] : [],
+        ...meta.openGraph,
+        images: entity.image_url ? [{ url: imageUrl(entity.image_url) }] : undefined,
       },
-      twitter: { card: "summary_large_image", title, description: metaDesc },
-      alternates: { canonical: `/powers/${id}`, languages: buildLanguageAlternates(`/powers/${id}`) },
     };
   } catch {
-    return { title: "Database - Slay the Spire 2 (sts2) | Spire Codex" };
+    return { title: "Database" };
   }
 }
 

@@ -6,12 +6,12 @@ import { buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import ChartsClient from "./ChartsClient";
 
 export const metadata: Metadata = {
-  title: `Run Charts - Slay the Spire 2 (sts2) | ${SITE_NAME}`,
+  title: `Run Charts`,
   description:
     "Interactive charts over community-submitted Slay the Spire 2 runs: win rate by floor, ascension and over time, damage per encounter, run stat distributions and scatters. Filter by player count, ascension, game mode, or a single player.",
   alternates: { canonical: `${SITE_URL}/charts`, languages: buildLanguageAlternates("/charts") },
   openGraph: {
-    title: `Slay the Spire 2 (sts2) Run Charts | ${SITE_NAME}`,
+    title: `Run Charts`,
     description:
       "Dig into aggregates of community-submitted Slay the Spire 2 runs with interactive charts.",
     url: `${SITE_URL}/charts`,

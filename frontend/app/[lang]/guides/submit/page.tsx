@@ -10,7 +10,7 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   const langCode = lang as LangCode;
   const gameName = LANG_GAME_NAME[langCode];
   const nativeName = LANG_NAMES[langCode];
-  const title = `${t("Submit a Guide", lang)} - ${gameName} | Spire Codex (${nativeName})`;
+  const title = `${t("Submit a Guide", lang)}`;
   const description = `${t("Submit a Guide", lang)}, share character guides, boss strategies, and deck-building tips with the ${gameName} (${nativeName}) community on Spire Codex.`;
   return {
     title,

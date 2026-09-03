@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import CardDetail from "./CardDetail";
 import type { EntityStats } from "@/app/components/EntityRunStats";
 import { fetchEntityStats } from "@/lib/entity-stats";
-import { stripTags, stripTagsFlat, clipMetaDescription, buildLanguageAlternates, SITE_NAME, SITE_URL } from "@/lib/seo";
+import { stripTags, stripTagsFlat, clipMetaDescription, buildPageMetadata } from "@/lib/seo";
+import { getLangOrDefault, LANG_GAME_NAME, isValidLang } from "@/lib/languages";
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
@@ -22,42 +23,47 @@ export const revalidate = 3600;
 const API_INTERNAL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const API_PUBLIC = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_API_URL || "";
 
-type Props = { params: Promise<{ id: string }> };
+type Props = {
+  params: Promise<{ lang?: string; id: string }>;
+  searchParams?: Promise<{ channel?: string }>;
+};
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params;
+/**
+ * Shared with app/[lang]/cards/[id]/page.tsx, which re-exports this
+ * directly, so card metadata logic exists in exactly one place.
+ * `searchParams.channel` forwards the /beta rewrite's `&channel=beta`.
+ */
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
+  const { id, lang } = await params;
+  if (lang && !isValidLang(lang)) return {};
   try {
-    const res = await fetch(`${API_INTERNAL}/api/cards/${id}`, {
-      next: { revalidate: 3600 },
-    });
-    if (!res.ok) return { title: "Card Not Found - Slay the Spire 2 (sts2) | Spire Codex" };
+    const channel = (await searchParams)?.channel;
+    const extraQs = channel === "beta" ? "&channel=beta" : "";
+    const qs = lang ? `?lang=${lang}${extraQs}` : extraQs ? `?${extraQs.slice(1)}` : "";
+    const res = await fetch(`${API_INTERNAL}/api/cards/${id}${qs}`, lang ? undefined : { next: { revalidate: 3600 } });
+    if (!res.ok) return { title: "Card Not Found" };
     const card = await res.json();
-    const desc = stripTags(card.description || "");
+    const gameName = LANG_GAME_NAME[getLangOrDefault(lang)];
     const color = (card.color || "").replace(/^\w/, (c: string) => c.toUpperCase());
-    const title = `${card.name} - Slay the Spire 2 ${card.rarity} ${card.type} | Spire Codex`;
+    // card.rarity / card.type already come back localized from the API.
+    const title = `${card.name} - ${card.rarity} ${card.type}`;
     const descFlat = stripTagsFlat(card.description || "");
     const keywords = card.keywords?.length ? ` Keywords: ${card.keywords.join(", ")}.` : "";
     const metaDesc = clipMetaDescription(
-      `${card.name} is a ${card.cost ?? "X"}-cost ${color} ${card.rarity} ${card.type} card in Slay the Spire 2 (sts2). ${descFlat}${keywords}`,
+      `${gameName}, ${card.name} (${card.cost ?? "X"}-cost ${card.rarity} ${card.type}, ${color}). ${descFlat}${keywords}`,
     );
-    // Full game-rendered card (base + upgraded) as the share image, English.
-    const ogImages = cardOgImages(card, "eng");
-    return {
+    // Full game-rendered card (base + upgraded) as the share image, in this language.
+    const ogImages = cardOgImages(card, lang ?? "eng");
+    const meta = buildPageMetadata({
+      lang,
+      path: `/cards/${id}`,
       title,
       description: metaDesc,
-      openGraph: {
-        type: "article",
-        siteName: SITE_NAME,
-        url: `${SITE_URL}/cards/${id}`,
-        title,
-        description: metaDesc,
-        images: ogImages,
-      },
-      twitter: { card: "summary_large_image", title, description: metaDesc, images: ogImages.map((i) => i.url) },
-      alternates: { canonical: `/cards/${id}`, languages: buildLanguageAlternates(`/cards/${id}`) },
-    };
+      ogType: "article",
+    });
+    return { ...meta, openGraph: { ...meta.openGraph, images: ogImages } };
   } catch {
-    return { title: "Database - Slay the Spire 2 (sts2) | Spire Codex" };
+    return { title: "Database" };
   }
 }
 

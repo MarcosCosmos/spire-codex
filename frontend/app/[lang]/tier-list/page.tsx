@@ -25,7 +25,7 @@ export async function generateMetadata({
   const langCode = lang as LangCode;
   const gameName = LANG_GAME_NAME[langCode];
   const nativeName = LANG_NAMES[langCode];
-  const title = `${gameName} ${t("Tier List", lang)} | Spire Codex (${nativeName})`;
+  const title = `${t("Tier List", lang)}`;
   const description = `${gameName} tier list ranking every card, relic, and potion S through F. Codex Score from community win rates. ${nativeName}.`;
 
   const languages = buildLanguageAlternates(`/tier-list`);

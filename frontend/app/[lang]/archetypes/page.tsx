@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const lang = getLangOrDefault(_lang);
   const prefix = langPrefix(_lang);
 
-  const title = `Slay the Spire 2 ${t("Deck Archetypes", lang)} - ${t("Community Builds Ranked", lang)} (sts2) | ${SITE_NAME}`;
+  const title = `${t("Deck Archetypes", lang)} - ${t("Community Builds Ranked", lang)} (sts2)`;
   const description = t("archetypes_tagline", lang);
 
   return {

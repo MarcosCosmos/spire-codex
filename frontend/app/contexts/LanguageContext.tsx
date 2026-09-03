@@ -87,10 +87,6 @@ export function LanguageProvider({
     const first = pathname.split("/")[1];
     if (first && LANG_CODES.has(first)) {
       if (first !== lang) {
-        console.log(
-          "setting language on URL change in language provider because we got a valid language",
-          lang,
-        );
         setLangState(first);
         localStorage.setItem(STORAGE_KEY, first);
       }

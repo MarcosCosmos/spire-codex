@@ -1,52 +1,13 @@
-import type { Metadata } from "next";
 import JsonLd from "@/app/components/JsonLd";
 import { buildBreadcrumbJsonLd, buildCollectionPageJsonLd } from "@/lib/jsonld";
 import StatsClient from "@/app/leaderboards/stats/StatsClient";
 import { fetchInitialStats } from "@/app/leaderboards/stats/fetch-initial-stats";
-import {
-  isValidLang,
-  LANG_GAME_NAME,
-  LANG_NAMES,
-  LANG_HREFLANG,
-  type LangCode,
-} from "@/lib/languages";
-import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL, buildLanguageAlternates } from "@/lib/seo";
+import { isValidLang, LANG_HREFLANG, type LangCode, LANG_GAME_NAME } from "@/lib/languages";
 import { t } from "@/lib/ui-translations";
 
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ lang: string }>;
-}): Promise<Metadata> {
-  const { lang } = await params;
-  if (!isValidLang(lang)) return {};
-
-  const langCode = lang as LangCode;
-  const gameName = LANG_GAME_NAME[langCode];
-  const nativeName = LANG_NAMES[langCode];
-  const title = `${gameName} ${t("Stats", lang)} | Spire Codex (${nativeName})`;
-  const description = t("stats_tagline", lang);
-
-  const languages = buildLanguageAlternates(`/leaderboards/stats`);
-
-  return {
-    title,
-    description,
-    openGraph: {
-      type: "website",
-      siteName: SITE_NAME,
-      url: `${SITE_URL}/${lang}/leaderboards/stats`,
-      title,
-      description,
-      locale: LANG_HREFLANG[langCode],
-      images: [{ url: DEFAULT_OG_IMAGE }],
-    },
-    twitter: { card: "summary_large_image", title, description },
-    alternates: { canonical: `/${lang}/leaderboards/stats`, languages },
-  };
-}
+export { generateMetadata } from "@/app/leaderboards/stats/page";
 
 export default async function LangStatsPage({
   params,

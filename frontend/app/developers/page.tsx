@@ -2,31 +2,26 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import JsonLd from "@/app/components/JsonLd";
 import { buildSoftwareApplicationJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
-import { SITE_NAME, SITE_URL, DEFAULT_OG_IMAGE } from "@/lib/seo";
+import { buildPageMetadata } from "@/lib/seo";
+import { getLangOrDefault, LANG_GAME_NAME, isValidLang } from "@/lib/languages";
 import TinyCard, { TINY_CARD_POOL_COLOR, TINY_CARD_BANNER_COLOR } from "@/app/components/TinyCard";
 
 const API_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://spire-codex.com";
 
-export const metadata: Metadata = {
-  title: "Developer API & Tooltip Widget - Slay the Spire 2 (sts2) | Spire Codex",
-  description:
-    "Integrate Slay the Spire 2 (sts2) game data into your projects. Public REST API with 22+ endpoints, embeddable tooltip widget, and multi-language support.",
-  openGraph: {
-    type: "website",
-    siteName: SITE_NAME,
-    url: `${SITE_URL}/developers`,
-    title: "Developer API & Tooltip Widget - Slay the Spire 2 (sts2) | Spire Codex",
-    description:
-      "Public REST API and embeddable tooltip widget for Slay the Spire 2 (sts2) game data.",
-    images: [{ url: DEFAULT_OG_IMAGE }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Developer API & Tooltip Widget - Slay the Spire 2 (sts2) | Spire Codex",
-    description: "Public REST API and embeddable tooltip widget for Slay the Spire 2 (sts2) game data.",
-  },
-  alternates: { canonical: "/developers" },
-};
+/** Shared with app/[lang]/developers/page.tsx, which re-exports this directly. */
+export async function generateMetadata(
+  { params }: { params?: Promise<{ lang?: string }> } = {},
+): Promise<Metadata> {
+  const lang = (await params)?.lang;
+  if (lang && !isValidLang(lang)) return {};
+  const gameName = LANG_GAME_NAME[getLangOrDefault(lang)];
+  return buildPageMetadata({
+    lang,
+    path: "/developers",
+    title: "Developer API & Tooltip Widget",
+    description: `Integrate ${gameName} game data into your projects. Public REST API with 22+ endpoints, embeddable tooltip widget, and multi-language support.`,
+  });
+}
 
 const API_INTERNAL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 

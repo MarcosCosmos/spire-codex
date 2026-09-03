@@ -2,13 +2,7 @@ import type { Metadata } from "next";
 import JsonLd from "@/app/components/JsonLd";
 import { buildBreadcrumbJsonLd, buildCollectionPageJsonLd } from "@/lib/jsonld";
 import Link from "next/link";
-import {
-  isValidLang,
-  LANG_GAME_NAME,
-  LANG_NAMES,
-  LANG_HREFLANG,
-  type LangCode,
-} from "@/lib/languages";
+import { isValidLang, LANG_HREFLANG, type LangCode } from "@/lib/languages";
 import { SITE_URL, SITE_NAME, DEFAULT_OG_IMAGE, buildLanguageAlternates } from "@/lib/seo";
 import { t } from "@/lib/ui-translations";
 import type { MechanicSectionMeta } from "@/app/mechanics/page";
@@ -39,9 +33,7 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   if (!isValidLang(lang)) return {};
 
   const langCode = lang as LangCode;
-  const gameName = LANG_GAME_NAME[langCode];
-  const nativeName = LANG_NAMES[langCode];
-  const title = `${gameName} ${t("Game Mechanics", lang)} | Spire Codex (${nativeName})`;
+  const title = `${t("Game Mechanics", lang)}`;
   const description = t("mechanics_tagline", lang);
 
   const languages = buildLanguageAlternates(`/${CATEGORY}`);

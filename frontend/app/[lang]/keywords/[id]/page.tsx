@@ -18,12 +18,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!isValidLang(lang)) return {};
   try {
     const res = await fetch(`${API_INTERNAL}/api/keywords/${id}?lang=${lang}`);
-    if (!res.ok) return { title: "Keyword Not Found - Slay the Spire 2 (sts2) | Spire Codex" };
+    if (!res.ok) return { title: "Keyword Not Found" };
     const kw = await res.json();
     const desc = stripTags(kw.description);
     const langCode = lang as LangCode;
     const gameName = LANG_GAME_NAME[langCode];
-    const title = `${gameName} ${kw.name} Cards - All ${kw.name} Cards | Spire Codex (${LANG_NAMES[langCode]})`;
+    const title = `${kw.name} Cards - All ${kw.name} Cards`;
     const languages = buildLanguageAlternates(`/keywords/${id}`);
     return {
       title,
@@ -32,7 +32,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         type: "article",
         siteName: SITE_NAME,
         url: `${SITE_URL}/${lang}/keywords/${id}`,
-        title: `${gameName} ${kw.name} Cards | Spire Codex (${LANG_NAMES[langCode]})`,
+        title: `${kw.name} Cards`,
         description: `${desc} Browse all ${kw.name} cards in ${gameName}.`,
         locale: LANG_HREFLANG[langCode],
         images: [{ url: DEFAULT_OG_IMAGE }],

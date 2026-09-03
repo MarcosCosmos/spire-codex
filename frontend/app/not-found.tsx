@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { SITE_URL, SITE_NAME } from "@/lib/seo";
+import { SITE_URL } from "@/lib/seo";
 
 /**
  * App-wide 404 page. Two jobs:
@@ -22,7 +22,7 @@ import { SITE_URL, SITE_NAME } from "@/lib/seo";
  */
 
 export const metadata: Metadata = {
-  title: `Page Not Found - Slay the Spire 2 (sts2) | ${SITE_NAME}`,
+  title: `Page Not Found`,
   description:
     "The page you were looking for doesn't exist on Spire Codex. Redirecting you home.",
   alternates: { canonical: SITE_URL },

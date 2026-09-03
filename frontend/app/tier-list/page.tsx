@@ -11,12 +11,12 @@ export const metadata: Metadata = {
   // match either query phrasing, the actual SERPs we're targeting use
   // both. Order chosen so the abbreviation lands inside the truncation
   // window on mobile (Google trims at ~60 chars on phones).
-  title: `Tier List - Cards, Relics & Potions Ranked - Slay the Spire 2 (sts2) | ${SITE_NAME}`,
+  title: `Tier List - Cards, Relics & Potions Ranked`,
   description:
     "Slay the Spire 2 (sts2) tier list ranking every card, relic, and potion S through F. Codex Score from community win rates. Updated daily after every patch.",
   alternates: { canonical: `${SITE_URL}/tier-list`, languages: buildLanguageAlternates(`/tier-list`) },
   openGraph: {
-    title: `Tier List - Slay the Spire 2 (sts2) | ${SITE_NAME}`,
+    title: `Tier List`,
     description: "Every Slay the Spire 2 card, relic, and potion ranked S → F based on community win-rate data.",
     url: `${SITE_URL}/tier-list`,
     siteName: SITE_NAME,
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: `Tier List - Slay the Spire 2 (sts2) | ${SITE_NAME}`,
+    title: `Tier List`,
     description: "Every Slay the Spire 2 card, relic, and potion ranked S → F based on community win-rate data.",
   },
 };

@@ -19,9 +19,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const res = await fetch(`${API_INTERNAL}/api/acts/${id}`, {
       next: { revalidate: 3600 },
     });
-    if (!res.ok) return { title: "Act Not Found - Slay the Spire 2 (sts2) | Spire Codex" };
+    if (!res.ok) return { title: "Act Not Found" };
     const act = await res.json();
-    const title = `${act.name} - Slay the Spire 2 Act | Spire Codex`;
+    const title = `${act.name} - Slay the Spire 2 Act`;
     const desc = clipMetaDescription(
       `${act.name} is an act in Slay the Spire 2 (sts2). ${act.num_rooms || "?"} rooms, ${act.bosses.length} bosses, ${act.encounters.length} encounters, ${act.events.length} events.`,
     );
@@ -40,7 +40,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       alternates: { canonical: `/acts/${id}`, languages: buildLanguageAlternates(`/acts/${id}`) },
     };
   } catch {
-    return { title: "Database - Slay the Spire 2 (sts2) | Spire Codex" };
+    return { title: "Database" };
   }
 }
 

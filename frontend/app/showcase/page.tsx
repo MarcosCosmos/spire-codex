@@ -2,6 +2,16 @@ import { promises as fs } from "fs";
 import path from "path";
 import JsonLd from "@/app/components/JsonLd";
 import { buildBreadcrumbJsonLd, buildCollectionPageJsonLd } from "@/lib/jsonld";
+import type { Metadata } from "next";
+import { buildPageMetadata } from "@/lib/seo";
+
+export function generateMetadata(): Metadata {
+  return buildPageMetadata({
+    path: "/showcase",
+    title: "Community Showcase - Projects & Tools",
+    description: "Discover community projects and tools built with the Spire Codex API. Explore bots, widgets, apps, and more for Slay the Spire 2.",
+  });
+}
 
 export const dynamic = "force-dynamic";
 

@@ -4,7 +4,7 @@ import type { Character, Card } from "@/lib/api";
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd } from "@/lib/jsonld";
 import CompareDetail from "@/app/compare/[pair]/CompareDetail";
-import { isValidLang, LANG_HREFLANG, LANG_NAMES, LANG_GAME_NAME, type LangCode } from "@/lib/languages";
+import { isValidLang, LANG_HREFLANG, LANG_GAME_NAME, type LangCode } from "@/lib/languages";
 import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL, buildLanguageAlternates } from "@/lib/seo";
 
 export const revalidate = 3600;
@@ -37,13 +37,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { lang, pair } = await params;
   if (!isValidLang(lang)) return {};
   const parsed = parsePair(pair);
-  if (!parsed) return { title: "Comparison Not Found - Slay the Spire 2 (sts2) | Spire Codex" };
+  if (!parsed) return { title: "Comparison Not Found" };
 
   const langCode = lang as LangCode;
   const gameName = LANG_GAME_NAME[langCode];
   const nameA = CHAR_NAMES[parsed.a];
   const nameB = CHAR_NAMES[parsed.b];
-  const title = `${gameName} ${nameA} vs ${nameB} - Character Comparison | Spire Codex (${LANG_NAMES[langCode]})`;
+  const title = `${nameA} vs ${nameB} - Character Comparison`;
   const description = `Compare ${nameA} and ${nameB} in ${gameName}. Side-by-side stats, card pool breakdowns by type and rarity, keyword distributions, and starting decks.`;
 
   const languages = buildLanguageAlternates(`/compare/${pair}`);

@@ -13,7 +13,7 @@ export async function generateMetadata({
   const { lang } = await params;
   if (!isValidLang(lang)) return {};
   return {
-    title: `${t("Profile", lang)} | Spire Codex`,
+    title: `${t("Profile", lang)}`,
     description: "View your runs, upload run files, and see your personal stats.",
     robots: { index: false },
   };

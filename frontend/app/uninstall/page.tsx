@@ -7,7 +7,7 @@ import UninstallFormClient from "./UninstallFormClient";
 // Overwolf manifest's uninstall_window flow which loads
 // https://spire-codex.com/uninstall directly.
 export const metadata: Metadata = {
-  title: "Uninstall feedback | Spire Codex",
+  title: "Uninstall feedback",
   description: "Share why you uninstalled the Spire Codex companion.",
   robots: {
     index: false,

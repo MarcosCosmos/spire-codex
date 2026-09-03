@@ -11,7 +11,7 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   const langCode = lang as LangCode;
   const nativeName = LANG_NAMES[langCode];
 
-  const title = `${t("Terms of Service", lang)} | Spire Codex (${nativeName})`;
+  const title = `${t("Terms of Service", lang)}`;
   const description = `${t("Terms governing use of the Spire Codex website, API, embeddable widgets, and Overwolf overlay.", lang)} ${nativeName}.`;
 
   return {

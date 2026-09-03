@@ -17,7 +17,10 @@ import "./home-revamp.css";
 
 const API = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-const title = `Database, Wiki & Guide - Slay the Spire 2 (sts2) | ${SITE_NAME}`;
+// Absolute, not a segment: a layout's `title.template` does not apply to a
+// page.tsx in that same segment, and the home page shares the root
+// layout's segment — so it carries the full title itself.
+const title = `Slay the Spire 2 (sts2) Database, Wiki & Guide | ${SITE_NAME}`;
 const description =
   "The complete Slay the Spire 2 (sts2) database. Browse cards, relics, characters, monsters, potions, events, and powers. Filter by character, rarity, and keyword.";
 
@@ -40,9 +43,15 @@ export const revalidate = 60;
 const homeOgImage = { url: HOME_OG_IMAGE, width: 2006, height: 2251 };
 
 export const metadata: Metadata = {
-  title,
+  title: { absolute: title },
   description,
-  openGraph: { type: "website", siteName: SITE_NAME, title, description, images: [homeOgImage] },
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    title: { absolute: title },
+    description,
+    images: [homeOgImage],
+  },
   twitter: {
     card: "summary_large_image",
     title,

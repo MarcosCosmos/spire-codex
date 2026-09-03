@@ -6,7 +6,7 @@ import UninstallFormClient from "@/app/uninstall/UninstallFormClient";
 // search the same way the base /uninstall route is: noindex + nofollow,
 // no canonical.
 export const metadata: Metadata = {
-  title: "Uninstall feedback | Spire Codex",
+  title: "Uninstall feedback",
   description: "Share why you uninstalled the Spire Codex companion.",
   robots: {
     index: false,

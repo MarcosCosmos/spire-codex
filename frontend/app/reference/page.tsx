@@ -12,6 +12,16 @@ import JsonLd from "@/app/components/JsonLd";
 import { buildBreadcrumbJsonLd, buildCollectionPageJsonLd } from "@/lib/jsonld";
 import ReferenceClient from "./ReferenceClient";
 import type { ReferenceData } from "./ReferenceClient";
+import type { Metadata } from "next";
+import { buildPageMetadata } from "@/lib/seo";
+
+export function generateMetadata(): Metadata {
+  return buildPageMetadata({
+    path: "/reference",
+    title: "Reference - Keywords, Orbs, Afflictions & More",
+    description: "Slay the Spire 2 reference guide covering keywords, orbs, afflictions, intents, modifiers, achievements, acts, and ascension levels all in one place.",
+  });
+}
 
 const API =
   process.env.API_INTERNAL_URL ||

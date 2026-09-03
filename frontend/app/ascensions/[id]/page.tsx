@@ -19,10 +19,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const res = await fetch(`${API_INTERNAL}/api/ascensions/${id}`, {
       next: { revalidate: 3600 },
     });
-    if (!res.ok) return { title: "Ascension Not Found - Slay the Spire 2 (sts2) | Spire Codex" };
+    if (!res.ok) return { title: "Ascension Not Found" };
     const asc = await res.json();
     const desc = stripTagsFlat(asc.description);
-    const title = `Ascension ${asc.level}: ${asc.name} - Slay the Spire 2 | Spire Codex`;
+    const title = `Ascension ${asc.level}: ${asc.name}`;
     const metaDesc = clipMetaDescription(
       `Ascension ${asc.level} (${asc.name}) in Slay the Spire 2 (sts2)${desc ? `: ${desc}` : "."}`,
     );
@@ -41,7 +41,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       alternates: { canonical: `/ascensions/${id}`, languages: buildLanguageAlternates(`/ascensions/${id}`) },
     };
   } catch {
-    return { title: "Database - Slay the Spire 2 (sts2) | Spire Codex" };
+    return { title: "Database" };
   }
 }
 

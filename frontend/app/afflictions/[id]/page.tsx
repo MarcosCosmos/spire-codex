@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import AfflictionDetail from "./AfflictionDetail";
-import { stripTags, stripTagsFlat, clipMetaDescription, buildLanguageAlternates, DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
+import { stripTags, stripTagsFlat, clipMetaDescription, buildPageMetadata } from "@/lib/seo";
+import { t } from "@/lib/ui-translations";
+import { getLangOrDefault, LANG_GAME_NAME, isValidLang } from "@/lib/languages";
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
@@ -8,35 +10,29 @@ import { fetchEntityRes } from "@/lib/entity-fetch";
 
 const API_INTERNAL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-type Props = { params: Promise<{ id: string }> };
+type Props = { params: Promise<{ lang?: string; id: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params;
+  const { id, lang } = await params;
+  if (lang && !isValidLang(lang)) return {};
   try {
-    const res = await fetch(`${API_INTERNAL}/api/afflictions/${id}`);
-    if (!res.ok) return { title: "Affliction Not Found - Slay the Spire 2 (sts2) | Spire Codex" };
-    const affliction = await res.json();
-    const desc = stripTagsFlat(affliction.description || "");
-    const title = `${affliction.name} - Slay the Spire 2 Affliction | Spire Codex`;
-    const metaDesc = clipMetaDescription(
-      `${affliction.name} is an affliction in Slay the Spire 2 (sts2)${desc ? `: ${desc}` : "."}`,
-    );
-    return {
+    const res = await fetch(`${API_INTERNAL}/api/afflictions/${id}${lang ? `?lang=${lang}` : ""}`);
+    if (!res.ok) return { title: "Affliction Not Found" };
+    const entity = await res.json();
+    const desc = stripTagsFlat(entity.description || "");
+    const name = entity.name || id;
+    const gameName = LANG_GAME_NAME[getLangOrDefault(lang)];
+    const title = `${name} - ${t("Affliction", lang ?? "eng")}`;
+    const meta = buildPageMetadata({
+      lang,
+      path: `/afflictions/${id}`,
       title,
-      description: metaDesc,
-      openGraph: {
-        type: "article",
-        siteName: SITE_NAME,
-        url: `${SITE_URL}/afflictions/${id}`,
-        title,
-        description: metaDesc,
-        images: [{ url: DEFAULT_OG_IMAGE }],
-      },
-      twitter: { card: "summary_large_image", title, description: metaDesc },
-      alternates: { canonical: `/afflictions/${id}`, languages: buildLanguageAlternates(`/afflictions/${id}`) },
-    };
+      description: clipMetaDescription(`${gameName} affliction, ${name}${desc ? `: ${desc}` : ""}`),
+      ogType: "article",
+    });
+    return meta;
   } catch {
-    return { title: "Database - Slay the Spire 2 (sts2) | Spire Codex" };
+    return { title: "Database" };
   }
 }
 

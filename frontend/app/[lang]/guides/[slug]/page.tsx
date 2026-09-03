@@ -1,16 +1,14 @@
 import type { Metadata } from "next";
 import type { Guide } from "@/lib/api";
 import {
-  SITE_URL,
-  SITE_NAME,
-  DEFAULT_OG_IMAGE,
+  buildPageMetadata,
   stripTagsFlat,
   clipMetaDescription,
 } from "@/lib/seo";
 import GuideDetail from "@/app/guides/[slug]/GuideDetail";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
 import { fetchEntityRes } from "@/lib/entity-fetch";
-import { getLangOrDefault, LANG_HREFLANG } from "@/lib/languages";
+import { getLangOrDefault } from "@/lib/languages";
 import { t } from "@/lib/ui-translations";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
 import JsonLd from "@/app/components/JsonLd";
@@ -30,35 +28,27 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       next: { revalidate: 300 },
     });
     if (!res.ok) {
-      return {
-        title: `${t("Guides", lang)} ${t("Not Found", lang)} - Slay the Spire 2 (sts2) | ${SITE_NAME}`,
-      };
+      return { title: `${t("Guides", lang)} ${t("Not Found", lang)}` };
     }
     const guide: Guide = await res.json();
-    const title = `${guide.title} - Slay the Spire 2 Guide | ${SITE_NAME}`;
-    const description = clipMetaDescription(stripTagsFlat(guide.summary || ""));
-    return {
-      title,
-      description,
-      // No hreflang alternates: guides are English-language content; the
-      // localized wrappers served the same English body on 13 URLs per
-      // guide, which crawlers flagged as language mismatches and
-      // near-duplicates (same pattern as /<lang>/runs). Canonical stays
-      // on the English guide even from a locale URL.
-      alternates: { canonical: `${SITE_URL}/guides/${slug}` },
-      openGraph: {
-        title,
-        description,
-        url: `${SITE_URL}/guides/${slug}`,
-        siteName: SITE_NAME,
-        type: "article",
-        locale: LANG_HREFLANG[lang],
-        images: [{ url: DEFAULT_OG_IMAGE }],
-      },
-      twitter: { card: "summary_large_image", title, description },
-    };
+    return buildPageMetadata({
+      lang: _lang,
+      path: `/guides/${slug}`,
+      title: guide.title,
+      description: clipMetaDescription(stripTagsFlat(guide.summary || "")),
+      ogType: "article",
+      // Guides are English-language content, so the localized wrappers
+      // served the same English body on 13 URLs per guide, which crawlers
+      // flagged as language mismatches — the reason /<lang>/guides/<slug>
+      // used to force-redirect to the English page instead of rendering.
+      // Canonical folds back to English and the [lang] variant is
+      // noindexed rather than un-routable. Drop both once the surrounding
+      // chrome is genuinely localized.
+      offerLanguageAlternatives: false,
+      noindex: Boolean(_lang),
+    });
   } catch {
-    return { title: `Guide - Slay the Spire 2 (sts2) | ${SITE_NAME}` };
+    return { title: "Guide" };
   }
 }
 

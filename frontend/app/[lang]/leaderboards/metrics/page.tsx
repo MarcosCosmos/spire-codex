@@ -1,62 +1,15 @@
-import type { Metadata } from "next";
 import JsonLd from "@/app/components/JsonLd";
 import { buildBreadcrumbJsonLd, buildCollectionPageJsonLd } from "@/lib/jsonld";
 import MetricsClient from "@/app/leaderboards/metrics/MetricsClient";
 import { loadMetrics } from "@/app/leaderboards/metrics/metrics-data";
-import {
-  isValidLang,
-  LANG_GAME_NAME,
-  LANG_NAMES,
-  LANG_HREFLANG,
-  type LangCode,
-} from "@/lib/languages";
-import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL, buildLanguageAlternates } from "@/lib/seo";
+import { isValidLang, LANG_HREFLANG, type LangCode, LANG_GAME_NAME } from "@/lib/languages";
 import { t } from "@/lib/ui-translations";
 
 // Render per request like the English route (avoids a build-time empty
 // bake); the shared loadMetrics fetch is cached so the data layer stays hot.
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ lang: string }>;
-  searchParams: Promise<{ bracket?: string; character?: string }>;
-}): Promise<Metadata> {
-  const { lang } = await params;
-  const sp = await searchParams;
-  if (!isValidLang(lang)) return {};
-  // Filter variants canonical to the clean URL; a non-canonical page must
-  // not carry hreflang alternates (crawlers flag the conflict).
-  const isVariant = Boolean(sp.bracket || sp.character);
-  const langCode = lang as LangCode;
-  const gameName = LANG_GAME_NAME[langCode];
-  const nativeName = LANG_NAMES[langCode];
-  const title = `${gameName} ${t("Card Metrics", lang)} | Spire Codex (${nativeName})`;
-  const description = t("metrics_tagline", lang);
-
-  const languages = buildLanguageAlternates(`/leaderboards/metrics`);
-
-  return {
-    title,
-    description,
-    openGraph: {
-      type: "website",
-      siteName: SITE_NAME,
-      url: `${SITE_URL}/${lang}/leaderboards/metrics`,
-      title,
-      description,
-      locale: LANG_HREFLANG[langCode],
-      images: [{ url: DEFAULT_OG_IMAGE }],
-    },
-    twitter: { card: "summary_large_image", title, description },
-    alternates: {
-      canonical: `/${lang}/leaderboards/metrics`,
-      ...(isVariant ? {} : { languages }),
-    },
-  };
-}
+export { generateMetadata } from "@/app/leaderboards/metrics/page";
 
 export default async function LangMetricsPage({
   params,

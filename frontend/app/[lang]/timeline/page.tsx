@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   const gameName = LANG_GAME_NAME[langCode];
   const nativeName = LANG_NAMES[langCode];
 
-  const title = `${gameName} ${t(CATEGORY_LABEL, lang)} | Spire Codex (${nativeName})`;
+  const title = `${t(CATEGORY_LABEL, lang)}`;
   const description = `${gameName} ${t(CATEGORY_LABEL, lang)} (${nativeName}). All epochs, eras, and story arcs with cards, relics, and potions unlocked at each step.`;
 
   const languages = buildLanguageAlternates(`/${CATEGORY}`);

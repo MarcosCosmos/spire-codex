@@ -5,6 +5,24 @@ import { buildCollectionPageJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import RecentlyAdded from "@/app/components/RecentlyAdded";
 import HighestRated from "@/app/components/HighestRated";
 import PotionsClient from "./PotionsClient";
+import type { Metadata } from "next";
+import { buildPageMetadata } from "@/lib/seo";
+import { api } from "@/lib/api";
+
+export async function generateMetadata(): Promise<Metadata> {
+  let count = "63+";
+  try {
+    const stats = await api.getStatsBounded();
+    count = String(stats.potions);
+  } catch {
+    // Fall back to the baseline count if the API is unreachable at build time.
+  }
+  return buildPageMetadata({
+    path: "/potions",
+    title: "Potions - Complete Potion List",
+    description: `Every Slay the Spire 2 (sts2) potion, all ${count}. Filter by rarity (Common, Uncommon, Rare) and character pool. Effects, shop prices, and use timing.`,
+  });
+}
 
 const API = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 

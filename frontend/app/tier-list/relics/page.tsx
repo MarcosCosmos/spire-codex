@@ -136,7 +136,7 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
     : poolLabel && pool
     ? `${actPrefix}${poolLabel} Relic`
     : `${actPrefix}Relic`;
-  const title = `${scope} Tier List - Slay the Spire 2 (sts2) | ${SITE_NAME}`;
+  const title = `${scope} Tier List`;
   const description = ancient
     ? `${ancientLabel} relic tier list for Slay the Spire 2 (sts2). Every relic ${ancientLabel} can offer ranked S through F by community win rate, so you know which pick wins runs.`
     : act

@@ -1,32 +1,26 @@
 import type { Metadata } from "next";
 import JsonLd from "@/app/components/JsonLd";
 import { buildBreadcrumbJsonLd } from "@/lib/jsonld";
-import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL, buildLanguageAlternates } from "@/lib/seo";
+import { buildPageMetadata } from "@/lib/seo";
+import { isValidLang } from "@/lib/languages";
+import { t } from "@/lib/ui-translations";
 import SubmitRunClient from "./SubmitRunClient";
 
 export const dynamic = "force-dynamic";
 
-const title = "Submit a Run - Slay the Spire 2 | Spire Codex";
-const description =
-  "Upload your Slay the Spire 2 (sts2) run history. Drop .run files or paste JSON to share with the community and feed deck-choice and win-rate analytics.";
-
-export const metadata: Metadata = {
-  title,
-  description,
-  alternates: {
-    canonical: "/leaderboards/submit",
-    languages: buildLanguageAlternates("/leaderboards/submit"),
-  },
-  openGraph: {
-    type: "website",
-    siteName: SITE_NAME,
-    url: `${SITE_URL}/leaderboards/submit`,
-    title,
-    description,
-    images: [{ url: DEFAULT_OG_IMAGE }],
-  },
-  twitter: { card: "summary_large_image", title, description },
-};
+/** Shared with app/[lang]/leaderboards/submit/page.tsx, which re-exports this directly. */
+export async function generateMetadata(
+  { params }: { params?: Promise<{ lang?: string }> } = {},
+): Promise<Metadata> {
+  const lang = (await params)?.lang;
+  if (lang && !isValidLang(lang)) return {};
+  return buildPageMetadata({
+    lang,
+    path: "/leaderboards/submit",
+    title: t("Submit a Run", lang ?? "eng"),
+    description: t("submit_tagline", lang ?? "eng"),
+  });
+}
 
 export default function SubmitRunPage() {
   const jsonLd = buildBreadcrumbJsonLd([

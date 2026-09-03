@@ -3,6 +3,24 @@ import JsonLd from "@/app/components/JsonLd";
 import { buildCollectionPageJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import RecentlyAdded from "@/app/components/RecentlyAdded";
 import PowersClient from "./PowersClient";
+import type { Metadata } from "next";
+import { buildPageMetadata } from "@/lib/seo";
+import { api } from "@/lib/api";
+
+export async function generateMetadata(): Promise<Metadata> {
+  let count = "260";
+  try {
+    const stats = await api.getStatsBounded();
+    count = String(stats.powers);
+  } catch {
+    // Fall back to the baseline count if the API is unreachable at build time.
+  }
+  return buildPageMetadata({
+    path: "/powers",
+    title: "Powers - Complete Power List",
+    description: `All ${count} Slay the Spire 2 (sts2) powers, buffs, debuffs, and neutral effects. Filter by type and stack behavior. Icons and full descriptions.`,
+  });
+}
 
 const API = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 

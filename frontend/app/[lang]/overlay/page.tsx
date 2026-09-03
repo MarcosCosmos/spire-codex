@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   const gameName = LANG_GAME_NAME[langCode];
   const nativeName = LANG_NAMES[langCode];
 
-  const title = `${gameName} ${t("Overlay", lang)} | Spire Codex (${nativeName})`;
+  const title = `${t("Overlay", lang)}`;
   const description = `The Overwolf companion overlay for ${gameName}. In-game card, relic, and monster lookups plus a live run tracker that reads your save file. ${nativeName}.`;
 
   return {

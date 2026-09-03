@@ -4,6 +4,24 @@ import JsonLd from "@/app/components/JsonLd";
 import { buildCollectionPageJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import RecentlyAdded from "@/app/components/RecentlyAdded";
 import EventsClient from "./EventsClient";
+import type { Metadata } from "next";
+import { buildPageMetadata } from "@/lib/seo";
+import { api } from "@/lib/api";
+
+export async function generateMetadata(): Promise<Metadata> {
+  let count = "66";
+  try {
+    const stats = await api.getStatsBounded();
+    count = String(stats.events);
+  } catch {
+    // Fall back to the baseline count if the API is unreachable at build time.
+  }
+  return buildPageMetadata({
+    path: "/events",
+    title: "Events - All In-Game Events",
+    description: `All ${count} Slay the Spire 2 (sts2) events, shrines, Ancients, and story beats. Choices, dialogue, relic offerings, and every outcome path.`,
+  });
+}
 
 const API = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 

@@ -13,7 +13,7 @@ import SearchTrigger from "@/app/components/SearchTrigger";
 import { buildWebSiteJsonLd, buildVideoGameJsonLd } from "@/lib/jsonld";
 import { fetchSteamMeta } from "@/lib/steam-meta";
 import { t } from "@/lib/ui-translations";
-import { SITE_URL, SITE_NAME, HOME_OG_IMAGE, buildLanguageAlternates } from "@/lib/seo";
+import { SITE_NAME, HOME_OG_IMAGE, buildLanguageAlternates } from "@/lib/seo";
 import "@/app/home-revamp.css";
 import {
   isValidLang,
@@ -76,20 +76,24 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   // pages inherit from layout.tsx.
   const homeOgImage = { url: HOME_OG_IMAGE, width: 2006, height: 2251 };
 
+  // Absolute on purpose. A layout's `title.template` does not apply to a
+  // page.tsx in that same segment, so this page would otherwise fall
+  // through to the *root* (English) template and suffix a Spanish home
+  // with English chrome.
   return {
-    title,
+    title: { absolute: title },
     description,
     openGraph: {
       type: "website",
       siteName: SITE_NAME,
-      title,
+      title: { absolute: title },
       description,
       locale: LANG_HREFLANG[langCode],
       images: [homeOgImage],
     },
     twitter: {
       card: "summary_large_image",
-      title,
+      title: { absolute: title },
       description,
       images: [HOME_OG_IMAGE],
     },

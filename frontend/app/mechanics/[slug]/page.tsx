@@ -36,7 +36,7 @@ export async function generateMetadata({
   const { slug } = await params;
   const section = await fetchSection(slug);
   if (!section) return { title: `Not Found - Slay the Spire 2 (sts2) | ${SITE_NAME}` };
-  const title = `${section.title} - Slay the Spire 2 | ${SITE_NAME}`;
+  const title = `${section.title}`;
   const description = clipMetaDescription(section.description);
   return {
     title,

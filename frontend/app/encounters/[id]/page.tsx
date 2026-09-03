@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import EncounterDetail from "./EncounterDetail";
-import { stripTags, clipMetaDescription, DEFAULT_OG_IMAGE, buildLanguageAlternates, SITE_NAME, SITE_URL } from "@/lib/seo";
+import { stripTags, clipMetaDescription, buildPageMetadata } from "@/lib/seo";
+import { getLangOrDefault, LANG_GAME_NAME, isValidLang } from "@/lib/languages";
+import { t } from "@/lib/ui-translations";
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
@@ -10,38 +12,38 @@ import { fetchEncounterStats } from "@/lib/encounter-stats";
 const API_INTERNAL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const API_PUBLIC = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_API_URL || "";
 
-type Props = { params: Promise<{ id: string }> };
+type Props = { params: Promise<{ lang?: string; id: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params;
+  const { id, lang } = await params;
+  if (lang && !isValidLang(lang)) return {};
   try {
-    const res = await fetch(`${API_INTERNAL}/api/encounters/${id}`);
-    if (!res.ok) return { title: "Encounter Not Found - Slay the Spire 2 (sts2) | Spire Codex" };
-    const encounter = await res.json();
-    const title = `${encounter.name} - Slay the Spire 2 ${encounter.room_type} Encounter | Spire Codex`;
-    const monsterList = encounter.monsters?.length
-      ? ` Monsters: ${encounter.monsters.map((m: { name: string }) => m.name).join(", ")}.`
+    const res = await fetch(`${API_INTERNAL}/api/encounters/${id}${lang ? `?lang=${lang}` : ""}`);
+    if (!res.ok) return { title: "Encounter Not Found" };
+    const entity = await res.json();
+    const name = entity.name || id;
+    const resolvedLang = getLangOrDefault(lang);
+    const gameName = LANG_GAME_NAME[resolvedLang];
+    // entity.room_type is not localized by the API.
+    const roomType = entity.room_type ? t(entity.room_type, resolvedLang) : "";
+    const encounterWord = t("Encounter", resolvedLang);
+    const title = `${name} - ${roomType} ${encounterWord}`.replace(/\s+/g, " ").trim();
+    const monsterList = entity.monsters?.length
+      ? ` ${entity.monsters.map((m: { name: string }) => m.name).join(", ")}.`
       : "";
-    const actText = encounter.act ? ` (${encounter.act})` : "";
-    const metaDesc = clipMetaDescription(
-      `Slay the Spire 2 ${encounter.room_type} encounter, ${encounter.name}${actText}.${monsterList}`,
-    );
-    return {
+    const actText = entity.act ? ` (${entity.act})` : "";
+    const meta = buildPageMetadata({
+      lang,
+      path: `/encounters/${id}`,
       title,
-      description: metaDesc,
-      openGraph: {
-        type: "article",
-        siteName: SITE_NAME,
-        url: `${SITE_URL}/encounters/${id}`,
-        title,
-        description: metaDesc,
-        images: [{ url: DEFAULT_OG_IMAGE }],
-      },
-      twitter: { card: "summary_large_image", title, description: metaDesc },
-      alternates: { canonical: `/encounters/${id}`, languages: buildLanguageAlternates(`/encounters/${id}`) },
-    };
+      description: clipMetaDescription(
+        `${gameName} ${roomType} ${encounterWord}, ${name}${actText}.${monsterList}`,
+      ),
+      ogType: "article",
+    });
+    return meta;
   } catch {
-    return { title: "Database - Slay the Spire 2 (sts2) | Spire Codex" };
+    return { title: "Database" };
   }
 }
 

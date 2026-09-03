@@ -5,13 +5,7 @@ import { buildBreadcrumbJsonLd, buildCollectionPageJsonLd } from "@/lib/jsonld";
 import { SITE_URL, SITE_NAME, DEFAULT_OG_IMAGE, buildLanguageAlternates } from "@/lib/seo";
 import type { NewsArticle, NewsListResponse } from "@/lib/api";
 import { newsExcerpt, formatNewsDate, newsSlugForArticle } from "@/lib/steam-news";
-import {
-  isValidLang,
-  LANG_GAME_NAME,
-  LANG_NAMES,
-  LANG_HREFLANG,
-  type LangCode,
-} from "@/lib/languages";
+import { isValidLang, LANG_HREFLANG, type LangCode } from "@/lib/languages";
 import { t } from "@/lib/ui-translations";
 
 const API = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -41,12 +35,10 @@ export async function generateMetadata({
   const { lang } = await params;
   if (!isValidLang(lang)) return {};
   const langCode = lang as LangCode;
-  const gameName = LANG_GAME_NAME[langCode];
-  const nativeName = LANG_NAMES[langCode];
   // Title + description use the standard format mirrored from /changelog,
   // visible page copy uses `news_tagline`, meta uses the tighter
   // `news_meta_description`.
-  const title = `${gameName} ${t("News", lang)} - ${t("News - Subtitle", lang)} | ${SITE_NAME} (${nativeName})`;
+  const title = `${t("News", lang)} - ${t("News - Subtitle", lang)}`;
   const description = t("news_meta_description", lang);
 
   const languages = buildLanguageAlternates(`/news`);

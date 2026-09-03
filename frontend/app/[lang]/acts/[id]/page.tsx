@@ -3,7 +3,7 @@ import ActDetail from "@/app/acts/[id]/ActDetail";
 import { clipMetaDescription, DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL, buildLanguageAlternates } from "@/lib/seo";
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd } from "@/lib/jsonld";
-import { isValidLang, LANG_HREFLANG, LANG_NAMES, LANG_GAME_NAME, type LangCode } from "@/lib/languages";
+import { isValidLang, LANG_HREFLANG, LANG_GAME_NAME, type LangCode } from "@/lib/languages";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
 import { fetchEntityRes } from "@/lib/entity-fetch";
 
@@ -18,11 +18,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!isValidLang(lang)) return {};
   try {
     const res = await fetch(`${API_INTERNAL}/api/acts/${id}?lang=${lang}`);
-    if (!res.ok) return { title: "Act Not Found - Slay the Spire 2 (sts2) | Spire Codex" };
+    if (!res.ok) return { title: "Act Not Found" };
     const act = await res.json();
     const langCode = lang as LangCode;
     const gameName = LANG_GAME_NAME[langCode];
-    const title = `${gameName} ${act.name} - Act Guide | Spire Codex (${LANG_NAMES[langCode]})`;
+    const title = `${act.name} - Act Guide`;
     const desc = clipMetaDescription(
       `${gameName} act, ${act.name}. ${act.num_rooms || "?"} rooms, ${act.bosses.length} bosses, ${act.encounters.length} encounters.`,
     );

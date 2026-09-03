@@ -33,7 +33,7 @@ export const revalidate = 1800;
 // The visible page tagline below is separate marketing copy.
 // Lead with the query people actually type ("slay the spire 2 patch notes",
 // "sts2 patch notes / updates") rather than a generic "News -".
-const NEWS_TITLE = `Slay the Spire 2 Patch Notes & Updates (sts2) | ${SITE_NAME}`;
+const NEWS_TITLE = "Patch Notes & Updates";
 
 export const metadata: Metadata = {
   title: NEWS_TITLE,

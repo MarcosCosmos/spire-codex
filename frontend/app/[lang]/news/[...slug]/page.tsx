@@ -55,7 +55,7 @@ export async function generateMetadata({
   if (!article) return { title: `${gameName} ${newsLabel} - ${t("Not Found", lang)} | ${SITE_NAME}` };
   const excerpt = newsExcerpt(article.contents ?? "", 160);
   const description = `${gameName} ${newsLabel}, ${article.title}. ${excerpt}`.slice(0, 160);
-  const title = `${article.title} - ${gameName} ${newsLabel} | ${SITE_NAME}`;
+  const title = `${article.title} - ${gameName} ${newsLabel}`;
   const canonicalPath = newsSlugForArticle(article.gid, `/${lang}/news`);
   return {
     title,

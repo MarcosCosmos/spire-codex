@@ -7,6 +7,16 @@ import {
 } from "@/lib/jsonld";
 import type { Badge } from "@/lib/api";
 import { imageUrl } from "@/lib/image-url";
+import type { Metadata } from "next";
+import { buildPageMetadata } from "@/lib/seo";
+
+export function generateMetadata(): Metadata {
+  return buildPageMetadata({
+    path: "/badges",
+    title: "Badges - Run-End Awards",
+    description: "All run-end badges in Slay the Spire 2, Big Deck, Perfect, Speedy, KaChing, and more. Bronze, Silver, and Gold tiers. Awarded on the Game Over screen.",
+  });
+}
 
 export const dynamic = "force-dynamic";
 

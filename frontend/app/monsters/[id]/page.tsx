@@ -5,7 +5,9 @@ import JsonLd from "@/app/components/JsonLd";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
 import { fetchEntityRes } from "@/lib/entity-fetch";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
-import { clipMetaDescription, buildLanguageAlternates, SITE_NAME, SITE_URL } from "@/lib/seo";
+import { clipMetaDescription, buildPageMetadata } from "@/lib/seo";
+import { getLangOrDefault, LANG_GAME_NAME, isValidLang } from "@/lib/languages";
+import { t } from "@/lib/ui-translations";
 import { imageUrl } from "@/lib/image-url";
 
 export const dynamic = "force-static";
@@ -14,39 +16,49 @@ export const revalidate = 3600;
 const API_INTERNAL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const API_PUBLIC = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_API_URL || "";
 
-type Props = { params: Promise<{ id: string }> };
+type Props = { params: Promise<{ lang?: string; id: string }> };
+
+/**
+ * type is one of NORMAL / ELITE / BOSS from the API and is not localized.
+ * "Normal" reads as a strange noun on its own in a title ("Cultist -
+ * Normal"), so it's shown as "Enemy" instead; Elite/Boss are shown as-is.
+ */
+function monsterTypeWord(type: string, lang: string): string {
+  return t(type === "NORMAL" || type === "Normal" ? "Enemy" : type, lang);
+}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params;
+  const { id, lang } = await params;
+  if (lang && !isValidLang(lang)) return {};
   try {
-    const res = await fetch(`${API_INTERNAL}/api/monsters/${id}`, {
-      next: { revalidate: 3600 },
-    });
-    if (!res.ok) return { title: "Monster Not Found - Slay the Spire 2 (sts2) | Spire Codex" };
-    const monster = await res.json();
-    const hpText = monster.min_hp ? `${monster.min_hp}${monster.max_hp && monster.max_hp !== monster.min_hp ? `\u2013${monster.max_hp}` : ""} HP` : "";
-    const desc = `${monster.type} monster${hpText ? ` \u00b7 ${hpText}` : ""}`;
-    const title = `${monster.name} - Slay the Spire 2 ${monster.type} | Spire Codex`;
-    const movesText = monster.moves?.length ? `${monster.moves.length} known moves.` : "";
-    const metaDesc = clipMetaDescription(
-      `${monster.name} is a ${monster.type} in Slay the Spire 2 (sts2).${hpText ? ` ${hpText}.` : ""}${movesText ? ` ${movesText}` : ""}`,
-    );
-    return {
+    const res = await fetch(`${API_INTERNAL}/api/monsters/${id}${lang ? `?lang=${lang}` : ""}`, lang ? undefined : { next: { revalidate: 3600 } });
+    if (!res.ok) return { title: "Monster Not Found" };
+    const entity = await res.json();
+    const name = entity.name || id;
+    const resolvedLang = getLangOrDefault(lang);
+    const gameName = LANG_GAME_NAME[resolvedLang];
+    const typeWord = monsterTypeWord(entity.type, resolvedLang);
+    const title = `${name} - ${typeWord}`;
+    const hpText = entity.min_hp ? `${entity.min_hp}${entity.max_hp && entity.max_hp !== entity.min_hp ? `\u2013${entity.max_hp}` : ""} HP` : "";
+    const movesText = entity.moves?.length ? `${entity.moves.length} known moves.` : "";
+    const meta = buildPageMetadata({
+      lang,
+      path: `/monsters/${id}`,
       title,
-      description: metaDesc,
+      description: clipMetaDescription(
+        `${gameName} ${typeWord}, ${name}.${hpText ? ` ${hpText}.` : ""}${movesText ? ` ${movesText}` : ""}`,
+      ),
+      ogType: "article",
+    });
+    return {
+      ...meta,
       openGraph: {
-        type: "article",
-        siteName: SITE_NAME,
-        url: `${SITE_URL}/monsters/${id}`,
-        title,
-        description: metaDesc,
-        images: monster.image_url ? [{ url: imageUrl(monster.image_url) }] : [],
+        ...meta.openGraph,
+        images: entity.image_url ? [{ url: imageUrl(entity.image_url) }] : undefined,
       },
-      twitter: { card: "summary_large_image", title, description: metaDesc },
-      alternates: { canonical: `/monsters/${id}`, languages: buildLanguageAlternates(`/monsters/${id}`) },
     };
   } catch {
-    return { title: "Database - Slay the Spire 2 (sts2) | Spire Codex" };
+    return { title: "Database" };
   }
 }
 

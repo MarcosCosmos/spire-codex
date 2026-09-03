@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { SITE_NAME, SITE_URL, DEFAULT_OG_IMAGE } from "@/lib/seo";
 import PrivacyBody from "./PrivacyBody";
 
-const title = `Privacy Policy | ${SITE_NAME}`;
+const title = `Privacy Policy`;
 const description =
   "How Spire Codex collects, uses, and retains data submitted through the website, API, and Overwolf overlay.";
 

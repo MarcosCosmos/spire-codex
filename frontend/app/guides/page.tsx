@@ -4,6 +4,16 @@ import JsonLd from "@/app/components/JsonLd";
 import { buildCollectionPageJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import GuidesClient from "./GuidesClient";
 import Link from "next/link";
+import type { Metadata } from "next";
+import { buildPageMetadata } from "@/lib/seo";
+
+export function generateMetadata(): Metadata {
+  return buildPageMetadata({
+    path: "/guides",
+    title: "Guides - Strategy & Tips",
+    description: "Community strategy guides for Slay the Spire 2. Character guides, boss strategies, deck building tips, and more from experienced players.",
+  });
+}
 
 const API = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 

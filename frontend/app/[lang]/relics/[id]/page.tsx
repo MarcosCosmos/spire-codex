@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import RelicDetail from "@/app/relics/[id]/RelicDetail";
-import { stripTags, SITE_NAME, SITE_URL, stripTagsFlat, clipMetaDescription, buildLanguageAlternates } from "@/lib/seo";
+import { stripTags } from "@/lib/seo";
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
-import { isValidLang, LANG_HREFLANG, LANG_NAMES, LANG_GAME_NAME, type LangCode } from "@/lib/languages";
+import { isValidLang, LANG_HREFLANG, type LangCode } from "@/lib/languages";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
 import { fetchEntityRes } from "@/lib/entity-fetch";
 import { imageUrl } from "@/lib/image-url";
@@ -21,39 +21,7 @@ async function channelQS(searchParams: Props["searchParams"]): Promise<string> {
   return channel === "beta" ? "&channel=beta" : "";
 }
 
-export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
-  const { lang, id } = await params;
-  const qs = await channelQS(searchParams);
-  if (!isValidLang(lang)) return {};
-  try {
-    const res = await fetch(`${API_INTERNAL}/api/relics/${id}?lang=${lang}${qs}`);
-    if (!res.ok) return { title: "Relic Not Found - Slay the Spire 2 (sts2) | Spire Codex" };
-    const entity = await res.json();
-    const desc = stripTagsFlat(entity.description || "");
-    const langCode = lang as LangCode;
-    const gameName = LANG_GAME_NAME[langCode];
-    const name = entity.name || entity.title || id;
-    const title = `${gameName} ${name} - Relic | Spire Codex (${LANG_NAMES[langCode]})`;
-    const languages = buildLanguageAlternates(`/relics/${id}`);
-    return {
-      title,
-      description: clipMetaDescription(`${gameName} relic, ${name}${desc ? `: ${desc}` : ""}`),
-      openGraph: {
-        type: "article",
-        siteName: SITE_NAME,
-        url: `${SITE_URL}/${lang}/relics/${id}`,
-        title,
-        description: clipMetaDescription(`${gameName} relic, ${name}${desc ? `: ${desc}` : ""}`),
-        locale: LANG_HREFLANG[langCode],
-        images: entity.image_url ? [{ url: imageUrl(entity.image_url) }] : [],
-      },
-      twitter: { card: "summary_large_image", title, description: clipMetaDescription(`${gameName} relic, ${name}${desc ? `: ${desc}` : ""}`) },
-      alternates: { canonical: `/${lang}/relics/${id}`, languages },
-    };
-  } catch {
-    return { title: "Spire Codex" };
-  }
-}
+export { generateMetadata } from "@/app/relics/[id]/page";
 
 export default async function Page({ params, searchParams }: Props) {
   const { lang, id } = await params;

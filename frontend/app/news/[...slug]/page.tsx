@@ -70,7 +70,7 @@ export async function generateMetadata({
   // the raw article body.
   const excerpt = newsExcerpt(article.contents ?? "", 160);
   const description = `Slay the Spire 2 news on Spire Codex, ${article.title}. ${excerpt}`.slice(0, 300);
-  const title = `${article.title} - Slay the Spire 2 News | ${SITE_NAME}`;
+  const title = `${article.title} - Slay the Spire 2 News`;
   const canonicalPath = newsSlugForArticle(article.gid);
   return {
     title,

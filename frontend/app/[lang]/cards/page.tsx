@@ -29,7 +29,7 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   const cardsWord = LANG_CARDS[langCode];
   const nativeName = LANG_NAMES[langCode];
 
-  const title = `${gameName} ${cardsWord} | Spire Codex (${nativeName})`;
+  const title = `${cardsWord}`;
   const description = `${gameName} ${cardsWord} (${nativeName}). Every card across Ironclad, Silent, Defect, Necrobinder, and Regent, art, stats, upgrades, and keywords.`;
 
   const languages = buildLanguageAlternates(`/cards`);

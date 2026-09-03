@@ -2,6 +2,16 @@ import Link from "next/link";
 import JsonLd from "@/app/components/JsonLd";
 import RichDescription from "@/app/components/RichDescription";
 import { buildBreadcrumbJsonLd, buildCollectionPageJsonLd } from "@/lib/jsonld";
+import type { Metadata } from "next";
+import { buildPageMetadata } from "@/lib/seo";
+
+export function generateMetadata(): Metadata {
+  return buildPageMetadata({
+    path: "/keywords",
+    title: "Keywords - All Card Keywords",
+    description: "Browse all card keywords in Slay the Spire 2 (sts2), Exhaust, Ethereal, Innate, Retain, Sly, Eternal, and more. See every card with each keyword.",
+  });
+}
 
 // force-dynamic so the page SSRs at runtime instead of getting baked
 // into the Docker image at build time. The build container has no

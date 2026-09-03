@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import PotionDetail from "@/app/potions/[id]/PotionDetail";
-import { stripTags, SITE_NAME, SITE_URL, stripTagsFlat, clipMetaDescription, buildLanguageAlternates } from "@/lib/seo";
+import { stripTags } from "@/lib/seo";
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
-import { isValidLang, LANG_HREFLANG, LANG_NAMES, LANG_GAME_NAME, type LangCode } from "@/lib/languages";
+import { isValidLang, LANG_HREFLANG, type LangCode } from "@/lib/languages";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
 import { fetchEntityRes } from "@/lib/entity-fetch";
 import { imageUrl } from "@/lib/image-url";
@@ -13,38 +13,7 @@ const API_PUBLIC = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_A
 
 type Props = { params: Promise<{ lang: string; id: string }> };
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { lang, id } = await params;
-  if (!isValidLang(lang)) return {};
-  try {
-    const res = await fetch(`${API_INTERNAL}/api/potions/${id}?lang=${lang}`);
-    if (!res.ok) return { title: "Potion Not Found - Slay the Spire 2 (sts2) | Spire Codex" };
-    const entity = await res.json();
-    const desc = stripTagsFlat(entity.description || "");
-    const langCode = lang as LangCode;
-    const gameName = LANG_GAME_NAME[langCode];
-    const name = entity.name || entity.title || id;
-    const title = `${gameName} ${name} - Potion | Spire Codex (${LANG_NAMES[langCode]})`;
-    const languages = buildLanguageAlternates(`/potions/${id}`);
-    return {
-      title,
-      description: clipMetaDescription(`${gameName} potion, ${name}${desc ? `: ${desc}` : ""}`),
-      openGraph: {
-        type: "article",
-        siteName: SITE_NAME,
-        url: `${SITE_URL}/${lang}/potions/${id}`,
-        title,
-        description: clipMetaDescription(`${gameName} potion, ${name}${desc ? `: ${desc}` : ""}`),
-        locale: LANG_HREFLANG[langCode],
-        images: entity.image_url ? [{ url: imageUrl(entity.image_url) }] : [],
-      },
-      twitter: { card: "summary_large_image", title, description: clipMetaDescription(`${gameName} potion, ${name}${desc ? `: ${desc}` : ""}`) },
-      alternates: { canonical: `/${lang}/potions/${id}`, languages },
-    };
-  } catch {
-    return { title: "Spire Codex" };
-  }
-}
+export { generateMetadata } from "@/app/potions/[id]/page";
 
 export default async function Page({ params }: Props) {
   const { lang, id } = await params;

@@ -1,14 +1,6 @@
-import type { Metadata } from "next";
 import JsonLd from "@/app/components/JsonLd";
 import { buildSoftwareApplicationJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
-import {
-  isValidLang,
-  LANG_GAME_NAME,
-  LANG_NAMES,
-  LANG_HREFLANG,
-  type LangCode,
-} from "@/lib/languages";
-import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL, buildLanguageAlternates } from "@/lib/seo";
+import { isValidLang } from "@/lib/languages";
 import { t } from "@/lib/ui-translations";
 
 const CATEGORY = "developers";
@@ -16,38 +8,7 @@ const CATEGORY_LABEL = "Developers";
 
 const API_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://spire-codex.com";
 
-export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
-  const { lang } = await params;
-  if (!isValidLang(lang)) return {};
-
-  const langCode = lang as LangCode;
-  const gameName = LANG_GAME_NAME[langCode];
-  const nativeName = LANG_NAMES[langCode];
-
-  const title = `${gameName} Developer API & Tooltip Widget | Spire Codex (${nativeName})`;
-  const description = `Integrate ${gameName} game data into your projects. Public REST API with 22+ endpoints, embeddable tooltip widget, and multi-language support. ${nativeName}.`;
-
-  const languages = buildLanguageAlternates(`/${CATEGORY}`);
-
-  return {
-    title,
-    description,
-    openGraph: {
-      type: "website",
-      siteName: SITE_NAME,
-      url: `${SITE_URL}/${lang}/${CATEGORY}`,
-      title,
-      description,
-      locale: LANG_HREFLANG[langCode],
-      images: [{ url: DEFAULT_OG_IMAGE }],
-    },
-    twitter: { card: "summary_large_image", title, description },
-    alternates: {
-      canonical: `/${lang}/${CATEGORY}`,
-      languages,
-    },
-  };
-}
+export { generateMetadata } from "@/app/developers/page";
 
 export default async function LangDevelopersPage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params;

@@ -4,6 +4,24 @@ import JsonLd from "@/app/components/JsonLd";
 import { buildCollectionPageJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import RecentlyAdded from "@/app/components/RecentlyAdded";
 import EncountersClient from "./EncountersClient";
+import type { Metadata } from "next";
+import { buildPageMetadata } from "@/lib/seo";
+import { api } from "@/lib/api";
+
+export async function generateMetadata(): Promise<Metadata> {
+  let count = "87";
+  try {
+    const stats = await api.getStatsBounded();
+    count = String(stats.encounters);
+  } catch {
+    // Fall back to the baseline count if the API is unreachable at build time.
+  }
+  return buildPageMetadata({
+    path: "/encounters",
+    title: "Encounters - All Combat Encounters",
+    description: `All ${count} Slay the Spire 2 (sts2) encounters, normal fights, elites, and bosses. Monster compositions, act placement, and room types.`,
+  });
+}
 
 const API = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 

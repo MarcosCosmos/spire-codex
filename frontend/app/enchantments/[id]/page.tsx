@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import EnchantmentDetail from "./EnchantmentDetail";
-import { stripTags, stripTagsFlat, clipMetaDescription, buildLanguageAlternates, SITE_NAME, SITE_URL } from "@/lib/seo";
+import { stripTags, stripTagsFlat, clipMetaDescription, buildPageMetadata } from "@/lib/seo";
+import { t } from "@/lib/ui-translations";
+import { getLangOrDefault, LANG_GAME_NAME, isValidLang } from "@/lib/languages";
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
@@ -11,35 +13,29 @@ import { cardsForEnchantment } from "@/lib/card-enchantments";
 const API_INTERNAL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const API_PUBLIC = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_API_URL || "";
 
-type Props = { params: Promise<{ id: string }> };
+type Props = { params: Promise<{ lang?: string; id: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params;
+  const { id, lang } = await params;
+  if (lang && !isValidLang(lang)) return {};
   try {
-    const res = await fetch(`${API_INTERNAL}/api/enchantments/${id}`);
-    if (!res.ok) return { title: "Enchantment Not Found - Slay the Spire 2 (sts2) | Spire Codex" };
-    const enchantment = await res.json();
-    const desc = stripTagsFlat(enchantment.description || "");
-    const title = `${enchantment.name} - Slay the Spire 2 Enchantment | Spire Codex`;
-    const metaDesc = clipMetaDescription(
-      `${enchantment.name} is a card enchantment in Slay the Spire 2 (sts2)${desc ? `: ${desc}` : "."}`,
-    );
-    return {
+    const res = await fetch(`${API_INTERNAL}/api/enchantments/${id}${lang ? `?lang=${lang}` : ""}`);
+    if (!res.ok) return { title: "Enchantment Not Found" };
+    const entity = await res.json();
+    const desc = stripTagsFlat(entity.description || "");
+    const name = entity.name || id;
+    const gameName = LANG_GAME_NAME[getLangOrDefault(lang)];
+    const title = `${name} - ${t("Enchantment", lang ?? "eng")}`;
+    const meta = buildPageMetadata({
+      lang,
+      path: `/enchantments/${id}`,
       title,
-      description: metaDesc,
-      openGraph: {
-        type: "article",
-        siteName: SITE_NAME,
-        url: `${SITE_URL}/enchantments/${id}`,
-        title,
-        description: metaDesc,
-        images: enchantment.image_url ? [{ url: imageUrl(enchantment.image_url) }] : [],
-      },
-      twitter: { card: "summary_large_image", title, description: metaDesc },
-      alternates: { canonical: `/enchantments/${id}`, languages: buildLanguageAlternates(`/enchantments/${id}`) },
-    };
+      description: clipMetaDescription(`${gameName} card enchantment, ${name}${desc ? `: ${desc}` : ""}`),
+      ogType: "article",
+    });
+    return { ...meta, openGraph: { ...meta.openGraph, images: entity.image_url ? [{ url: imageUrl(entity.image_url) }] : undefined } };
   } catch {
-    return { title: "Database - Slay the Spire 2 (sts2) | Spire Codex" };
+    return { title: "Database" };
   }
 }
 

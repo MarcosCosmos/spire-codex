@@ -1,6 +1,16 @@
 import JsonLd from "@/app/components/JsonLd";
 import { buildCollectionPageJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import Link from "next/link";
+import type { Metadata } from "next";
+import { buildPageMetadata } from "@/lib/seo";
+
+export function generateMetadata(): Metadata {
+  return buildPageMetadata({
+    path: "/compare",
+    title: "Character Comparisons - Side by Side",
+    description: "Side-by-side Slay the Spire 2 (sts2) character comparisons. Stat differences, card-pool breakdowns, keyword distribution, and starting decks for all 10 pairs.",
+  });
+}
 
 const CHARACTERS = [
   { id: "ironclad", name: "Ironclad", color: "red" },

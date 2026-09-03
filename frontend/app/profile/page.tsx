@@ -4,7 +4,7 @@ import ProfileClient from "./ProfileClient";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Profile | Spire Codex",
+  title: "Profile",
   description: "View your runs, upload run files, and see your personal stats.",
   robots: { index: false },
 };

@@ -3,7 +3,7 @@ import AscensionDetail from "@/app/ascensions/[id]/AscensionDetail";
 import { stripTags, stripTagsFlat, clipMetaDescription, DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL, buildLanguageAlternates } from "@/lib/seo";
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
-import { isValidLang, LANG_HREFLANG, LANG_NAMES, LANG_GAME_NAME, type LangCode } from "@/lib/languages";
+import { isValidLang, LANG_HREFLANG, LANG_GAME_NAME, type LangCode } from "@/lib/languages";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
 import { fetchEntityRes } from "@/lib/entity-fetch";
 
@@ -18,12 +18,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!isValidLang(lang)) return {};
   try {
     const res = await fetch(`${API_INTERNAL}/api/ascensions/${id}?lang=${lang}`);
-    if (!res.ok) return { title: "Ascension Not Found - Slay the Spire 2 (sts2) | Spire Codex" };
+    if (!res.ok) return { title: "Ascension Not Found" };
     const asc = await res.json();
     const desc = stripTagsFlat(asc.description);
     const langCode = lang as LangCode;
     const gameName = LANG_GAME_NAME[langCode];
-    const title = `${gameName} Ascension ${asc.level}: ${asc.name} | Spire Codex (${LANG_NAMES[langCode]})`;
+    const title = `Ascension ${asc.level}: ${asc.name}`;
     const description = clipMetaDescription(
       `${gameName} Ascension ${asc.level}, ${asc.name}${desc ? `: ${desc}` : ""}`,
     );

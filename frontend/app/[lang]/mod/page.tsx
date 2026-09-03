@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   const gameName = LANG_GAME_NAME[langCode];
   const nativeName = LANG_NAMES[langCode];
 
-  const title = `${gameName} ${t("Steam Mod", lang)} | Spire Codex (${nativeName})`;
+  const title = `${t("Steam Mod", lang)}`;
   const description = `The official Spire Codex mod for ${gameName}, from the Steam Workshop. Automatic run uploads, in-game community insights, and a route planner. ${nativeName}.`;
 
   return {

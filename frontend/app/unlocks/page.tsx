@@ -4,7 +4,7 @@ import JsonLd from "@/app/components/JsonLd";
 import { buildBreadcrumbJsonLd, buildCollectionPageJsonLd } from "@/lib/jsonld";
 import UnlocksClient from "./UnlocksClient";
 
-const title = "Unlocks - All Unlockable Cards, Relics & Potions - Slay the Spire 2 (sts2) | Spire Codex";
+const title = "Unlocks - All Unlockable Cards, Relics & Potions";
 const description =
   "Complete list of all unlockable content in Slay the Spire 2, 60 cards, 45 relics, 21 potions, and 4 characters unlocked through timeline progression.";
 

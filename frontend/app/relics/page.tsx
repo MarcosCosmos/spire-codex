@@ -5,6 +5,24 @@ import { buildCollectionPageJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import RecentlyAdded from "@/app/components/RecentlyAdded";
 import HighestRated from "@/app/components/HighestRated";
 import RelicsClient from "./RelicsClient";
+import type { Metadata } from "next";
+import { buildPageMetadata } from "@/lib/seo";
+import { api } from "@/lib/api";
+
+export async function generateMetadata(): Promise<Metadata> {
+  let count = "289+";
+  try {
+    const stats = await api.getStatsBounded();
+    count = String(stats.relics);
+  } catch {
+    // Fall back to the baseline count if the API is unreachable at build time.
+  }
+  return buildPageMetadata({
+    path: "/relics",
+    title: "Relics - Complete Relic List",
+    description: `Every Slay the Spire 2 (sts2) relic, all ${count}. Filter by rarity (Common to Ancient) and character pool. Effects, flavor text, and shop prices.`,
+  });
+}
 
 const API = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 

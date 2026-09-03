@@ -6,6 +6,16 @@ import MerchantToc from "./MerchantToc";
 import "../card-revamp.css";
 import "../meta-extra.css";
 import "../relic-potion-extra.css";
+import type { Metadata } from "next";
+import { buildPageMetadata } from "@/lib/seo";
+
+export function generateMetadata(): Metadata {
+  return buildPageMetadata({
+    path: "/merchant",
+    title: "Merchant Guide - Shop Prices & Fake Merchant",
+    description: "Slay the Spire 2 (sts2) merchant guide, card, relic, and potion shop prices by rarity, card removal costs, Fake Merchant relics. Values from the game source.",
+  });
+}
 
 const API_INTERNAL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 

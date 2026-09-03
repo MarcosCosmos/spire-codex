@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import AchievementDetail from "./AchievementDetail";
-import { stripTags, stripTagsFlat, clipMetaDescription, buildLanguageAlternates, DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
+import { stripTags, stripTagsFlat, clipMetaDescription, buildPageMetadata } from "@/lib/seo";
+import { t } from "@/lib/ui-translations";
+import { getLangOrDefault, LANG_GAME_NAME, isValidLang } from "@/lib/languages";
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
@@ -8,35 +10,29 @@ import { fetchEntityRes } from "@/lib/entity-fetch";
 
 const API_INTERNAL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-type Props = { params: Promise<{ id: string }> };
+type Props = { params: Promise<{ lang?: string; id: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params;
+  const { id, lang } = await params;
+  if (lang && !isValidLang(lang)) return {};
   try {
-    const res = await fetch(`${API_INTERNAL}/api/achievements/${id}`);
-    if (!res.ok) return { title: "Achievement Not Found - Slay the Spire 2 (sts2) | Spire Codex" };
-    const achievement = await res.json();
-    const desc = stripTagsFlat(achievement.description || "");
-    const title = `${achievement.name} - Slay the Spire 2 Achievement | Spire Codex`;
-    const metaDesc = clipMetaDescription(
-      `${achievement.name} is an achievement in Slay the Spire 2 (sts2)${desc ? `: ${desc}` : "."}`,
-    );
-    return {
+    const res = await fetch(`${API_INTERNAL}/api/achievements/${id}${lang ? `?lang=${lang}` : ""}`);
+    if (!res.ok) return { title: "Achievement Not Found" };
+    const entity = await res.json();
+    const desc = stripTagsFlat(entity.description || "");
+    const name = entity.name || id;
+    const gameName = LANG_GAME_NAME[getLangOrDefault(lang)];
+    const title = `${name} - ${t("Achievement", lang ?? "eng")}`;
+    const meta = buildPageMetadata({
+      lang,
+      path: `/achievements/${id}`,
       title,
-      description: metaDesc,
-      openGraph: {
-        type: "article",
-        siteName: SITE_NAME,
-        url: `${SITE_URL}/achievements/${id}`,
-        title,
-        description: metaDesc,
-        images: [{ url: DEFAULT_OG_IMAGE }],
-      },
-      twitter: { card: "summary_large_image", title, description: metaDesc },
-      alternates: { canonical: `/achievements/${id}`, languages: buildLanguageAlternates(`/achievements/${id}`) },
-    };
+      description: clipMetaDescription(`${gameName} achievement, ${name}${desc ? `: ${desc}` : ""}`),
+      ogType: "article",
+    });
+    return meta;
   } catch {
-    return { title: "Database - Slay the Spire 2 (sts2) | Spire Codex" };
+    return { title: "Database" };
   }
 }
 

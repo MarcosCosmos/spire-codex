@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   const gameName = LANG_GAME_NAME[langCode];
   const nativeName = LANG_NAMES[langCode];
 
-  const title = `${gameName} ${t(CATEGORY_LABEL, lang)} | Spire Codex (${nativeName})`;
+  const title = `${t(CATEGORY_LABEL, lang)}`;
   const description = `${gameName} ${t(CATEGORY_LABEL, lang)} (${nativeName}). Every buff, debuff, and neutral power with descriptions, icons, and stack behaviour.`;
 
   const languages = buildLanguageAlternates(`/${CATEGORY}`);

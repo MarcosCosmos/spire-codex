@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import EventDetail from "./EventDetail";
 import { fetchEventVotes } from "@/lib/event-votes";
-import { stripTags, stripTagsFlat, clipMetaDescription, buildLanguageAlternates, SITE_NAME, SITE_URL } from "@/lib/seo";
+import { stripTags, stripTagsFlat, clipMetaDescription, buildPageMetadata } from "@/lib/seo";
+import { getLangOrDefault, LANG_GAME_NAME, isValidLang } from "@/lib/languages";
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
@@ -11,35 +12,37 @@ import { imageUrl } from "@/lib/image-url";
 const API_INTERNAL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const API_PUBLIC = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_API_URL || "";
 
-type Props = { params: Promise<{ id: string }> };
+type Props = { params: Promise<{ lang?: string; id: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params;
+  const { id, lang } = await params;
+  if (lang && !isValidLang(lang)) return {};
   try {
-    const res = await fetch(`${API_INTERNAL}/api/events/${id}`);
-    if (!res.ok) return { title: "Event Not Found - Slay the Spire 2 (sts2) | Spire Codex" };
-    const event = await res.json();
-    const desc = stripTagsFlat(event.description || "");
-    const title = `${event.name} - Slay the Spire 2 Event | Spire Codex`;
-    const metaDesc = clipMetaDescription(
-      `${event.name} is a ${event.type} event in Slay the Spire 2 (sts2)${event.act ? ` (${event.act})` : ""}${desc ? `: ${desc}` : "."}`,
-    );
-    return {
+    const res = await fetch(`${API_INTERNAL}/api/events/${id}${lang ? `?lang=${lang}` : ""}`);
+    if (!res.ok) return { title: "Event Not Found" };
+    const entity = await res.json();
+    const desc = stripTagsFlat(entity.description || "");
+    const name = entity.name || entity.title || id;
+    const gameName = LANG_GAME_NAME[getLangOrDefault(lang)];
+    const title = `${name} - Event`;
+    const meta = buildPageMetadata({
+      lang,
+      path: `/events/${id}`,
       title,
-      description: metaDesc,
+      description: clipMetaDescription(
+        `${gameName} ${entity.type} event${entity.act ? ` (${entity.act})` : ""}, ${name}${desc ? `: ${desc}` : ""}`,
+      ),
+      ogType: "article",
+    });
+    return {
+      ...meta,
       openGraph: {
-        type: "article",
-        siteName: SITE_NAME,
-        url: `${SITE_URL}/events/${id}`,
-        title,
-        description: metaDesc,
-        images: event.image_url ? [{ url: imageUrl(event.image_url) }] : [],
+        ...meta.openGraph,
+        images: entity.image_url ? [{ url: imageUrl(entity.image_url) }] : undefined,
       },
-      twitter: { card: "summary_large_image", title, description: metaDesc },
-      alternates: { canonical: `/events/${id}`, languages: buildLanguageAlternates(`/events/${id}`) },
     };
   } catch {
-    return { title: "Database - Slay the Spire 2 (sts2) | Spire Codex" };
+    return { title: "Database" };
   }
 }
 

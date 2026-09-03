@@ -3,7 +3,7 @@ import CharacterDetail from "@/app/characters/[id]/CharacterDetail";
 import { stripTags, SITE_NAME, SITE_URL, stripTagsFlat, clipMetaDescription, buildLanguageAlternates } from "@/lib/seo";
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
-import { isValidLang, LANG_HREFLANG, LANG_NAMES, LANG_GAME_NAME, type LangCode } from "@/lib/languages";
+import { isValidLang, LANG_HREFLANG, LANG_GAME_NAME, type LangCode } from "@/lib/languages";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
 import { fetchEntityRes } from "@/lib/entity-fetch";
 import { imageUrl } from "@/lib/image-url";
@@ -18,13 +18,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!isValidLang(lang)) return {};
   try {
     const res = await fetch(`${API_INTERNAL}/api/characters/${id}?lang=${lang}`);
-    if (!res.ok) return { title: "Character Not Found - Slay the Spire 2 (sts2) | Spire Codex" };
+    if (!res.ok) return { title: "Character Not Found" };
     const entity = await res.json();
     const desc = stripTagsFlat(entity.description || "");
     const langCode = lang as LangCode;
     const gameName = LANG_GAME_NAME[langCode];
     const name = entity.name || entity.title || id;
-    const title = `${gameName} ${name} - Character | Spire Codex (${LANG_NAMES[langCode]})`;
+    const title = `${name} - Character`;
     const languages = buildLanguageAlternates(`/characters/${id}`);
     return {
       title,

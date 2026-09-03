@@ -5,13 +5,7 @@ import { redirectMissingEntity } from "@/lib/redirect-helpers";
 import RichDescription from "@/app/components/RichDescription";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
 import { stripTags, stripTagsFlat, clipMetaDescription, SITE_NAME, SITE_URL, buildLanguageAlternates } from "@/lib/seo";
-import {
-  isValidLang,
-  LANG_HREFLANG,
-  LANG_NAMES,
-  LANG_GAME_NAME,
-  type LangCode,
-} from "@/lib/languages";
+import { isValidLang, LANG_HREFLANG, LANG_GAME_NAME, type LangCode } from "@/lib/languages";
 import { t } from "@/lib/ui-translations";
 import type { Badge } from "@/lib/api";
 import { imageUrl } from "@/lib/image-url";
@@ -63,13 +57,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!isValidLang(lang)) return {};
 
   const badge = await fetchBadge(id, lang);
-  if (!badge) return { title: "Badge Not Found - Slay the Spire 2 (sts2) | Spire Codex" };
+  if (!badge) return { title: "Badge Not Found" };
 
   const desc = stripTagsFlat(badge.description);
   const langCode = lang as LangCode;
   const gameName = LANG_GAME_NAME[langCode];
-  const nativeName = LANG_NAMES[langCode];
-  const title = `${gameName} ${t("Badges", lang)} - ${badge.name} | Spire Codex (${nativeName})`;
+  const title = `${t("Badges", lang)} - ${badge.name}`;
   const metaDesc = clipMetaDescription(
     `${gameName} run-end badge, ${badge.name}${desc ? `: ${desc}` : ""}`,
   );

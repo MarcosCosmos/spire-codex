@@ -7,7 +7,7 @@ import ModifiersClient from "./ModifiersClient";
 // Pure client component, no fetches, pre-rendered at build time and
 // cached at CF edge indefinitely (modifier data only changes on deploy).
 
-const title = "Custom Mode Modifiers - All Modifiers - Slay the Spire 2 (sts2) | Spire Codex";
+const title = "Custom Mode Modifiers - All Modifiers";
 const description =
   "All 16 Slay the Spire 2 (sts2) custom-mode modifiers, Draft, Sealed Deck, Insanity, and more. Effects, deck rules, and Neow interactions for each.";
 

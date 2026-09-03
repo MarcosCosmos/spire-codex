@@ -13,7 +13,7 @@ export async function generateMetadata({
   const { lang } = await params;
   if (!isValidLang(lang)) return {};
   return {
-    title: `${t("Settings", lang)} | Spire Codex`,
+    title: `${t("Settings", lang)}`,
     description: "Manage your display name, email, and connected accounts.",
     robots: { index: false },
   };

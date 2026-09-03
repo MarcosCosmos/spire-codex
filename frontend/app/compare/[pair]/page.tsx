@@ -44,11 +44,11 @@ type Props = { params: Promise<{ pair: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { pair } = await params;
   const parsed = parsePair(pair);
-  if (!parsed) return { title: "Comparison Not Found - Slay the Spire 2 (sts2) | Spire Codex" };
+  if (!parsed) return { title: "Comparison Not Found" };
 
   const nameA = CHAR_NAMES[parsed.a];
   const nameB = CHAR_NAMES[parsed.b];
-  const title = `${nameA} vs ${nameB} - Character Comparison - Slay the Spire 2 (sts2) | Spire Codex`;
+  const title = `${nameA} vs ${nameB} - Character Comparison`;
   const description = `Compare ${nameA} and ${nameB} in Slay the Spire 2. Side-by-side stats, card pool breakdowns by type and rarity, keyword distributions, and starting decks.`;
 
   return {
@@ -58,11 +58,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       type: "article",
       siteName: SITE_NAME,
       url: `${SITE_URL}/compare/${pair}`,
-      title: `${nameA} vs ${nameB} - Character Comparison - Slay the Spire 2 (sts2) | Spire Codex`,
+      title: `${nameA} vs ${nameB} - Character Comparison`,
       description,
       images: [{ url: DEFAULT_OG_IMAGE }],
     },
-    twitter: { card: "summary_large_image", title: `${nameA} vs ${nameB} - Character Comparison - Slay the Spire 2 (sts2) | Spire Codex`, description },
+    twitter: { card: "summary_large_image", title: `${nameA} vs ${nameB} - Character Comparison`, description },
     alternates: { canonical: `/compare/${pair}`, languages: buildLanguageAlternates(`/compare/${pair}`) },
   };
 }

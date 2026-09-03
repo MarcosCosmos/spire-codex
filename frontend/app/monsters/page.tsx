@@ -4,6 +4,24 @@ import JsonLd from "@/app/components/JsonLd";
 import { buildCollectionPageJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import RecentlyAdded from "@/app/components/RecentlyAdded";
 import MonstersClient from "./MonstersClient";
+import type { Metadata } from "next";
+import { buildPageMetadata } from "@/lib/seo";
+import { api } from "@/lib/api";
+
+export async function generateMetadata(): Promise<Metadata> {
+  let count = "111";
+  try {
+    const stats = await api.getStatsBounded();
+    count = String(stats.monsters);
+  } catch {
+    // Fall back to the baseline count if the API is unreachable at build time.
+  }
+  return buildPageMetadata({
+    path: "/monsters",
+    title: "Monsters - Complete Monster List",
+    description: `All ${count} Slay the Spire 2 (sts2) monsters, normals, elites, and bosses. HP ranges, attack patterns, innate powers, and ascension scaling.`,
+  });
+}
 
 const API = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
