@@ -1,11 +1,7 @@
-import type { Metadata } from "next";
-import DeckLabClient from "./DeckLabClient";
+import {
+  generateMetadata,
+  default as DeckLabPage,
+} from "@/app/[lang]/deck-lab/page";
 
-export const metadata: Metadata = {
-  title: "Deck Lab",
-  robots: { index: false, follow: false },
-};
-
-export default function DeckLabPage() {
-  return <DeckLabClient />;
-}
+export { generateMetadata };
+export default DeckLabPage;

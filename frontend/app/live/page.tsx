@@ -1,11 +1,4 @@
-import type { Metadata } from "next";
-import LiveClient from "./LiveClient";
+import { generateMetadata, default as LivePage } from "@/app/[lang]/live/page";
 
-export const metadata: Metadata = {
-  title: "Live",
-  robots: { index: false, follow: false },
-};
-
-export default function LivePage() {
-  return <LiveClient />;
-}
+export { generateMetadata };
+export default LivePage;

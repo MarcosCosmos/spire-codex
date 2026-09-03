@@ -1,11 +1,7 @@
-import type { Metadata } from "next";
-import SeedLabClient from "./SeedLabClient";
+import {
+  generateMetadata,
+  default as SeedLabPage,
+} from "@/app/[lang]/seed-lab/page";
 
-export const metadata: Metadata = {
-  title: "Seed Lab",
-  robots: { index: false, follow: false },
-};
-
-export default function SeedLabPage() {
-  return <SeedLabClient />;
-}
+export { generateMetadata };
+export default SeedLabPage;

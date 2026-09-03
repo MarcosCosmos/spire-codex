@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import BrowseRunsClient from "@/app/runs/BrowseRunsClient";
-import RunsJsonLd from "@/app/[lang]/runs/RunsJsonLd";
 import { getLangOrDefault, LANG_HREFLANG } from "@/lib/languages";
 import { t } from "@/lib/ui-translations";
 import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
@@ -36,6 +35,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function BrowseRunsPage() {
-  return <BrowseRunsClient />;
+export default function BrowseRunsPage() {
+  return (
+    <>
+      <BrowseRunsClient />
+    </>
+  );
 }
