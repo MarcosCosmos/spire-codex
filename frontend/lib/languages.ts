@@ -161,6 +161,6 @@ export function isValidLang(lang: string): lang is LangCode {
   return (SUPPORTED_LANGS as readonly string[]).includes(lang);
 }
 
-export function langOrDefault(lang?: string): LangCode {
+export function getLangOrDefault(lang?: string): LangCode {
   return lang && isValidLang(lang) ? lang : "eng";
 }

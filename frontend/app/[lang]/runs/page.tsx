@@ -1,19 +1,30 @@
 import type { Metadata } from "next";
 import BrowseRunsClient from "@/app/runs/BrowseRunsClient";
-import { langOrDefault } from "@/lib/languages";
+import RunsJsonLd from "@/app/[lang]/runs/RunsJsonLd";
+import { getLangOrDefault, LANG_HREFLANG } from "@/lib/languages";
 import { t } from "@/lib/ui-translations";
-import { SITE_URL } from "@/lib/seo";
+import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
 
 type Props = { params: Promise<{ lang?: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { lang: _lang } = await params;
-  const lang = langOrDefault(_lang);
+  const lang = getLangOrDefault(_lang);
   const title = `${t("Browse Runs", lang)} - Slay the Spire 2 (sts2) | Spire Codex`;
   const description = t("runs_tagline", lang);
   return {
     title,
     description,
+    openGraph: {
+      type: "website",
+      siteName: SITE_NAME,
+      url: `${SITE_URL}/runs`,
+      title,
+      description,
+      locale: LANG_HREFLANG[lang],
+      images: [{ url: DEFAULT_OG_IMAGE }],
+    },
+    twitter: { card: "summary_large_image", title, description },
     // No hreflang alternates: the run list is the same English game data
     // regardless of locale chrome (same reasoning as /runs/<hash>), so
     // localized variants /<lang>/runs read to Google as near-duplicates

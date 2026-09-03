@@ -4,10 +4,10 @@ import { buildDetailPageJsonLd } from "@/lib/jsonld";
 import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
 import SharedRunClient from "@/app/runs/[hash]/SharedRunClient";
 import {
+  getLangOrDefault,
   LANG_GAME_NAME,
   LANG_HREFLANG,
   LangCode,
-  langOrDefault,
 } from "@/lib/languages";
 import { t } from "@/lib/ui-translations";
 
@@ -55,7 +55,7 @@ function describeRun(run: SharedRun, lang: LangCode) {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { lang: _lang, hash } = await params;
-  const lang = langOrDefault(_lang);
+  const lang = getLangOrDefault(_lang);
   const run = await fetchRun(hash);
   if (!run) {
     const pageName = t("Run not found", lang);
@@ -109,7 +109,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function SharedRunPage({ params }: Props) {
   const { lang: _lang, hash } = await params;
-  const lang = langOrDefault(_lang);
+  const lang = getLangOrDefault(_lang);
   const run = await fetchRun(hash);
   let jsonLd: ReturnType<typeof buildDetailPageJsonLd> | null = null;
   if (run) {
