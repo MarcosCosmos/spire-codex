@@ -514,6 +514,9 @@ def _store_payload(cache_key: str, payload: dict) -> None:
     if _is_hollow(payload):
         logger.warning("refusing to durably store a hollow profile: %s", cache_key)
         return
+    if payload.get("partial"):
+        logger.warning("not durably storing a partial profile: %s", cache_key)
+        return
     try:
         from datetime import datetime, timezone
 
@@ -576,7 +579,14 @@ def get_user_insights(
     _kick_refresh(cache_key, user_id, username, character, ascension, version, players)
     if payload is not None:
         return payload
-    return {"building": True}
+    building: dict[str, Any] = {"building": True}
+    try:
+        from .runs_db_mongo import count_user_runs
+
+        building["claimed_runs"] = count_user_runs(user_id)
+    except Exception:
+        pass
+    return building
 
 
 def _prewarm_slices() -> list[tuple]:
@@ -603,6 +613,70 @@ def invalidate_user_insights(user_id: str) -> None:
             app_cache.delete(_fresh_key(key))
         except Exception:
             return
+
+
+# Accounts that gained runs recently, per worker: uid -> (last activity,
+# username). A bulk upload notes activity per submit; the sweeper rebuilds
+# once the burst goes quiet instead of once per run. Cross-worker dedup is
+# _kick_refresh's Redis lock.
+_pending_lock = threading.Lock()
+_pending: dict[str, tuple[float, str | None]] = {}
+_pending_checked: set[str] = set()
+_sweeper_started = False
+_PENDING_IDLE_SECONDS = 45.0
+_SWEEP_INTERVAL_SECONDS = 20.0
+
+
+def _due_pending(
+    pending: dict[str, tuple[float, str | None]],
+    now: float,
+    idle: float = _PENDING_IDLE_SECONDS,
+) -> list[str]:
+    return [uid for uid, (ts, _) in pending.items() if now - ts >= idle]
+
+
+def note_profile_activity(user_id: str, username: str | None = None) -> None:
+    """Called when an account gains runs (submit, claim, sign-in backfill).
+    An account with no profile yet starts building immediately, so a new
+    player's page exists while their backlog is still uploading; the burst
+    then gets one final rebuild after it goes quiet."""
+    global _sweeper_started
+    with _pending_lock:
+        first_sight = user_id not in _pending_checked
+        _pending_checked.add(user_id)
+        _pending[user_id] = (time.time(), username)
+        if not _sweeper_started:
+            _sweeper_started = True
+            threading.Thread(
+                target=_sweep_pending, daemon=True, name="insights-sweeper"
+            ).start()
+    if not first_sight:
+        return
+    from . import cache as app_cache
+
+    cache_key = f"{user_id}:"
+    has_payload = (
+        _cache_get(cache_key) is not None
+        or app_cache.get_json(_payload_key(cache_key)) is not None
+        or _load_stored_payload(cache_key) is not None
+    )
+    if not has_payload:
+        _kick_refresh(cache_key, user_id, username, None, None, None, None)
+
+
+def _sweep_pending() -> None:
+    while True:
+        time.sleep(_SWEEP_INTERVAL_SECONDS)
+        try:
+            now = time.time()
+            with _pending_lock:
+                due = _due_pending(_pending, now)
+                items = [(uid, _pending.pop(uid)[1]) for uid in due]
+                _pending_checked.difference_update(due)
+            for uid, username in items:
+                _kick_refresh(f"{uid}:", uid, username, None, None, None, None)
+        except Exception:
+            logger.warning("insights sweeper pass failed", exc_info=True)
 
 
 def prewarm_user_insights(user_id: str, username: str | None = None) -> None:
@@ -689,7 +763,10 @@ def _kick_refresh(
                     enc = jsonable_encoder(slice_payload)
                     key = f"{user_id}{suffix}"
                     app_cache.set_json(_payload_key(key), enc, _STALE_REDIS_TTL)
-                    app_cache.set_json(_fresh_key(key), 1, int(_CACHE_TTL))
+                    # Partial payloads (blob fetch under pressure) serve now
+                    # but go stale fast so the walk retries toward complete.
+                    fresh_ttl = 60 if enc.get("partial") else int(_CACHE_TTL)
+                    app_cache.set_json(_fresh_key(key), 1, fresh_ttl)
                     _cache_put(key, enc)
                     _store_payload(key, enc)
                 return
@@ -704,7 +781,8 @@ def _kick_refresh(
                 )
             )
             app_cache.set_json(_payload_key(cache_key), payload, _STALE_REDIS_TTL)
-            app_cache.set_json(_fresh_key(cache_key), 1, int(_CACHE_TTL))
+            fresh_ttl = 60 if payload.get("partial") else int(_CACHE_TTL)
+            app_cache.set_json(_fresh_key(cache_key), 1, fresh_ttl)
             _cache_put(cache_key, payload)
             # Durable standing is reserved for the prewarmed slices; an
             # ad-hoc tuple (arbitrary version/ascension spellings on the
@@ -761,7 +839,7 @@ def _compute_insights(
     rows = _apply_row_filters(rows, character, ascension, version, players)
     t1 = time.time()
     blobs = _fetch_blobs(rows)
-    _require_blob_coverage(rows, blobs)
+    cov_ok = _require_blob_coverage(rows, blobs)
     t2 = time.time()
     acc = community_stats._new_acc_one()
     walked = _accumulate_rows(rows, blobs, acc)
@@ -777,6 +855,8 @@ def _compute_insights(
         version,
         players,
     )
+    if not cov_ok:
+        payload["partial"] = True
     logger.info(
         "user-insights walk uid=%s slice=%s rows=%d fetch_ms=%d walk_ms=%d total_ms=%d",
         user_id,
@@ -792,20 +872,21 @@ def _compute_insights(
 _PREWARM_CHARACTERS = ("IRONCLAD", "SILENT", "DEFECT", "NECROBINDER", "REGENT")
 
 
-def _require_blob_coverage(rows: list[dict], blobs: dict[str, dict]) -> None:
-    """get_run_blobs degrades quietly under Mongo pressure (other callers
-    have a per-file fallback; this walk doesn't), so a hollow or heavily
-    partial fetch means Mongo was unavailable — not that the runs vanished.
-    Refuse to build the payload rather than durably store an empty profile
-    over a real one. The slack covers the few known-corrupt blobless runs."""
+def _require_blob_coverage(rows: list[dict], blobs: dict[str, dict]) -> bool:
+    """True when the fetch covered enough of the account to store durably.
+    Zero coverage on a nonempty account raises (Mongo was unavailable);
+    anything between builds a payload that serves flagged partial but is
+    never durably stored, instead of the old hard refusal that left bulk
+    uploads with missing blobs stuck on "building" forever."""
     if not rows:
-        return
+        return True
     have = sum(1 for r in rows if r["run_hash"] in blobs)
+    if not have:
+        raise RuntimeError(f"insights blob fetch returned 0/{len(rows)} runs")
     if have < len(rows) * 0.9:
-        raise RuntimeError(
-            f"insights blob fetch returned {have}/{len(rows)} runs; "
-            "refusing to build a hollow profile"
-        )
+        logger.warning("insights blob fetch partial: %d/%d runs", have, len(rows))
+        return False
+    return True
 
 
 def _fetch_blobs(rows: list[dict]) -> dict[str, dict]:
@@ -876,7 +957,7 @@ def _compute_insights_all_slices(user_id: str, username: str | None) -> dict[str
         elo_block = None
     t1 = time.time()
     blobs = _fetch_blobs(rows)
-    _require_blob_coverage(rows, blobs)
+    cov_ok = _require_blob_coverage(rows, blobs)
     t2 = time.time()
 
     slices: list[tuple[tuple, list[dict]]] = [((None, None, None, None), rows)]
@@ -905,6 +986,9 @@ def _compute_insights_all_slices(user_id: str, username: str | None) -> dict[str
             )
         except Exception:
             logger.warning("insights slice assemble failed for %s", f, exc_info=True)
+    if not cov_ok:
+        for p in out.values():
+            p["partial"] = True
     logger.info(
         "user-insights prewarm uid=%s rows=%d slices=%d rows_ms=%d fetch_ms=%d walk_ms=%d total_ms=%d",
         user_id,

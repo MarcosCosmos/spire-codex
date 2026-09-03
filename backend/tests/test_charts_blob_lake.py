@@ -133,7 +133,11 @@ def _expected_blob() -> dict:
 
 def test_lake_charts_blob_matches_direct_accumulate(monkeypatch, tmp_path):
     _write_lake(tmp_path)
+    from app.services import lake_stats
+
     monkeypatch.setattr(charts_blob_lake, "LAKE_DIR", tmp_path)
+    # Build-profile connections open the scratch db under lake_stats' dir.
+    monkeypatch.setattr(lake_stats, "LAKE_DIR", tmp_path)
     monkeypatch.setattr(charts_blob_lake, "cube_versions", lambda: [])
     monkeypatch.setattr(charts_blob_lake, "_blob_cache", None)
 

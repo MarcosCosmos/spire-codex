@@ -52,15 +52,37 @@ _FRAME_COLS = (
 )
 
 
-# mtime of the parquet actually loaded into _FRAME (0.0 = loaded from the
+# mtime of the parquet actually loaded into the frame db (0.0 = loaded from the
 # DB scan). Freshness must compare file identity, not wall-clock load time:
 # a load that finishes just after the ingest replaced the file would
 # otherwise stamp old rows as newer than the new file for a whole TTL.
 _FRAME_SRC_MTIME = 0.0
 
 
-def _load_frame_parquet() -> list[tuple] | None:
-    """The ingest-built frame, or None (missing, stale, or unreadable)."""
+def _new_frame_db():
+    import duckdb
+
+    con = duckdb.connect()
+    con.execute("SET threads=2")
+    con.execute("SET memory_limit='1500MB'")
+    return con
+
+
+def _finish_frame_db(con) -> int:
+    """The per-username winrate table the wr brackets filter through
+    (mirrors get_user_winrates: overall rate, 5-run floor), plus the count."""
+    con.execute(
+        "CREATE OR REPLACE TABLE frame_wr AS"
+        " SELECT username, count(*) AS t, sum(win) AS w FROM frame"
+        " WHERE username IS NOT NULL AND username <> ''"
+        " GROUP BY 1 HAVING count(*) >= 5"
+    )
+    return con.execute("SELECT count(*) FROM frame").fetchone()[0]
+
+
+def _load_frame_parquet():
+    """(connection, rows) with the ingest-built frame as a DuckDB table, or
+    None (missing, stale, or unreadable)."""
     global _FRAME_SRC_MTIME
     try:
         if not _FRAME_PARQUET.exists():
@@ -69,18 +91,21 @@ def _load_frame_parquet() -> list[tuple] | None:
         if time.time() - mtime > _FRAME_PARQUET_MAX_AGE:
             logger.warning("frame parquet is stale; falling back to the DB scan")
             return None
-        import duckdb
-
-        con = duckdb.connect()
+        con = _new_frame_db()
         try:
-            rows = con.execute(
-                f"SELECT * FROM read_parquet('{_FRAME_PARQUET}')"
-            ).fetchall()
-        finally:
+            con.execute(
+                f"CREATE TABLE frame AS SELECT {_FRAME_SELECT}"
+                f" FROM read_parquet('{_FRAME_PARQUET}')"
+            )
+            n = _finish_frame_db(con)
+        except Exception:
             con.close()
-        if rows:
+            raise
+        if n:
             _FRAME_SRC_MTIME = mtime
-        return rows or None
+            return (con, n)
+        con.close()
+        return None
     except Exception:
         logger.warning("frame parquet load failed; falling back", exc_info=True)
         return None
@@ -218,11 +243,24 @@ def store_frame_parquet() -> int:
     BUILD,
 ) = range(15)
 
-_FRAME: list[tuple] = []
+# The frame lives in a per-worker in-memory DuckDB (tables frame + frame_wr),
+# swapped whole on reload. Columnar: the same 1.4M rows cost ~200MB where the
+# old list of Python tuples cost ~1.5GB per worker (OOM-killed workers,
+# 2026-08-30). Readers take a cursor; the old db is closed on a delay so a
+# reload can't yank a table out from under an in-flight query.
+_FRAME_DB = None
+_FRAME_ROWS = 0
 _FRAME_TS: float = 0.0
 # The scan costs ~400s under load; rescanning every 10min starved workers.
 _FRAME_TTL = 3600
 _FRAME_LOCK = threading.Lock()
+_FRAME_FETCH_GATE = threading.BoundedSemaphore(2)
+
+_FRAME_SELECT = (
+    "character, win, ascension, game_mode, player_count, run_time,"
+    " floors_reached, deck_size, relic_count, played_day, username,"
+    " was_abandoned, acts_completed, daily_date, build_id"
+)
 
 # Smallest sample a single point may summarise; thinner buckets are dropped so
 # the lines don't whip around on noise.
@@ -282,11 +320,21 @@ def _daily_date(seed: str | None, game_mode: str) -> str:
     return ""
 
 
-def _load_frame() -> list[tuple]:
+def _load_frame():
+    """(connection, rows): the frame db from the parquet, else from a
+    store scan (SQLite dev, or a missing/stale parquet in prod)."""
     cached = _load_frame_parquet()
     if cached is not None:
         return cached
-    return _load_frame_from_db()
+    rows = _load_frame_from_db()
+    con = _new_frame_db()
+    con.execute(f"CREATE TABLE frame ({_FRAME_COLS})")
+    for i in range(0, len(rows), 50_000):
+        con.executemany(
+            "INSERT INTO frame VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            rows[i : i + 50_000],
+        )
+    return (con, _finish_frame_db(con))
 
 
 def _load_frame_from_db() -> list[tuple]:
@@ -392,18 +440,26 @@ def _kick_frame_refresh() -> None:
         _FRAME_REFRESHING = True
 
     def _run() -> None:
-        global _FRAME, _FRAME_TS, _FRAME_REFRESHING, _FRAME_OK, _FRAME_RETRY_TS
+        global _FRAME_DB, _FRAME_ROWS, _FRAME_TS, _FRAME_REFRESHING
+        global _FRAME_OK, _FRAME_RETRY_TS
         started = time.monotonic()
         try:
-            rows = _load_frame()
+            con, n = _load_frame()
             with _FRAME_LOCK:
-                if rows or not _FRAME:
-                    _FRAME = rows
+                if n or _FRAME_DB is None:
+                    old = _FRAME_DB
+                    _FRAME_DB, _FRAME_ROWS = con, n
+                else:
+                    # Keep the populated frame over an empty reload.
+                    old = con
                 _FRAME_TS = time.time()
                 _FRAME_OK = True
+            if old is not None:
+                # Delay past the request timeout so in-flight cursors finish.
+                threading.Timer(180.0, _close_quiet, args=(old,)).start()
             logger.info(
                 "charts frame loaded: %d rows in %.1fs",
-                len(rows),
+                n,
                 time.monotonic() - started,
             )
         except Exception:
@@ -417,12 +473,19 @@ def _kick_frame_refresh() -> None:
     threading.Thread(target=_run, name="charts-frame-refresh", daemon=True).start()
 
 
+def _close_quiet(con) -> None:
+    try:
+        con.close()
+    except Exception:
+        pass
+
+
 def frame_loading() -> bool:
     """True while the frame is empty and no load has ever SUCCEEDED, so
     endpoints mark payloads "building" (short cache) instead of caching a
     bogus empty chart. A successful empty load clears it: a store with no
     runs is empty, not warming up."""
-    return not _FRAME and not _FRAME_OK
+    return not _FRAME_ROWS and not _FRAME_OK
 
 
 def _frame_fresh() -> bool:
@@ -442,8 +505,10 @@ def _frame_fresh() -> bool:
     return disk_mtime <= _FRAME_TS
 
 
-def get_frame(wait: bool = False) -> list[tuple]:
-    """The metadata frame, refreshed from the store at most every TTL.
+def get_frame(wait: bool = False) -> int:
+    """The frame's row count, refreshing the frame db from the store at
+    most every TTL. Truthiness is the contract (callers ask "is a frame
+    loaded"); the rows themselves are only reachable through filter_rows.
 
     Request path (wait=False): never blocks. A fresh frame serves as-is; a
     stale or missing one kicks a background reload (throttled after
@@ -453,7 +518,7 @@ def get_frame(wait: bool = False) -> list[tuple]:
     from an empty frame, so it waits out the load (bounded), re-kicking
     after failures until the deadline."""
     if _frame_fresh():
-        return _FRAME
+        return _FRAME_ROWS
     if time.time() - _FRAME_RETRY_TS >= _FRAME_RETRY_SECONDS:
         _kick_frame_refresh()
     if wait:
@@ -464,7 +529,7 @@ def get_frame(wait: bool = False) -> list[tuple]:
             if time.time() - _FRAME_RETRY_TS >= _FRAME_RETRY_SECONDS:
                 _kick_frame_refresh()
             time.sleep(1)
-    return _FRAME
+    return _FRAME_ROWS
 
 
 def _official_characters() -> dict[str, str]:
@@ -484,36 +549,6 @@ def _official_characters() -> dict[str, str]:
         return {}
 
 
-_WINRATE_MIN_RUNS = 5  # mirror runs_db_mongo.WINRATE_MIN_RUNS
-_FRAME_WR: dict[str, float] = {}
-_FRAME_WR_TS: float = -1.0
-
-
-def _frame_winrate_map() -> dict[str, float]:
-    """username -> overall win rate (0-100, 5-run floor) from the frame's USER +
-    WIN columns. DB-agnostic (works on the SQLite fallback) and cached per frame
-    reload. Matches the get_user_winrates definition used by the other brackets."""
-    global _FRAME_WR, _FRAME_WR_TS
-    if _FRAME_WR_TS == _FRAME_TS and _FRAME_WR:
-        return _FRAME_WR
-    counts: dict[str, list[int]] = {}
-    for r in _FRAME:
-        u = r[USER]
-        if not u:
-            continue
-        c = counts.setdefault(u, [0, 0])
-        c[0] += 1
-        if r[WIN]:
-            c[1] += 1
-    _FRAME_WR = {
-        u: (w / t * 100.0)
-        for u, (t, w) in counts.items()
-        if t >= _WINRATE_MIN_RUNS and t > 0
-    }
-    _FRAME_WR_TS = _FRAME_TS
-    return _FRAME_WR
-
-
 # Content brackets -> (ascension floor, win-rate floor %). A10-gated, matching
 # the run-entity-stats brackets. None / "all" means no bracket filter.
 _BRACKET_FILTERS: dict[str, tuple[int, float | None]] = {
@@ -525,7 +560,7 @@ _BRACKET_FILTERS: dict[str, tuple[int, float | None]] = {
 
 
 def filter_rows(
-    rows: list[tuple],
+    rows,
     players: int | None,
     ascension: int | None,
     game_mode: str | None,
@@ -533,31 +568,50 @@ def filter_rows(
     bracket: str | None = None,
     build_id: str | None = None,
 ) -> list[tuple]:
+    """The filtered frame as positional tuples (CHAR..BUILD). Filtering runs
+    as SQL in the frame db; `rows` is get_frame()'s count and only marks an
+    unloaded frame. The wr tiers keep their semantics: A10 floor, submitter
+    overall win rate strictly above the threshold, 5-run floor."""
+    with _FRAME_LOCK:
+        con = _FRAME_DB
+    if con is None:
+        return []
     u = (username or "").lower().strip()
     asc_floor, wr_floor = _BRACKET_FILTERS.get(bracket or "", (None, None))
-    wr_map = _frame_winrate_map() if wr_floor is not None else None
-    out = []
-    for r in rows:
-        # Game version: query-time on the frame, so it combines with every
-        # other filter here (unlike the snapshot brackets, no materialization).
-        if build_id and r[BUILD] != build_id:
-            continue
-        if players is not None and r[PLAYERS] != players:
-            continue
-        if ascension is not None and r[ASC] != ascension:
-            continue
-        if game_mode is not None and r[MODE] != game_mode:
-            continue
-        if u and r[USER] != u:
-            continue
-        # Content bracket: A10 floor and (for wr tiers) the submitter's overall
-        # win rate must exceed the threshold. Strict >, matching the brackets.
-        if asc_floor is not None and r[ASC] < asc_floor:
-            continue
-        if wr_floor is not None and (wr_map or {}).get(r[USER], -1.0) <= wr_floor:
-            continue
-        out.append(r)
-    return out
+    where: list[str] = []
+    args: list = []
+    if build_id:
+        where.append("build_id = ?")
+        args.append(build_id)
+    if players is not None:
+        where.append("player_count = ?")
+        args.append(players)
+    if ascension is not None:
+        where.append("ascension = ?")
+        args.append(ascension)
+    if game_mode is not None:
+        where.append("game_mode = ?")
+        args.append(game_mode)
+    if u:
+        where.append("username = ?")
+        args.append(u)
+    if asc_floor is not None:
+        where.append("ascension >= ?")
+        args.append(asc_floor)
+    if wr_floor is not None:
+        where.append(
+            "username IN (SELECT username FROM frame_wr WHERE w * 100.0 / t > ?)"
+        )
+        args.append(wr_floor)
+    sql = f"SELECT {_FRAME_SELECT} FROM frame"
+    if where:
+        sql += " WHERE " + " AND ".join(where)
+    cur = con.cursor()
+    try:
+        with _FRAME_FETCH_GATE:
+            return cur.execute(sql, args).fetchall()
+    finally:
+        cur.close()
 
 
 # ── Series splitting ─────────────────────────────────────────────────────────

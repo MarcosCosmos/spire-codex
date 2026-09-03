@@ -8,6 +8,7 @@ import time
 from datetime import datetime, timezone
 
 from fastapi import Depends, FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -191,19 +192,6 @@ app.add_middleware(SlowAPIMiddleware)
 # doesn't block on a 5-10s walk of every submitted run JSON. Run in
 # the background so container readiness probes don't have to wait on
 # it; beta deploys (no run submissions) skip the warm-up.
-# On the rebuilder, a graceful stop snapshots the incremental stats base so
-# the next boot resumes by tailing instead of rewalking every run. Web
-# workers hold no base, so this returns instantly there.
-@app.on_event("shutdown")
-def _save_stats_checkpoint() -> None:
-    try:
-        from .services.run_entity_stats import save_stats_checkpoint
-
-        save_stats_checkpoint()
-    except Exception:
-        pass
-
-
 @app.on_event("startup")
 def _warm_run_entity_stats() -> None:
     if IS_BETA_BACKEND:
@@ -237,6 +225,15 @@ def _warm_run_entity_stats() -> None:
             from .services.run_entity_stats import kick_snapshot_load
 
             kick_snapshot_load()
+        except Exception:
+            pass
+        # Pre-parse the lake serving artifacts and keep them warm across
+        # pulls; without this each pull cold-starts every worker's caches
+        # inside a visitor's request.
+        try:
+            from .services import lake_stats
+
+            lake_stats.start_artifact_warmer()
         except Exception:
             pass
         return
@@ -361,6 +358,11 @@ class CORSStaticMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         response = await call_next(request)
         response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Strict-Transport-Security"] = (
+            "max-age=31536000; includeSubDomains"
+        )
         if request.method != "GET" or response.status_code >= 400:
             return response
         # A handler that declared its own Cache-Control knows better than
@@ -610,9 +612,46 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         return response
 
 
+# Reject oversized bodies by Content-Length before Starlette parses them:
+# the upload route's per-file/file-count checks only run after the whole
+# multipart body has been read. 20 files x 512KB plus form overhead fits
+# comfortably under 16MB; nothing else POSTs anywhere near that.
+_MAX_BODY_BYTES = int(os.environ.get("MAX_REQUEST_BODY_BYTES", "") or 16 * 1024 * 1024)
+
+
+class BodyLimitMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        length = request.headers.get("content-length")
+        if length and length.isdigit() and int(length) > _MAX_BODY_BYTES:
+            return JSONResponse({"detail": "request body too large"}, status_code=413)
+        return await call_next(request)
+
+
+# /metrics is scraped over the public URL. With METRICS_TOKEN set, the
+# scrape must present it (Authorization: Bearer <token>); unset keeps the
+# endpoint open so enabling it is a coordinated change with the scraper.
+_METRICS_TOKEN = os.environ.get("METRICS_TOKEN", "").strip()
+
+
+class MetricsAuthMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        if _METRICS_TOKEN and request.url.path == "/metrics":
+            import hmac
+
+            auth = request.headers.get("authorization", "")
+            ok = auth.startswith("Bearer ") and hmac.compare_digest(
+                auth[7:].strip(), _METRICS_TOKEN
+            )
+            if not ok:
+                return JSONResponse({"detail": "unauthorized"}, status_code=401)
+        return await call_next(request)
+
+
 app.add_middleware(VersionMiddleware)
 app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(CORSStaticMiddleware)
+app.add_middleware(BodyLimitMiddleware)
+app.add_middleware(MetricsAuthMiddleware)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 _cors_origins = os.environ.get("CORS_ORIGINS", "").strip()
 # Response headers a browser client is allowed to read; wildcard allow_headers

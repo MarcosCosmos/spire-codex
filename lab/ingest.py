@@ -24,6 +24,51 @@ def _utc(ts: float) -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(ts))
 
 
+def _sidecar_digest() -> str:
+    """Content hash of the two mutable sidecars, ignoring gzip headers
+    (they embed a timestamp, so identical content still differs on bytes)."""
+    import gzip
+    import hashlib
+
+    h = hashlib.sha256()
+    for name in ("excluded_current.jsonl.gz", "run_scalars_current.jsonl.gz"):
+        try:
+            with gzip.open(LAKE / name, "rb") as f:
+                for chunk in iter(lambda: f.read(1 << 20), b""):
+                    h.update(chunk)
+        except OSError:
+            h.update(b"missing")
+    return h.hexdigest()
+
+
+def _no_source_change(rows_added: int, generation_id: str, t0: float) -> bool:
+    """True when this cycle can be skipped outright: no new runs and no
+    hidden/deleted/username mutations since the last completed cycle. The
+    heavy rebuild would reproduce the exact artifacts already serving."""
+    state_path = LAKE / "change_state.json"
+    digest = _sidecar_digest()
+    prev = None
+    try:
+        prev = json.loads(state_path.read_text()).get("sidecar_digest")
+    except Exception:
+        pass
+    # Recorded every cycle (even ones that run) so the comparison is always
+    # against the last extract, not the last skip.
+    state_path.write_text(json.dumps({"sidecar_digest": digest}))
+    if rows_added or prev != digest:
+        return False
+    record = {
+        "generation_id": generation_id,
+        "cycle_started_at": _utc(t0),
+        "skipped": "no source change",
+        "complete": True,
+        "published_at": _utc(time.time()),
+    }
+    with open(LAKE / "ingest_metrics.jsonl", "a", encoding="utf-8") as f:
+        f.write(json.dumps(record, separators=(",", ":")) + "\n")
+    return True
+
+
 def main() -> None:
     # One ingest at a time: an overlapping cron start would race the shared
     # scratch DB and double the box's memory pressure. The lock lives for
@@ -57,6 +102,13 @@ def main() -> None:
     try:
         extracted = extract.main() or (0, 0)
         t_extract = time.time()
+        if _no_source_change(extracted[0], generation_id, t0):
+            print(
+                f"generation {generation_id} skipped: no source change since "
+                "the last cycle",
+                flush=True,
+            )
+            return
 
         import duckdb
 
@@ -105,40 +157,151 @@ def main() -> None:
         stage_seconds[name] = round(time.time() - ts, 1)
         ts = time.time()
 
-    try:
-        from app.services import lake_stats
+    from app.services import lake_stats
 
-        session = lake_stats.prepare_build_session()
-        session.close()
+    def _stage_memory(name: str, fn):
+        """Run fn while a sampler tracks peak RSS, cgroup usage (what the
+        kernel kills on), DuckDB-tracked memory, and spill. ru_maxrss is
+        process-lifetime, so an early big stage would hide every later
+        stage's own peak; sampling at 0.5s is what makes the per-stage
+        numbers real (a cycle sat at 6.985/7GiB while DuckDB reported
+        4.1GiB, 2026-09-01)."""
+        import os
+        import threading
+
+        page = os.sysconf("SC_PAGE_SIZE")
+        peak = {"rss": 0, "cgroup": 0, "duckdb": 0, "temp": 0, "err": ""}
+        stop = threading.Event()
+
+        def sample() -> None:
+            try:
+                with open("/proc/self/statm") as f:
+                    peak["rss"] = max(peak["rss"], int(f.read().split()[1]) * page)
+            except OSError:
+                pass
+            try:
+                with open("/sys/fs/cgroup/memory.current") as f:
+                    peak["cgroup"] = max(peak["cgroup"], int(f.read()))
+            except (OSError, ValueError):
+                pass
+
+        def watch() -> None:
+            import duckdb
+
+            mon = None
+            try:
+                mon = duckdb.connect("/lake/build.duckdb")
+                while not stop.wait(0.5):
+                    sample()
+                    mem, temp = mon.execute(
+                        "SELECT coalesce(sum(memory_usage_bytes), 0),"
+                        " coalesce(sum(temporary_storage_bytes), 0)"
+                        " FROM duckdb_memory()"
+                    ).fetchone()
+                    peak["duckdb"] = max(peak["duckdb"], int(mem))
+                    peak["temp"] = max(peak["temp"], int(temp))
+            except Exception as e:
+                peak["err"] = repr(e)[:120]
+                while not stop.wait(0.5):
+                    sample()
+            finally:
+                if mon is not None:
+                    mon.close()
+
+        t = threading.Thread(target=watch, name=f"mem-{name}", daemon=True)
+        t.start()
+        try:
+            return fn()
+        finally:
+            stop.set()
+            t.join()
+            mib = 1 << 20
+            print(
+                f"mem {name}: rss_peak={peak['rss'] // mib}MB"
+                f" duckdb_peak={peak['duckdb'] // mib}MB"
+                f" cgroup_peak={peak['cgroup'] // mib}MB"
+                f" spill_peak={peak['temp'] // mib}MB"
+                + (f" probe_error={peak['err']}" if peak["err"] else ""),
+                flush=True,
+            )
+
+    try:
+
+        def _prepare() -> None:
+            lake_stats.prepare_build_session().close()
+
+        _stage_memory("prepare_session", _prepare)
         print("build session prepared (pfloors materialized)", flush=True)
         _mark("prepare_session")
-        lake_stats.build_and_store_payload()
-        print("community payload stored", flush=True)
-        _mark("community_payload")
-        lake_stats.build_entity_store()
-        print("entity store stored", flush=True)
-        _mark("entity_store")
-        lake_stats.build_encounter_store()
-        print("encounter store stored", flush=True)
-        _mark("encounter_store")
-        lake_stats.build_entity_cube()
-        print("entity cube stored", flush=True)
-        _mark("entity_cube")
+    except Exception as e:
+        # Every store stage reads the session's pfloors; without it they
+        # would each fail in turn and the cycle would still reach publish.
+        record = {
+            "generation_id": generation_id,
+            "cycle_started_at": _utc(t0),
+            "failed_stage": "prepare_session",
+            "error": str(e)[:500],
+            "complete": False,
+            "published_at": _utc(time.time()),
+        }
+        with open(LAKE / "ingest_metrics.jsonl", "a", encoding="utf-8") as f:
+            f.write(json.dumps(record, separators=(",", ":")) + "\n")
+        print(f"generation {generation_id} FAILED in prepare_session: {e}", flush=True)
+        sys.exit(1)
+
+    # Isolated per stage: one store OOMing must not skip the independent
+    # stores after it (a charts OOM used to swallow the metric-history
+    # append and report itself as "community payload build failed").
+    failed_stages: dict[str, str] = {}
+
+    def _stage(name, label, fn):
+        try:
+            out = _stage_memory(name, fn)
+            print(label(out) if callable(label) else label, flush=True)
+            _mark(name)
+        except Exception as e:
+            failed_stages[name] = str(e)[:200]
+            print(f"{name} failed: {e}", flush=True)
+
+    # Imported lazily inside their stages: a module import failure here
+    # would skip every stage below it.
+    def _charts_blob():
         from app.services import charts_blob_lake
 
-        charts_blob_lake.build_charts_blob()
-        print("charts blob stored", flush=True)
-        _mark("charts_blob")
+        return charts_blob_lake.build_charts_blob()
+
+    def _metric_history():
         from app.services.run_entity_stats import (
             archive_entity_metric_history_from_lake,
         )
 
-        n_hist = archive_entity_metric_history_from_lake()
-        print(f"metric history archived ({n_hist} rows)", flush=True)
-        _mark("metric_history")
+        return archive_entity_metric_history_from_lake()
+
+    _stage(
+        "community_payload",
+        "community payload stored",
+        lake_stats.build_and_store_payload,
+    )
+    _stage("entity_store", "entity store stored", lake_stats.build_entity_store)
+    _stage(
+        "encounter_store", "encounter store stored", lake_stats.build_encounter_store
+    )
+    _stage("entity_cube", "entity cube stored", lake_stats.build_entity_cube)
+    _stage(
+        "deep_tables",
+        lambda n: f"deep tables stored ({n} combos)",
+        lake_stats.build_deep_tables,
+    )
+    _stage("charts_blob", "charts blob stored", _charts_blob)
+    _stage(
+        "metric_history",
+        lambda n: f"metric history archived ({n} rows)",
+        _metric_history,
+    )
+    try:
         lake_stats.cleanup_build_session()
     except Exception as e:
-        print(f"community payload build failed: {e}", flush=True)
+        print(f"build session cleanup failed: {e}", flush=True)
     # The rebuilder is retired, so the materialized summaries that fed the
     # home overview and the leaderboards move here: plain Mongo aggregations
     # plus a Redis warm, no snapshot involved.
@@ -193,57 +356,31 @@ def main() -> None:
     except Exception as e:
         print(f"profile refresh failed: {e}", flush=True)
     _mark("profiles")
-    # The edge is the last stale layer: origin freshness means nothing while
-    # Cloudflare serves yesterday's JSON. Purge exactly the URLs this run
-    # refreshed (CF_TOKEN/CF_ZONE come from the same .env the admin tab uses).
+    # A box that publishes to R2 must never purge the edge, even if CF creds
+    # leak into its env: purging before the serving box pulls would let the
+    # edge re-cache stale origin data for the whole pull gap.
     purge_ok = None
     try:
         import os
 
-        import httpx
+        import edge_purge
 
-        token = os.environ.get("CF_TOKEN", "").strip()
-        zone = os.environ.get("CF_ZONE", "").strip()
-        if token and zone:
-            site = os.environ.get("PUBLIC_SITE_BASE", "https://spire-codex.com").rstrip(
-                "/"
-            )
-            # Prefix purge, not exact URLs: Cloudflare's cache key includes
-            # the query string, so exact purges missed every filtered
-            # variant (?compact=1, brackets, leaderboard filters). A prefix
-            # also covers sub-paths like /stats/<entity>/<id>.
-            host = site.split("://", 1)[-1]
-            prefixes = [
-                f"{host}{p}"
-                for p in (
-                    "/api/runs/stats",
-                    "/api/runs/community-stats",
-                    "/api/runs/leaderboard",
-                    "/api/runs/scores/",
-                    "/api/runs/metrics/",
-                    "/api/runs/encounter-stats",
-                )
-            ]
-            resp = httpx.post(
-                f"https://api.cloudflare.com/client/v4/zones/{zone}/purge_cache",
-                headers={"Authorization": f"Bearer {token}"},
-                json={"prefixes": prefixes},
-                timeout=15,
-            )
-            purge_ok = resp.status_code == 200 and resp.json().get("success") is True
-            print(f"edge purge: ok={purge_ok} ({len(prefixes)} prefixes)", flush=True)
+        if os.environ.get("LAKE_R2_PUBLISH", "").strip().lower() == "on":
+            print("edge purge skipped: publisher role; the puller purges", flush=True)
         else:
-            print("edge purge skipped: CF_TOKEN/CF_ZONE not set", flush=True)
+            purge_ok = edge_purge.purge()
     except Exception as e:
         purge_ok = False
         print(f"edge purge failed: {e}", flush=True)
 
-    # Cycle record. Stages publish independently (each store is its own
+    # Cycle record. Stages write independently (each store is its own
     # atomic rename), so the generation manifest is the completeness
-    # contract: it only advances when every serving artifact this cycle
-    # owns was rebuilt after the cycle started. /health reports it; a
-    # cycle that lost a stage leaves the previous manifest in place and
-    # shows up in ingest_metrics.jsonl with complete=false.
+    # contract: it only advances when every required artifact was rebuilt
+    # after the cycle started AND no store stage failed — a generation
+    # never ships a stale non-required store under a new id (ruled
+    # 2026-09-01). /health reports it; a cycle that lost a stage leaves the
+    # previous manifest in place, shows up in ingest_metrics.jsonl with
+    # complete=false, and exits non-zero for cron.
     published = time.time()
     manifest: dict = {
         "generation_id": generation_id,
@@ -255,6 +392,7 @@ def main() -> None:
         "build_sql_seconds": round(t_build - t_extract, 1),
         "stores_seconds": round(published - t_build, 1),
         "stage_seconds": stage_seconds,
+        "failed_stages": failed_stages,
         "total_seconds": round(published - t0, 1),
         "profiles_refreshed": profiles,
         "purge_ok": purge_ok,
@@ -280,7 +418,9 @@ def main() -> None:
             manifest["artifacts"][name] = None
     # Numeric comparison: the ISO strings are second-truncated, so an old
     # artifact written earlier in the cycle's start second could pass.
-    manifest["complete"] = all(mtimes.get(n, 0.0) >= t0 for n in required)
+    manifest["complete"] = (
+        all(mtimes.get(n, 0.0) >= t0 for n in required) and not failed_stages
+    )
     with open(LAKE / "ingest_metrics.jsonl", "a", encoding="utf-8") as f:
         f.write(json.dumps(manifest, separators=(",", ":")) + "\n")
     if manifest["complete"]:
@@ -288,14 +428,27 @@ def main() -> None:
         tmp.write_text(json.dumps(manifest, indent=1))
         tmp.replace(LAKE / "generation.json")
         print(f"generation {generation_id} published", flush=True)
+        # A failed publish doesn't void the local cycle; the puller's age
+        # warning is the staleness alarm.
+        import os
+
+        if os.environ.get("LAKE_R2_PUBLISH", "").strip().lower() == "on":
+            try:
+                import publish_lake
+
+                publish_lake.publish()
+            except Exception as e:
+                print(f"lake publish failed: {e}", flush=True)
         print("ingest complete", flush=True)
     else:
-        missing = [n for n in required if mtimes.get(n, 0.0) < t0]
+        reasons = [f"stale {n}" for n in required if mtimes.get(n, 0.0) < t0]
+        reasons += [f"{n} failed: {err}" for n, err in failed_stages.items()]
         print(
-            f"generation {generation_id} INCOMPLETE (stale: {', '.join(missing)}); "
+            f"generation {generation_id} INCOMPLETE ({'; '.join(reasons)}); "
             "manifest not advanced",
             flush=True,
         )
+        sys.exit(1)
         sys.exit(1)
 
 

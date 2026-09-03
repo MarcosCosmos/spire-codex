@@ -466,6 +466,21 @@ def submit_run(
         except Exception:
             # Linking is best-effort; a lookup failure must not drop the run.
             pass
+    if linked_user_id is None and username:
+        # Username-only uploads (Compendium ?username=, mismatched Steam ids)
+        # used to stay invisible on the profile until the next sign-in
+        # backfill hoovered them (Dobo, 2026-08-30: 304 runs, 0 linked).
+        # The sign-in backfill already links by username, so linking the
+        # same way at submit changes when, not whether.
+        try:
+            from .users_db import get_user_by_username
+
+            owner = get_user_by_username(username)
+            if owner:
+                linked_user_id = owner["_id"]
+                linked_username = owner.get("username")
+        except Exception:
+            pass
 
     missing: list[str] = []
     if not data.get("players"):
@@ -529,9 +544,10 @@ def submit_run(
 
     if linked_user_id is not None and any(r.get("success") for r in results):
         try:
-            from .user_insights import invalidate_user_insights
+            from .user_insights import invalidate_user_insights, note_profile_activity
 
             invalidate_user_insights(str(linked_user_id))
+            note_profile_activity(str(linked_user_id), linked_username)
         except Exception:
             pass
 
@@ -962,6 +978,14 @@ def backfill_user_runs(
         {"user_id": None, "$or": identity_conds},
         {"$set": update},
     )
+    if result.modified_count:
+        try:
+            from .user_insights import invalidate_user_insights, note_profile_activity
+
+            invalidate_user_insights(user_id)
+            note_profile_activity(user_id, username)
+        except Exception:
+            pass
     return result.modified_count
 
 
@@ -1167,12 +1191,22 @@ def claim_runs(username: str, hashes: list[str]) -> dict:
             {"$set": {"username": username, "username_lower": username.lower()}},
         )
         try:
-            from .user_insights import invalidate_user_insights
+            from .user_insights import invalidate_user_insights, note_profile_activity
             from .users_db import get_user_by_username
 
             owner = get_user_by_username(username)
             if owner:
+                from bson import ObjectId
+
+                # The profile walk matches user_id, not username, so a claim
+                # must link both or the runs stay profile-invisible until
+                # the next sign-in backfill.
+                coll.update_many(
+                    {"_id": {"$in": unclaimed}, "user_id": None},
+                    {"$set": {"user_id": ObjectId(str(owner["_id"]))}},
+                )
                 invalidate_user_insights(str(owner["_id"]))
+                note_profile_activity(str(owner["_id"]), username)
         except Exception:
             pass
 
@@ -1851,65 +1885,6 @@ def _pick_stalest_keys(ages: dict[str, datetime | None], k: int) -> list[str]:
     return sorted(ages, key=_age)[:k]
 
 
-@_instrument("refresh_stats_summary", collection="stats_summary")
-def refresh_stats_summary() -> int:
-    """Compute the hot filter combos plus a rotating slice of the ascension
-    tier and write them to stats_summary. Returns count of docs written.
-    Called by the leader-only loop."""
-    summary = _summary_coll()
-
-    # 120s per combo was calibrated to a smaller corpus; at 1.4M runs the
-    # heavy combos time out and write nothing (2026-08-26: 15 minutes of
-    # aggregation, zero docs). The refresher runs off-request, so a long
-    # budget only costs the cron cycle, never a user.
-    max_time = int(os.environ.get("STATS_SUMMARY_MAX_TIME_MS", "") or 600_000)
-
-    def _refresh_one(filters: dict) -> int:
-        try:
-            result = get_stats(**filters, max_time_ms=max_time)
-            key = _filter_key(**filters)
-            doc = {**result, "_id": key, "updated_at": datetime.now(timezone.utc)}
-            summary.replace_one({"_id": key}, doc, upsert=True)
-            if not filters:
-                seed_stats_counters(result)
-            # Proactive warm: write the fresh result straight into Redis so
-            # readers hit the cache instead of Mongo. Refreshed every cycle;
-            # the long TTL is only a safety net if this loop dies.
-            app_cache.set_json(
-                app_cache.stats_key(**filters),
-                result,
-                ttl_seconds=app_cache.WARM_TTL_SECONDS,
-            )
-            return 1
-        except Exception:
-            # Best-effort; if one filter combo fails, keep going.
-            return 0
-
-    written = 0
-    for filters in HOT_FILTER_COMBOS:
-        written += _refresh_one(filters)
-
-    # Ascension tier: refresh the stalest K this cycle (issue #868 — these
-    # can never compute on the request path, so the rotation is their only
-    # source of freshness).
-    if os.environ.get("STATS_ASCENSION_TIER", "on").strip().lower() in (
-        "off",
-        "0",
-        "false",
-    ):
-        return written
-    keyed = {_filter_key(**f): f for f in ASCENSION_FILTER_COMBOS}
-    ages: dict[str, datetime | None] = dict.fromkeys(keyed)
-    try:
-        for doc in summary.find({"_id": {"$in": list(keyed)}}, {"updated_at": 1}):
-            ages[doc["_id"]] = doc.get("updated_at")
-    except Exception:
-        pass
-    for key in _pick_stalest_keys(ages, _ASCENSION_COMBOS_PER_CYCLE):
-        written += _refresh_one(keyed[key])
-    return written
-
-
 def _stats_counters_coll():
     return _get_collection().database["stats_counters"]
 
@@ -2022,13 +1997,30 @@ def refresh_leaderboard_summary() -> int:
     the leader-only loop alongside refresh_stats_summary."""
     summary = _leaderboard_summary_coll()
     written = 0
+    # One lake pass for all combos (seconds) instead of 24 Mongo
+    # aggregations (~10 minutes); per-combo live fallback keeps the boards
+    # fresh when the lake is unavailable.
+    boards: dict[str, dict] | None = None
+    try:
+        from . import lake_stats
+
+        boards = lake_stats.leaderboard_boards()
+    except Exception:
+        logger.warning("lake leaderboard boards failed", exc_info=True)
     for combo in HOT_LEADERBOARD_COMBOS:
         try:
             category = combo.get("category", "fastest")
             character = combo.get("character")
             players = combo.get("players")
             game_mode = combo.get("game_mode")
-            result = _leaderboard_live(
+            result = (boards or {}).get(
+                _leaderboard_key(
+                    category=category,
+                    character=character,
+                    players=players,
+                    game_mode=game_mode,
+                )
+            ) or _leaderboard_live(
                 category=category,
                 character=character,
                 players=players,
@@ -2784,6 +2776,23 @@ def distinct_build_ids() -> list[str]:
 
 
 @_instrument("get_user_run_rows")
+def count_user_runs(user_id: str) -> int:
+    """How many visible runs an account has claimed; the profile's building
+    placeholder shows it so a fresh bulk upload isn't a dead spinner."""
+    from bson import ObjectId
+
+    try:
+        return _get_collection().count_documents(
+            {
+                "user_id": ObjectId(user_id),
+                "deleted_at": None,
+                "hidden": {"$ne": True},
+            }
+        )
+    except Exception:
+        return 0
+
+
 def get_user_run_rows(user_id: str, limit: int = 2000) -> list[dict]:
     """One account's claimed run rows (newest first) for the profile insights
     walk: just the fields the community-stats accumulator needs per run.

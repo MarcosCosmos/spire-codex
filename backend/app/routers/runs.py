@@ -1027,12 +1027,23 @@ _ENTITY_STATS_TYPES = {"relics", "cards", "potions"}
 @limiter.limit(
     rate_limit_config.endpoint_limit("runs.get_entity_run_stats", "120/minute")
 )
-def get_entity_run_stats(request: Request, entity_type: str, entity_id: str):
+def get_entity_run_stats(
+    request: Request, response: Response, entity_type: str, entity_id: str
+):
     if entity_type not in _ENTITY_STATS_TYPES:
         raise HTTPException(
             status_code=400,
             detail=f"entity_type must be one of {sorted(_ENTITY_STATS_TYPES)}",
         )
+    # Changes only when a lake generation applies, and the pull purges the
+    # /api/runs/stats prefix — so serve it long-lived with background
+    # revalidation instead of inheriting the generic 30s /api/runs default
+    # (whose expiry kept the edge permanently EXPIRED on entity pages).
+    response.headers["Cache-Control"] = (
+        "public, max-age=300, stale-while-revalidate=3600"
+        if snapshot_loaded()
+        else "no-store"
+    )
     stats = get_entity_stats(entity_type, entity_id)
     if stats is None:
         # Entity hasn't appeared in any submitted run yet — return a
@@ -1295,11 +1306,10 @@ def community_stats(request: Request, response: Response, bracket: str | None = 
     # validation can 400 them. Any miss falls through unchanged.
     from ..services import lake_stats
 
-    if lake_stats.SERVE_ENABLED:
-        lake_payload = lake_stats.community_payload(bracket)
-        if lake_payload is not None:
-            response.headers["Cache-Control"] = "public, max-age=300"
-            return lake_payload
+    lake_payload = lake_stats.community_payload(bracket)
+    if lake_payload is not None:
+        response.headers["Cache-Control"] = "public, max-age=300"
+        return lake_payload
     if bracket is not None:
         from ..services.run_entity_stats import is_valid_stat_bracket
 
@@ -1569,22 +1579,10 @@ def start_stats_refresher() -> None:
         from ..services.runs_db_mongo import (
             refresh_home_stats,
             refresh_leaderboard_summary,
-            refresh_stats_summary,
         )
-        from ..services.run_entity_stats import refresh_entity_stats_snapshot
 
-        # Per-step timing: a rebuild that never completes shows up here as a step
-        # whose "done" log never arrives, so we can see which step starves it.
         _cyc0 = time.time()
         logger.info("refresh cycle: starting (leader)")
-
-        # Entity-stats snapshot: full walk at boot / repair / new game
-        # version, otherwise an incremental fold of just the new runs.
-        persisted = 0
-        try:
-            persisted = refresh_entity_stats_snapshot()
-        except Exception:
-            logger.warning("entity-stats snapshot refresh failed", exc_info=True)
 
         # Stats aggregations run after the tick: its finalize pins the GIL and
         # pegs Mongo for minutes, so anything kicked before it just races it.
@@ -1610,11 +1608,6 @@ def start_stats_refresher() -> None:
             _cadence["summary"] = time.time()
 
             def _summaries() -> None:
-                refresh_stats_summary()
-                logger.info(
-                    "refresh cycle: stats summary done at %.1fs",
-                    time.time() - _cyc0,
-                )
                 refresh_leaderboard_summary()
                 logger.info(
                     "refresh cycle: leaderboard summary done at %.1fs",
@@ -1622,18 +1615,13 @@ def start_stats_refresher() -> None:
                 )
 
             _kick_side_job("summaries", _summaries)
-
-            from ..services import lake_stats
-
-            if lake_stats.SHADOW_ENABLED:
-                _kick_side_job("lake_shadow", lake_stats.shadow_check)
         # Proactive warm of the entity-scores cache so tier pages serve
         # straight from Redis cluster-wide. Only after something was
         # actually persisted; a no-op tick has nothing new to warm.
         try:
             # Never warm Redis from an unloaded cache: that would push
             # empty score maps cluster-wide with the warm TTL.
-            if persisted and app_cache.enabled() and snapshot_loaded():
+            if app_cache.enabled() and snapshot_loaded():
                 for etype in ("cards", "relics", "potions"):
                     app_cache.set_json(
                         app_cache.entity_scores_key(etype),

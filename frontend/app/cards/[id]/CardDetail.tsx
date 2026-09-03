@@ -438,7 +438,7 @@ export default function CardDetail({ initialCard, initialEnchantments, initialSt
             </div>
             {/* Overview prose as the hero lead (replaces the old token-stripped
                 description lede, which rendered blanks like "Gain ."). */}
-            <EntityProse kind="card" card={card} lead />
+            <EntityProse kind="card" card={card} upgraded={upgraded} lead />
           </div>
 
           {/* Sticky ToC */}

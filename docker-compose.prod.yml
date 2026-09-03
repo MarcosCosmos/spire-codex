@@ -5,10 +5,6 @@ name: spire-codex
 x-shared-env: &shared-env
   DATA_DIR: /data
   BETA_DATA_DIR: /data-beta
-  # Parallelize the entity-stats snapshot rebuild across N cores. 1 = off
-  # (the serial ~80min walk); capped at the box's CPU count. Set the value
-  # in the box .env after validating with scripts/validate_parallel_rebuild.py.
-  ENTITY_STATS_REBUILD_WORKERS: ${ENTITY_STATS_REBUILD_WORKERS:-1}
   # Optional cap on how many release versions keep their own per-version
   # stats bucket. Empty = code default (unbounded: every release version
   # with a run stays in the stats-page version dropdowns). Setting N drops
@@ -16,17 +12,9 @@ x-shared-env: &shared-env
   # /api/runs/list version filter, in exchange for fewer per-version Elo
   # fits and blob shards per rebuild/persist.
   ENTITY_STATS_RECENT_VERSIONS_N: ${ENTITY_STATS_RECENT_VERSIONS_N:-}
-  # Lake migration flags: "serve" points /api/runs/community-stats at the
-  # parquet lake; LAKE_STATS_SHADOW=on logs lake-vs-snapshot drift each
-  # summary cycle. Set values in the box .env.
-  LAKE_COMMUNITY_STATS: ${LAKE_COMMUNITY_STATS:-}
-  LAKE_STATS_SHADOW: ${LAKE_STATS_SHADOW:-}
-  LAKE_ENTITY_STATS: ${LAKE_ENTITY_STATS:-}
-  # How often the leader may rerun the heavy walk (seconds). Default 7200
-  # (2h). With the parallel rebuild on, lower it for fresher public numbers,
-  # but keep it well above the observed walk time so the box isn't always
-  # mid-rebuild. Floored at 300s in code.
-  ENTITY_STATS_REBUILD_INTERVAL_SECONDS: ${ENTITY_STATS_REBUILD_INTERVAL_SECONDS:-7200}
+  # on = stats_core merges the lake-built deep item tables (deep_tables.json)
+  # into the summary docs; off keeps the legacy tables in place.
+  LAKE_DEEP_TABLES: ${LAKE_DEEP_TABLES:-}
   # Startup files -> run_blobs backfill on the first lease cycle after
   # boot; only the refresh-lease holder runs it. Set to off to skip (e.g.
   # while diagnosing Mongo load).
@@ -58,7 +46,9 @@ services:
     # (2026-08-27). 6g gives walks real room; the lasting fix is retiring
     # the per-worker snapshot copies once entity brackets serve from the
     # lake.
-    mem_limit: 6g
+    # With lake-ingest moved to its own box, its 5g budget can go to the
+    # backend: set BACKEND_MEM_LIMIT=8g in the box .env.
+    mem_limit: ${BACKEND_MEM_LIMIT:-6g}
     # Multiple workers so a burst of POST /api/runs (Overwolf launch
     # backfills) doesn't serialise behind a single thread and block
     # everything else (GET /api/runs/stats, /api/runs/list etc.).
@@ -195,15 +185,16 @@ services:
       # Build frame.parquet from the lake (one COPY) instead of the 3h Mongo
       # doc walk. Flip in .env after lab/validate_frame_lake.py passes.
       FRAME_FROM_LAKE: ${FRAME_FROM_LAKE:-}
-    # 5g container / 3.5g duckdb: with the rebuilder headed for deletion the
-    # ingest is the box's main computer, so it gets real memory instead of
-    # spilling every heavy aggregate to disk.
-    mem_limit: 5g
+    # Defaults fit the shared serving box; the dedicated ingest box raises
+    # them in its .env. The container cap must clear LAKE_BUILD_MEMORY plus
+    # ~1.5g of Python-side headroom, and cpus must not exceed the box's
+    # cores or docker refuses to start the container.
+    mem_limit: ${LAKE_INGEST_MEM_LIMIT:-5g}
     # Serving always wins the box: 5 of the 8 cores at most (the hostname's
     # "4vcpu" is the droplet's birth name — nproc says 8), and an eighth of
     # the default CPU weight so under contention the kernel hands cycles to
     # the backend/Mongo first. An idle box still runs the ingest full speed.
-    cpus: 5
+    cpus: ${LAKE_INGEST_CPUS:-5}
     cpu_shares: 128
     volumes:
       - ./lab:/lab:ro
@@ -224,6 +215,10 @@ services:
     # no RDB snapshots). Everything in here is rebuildable from Mongo / the
     # run files on a miss, so losing it on restart costs one warmup, not data.
     command: redis-server --maxmemory 2gb --maxmemory-policy allkeys-lru --appendonly no --save ""
+    # Redis has no auth: REDIS_BIND stays loopback or the VPC private IP
+    # for the ingest box, never 0.0.0.0.
+    ports:
+      - "${REDIS_BIND:-127.0.0.1}:6379:6379"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]

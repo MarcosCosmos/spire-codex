@@ -27,8 +27,8 @@ SELECT * FROM read_ndjson('/lake/staging/*.jsonl.gz',
     start_time: 'BIGINT', run_time: 'BIGINT',
     killed_by_encounter: 'VARCHAR', killed_by_event: 'VARCHAR',
     modifiers: 'VARCHAR[]',
-    players: 'STRUCT(id BIGINT, "character" VARCHAR, deck STRUCT(floor_added_to_deck BIGINT, id VARCHAR, current_upgrade_level BIGINT, enchantment STRUCT(id VARCHAR))[], relics STRUCT(id VARCHAR, floor_added_to_deck BIGINT)[], potions STRUCT(id VARCHAR)[])[]',
-    map_point_history: 'STRUCT(map_point_type VARCHAR, player_stats STRUCT(player_id BIGINT, current_gold BIGINT, current_hp BIGINT, damage_taken BIGINT, max_hp BIGINT, event_choices STRUCT(title STRUCT("key" VARCHAR, "table" VARCHAR))[], rest_site_choices VARCHAR[], upgraded_cards VARCHAR[], ancient_choice STRUCT(TextKey VARCHAR, title STRUCT("key" VARCHAR, "table" VARCHAR), was_chosen BOOLEAN)[], cards_removed JSON[], card_choices STRUCT(was_picked BOOLEAN, card STRUCT(id VARCHAR))[])[], rooms STRUCT(model_id VARCHAR, room_type VARCHAR, turns_taken BIGINT)[])[][]',
+    players: 'STRUCT(id BIGINT, "character" VARCHAR, deck STRUCT(floor_added_to_deck BIGINT, id VARCHAR, current_upgrade_level BIGINT, enchantment STRUCT(id VARCHAR))[], relics STRUCT(id VARCHAR, floor_added_to_deck BIGINT)[], potions STRUCT(id VARCHAR, was_used BOOLEAN)[])[]',
+    map_point_history: 'STRUCT(map_point_type VARCHAR, player_stats STRUCT(player_id BIGINT, current_gold BIGINT, current_hp BIGINT, damage_taken BIGINT, max_hp BIGINT, event_choices STRUCT(title STRUCT("key" VARCHAR, "table" VARCHAR))[], rest_site_choices VARCHAR[], upgraded_cards VARCHAR[], ancient_choice STRUCT(TextKey VARCHAR, title STRUCT("key" VARCHAR, "table" VARCHAR), was_chosen BOOLEAN)[], cards_removed JSON[], card_choices STRUCT(was_picked BOOLEAN, card STRUCT(id VARCHAR))[], potion_choices STRUCT(was_picked BOOLEAN, choice VARCHAR)[])[], rooms STRUCT(model_id VARCHAR, room_type VARCHAR, turns_taken BIGINT)[])[][]',
     _meta: 'STRUCT(username VARCHAR, user_id VARCHAR, hidden BOOLEAN, deleted BOOLEAN, submitted_at TIMESTAMP, played_at TIMESTAMP, player_count BIGINT, "character" VARCHAR)'});
 
 
@@ -95,7 +95,6 @@ SELECT r.run_hash, p.i AS player_idx,
 FROM raw r,
   LATERAL (SELECT unnest(players) AS u, generate_subscripts(players,1) AS i) p,
   LATERAL (SELECT unnest(p.u.deck) AS u) c
-ORDER BY 1
 ) TO '/lake/deck.parquet' (FORMAT parquet, COMPRESSION zstd);
 
 -- Location-level table (one row per visited map point, players kept as a
@@ -106,15 +105,12 @@ SELECT r.run_hash, act.i - 1 AS act, loc.i AS floor_idx,
   lower(loc.u.map_point_type) AS map_point_type,
   loc.u.player_stats AS players,
   [x.model_id FOR x IN loc.u.rooms] AS room_models,
-  -- First-room fields + run_hash ordering: the charts-blob builder streams
-  -- this file in one pass and needs each run's floors contiguous.
   lower(loc.u.rooms[1].room_type) AS room_type,
   loc.u.rooms[1].model_id AS room_model,
   loc.u.rooms[1].turns_taken AS room_turns
 FROM raw r,
   LATERAL (SELECT unnest(map_point_history) AS u, generate_subscripts(map_point_history,1) AS i) act,
   LATERAL (SELECT unnest(act.u) AS u, generate_subscripts(act.u,1) AS i) loc
-ORDER BY 1, 2, 3
 ) TO '/lake/floors.parquet' (FORMAT parquet, COMPRESSION zstd);
 
 COPY (
@@ -125,18 +121,34 @@ SELECT r.run_hash, p.i AS player_idx,
 FROM raw r,
   LATERAL (SELECT unnest(players) AS u, generate_subscripts(players,1) AS i) p,
   LATERAL (SELECT unnest(p.u.relics) AS u) rel
-ORDER BY 1
 ) TO '/lake/relics.parquet' (FORMAT parquet, COMPRESSION zstd);
 
 COPY (
 SELECT r.run_hash, p.i AS player_idx,
   upper(split_part(pot.u.id, '.', -1)) AS potion,
-  upper(split_part(p.u.character,'.',-1)) AS character
+  upper(split_part(p.u.character,'.',-1)) AS character,
+  coalesce(pot.u.was_used, false) AS was_used
 FROM raw r,
   LATERAL (SELECT unnest(players) AS u, generate_subscripts(players,1) AS i) p,
   LATERAL (SELECT unnest(p.u.potions) AS u) pot
-ORDER BY 1
 ) TO '/lake/potions.parquet' (FORMAT parquet, COMPRESSION zstd);
+
+-- Shop-shelf potion offers only (a combat-drop "pick rate" measures slot
+-- availability, not potion quality; a purchase is a real decision). One row
+-- per potion seen on a shelf. Counted once per run, not once per party
+-- sibling like the legacy per-player docs did.
+COPY (
+SELECT r.run_hash, ps.i AS player_idx,
+  upper(split_part(pc.u.choice, '.', -1)) AS potion,
+  coalesce(pc.u.was_picked, false) AS was_picked
+FROM raw r,
+  LATERAL (SELECT unnest(map_point_history) AS u) act,
+  LATERAL (SELECT unnest(act.u) AS u) loc,
+  LATERAL (SELECT unnest(loc.u.player_stats) AS u,
+    generate_subscripts(loc.u.player_stats,1) AS i) ps,
+  LATERAL (SELECT unnest(ps.u.potion_choices) AS u) pc
+WHERE list_contains([lower(x.room_type) FOR x IN loc.u.rooms], 'shop')
+) TO '/lake/shop_potions.parquet' (FORMAT parquet, COMPRESSION zstd);
 
 -- Per-player identity + deck size: keys player_id to a character for the
 -- co-op attributions, and carries deck size for the records section.
@@ -176,6 +188,7 @@ UNION ALL SELECT 'deck', count(*) FROM read_parquet('/lake/deck.parquet')
 UNION ALL SELECT 'floors', count(*) FROM read_parquet('/lake/floors.parquet')
 UNION ALL SELECT 'players', count(*) FROM read_parquet('/lake/players.parquet')
 UNION ALL SELECT 'relics', count(*) FROM read_parquet('/lake/relics.parquet')
-UNION ALL SELECT 'potions', count(*) FROM read_parquet('/lake/potions.parquet');
+UNION ALL SELECT 'potions', count(*) FROM read_parquet('/lake/potions.parquet')
+UNION ALL SELECT 'shop_potions', count(*) FROM read_parquet('/lake/shop_potions.parquet');
 
 DROP TABLE raw;

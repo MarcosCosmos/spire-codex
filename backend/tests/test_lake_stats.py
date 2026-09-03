@@ -6,13 +6,6 @@ def test_available_false_without_lake(monkeypatch, tmp_path):
     assert lake_stats.available() is False
 
 
-def test_shadow_check_never_raises_without_lake(monkeypatch, tmp_path, caplog):
-    caplog.set_level("INFO")
-    monkeypatch.setattr(lake_stats, "LAKE_DIR", tmp_path / "missing")
-    lake_stats.shadow_check()
-    assert any("lake" in r.message for r in caplog.records)
-
-
 def test_flag_parses_common_forms(monkeypatch):
     for raw, want in (
         ("on", True),
@@ -24,20 +17,13 @@ def test_flag_parses_common_forms(monkeypatch):
         assert ((raw or "").lower() in ("1", "on", "true")) is want
 
 
-def test_community_payload_none_when_disabled(monkeypatch):
-    monkeypatch.setattr(lake_stats, "SERVE_ENABLED", False)
-    assert lake_stats.community_payload() is None
-
-
 def test_community_payload_none_without_lake(monkeypatch, tmp_path):
-    monkeypatch.setattr(lake_stats, "SERVE_ENABLED", True)
     monkeypatch.setattr(lake_stats, "LAKE_DIR", tmp_path)
     assert lake_stats.community_payload() is None
 
 
 def test_community_payload_none_for_unsupported_bracket(monkeypatch, tmp_path):
     # wr50 is cube-served now; versions and unknown keys are the fallbacks.
-    monkeypatch.setattr(lake_stats, "SERVE_ENABLED", True)
     monkeypatch.setattr(lake_stats, "LAKE_DIR", tmp_path)
     monkeypatch.setattr(lake_stats, "_cube_cache", None)
     assert lake_stats.community_payload("v0.1.0") is None
@@ -66,7 +52,6 @@ def test_lake_entity_overlay(monkeypatch, tmp_path):
         "baselines": {"cards": 0.5},
     }
     (tmp_path / "entity_store.json").write_text(json.dumps(store))
-    monkeypatch.setattr(res, "_LAKE_ENTITY_SERVE", True)
     monkeypatch.setattr(res, "_lake_overlay_checked", 0.0)
     monkeypatch.setattr(res, "_lake_overlay_mtime", 0.0)
     res._cache[("cards", "ZAP")] = {
@@ -272,10 +257,10 @@ def test_reward_pairs_by_tier_and_cumulative_fold(monkeypatch, tmp_path):
     monkeypatch.setattr(res, "_excluded_card_ids", lambda: frozenset())
     tiers = lake_stats.reward_pair_counts_by_tier()
     # r1 (A10) took X over Y; r2 (A0) skipped Y and Z.
-    assert tiers[(1, 0)][("X", "Y")] == 1
-    assert tiers[(1, 0)][("X", lake_stats.SKIP_ID)] == 1
-    assert tiers[(0, 0)][(lake_stats.SKIP_ID, "Y")] == 1
-    assert tiers[(0, 0)][(lake_stats.SKIP_ID, "Z")] == 1
+    assert tiers[(1, 0, "")][("X", "Y")] == 1
+    assert tiers[(1, 0, "")][("X", lake_stats.SKIP_ID)] == 1
+    assert tiers[(0, 0, "")][(lake_stats.SKIP_ID, "Y")] == 1
+    assert tiers[(0, 0, "")][(lake_stats.SKIP_ID, "Z")] == 1
     # All-runs fold = both tiers; the a10 fold drops the A0 skip screen.
     all_pairs = lake_stats.fold_tier_pairs(tiers)
     assert all_pairs[("X", "Y")] == 1
@@ -285,6 +270,10 @@ def test_reward_pairs_by_tier_and_cumulative_fold(monkeypatch, tmp_path):
     assert (lake_stats.SKIP_ID, "Z") not in a10
     # wr50 = a10 cells with band >= 2; nothing here qualifies.
     assert lake_stats.fold_tier_pairs(tiers, a10_only=True, min_band=2) == {}
+    # Version folds: the fixture runs carry no release version, so a
+    # version-scoped fold is empty and the versionless fold is everything.
+    assert lake_stats.fold_tier_pairs(tiers, version="v0.111.0") == {}
+    assert lake_stats.fold_tier_pairs(tiers, version="") == all_pairs
 
 
 def test_bracket_elo_for(monkeypatch, tmp_path):
@@ -299,12 +288,17 @@ def test_bracket_elo_for(monkeypatch, tmp_path):
                 "bracket_elo": {
                     "a10": {"X": 1600.0},
                     "wr50": {"X": 1700.0},
+                    "ver:v0.111.0": {"X": 1800.0},
                 },
             }
         )
     )
     assert lake_stats.bracket_elo_for("a10") == {"X": 1600.0}
     assert lake_stats.bracket_elo_for("solo:wr50") == {"X": 1700.0}
+    # Version brackets serve the per-patch fit; a skill part still wins.
+    assert lake_stats.bracket_elo_for("v0.111.0") == {"X": 1800.0}
+    assert lake_stats.bracket_elo_for("solo:v0.111.0") == {"X": 1800.0}
+    assert lake_stats.bracket_elo_for("a10:v0.111.0") == {"X": 1600.0}
     # No skill component, unknown key, or a store predating the maps -> None.
     assert lake_stats.bracket_elo_for("standard") is None
     assert lake_stats.bracket_elo_for("all") is None
@@ -350,7 +344,6 @@ def test_overlay_carries_store_totals(monkeypatch, tmp_path):
             }
         )
     )
-    monkeypatch.setattr(res, "_LAKE_ENTITY_SERVE", True)
     monkeypatch.setattr(res, "_lake_overlay_checked", 0.0)
     monkeypatch.setattr(res, "_lake_overlay_mtime", 0.0)
     old = dict(res._global_totals)
@@ -372,7 +365,6 @@ def test_recent_versions_include_cube_and_validate(monkeypatch):
         "offers": {},
     }
     monkeypatch.setattr(lake_stats, "_entity_cube_with_mtime", lambda: (1.0, cube))
-    monkeypatch.setattr(res, "_LAKE_ENTITY_SERVE", True)
     monkeypatch.setattr(res, "_recent_stat_versions", ["v0.110.2"])
     monkeypatch.setattr(res, "_maybe_rebuild", lambda: None)
     assert res.get_recent_stat_versions() == ["v0.112.0", "v0.110.2"]
@@ -455,3 +447,26 @@ def test_lake_metric_history_appends(monkeypatch):
     ids = sorted(op._filter["_id"] for op in captured["ops"])
     assert ids[0].startswith("cards:X:all:")
     assert ids[1].startswith("cards:X:wr75:")
+
+
+def test_elo_numpy_path_matches_python_path(monkeypatch):
+    import sys
+
+    from app.services.run_entity_stats import _compute_codex_elo
+
+    pairs = {
+        ("A", "B"): 30,
+        ("B", "C"): 25,
+        ("A", "C"): 10,
+        ("C", "A"): 8,
+        ("A", "SKIP"): 40,
+        ("SKIP", "B"): 22,
+    }
+    elo_np, p_np = _compute_codex_elo(pairs)
+    monkeypatch.setitem(sys.modules, "numpy", None)
+    elo_py, p_py = _compute_codex_elo(pairs)
+    assert set(elo_np) == set(elo_py)
+    for k in elo_np:
+        assert abs(elo_np[k] - elo_py[k]) <= 0.1, k
+    for k in p_np:
+        assert abs(p_np[k] - p_py[k]) < 1e-6, k
