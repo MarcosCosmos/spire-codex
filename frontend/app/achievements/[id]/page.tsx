@@ -1,94 +1,68 @@
 import type { Metadata } from "next";
 import AchievementDetail from "./AchievementDetail";
-import {
-  stripTags,
-  stripTagsFlat,
-  clipMetaDescription,
-  buildPageMetadata,
-} from "@/lib/seo";
-import { t } from "@/lib/ui-translations";
-import {
-  getLangOrDefault,
-  LANG_GAME_NAME,
-  LANG_HREFLANG,
-  isValidLang,
-} from "@/lib/languages";
+import { stripTags, stripTagsFlat, clipMetaDescription, buildLanguageAlternates, DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
 import { fetchEntityRes } from "@/lib/entity-fetch";
 
-const API_INTERNAL =
-  process.env.API_INTERNAL_URL ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  "http://localhost:8000";
+const API_INTERNAL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-type Props = { params: Promise<{ lang?: string; id: string }> };
-
-function langPrefix(lang?: string): string {
-  return lang && isValidLang(lang) ? `/${lang}` : "";
-}
+type Props = { params: Promise<{ id: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id, lang: _lang } = await params;
-  const lang = getLangOrDefault(_lang);
+  const { id } = await params;
   try {
-    const res = await fetch(
-      `${API_INTERNAL}/api/achievements/${id}${lang ? `?lang=${lang}` : ""}`,
+    const res = await fetch(`${API_INTERNAL}/api/achievements/${id}`);
+    if (!res.ok) return { title: "Achievement Not Found - Slay the Spire 2 (sts2) | Spire Codex" };
+    const achievement = await res.json();
+    const desc = stripTagsFlat(achievement.description || "");
+    const title = `${achievement.name} - Slay the Spire 2 Achievement | Spire Codex`;
+    const metaDesc = clipMetaDescription(
+      `${achievement.name} is an achievement in Slay the Spire 2 (sts2)${desc ? `: ${desc}` : "."}`,
     );
-    if (!res.ok) return { title: "Achievement Not Found" };
-    const entity = await res.json();
-    const desc = stripTagsFlat(entity.description || "");
-    const name = entity.name || id;
-    const gameName = LANG_GAME_NAME[lang];
-    const title = `${name} - ${t("Achievement", lang)}`;
-    const meta = buildPageMetadata({
-      lang: _lang,
-      path: `/achievements/${id}`,
+    return {
       title,
-      description: clipMetaDescription(
-        `${gameName} achievement, ${name}${desc ? `: ${desc}` : ""}`,
-      ),
-      ogType: "article",
-    });
-    return meta;
+      description: metaDesc,
+      openGraph: {
+        type: "article",
+        siteName: SITE_NAME,
+        url: `${SITE_URL}/achievements/${id}`,
+        title,
+        description: metaDesc,
+        images: [{ url: DEFAULT_OG_IMAGE }],
+      },
+      twitter: { card: "summary_large_image", title, description: metaDesc },
+      alternates: { canonical: `/achievements/${id}`, languages: buildLanguageAlternates(`/achievements/${id}`) },
+    };
   } catch {
-    return { title: "Database" };
+    return { title: "Database - Slay the Spire 2 (sts2) | Spire Codex" };
   }
 }
 
 export default async function Page({ params }: Props) {
-  const { id, lang: _lang } = await params;
-  const lang = getLangOrDefault(_lang);
-  const prefix = langPrefix(_lang);
+  const { id } = await params;
   let jsonLd = null;
   let achievement = null;
   let apiUnreachable = false;
   try {
-    const res = await fetchEntityRes(
-      `${API_INTERNAL}/api/achievements/${id}${_lang ? `?lang=${_lang}` : ""}`,
-    );
+    const res = await fetchEntityRes(`${API_INTERNAL}/api/achievements/${id}`);
     if (res.ok) {
       achievement = await res.json();
       const desc = stripTags(achievement.description || "");
-      const name = achievement.name || id;
       const detailJsonLd = buildDetailPageJsonLd({
-        name,
-        description: desc || `${name} achievement from Slay the Spire 2`,
-        path: `${prefix}/achievements/${id}`,
+        name: achievement.name,
+        description: desc || `${achievement.name} achievement from Slay the Spire 2`,
+        path: `/achievements/${id}`,
         category: "Achievement",
         breadcrumbs: [
-          { name: t("Home", lang), href: prefix || "/" },
-          { name: t("Reference", lang), href: `${prefix}/reference` },
-          { name, href: `${prefix}/achievements/${id}` },
+          { name: "Home", href: "/" },
+          { name: "Reference", href: "/reference" },
+          { name: achievement.name, href: `/achievements/${id}` },
         ],
-        inLanguage: LANG_HREFLANG[lang],
       });
       const faqQuestions = [
-        {
-          question: `How do you unlock the "${name}" achievement in Slay the Spire 2?`,
-          answer: desc || `${name} is an achievement in Slay the Spire 2.`,
-        },
+        { question: `How do you unlock the ${achievement.name} achievement in Slay the Spire 2?`, answer: desc || `${achievement.name} is an achievement in Slay the Spire 2.` },
       ];
       jsonLd = [...detailJsonLd, buildFAQPageJsonLd(faqQuestions)];
     }
@@ -97,7 +71,7 @@ export default async function Page({ params }: Props) {
   }
   // Fail the render (500) instead of ISR-caching a contentless shell.
   if (apiUnreachable) throw new Error("entity API unreachable");
-  if (!achievement) redirectMissingEntity("achievements", id, _lang);
+  if (!achievement) redirectMissingEntity("achievements", id);
   return (
     <>
       {jsonLd && <JsonLd data={jsonLd} />}

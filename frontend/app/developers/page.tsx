@@ -2,30 +2,31 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import JsonLd from "@/app/components/JsonLd";
 import { buildSoftwareApplicationJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
-import { buildPageMetadata } from "@/lib/seo";
-import { getLangOrDefault, LANG_GAME_NAME, isValidLang } from "@/lib/languages";
-import { t } from "@/lib/ui-translations";
+import { SITE_NAME, SITE_URL, DEFAULT_OG_IMAGE } from "@/lib/seo";
 import TinyCard, { TINY_CARD_POOL_COLOR, TINY_CARD_BANNER_COLOR } from "@/app/components/TinyCard";
 
 const API_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://spire-codex.com";
 
-function langPrefix(lang?: string): string {
-  return lang && isValidLang(lang) ? `/${lang}` : "";
-}
-
-/** Shared with app/[lang]/developers/page.tsx, which re-exports this directly. */
-export async function generateMetadata(
-  { params }: { params?: Promise<{ lang?: string }> } = {},
-): Promise<Metadata> {
-  const lang = (await params)?.lang;
-  const gameName = LANG_GAME_NAME[getLangOrDefault(lang)];
-  return buildPageMetadata({
-    lang,
-    path: "/developers",
-    title: "Developer API & Tooltip Widget",
-    description: `Integrate ${gameName} game data into your projects. Public REST API with 22+ endpoints, embeddable tooltip widget, and multi-language support.`,
-  });
-}
+export const metadata: Metadata = {
+  title: "Developer API & Tooltip Widget - Slay the Spire 2 (sts2) | Spire Codex",
+  description:
+    "Integrate Slay the Spire 2 (sts2) game data into your projects. Public REST API with 22+ endpoints, embeddable tooltip widget, and multi-language support.",
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    url: `${SITE_URL}/developers`,
+    title: "Developer API & Tooltip Widget - Slay the Spire 2 (sts2) | Spire Codex",
+    description:
+      "Public REST API and embeddable tooltip widget for Slay the Spire 2 (sts2) game data.",
+    images: [{ url: DEFAULT_OG_IMAGE }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Developer API & Tooltip Widget - Slay the Spire 2 (sts2) | Spire Codex",
+    description: "Public REST API and embeddable tooltip widget for Slay the Spire 2 (sts2) game data.",
+  },
+  alternates: { canonical: "/developers" },
+};
 
 const API_INTERNAL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -53,20 +54,13 @@ const TIER_ROWS: { key: string; label: string; how: string }[] = [
   { key: "paid", label: "Paid", how: "supporters" },
 ];
 
-export default async function DevelopersPage({
-  params,
-}: {
-  params?: Promise<{ lang?: string }>;
-} = {}) {
-  const _lang = (await params)?.lang;
-  const lang = getLangOrDefault(_lang);
-  const prefix = langPrefix(_lang);
+export default async function DevelopersPage() {
   const limits = await fetchRateLimits();
   const jsonLd = [
     buildSoftwareApplicationJsonLd(),
     buildBreadcrumbJsonLd([
-      { name: t("Home", lang), href: prefix || "/" },
-      { name: t("Developers", lang), href: `${prefix}/developers` },
+      { name: "Home", href: "/" },
+      { name: "Developers", href: "/developers" },
     ]),
   ];
 
@@ -74,10 +68,10 @@ export default async function DevelopersPage({
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <JsonLd data={jsonLd} />
       <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-2">
-        {t("Developers", lang)}
+        Developers
       </h1>
       <p className="text-[var(--text-secondary)] mb-8">
-        {t("developers_tagline", lang)}
+        Build tools, bots, and content with Spire Codex data. Everything is free and open.
       </p>
 
       {/* Tooltip Widget */}

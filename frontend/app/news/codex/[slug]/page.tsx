@@ -33,8 +33,8 @@ type Props = { params: Promise<{ slug: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const entry = await loadEntry(slug);
-  if (!entry) return { title: "News" };
-  const title = `${entry.title}`;
+  if (!entry) return { title: `News | ${SITE_NAME}` };
+  const title = `${entry.title} | ${SITE_NAME}`;
   return {
     title,
     description: entry.body.slice(0, 200).replace(/[#*_>`]/g, "").trim(),

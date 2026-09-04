@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect, permanentRedirect } from "next/navigation";
 import JsonLd from "@/app/components/JsonLd";
 import { buildBreadcrumbJsonLd, buildNewsArticleJsonLd } from "@/lib/jsonld";
-import { SITE_URL, SITE_NAME, buildPageMetadata } from "@/lib/seo";
+import { SITE_URL, SITE_NAME } from "@/lib/seo";
 import type { NewsArticle } from "@/lib/api";
 import { DEFAULT_OG_IMAGE } from "@/lib/seo";
 import {
@@ -15,8 +15,6 @@ import {
   canonicalSteamUrl,
   firstNewsImage,
 } from "@/lib/steam-news";
-import { getLangOrDefault, isValidLang, LANG_GAME_NAME, LANG_HREFLANG } from "@/lib/languages";
-import { t } from "@/lib/ui-translations";
 
 const API = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -24,10 +22,6 @@ const API = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "
 // 404 every article and bake those 404s into the image.
 export const dynamic = "force-dynamic";
 export const revalidate = 1800;
-
-function langPrefix(lang?: string): string {
-  return lang && isValidLang(lang) ? `/${lang}` : "";
-}
 
 async function fetchItem(gid: string): Promise<NewsArticle | null> {
   try {
@@ -60,44 +54,37 @@ function joinSlug(parts: string[]): string {
   return parts.join("/");
 }
 
-type Props = { params: Promise<{ lang?: string; slug: string[] }> };
-
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { lang: _lang, slug } = await params;
-  const lang = getLangOrDefault(_lang);
-  const prefix = langPrefix(_lang);
-  const gameName = LANG_GAME_NAME[lang];
-  const newsLabel = t("News", lang);
-  const gid = gidFromSlug(joinSlug(slug));
-  if (!gid) return { title: `${gameName} ${newsLabel} - ${t("Not Found", lang)} | ${SITE_NAME}` };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string[] }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const joined = joinSlug(slug);
+  const gid = gidFromSlug(joined);
+  if (!gid) return { title: `News - Not Found - Slay the Spire 2 (sts2) | ${SITE_NAME}` };
   const article = await fetchItem(gid);
-  if (!article) return { title: `${gameName} ${newsLabel} - ${t("Not Found", lang)} | ${SITE_NAME}` };
+  if (!article) return { title: `News - Not Found - Slay the Spire 2 (sts2) | ${SITE_NAME}` };
   // Lead the meta description with Spire Codex framing so search snippets
   // identify the page as our archive of the Steam announcement, not just
   // the raw article body.
   const excerpt = newsExcerpt(article.contents ?? "", 160);
-  const description = `${gameName} ${newsLabel}, ${article.title}. ${excerpt}`.slice(0, 160);
-  const title = `${article.title} - ${gameName} ${newsLabel}`;
-  const canonicalPath = newsSlugForArticle(article.gid, `${prefix}/news`);
-  const meta = buildPageMetadata({
-    lang: _lang,
-    path: canonicalPath,
+  const description = `Slay the Spire 2 news on Spire Codex, ${article.title}. ${excerpt}`.slice(0, 300);
+  const title = `${article.title} - Slay the Spire 2 News | ${SITE_NAME}`;
+  const canonicalPath = newsSlugForArticle(article.gid);
+  return {
     title,
     description,
-    ogType: "article",
-    // The real canonical is external (Steam), so there's no on-site
-    // hreflang cluster to advertise.
-    offerLanguageAlternatives: false,
-  });
-  return {
-    ...meta,
-    // External canonical → Steam, so search engines treat us as a mirror.
-    alternates: { canonical: canonicalSteamUrl(article.gid) },
+    alternates: {
+      // External canonical → Steam, so search engines treat us as a mirror.
+      canonical: canonicalSteamUrl(article.gid),
+    },
     openGraph: {
-      ...meta.openGraph,
-      type: "article",
       title: article.title,
+      description,
       url: `${SITE_URL}${canonicalPath}`,
+      siteName: SITE_NAME,
+      type: "article",
       publishedTime: new Date(article.date * 1000).toISOString(),
       authors: article.author ? [article.author] : undefined,
       images: [{ url: firstNewsImage(article.contents) ?? DEFAULT_OG_IMAGE }],
@@ -106,24 +93,25 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function NewsArticlePage({ params }: Props) {
-  const { lang: _lang, slug } = await params;
-  const lang = getLangOrDefault(_lang);
-  const prefix = langPrefix(_lang);
+export default async function NewsArticlePage({
+  params,
+}: {
+  params: Promise<{ slug: string[] }>;
+}) {
+  const { slug } = await params;
   const joined = joinSlug(slug);
   const gid = gidFromSlug(joined);
-  // Slug doesn't contain a gid, 308 back to the (possibly localized) news
-  // index so any crawl equity from the bad path lands on a live page
-  // rather than a 404.
-  if (!gid) permanentRedirect(`${prefix}/news`);
+  // Slug doesn't contain a gid, 308 back to the news index so any
+  // crawl equity from the bad path lands on a live page rather than
+  // a 404.
+  if (!gid) permanentRedirect("/news");
 
-  // The canonical shape is `/news/{gid}` (or `/<lang>/news/{gid}`), clean,
-  // shareable, and stable. If the caller used the older encoded-URL form
-  // (or anything else that happened to contain the gid), 308-redirect to
-  // the bare-gid path so every flavour of inbound link converges on the
-  // canonical address.
+  // The canonical shape is `/news/{gid}`, clean, shareable, and stable.
+  // If the caller used the older encoded-URL form (or anything else that
+  // happened to contain the gid), 308-redirect to the bare-gid path so
+  // every flavour of inbound link converges on the canonical address.
   if (joined !== gid) {
-    redirect(newsSlugForArticle(gid, `${prefix}/news`));
+    redirect(newsSlugForArticle(gid));
   }
 
   const article = await fetchItem(gid);
@@ -132,18 +120,18 @@ export default async function NewsArticlePage({ params }: Props) {
   // are stale Google cache entries for articles Steam has rotated off
   // and we never archived; sending them to /news keeps the entries in
   // our domain's "alive" set.
-  if (!article) permanentRedirect(`${prefix}/news`);
+  if (!article) permanentRedirect("/news");
 
   const html = sanitizeSteamNews(article.contents ?? "");
   const date = formatNewsDate(article.date);
   const description = newsExcerpt(article.contents ?? "", 250);
   const publishedIso = new Date(article.date * 1000).toISOString();
-  const onSitePath = newsSlugForArticle(article.gid, `${prefix}/news`);
+  const onSitePath = newsSlugForArticle(article.gid);
 
   const jsonLd: Record<string, unknown>[] = [
     buildBreadcrumbJsonLd([
-      { name: t("Home", lang), href: prefix || "/" },
-      { name: t("News", lang), href: `${prefix}/news` },
+      { name: "Home", href: "/" },
+      { name: "News", href: "/news" },
       { name: article.title, href: onSitePath },
     ]),
     buildNewsArticleJsonLd({
@@ -155,7 +143,7 @@ export default async function NewsArticlePage({ params }: Props) {
       externalCanonical: canonicalSteamUrl(article.gid),
       externalUrl: article.url,
       path: onSitePath,
-      inLanguage: LANG_HREFLANG[lang],
+      inLanguage: "en",
       imageUrl: firstNewsImage(article.contents) ?? undefined,
     }),
   ];
@@ -165,10 +153,10 @@ export default async function NewsArticlePage({ params }: Props) {
       <JsonLd data={jsonLd} />
 
       <Link
-        href={`${prefix}/news`}
+        href="/news"
         className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] mb-6 inline-flex items-center gap-1 transition-colors"
       >
-        <span>&larr;</span> {t("Back to", lang)} {t("News", lang)}
+        <span>&larr;</span> Back to News
       </Link>
 
       <article>
@@ -180,11 +168,8 @@ export default async function NewsArticlePage({ params }: Props) {
           {" · "}
           {article.feedlabel}
           {article.author ? ` · ${article.author}` : ""}
-          {article.tags?.includes("patchnotes") ? ` · ${t("Patch Notes", lang)}` : ""}
+          {article.tags?.includes("patchnotes") ? " · Patch Notes" : ""}
         </p>
-        {/* Kept English/untranslated: the "news_attribution" key drops the
-            dynamic link to the original publisher/Steam that this paragraph
-            carries, so translating it would lose the outbound citation. */}
         <p className="text-xs text-[var(--text-muted)] mb-6">
           From{" "}
           <a
@@ -205,7 +190,7 @@ export default async function NewsArticlePage({ params }: Props) {
         />
 
         <p className="mt-8 pt-4 border-t border-[var(--border-subtle)] text-xs text-[var(--text-muted)]">
-          {t("Read on Steam", lang)}:{" "}
+          Read on Steam:{" "}
           <a
             href={canonicalSteamUrl(article.gid)}
             target="_blank"

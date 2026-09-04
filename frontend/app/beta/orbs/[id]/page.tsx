@@ -21,8 +21,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   try {
     const item = await fetchBeta(id);
-    if (!item) return { title: "Orb Not Found - Beta" };
-    return { title: `${item.name} (Beta) - Orb` };
+    if (!item) return { title: "Orb Not Found - Beta | Spire Codex" };
+    return { title: `${item.name} (Beta) - Slay the Spire 2 Orb | Spire Codex` };
   } catch {
     return { title: "Spire Codex" };
   }

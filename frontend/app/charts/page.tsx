@@ -1,35 +1,32 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { buildPageMetadata } from "@/lib/seo";
-import { isValidLang } from "@/lib/languages";
+import { SITE_URL, SITE_NAME, DEFAULT_OG_IMAGE, buildLanguageAlternates } from "@/lib/seo";
 import JsonLd from "@/app/components/JsonLd";
 import { buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import ChartsClient from "./ChartsClient";
 
-type Props = { params: Promise<{ lang?: string }> };
-
-function langPrefix(lang?: string): string {
-  return lang && isValidLang(lang) ? `/${lang}` : "";
-}
-
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { lang } = await params;
-  return buildPageMetadata({
-    lang,
-    path: "/charts",
-    title: "Run Charts",
+export const metadata: Metadata = {
+  title: `Run Charts - Slay the Spire 2 (sts2) | ${SITE_NAME}`,
+  description:
+    "Interactive charts over community-submitted Slay the Spire 2 runs: win rate by floor, ascension and over time, damage per encounter, run stat distributions and scatters. Filter by player count, ascension, game mode, or a single player.",
+  alternates: { canonical: `${SITE_URL}/charts`, languages: buildLanguageAlternates("/charts") },
+  openGraph: {
+    title: `Slay the Spire 2 (sts2) Run Charts | ${SITE_NAME}`,
     description:
-      "Interactive charts over community-submitted Slay the Spire 2 runs: win rate by floor, ascension and over time, damage per encounter, run stat distributions and scatters. Filter by player count, ascension, game mode, or a single player.",
-  });
-}
+      "Dig into aggregates of community-submitted Slay the Spire 2 runs with interactive charts.",
+    url: `${SITE_URL}/charts`,
+    siteName: SITE_NAME,
+    type: "website",
+    images: [{ url: DEFAULT_OG_IMAGE }],
+  },
+  twitter: { card: "summary_large_image", title: `Slay the Spire 2 (sts2) Run Charts | ${SITE_NAME}` },
+};
 
-export default async function ChartsPage({ params }: Props) {
-  const { lang } = await params;
-  const prefix = langPrefix(lang);
+export default function ChartsPage() {
   const jsonLd = [
     buildBreadcrumbJsonLd([
-      { name: "Home", href: prefix || "/" },
-      { name: "Charts", href: `${prefix}/charts` },
+      { name: "Home", href: "/" },
+      { name: "Charts", href: "/charts" },
     ]),
   ];
   return (

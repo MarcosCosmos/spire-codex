@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import JsonLd from "@/app/components/JsonLd";
 import RichDescription from "@/app/components/RichDescription";
@@ -6,9 +5,6 @@ import {
   buildBreadcrumbJsonLd,
   buildCollectionPageJsonLd,
 } from "@/lib/jsonld";
-import { getLangOrDefault, isValidLang, LANG_GAME_NAME, LANG_HREFLANG } from "@/lib/languages";
-import { buildPageMetadata } from "@/lib/seo";
-import { t } from "@/lib/ui-translations";
 import type { Badge } from "@/lib/api";
 import { imageUrl } from "@/lib/image-url";
 
@@ -30,35 +26,10 @@ const TOP_TIER_BORDER: Record<string, string> = {
   gold: "border-[var(--accent-gold)]",
 };
 
-type Props = { params: Promise<{ lang?: string }> };
-
-function langPrefix(lang?: string): string {
-  return lang && isValidLang(lang) ? `/${lang}` : "";
-}
-
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { lang: _lang } = await params;
-  const lang = getLangOrDefault(_lang);
-  const gameName = LANG_GAME_NAME[lang];
-  return buildPageMetadata({
-    lang: _lang,
-    path: "/badges",
-    title: t("Badges", lang),
-    description: `${gameName} ${t("Badges", lang)}, ${t("badges_tagline", lang)}`,
-  });
-}
-
-export default async function BadgesPage({ params }: Props) {
-  const { lang: _lang } = await params;
-  const lang = getLangOrDefault(_lang);
-  const prefix = langPrefix(_lang);
-  const gameName = LANG_GAME_NAME[lang];
-
+export default async function BadgesPage() {
   let badges: Badge[] = [];
   try {
-    const res = await fetch(`${API}/api/badges${_lang ? `?lang=${_lang}` : ""}`, {
-      next: { revalidate: 3600 },
-    });
+    const res = await fetch(`${API}/api/badges`, { next: { revalidate: 3600 } });
     if (res.ok) badges = await res.json();
   } catch {}
 
@@ -68,18 +39,18 @@ export default async function BadgesPage({ params }: Props) {
 
   const jsonLd = [
     buildBreadcrumbJsonLd([
-      { name: t("Home", lang), href: prefix || "/" },
-      { name: t("Badges", lang), href: `${prefix}/badges` },
+      { name: "Home", href: "/" },
+      { name: "Badges", href: "/badges" },
     ]),
     buildCollectionPageJsonLd({
-      name: `${gameName} ${t("Badges", lang)}`,
-      description: t("badges_tagline", lang),
-      path: `${prefix}/badges`,
+      name: "Slay the Spire 2 Badges",
+      description:
+        "All run-end badges in Slay the Spire 2 (sts2), Bronze, Silver, and Gold tier mini-achievements awarded on the Game Over screen.",
+      path: "/badges",
       items: badges.map((b) => ({
         name: b.name,
-        path: `${prefix}/badges/${b.id.toLowerCase()}`,
+        path: `/badges/${b.id.toLowerCase()}`,
       })),
-      inLanguage: LANG_HREFLANG[lang],
     }),
   ];
 
@@ -87,22 +58,22 @@ export default async function BadgesPage({ params }: Props) {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <JsonLd data={jsonLd} />
       <h1 className="text-3xl font-bold mb-2">
-        <span className="text-[var(--accent-gold)]">
-          {gameName} {t("Badges", lang)}
-        </span>
+        <span className="text-[var(--accent-gold)]">Slay the Spire 2 (sts2) Badges</span>
       </h1>
       <p className="text-sm text-[var(--text-muted)] mb-6">
-        {t("badges_tagline", lang)}
+        Run-end badges are mini-achievements awarded on the Game Over screen.
+        Some have Bronze / Silver / Gold tiers; a handful are only attainable
+        in multiplayer. Badges contribute to your Daily Leaderboard score.
       </p>
 
       {tiered.length > 0 && (
         <section className="mb-10">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-3">
-            {t("Tiered Badges", lang)}
+            Tiered Badges
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {tiered.map((b) => (
-              <BadgeCard key={b.id} badge={b} lang={lang} prefix={prefix} />
+              <BadgeCard key={b.id} badge={b} />
             ))}
           </div>
         </section>
@@ -111,11 +82,11 @@ export default async function BadgesPage({ params }: Props) {
       {single.length > 0 && (
         <section className="mb-10">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-3">
-            {t("Single-Tier Badges", lang)}
+            Single-Tier Badges
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {single.map((b) => (
-              <BadgeCard key={b.id} badge={b} lang={lang} prefix={prefix} />
+              <BadgeCard key={b.id} badge={b} />
             ))}
           </div>
         </section>
@@ -124,17 +95,17 @@ export default async function BadgesPage({ params }: Props) {
       {multiplayerOnly.length > 0 && (
         <section>
           <h2 className="text-sm font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-1">
-            {t("Multiplayer-Only", lang)}
+            Multiplayer-Only
           </h2>
           <p className="text-xs text-[var(--text-muted)] mb-3">
-            {t("multiplayer_only_tagline", lang)}
+            These badges can only be earned in multiplayer runs.
           </p>
           <div className="flex flex-wrap gap-2">
             {multiplayerOnly.map((b) => (
               <Link
                 prefetch={false}
                 key={b.id}
-                href={`${prefix}/badges/${b.id.toLowerCase()}`}
+                href={`/badges/${b.id.toLowerCase()}`}
                 className="text-sm px-3 py-1 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:border-[var(--accent-gold)]/50 hover:text-[var(--accent-gold)] transition-colors"
               >
                 {b.name}
@@ -147,7 +118,7 @@ export default async function BadgesPage({ params }: Props) {
   );
 }
 
-function BadgeCard({ badge, lang, prefix }: { badge: Badge; lang: string; prefix: string }) {
+function BadgeCard({ badge }: { badge: Badge }) {
   const topTier = badge.tiers[badge.tiers.length - 1] ?? badge.tiers[0];
   const borderClass =
     (badge.tiered && TOP_TIER_BORDER[topTier?.rarity ?? "bronze"]) ||
@@ -155,13 +126,13 @@ function BadgeCard({ badge, lang, prefix }: { badge: Badge; lang: string; prefix
   return (
     <Link
       prefetch={false}
-      href={`${prefix}/badges/${badge.id.toLowerCase()}`}
+      href={`/badges/${badge.id.toLowerCase()}`}
       className={`bg-[var(--bg-card)] rounded-lg border ${borderClass} p-4 hover:bg-[var(--bg-card-hover)] hover:border-[var(--border-accent)] transition-all flex gap-4 group`}
     >
       {badge.image_url && (
         <img crossOrigin="anonymous"
           src={imageUrl(badge.image_url)}
-          alt={`${badge.name} badge`}
+          alt={`Slay the Spire 2 ${badge.name} badge`}
           className="w-14 h-14 object-contain shrink-0"
           loading="lazy"
         />
@@ -177,10 +148,10 @@ function BadgeCard({ badge, lang, prefix }: { badge: Badge; lang: string; prefix
           <p className="text-xs text-[var(--text-muted)] mt-2">
             {[
               badge.tiered
-                ? `${badge.tiers.length} ${badge.tiers.length === 1 ? t("tier", lang) : t("tiers", lang)}`
+                ? `${badge.tiers.length} tier${badge.tiers.length === 1 ? "" : "s"}`
                 : null,
-              badge.requires_win ? t("requires win", lang) : null,
-              badge.multiplayer_only ? t("multiplayer only", lang) : null,
+              badge.requires_win ? "requires win" : null,
+              badge.multiplayer_only ? "multiplayer only" : null,
             ]
               .filter(Boolean)
               .join(" · ")}

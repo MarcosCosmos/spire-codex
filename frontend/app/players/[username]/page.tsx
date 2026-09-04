@@ -1,31 +1,29 @@
 import type { Metadata } from "next";
 import PlayerProfileClient from "./PlayerProfileClient";
-import { buildPageMetadata } from "@/lib/seo";
-import { getLangOrDefault } from "@/lib/languages";
-import { t } from "@/lib/ui-translations";
+import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
 
-type Props = { params: Promise<{ lang?: string; username: string }> };
-
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { lang: _lang, username } = await params;
-  const lang = getLangOrDefault(_lang);
+export async function generateMetadata({ params }: { params: Promise<{ username: string }> }): Promise<Metadata> {
+  const { username } = await params;
   const name = decodeURIComponent(username);
-  return buildPageMetadata({
-    lang: _lang,
-    path: `/players/${username}`,
-    title: `${name} - ${t("Player Profile", lang)}`,
-    description: `${name}${t("player_profile_description", lang)}`,
-    ogType: "profile",
-    // A profile aggregates the same English run data whatever the locale
-    // chrome, same reasoning as /runs/<hash>. Canonical folds back to
-    // English and the [lang] variant (see
-    // app/[lang]/players/[username]/page.tsx) adds noindex on top. Drop
-    // both once the chrome is genuinely localized.
-    offerLanguageAlternatives: false,
-  });
+  const title = `${name} - Player Profile | Spire Codex`;
+  const description = `${name}'s Slay the Spire 2 profile on Spire Codex: win rate and percentile, what kills them, campfire choices, card picks vs the community, and records.`;
+  return {
+    title,
+    description,
+    openGraph: {
+      type: "profile",
+      siteName: SITE_NAME,
+      url: `${SITE_URL}/players/${username}`,
+      title,
+      description,
+      images: [{ url: DEFAULT_OG_IMAGE }],
+    },
+    twitter: { card: "summary_large_image", title, description },
+    alternates: { canonical: `/players/${username}` },
+  };
 }
 
-export default async function PlayerPage({ params }: Props) {
+export default async function PlayerPage({ params }: { params: Promise<{ username: string }> }) {
   const { username } = await params;
   return <PlayerProfileClient username={decodeURIComponent(username)} />;
 }

@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import ModifierDetail from "./ModifierDetail";
-import { stripTags, stripTagsFlat, clipMetaDescription, buildPageMetadata } from "@/lib/seo";
-import { t } from "@/lib/ui-translations";
-import { getLangOrDefault, LANG_GAME_NAME, LANG_HREFLANG, isValidLang } from "@/lib/languages";
+import { stripTags, stripTagsFlat, clipMetaDescription, buildLanguageAlternates, DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
@@ -10,63 +8,61 @@ import { fetchEntityRes } from "@/lib/entity-fetch";
 
 const API_INTERNAL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-type Props = { params: Promise<{ lang?: string; id: string }> };
-
-function langPrefix(lang?: string): string {
-  return lang && isValidLang(lang) ? `/${lang}` : "";
-}
+type Props = { params: Promise<{ id: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id, lang: _lang } = await params;
-  const lang = getLangOrDefault(_lang);
+  const { id } = await params;
   try {
-    const res = await fetch(`${API_INTERNAL}/api/modifiers/${id}${lang ? `?lang=${lang}` : ""}`);
-    if (!res.ok) return { title: "Modifier Not Found" };
-    const entity = await res.json();
-    const desc = stripTagsFlat(entity.description || "");
-    const name = entity.name || id;
-    const gameName = LANG_GAME_NAME[lang];
-    const title = `${name} - ${t("Modifier", lang)}`;
-    const meta = buildPageMetadata({
-      lang: _lang,
-      path: `/modifiers/${id}`,
+    const res = await fetch(`${API_INTERNAL}/api/modifiers/${id}`);
+    if (!res.ok) return { title: "Modifier Not Found - Slay the Spire 2 (sts2) | Spire Codex" };
+    const modifier = await res.json();
+    const desc = stripTagsFlat(modifier.description || "");
+    const title = `${modifier.name} - Slay the Spire 2 Modifier | Spire Codex`;
+    const metaDesc = clipMetaDescription(
+      `${modifier.name} is a custom-run modifier in Slay the Spire 2 (sts2)${desc ? `: ${desc}` : "."}`,
+    );
+    return {
       title,
-      description: clipMetaDescription(`${gameName} custom-run modifier, ${name}${desc ? `: ${desc}` : ""}`),
-      ogType: "article",
-    });
-    return meta;
+      description: metaDesc,
+      openGraph: {
+        type: "article",
+        siteName: SITE_NAME,
+        url: `${SITE_URL}/modifiers/${id}`,
+        title,
+        description: metaDesc,
+        images: [{ url: DEFAULT_OG_IMAGE }],
+      },
+      twitter: { card: "summary_large_image", title, description: metaDesc },
+      alternates: { canonical: `/modifiers/${id}`, languages: buildLanguageAlternates(`/modifiers/${id}`) },
+    };
   } catch {
-    return { title: "Database" };
+    return { title: "Database - Slay the Spire 2 (sts2) | Spire Codex" };
   }
 }
 
 export default async function Page({ params }: Props) {
-  const { id, lang: _lang } = await params;
-  const lang = getLangOrDefault(_lang);
-  const prefix = langPrefix(_lang);
+  const { id } = await params;
   let jsonLd = null;
   let modifier = null;
   let apiUnreachable = false;
   try {
-    const res = await fetchEntityRes(`${API_INTERNAL}/api/modifiers/${id}${_lang ? `?lang=${_lang}` : ""}`);
+    const res = await fetchEntityRes(`${API_INTERNAL}/api/modifiers/${id}`);
     if (res.ok) {
       modifier = await res.json();
       const desc = stripTags(modifier.description || "");
-      const name = modifier.name || id;
       const detailJsonLd = buildDetailPageJsonLd({
-        name,
-        description: desc || `${name} modifier from Slay the Spire 2`,
-        path: `${prefix}/modifiers/${id}`,
+        name: modifier.name,
+        description: desc || `${modifier.name} modifier from Slay the Spire 2`,
+        path: `/modifiers/${id}`,
         category: "Modifier",
         breadcrumbs: [
-          { name: t("Home", lang), href: prefix || "/" },
-          { name: t("Reference", lang), href: `${prefix}/reference` },
-          { name, href: `${prefix}/modifiers/${id}` },
+          { name: "Home", href: "/" },
+          { name: "Reference", href: "/reference" },
+          { name: modifier.name, href: `/modifiers/${id}` },
         ],
-        inLanguage: LANG_HREFLANG[lang],
       });
       const faqQuestions = [
-        { question: `What does the ${name} modifier do in Slay the Spire 2?`, answer: desc || `${name} is a run modifier in Slay the Spire 2.` },
+        { question: `What does the ${modifier.name} modifier do in Slay the Spire 2?`, answer: desc || `${modifier.name} is a run modifier in Slay the Spire 2.` },
       ];
       jsonLd = [...detailJsonLd, buildFAQPageJsonLd(faqQuestions)];
     }
@@ -75,7 +71,7 @@ export default async function Page({ params }: Props) {
   }
   // Fail the render (500) instead of ISR-caching a contentless shell.
   if (apiUnreachable) throw new Error("entity API unreachable");
-  if (!modifier) redirectMissingEntity("modifiers", id, _lang);
+  if (!modifier) redirectMissingEntity("modifiers", id);
   return (
     <>
       {jsonLd && <JsonLd data={jsonLd} />}

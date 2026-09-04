@@ -6,24 +6,6 @@ import MerchantToc from "./MerchantToc";
 import "../card-revamp.css";
 import "../meta-extra.css";
 import "../relic-potion-extra.css";
-import type { Metadata } from "next";
-import { buildPageMetadata } from "@/lib/seo";
-import { getLangOrDefault, LANG_GAME_NAME } from "@/lib/languages";
-import { t } from "@/lib/ui-translations";
-
-type Props = { params: Promise<{ lang?: string }> };
-
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { lang: _lang } = await params;
-  const lang = getLangOrDefault(_lang);
-  const gameName = LANG_GAME_NAME[lang];
-  return buildPageMetadata({
-    lang: _lang,
-    path: "/merchant",
-    title: t("Merchant Guide", lang),
-    description: `Complete ${gameName} merchant price guide with card, relic, and potion costs, card removal pricing, and Fake Merchant relic details.`,
-  });
-}
 
 const API_INTERNAL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -139,57 +121,35 @@ const RARITY_COLOR: Record<string, string> = {
   Rare: "text-[var(--accent-gold)]",
 };
 
-interface Translations {
-  card_rarities?: Record<string, string>;
-  relic_rarities?: Record<string, string>;
-  potion_rarities?: Record<string, string>;
-}
-
-async function fetchTranslations(lang: string): Promise<Translations> {
-  try {
-    const res = await fetch(`${API_INTERNAL}/api/translations?lang=${lang}`, { next: { revalidate: 3600 } });
-    if (res.ok) return await res.json();
-  } catch {}
-  return {};
-}
-
-export default async function MerchantPage({ params }: Props) {
-  const { lang: _lang } = await params;
-  const lang = getLangOrDefault(_lang);
-  const gameName = LANG_GAME_NAME[lang];
-  const prefix = _lang ? `/${_lang}` : "";
-
-  const [cfg, tr] = await Promise.all([fetchMerchantConfig(), fetchTranslations(lang)]);
-  const cr = (r: string) => tr.card_rarities?.[r] ?? r;
-  const rr = (r: string) => tr.relic_rarities?.[r] ?? r;
-  const pr = (r: string) => tr.potion_rarities?.[r] ?? r;
+export default async function MerchantPage() {
+  const cfg = await fetchMerchantConfig();
 
   const jsonLd = [
     ...buildDetailPageJsonLd({
       name: "Merchant Guide",
-      description: `Complete ${gameName} merchant price guide with card, relic, and potion costs, card removal pricing, and Fake Merchant relic details.`,
-      path: `${prefix}/merchant`,
+      description: "Complete Slay the Spire 2 (sts2) merchant price guide with card, relic, and potion costs, card removal pricing, and Fake Merchant relic details.",
+      path: "/merchant",
       category: "Guide",
       breadcrumbs: [
-        { name: t("Home", lang), href: prefix || "/" },
-        { name: t("Merchant Guide", lang), href: `${prefix}/merchant` },
+        { name: "Home", href: "/" },
+        { name: "Merchant Guide", href: "/merchant" },
       ],
     }),
     buildFAQPageJsonLd([
       {
-        question: `How much do cards cost at the merchant in ${gameName}?`,
+        question: "How much do cards cost at the merchant in Slay the Spire 2?",
         answer: `Common cards cost ${cfg.cards.by_rarity.Common.min}-${cfg.cards.by_rarity.Common.max} gold, Uncommon ${cfg.cards.by_rarity.Uncommon.min}-${cfg.cards.by_rarity.Uncommon.max} gold, Rare ${cfg.cards.by_rarity.Rare.min}-${cfg.cards.by_rarity.Rare.max} gold. Colorless cards have a ${Math.round((cfg.cards.colorless_markup - 1) * 100)}% markup. One random card is on sale for half price.`,
       },
       {
-        question: `How much do relics cost at the shop in ${gameName}?`,
+        question: "How much do relics cost at the shop in Slay the Spire 2?",
         answer: `Common relics cost ${cfg.relics.by_rarity.Common.min}-${cfg.relics.by_rarity.Common.max} gold, Uncommon ${cfg.relics.by_rarity.Uncommon.min}-${cfg.relics.by_rarity.Uncommon.max} gold, Rare ${cfg.relics.by_rarity.Rare.min}-${cfg.relics.by_rarity.Rare.max} gold, and Shop relics ${cfg.relics.by_rarity.Shop.min}-${cfg.relics.by_rarity.Shop.max} gold. Major Update #1 (v0.103.2) reduced every relic base price by 25 gold.`,
       },
       {
-        question: `How much does card removal cost in ${gameName}?`,
+        question: "How much does card removal cost in Slay the Spire 2?",
         answer: `Card removal starts at ${cfg.card_removal.base_cost} gold and increases by ${cfg.card_removal.price_increase} gold each time you use it. At Ascension 6 and above, the Inflation modifier raises the base to ${cfg.card_removal.inflation_ascension.base_cost} gold and the increment to ${cfg.card_removal.inflation_ascension.price_increase} gold (${cfg.card_removal.inflation_ascension.base_cost}, ${cfg.card_removal.inflation_ascension.base_cost + cfg.card_removal.inflation_ascension.price_increase}, ${cfg.card_removal.inflation_ascension.base_cost + 2 * cfg.card_removal.inflation_ascension.price_increase}, ...).`,
       },
       {
-        question: `What is the Fake Merchant in ${gameName}?`,
+        question: "What is the Fake Merchant in Slay the Spire 2?",
         answer: `The Fake Merchant is an event that sells counterfeit versions of popular relics for only ${cfg.fake_merchant.relic_cost} gold each. These fakes have weaker effects than the originals.`,
       },
     ]),
@@ -236,22 +196,22 @@ export default async function MerchantPage({ params }: Props) {
               <span>&middot;</span>
               <span>Economy</span>
             </p>
-            <h1>{t("Merchant Guide", lang)}</h1>
+            <h1>Merchant Guide</h1>
             <p className="lede">
-              {t("merchant_tagline", lang)}
+              All merchant pricing extracted from the game source code. Prices vary within the listed ranges due to a per-seed random multiplier.
             </p>
           </div>
 
           {/* Sticky ToC */}
           <MerchantToc
             items={[
-              { id: "shop-inventory", label: t("Shop Inventory", lang) },
-              { id: "card-prices", label: t("Card Prices", lang) },
-              { id: "relic-prices", label: t("Relic Prices", lang) },
-              { id: "potion-prices", label: t("Potion Prices", lang) },
-              { id: "card-removal", label: t("Card Removal", lang) },
-              { id: "fake-merchant", label: t("Fake Merchant", lang) },
-              { id: "technical-notes", label: t("Technical Notes", lang) },
+              { id: "shop-inventory", label: "Shop Inventory" },
+              { id: "card-prices", label: "Card Prices" },
+              { id: "relic-prices", label: "Relic Prices" },
+              { id: "potion-prices", label: "Potion Prices" },
+              { id: "card-removal", label: "Card Removal" },
+              { id: "fake-merchant", label: "Fake Merchant" },
+              { id: "technical-notes", label: "Technical Notes" },
             ]}
           />
 
@@ -321,7 +281,7 @@ export default async function MerchantPage({ params }: Props) {
                     const saleMax = Math.round(r.max / cfg.cards.on_sale_divisor);
                     return (
                       <tr key={rarity} className={i < arr.length - 1 ? "border-b border-[var(--border-subtle)]/50" : ""}>
-                        <td className={`p-3 ${RARITY_COLOR[rarity] ?? "text-[var(--text-secondary)]"}`}>{cr(rarity)}</td>
+                        <td className={`p-3 ${RARITY_COLOR[rarity] ?? "text-[var(--text-secondary)]"}`}>{rarity}</td>
                         <td className="p-3 text-right text-[var(--text-primary)]">{r.base}</td>
                         <td className="p-3 text-right text-[var(--accent-gold)]">{r.min}–{r.max}</td>
                         <td className="p-3 text-right text-[var(--text-secondary)]">{colorlessMin}–{colorlessMax}</td>
@@ -355,7 +315,7 @@ export default async function MerchantPage({ params }: Props) {
                     const r = cfg.relics.by_rarity[rarity];
                     return (
                       <tr key={rarity} className={i < arr.length - 1 ? "border-b border-[var(--border-subtle)]/50" : ""}>
-                        <td className={`p-3 ${RARITY_COLOR[rarity] ?? "text-[var(--text-secondary)]"}`}>{rr(rarity)}</td>
+                        <td className={`p-3 ${RARITY_COLOR[rarity] ?? "text-[var(--text-secondary)]"}`}>{rarity}</td>
                         <td className="p-3 text-right text-[var(--text-primary)]">{r.base}</td>
                         <td className="p-3 text-right text-[var(--accent-gold)]">{r.min}–{r.max}</td>
                         <td className="p-3 text-right text-[var(--text-muted)]">×{cfg.relics.variance.min}–{cfg.relics.variance.max}</td>
@@ -387,7 +347,7 @@ export default async function MerchantPage({ params }: Props) {
                     const r = cfg.potions.by_rarity[rarity];
                     return (
                       <tr key={rarity} className={i < arr.length - 1 ? "border-b border-[var(--border-subtle)]/50" : ""}>
-                        <td className={`p-3 ${RARITY_COLOR[rarity] ?? "text-[var(--text-secondary)]"}`}>{pr(rarity)}</td>
+                        <td className={`p-3 ${RARITY_COLOR[rarity] ?? "text-[var(--text-secondary)]"}`}>{rarity}</td>
                         <td className="p-3 text-right text-[var(--text-primary)]">{r.base}</td>
                         <td className="p-3 text-right text-[var(--accent-gold)]">{r.min}–{r.max}</td>
                       </tr>
@@ -520,14 +480,14 @@ export default async function MerchantPage({ params }: Props) {
               crossOrigin="anonymous"
             />
             <div className="facts">
-              <div className="fh">{t("At a glance", lang)}</div>
+              <div className="fh">At a glance</div>
               <dl>
-                <div className="frow"><dt>{t("Cards from", lang)}</dt><dd>{coin}{cardsFrom}g</dd></div>
-                <div className="frow"><dt>{t("Relics from", lang)}</dt><dd>{coin}{relicsFrom}g</dd></div>
-                <div className="frow"><dt>{t("Potions from", lang)}</dt><dd>{coin}{potionsFrom}g</dd></div>
-                <div className="frow"><dt>{t("Card removal", lang)}</dt><dd>{coin}{cardRemovalFrom}g</dd></div>
-                <div className="frow"><dt>{t("Colorless markup", lang)}</dt><dd>+{colorlessMarkupPct}%</dd></div>
-                <div className="frow"><dt>{t("On sale", lang)}</dt><dd>{onSalePct}% off</dd></div>
+                <div className="frow"><dt>Cards from</dt><dd>{coin}{cardsFrom}g</dd></div>
+                <div className="frow"><dt>Relics from</dt><dd>{coin}{relicsFrom}g</dd></div>
+                <div className="frow"><dt>Potions from</dt><dd>{coin}{potionsFrom}g</dd></div>
+                <div className="frow"><dt>Card removal</dt><dd>{coin}{cardRemovalFrom}g</dd></div>
+                <div className="frow"><dt>Colorless markup</dt><dd>+{colorlessMarkupPct}%</dd></div>
+                <div className="frow"><dt>On sale</dt><dd>{onSalePct}% off</dd></div>
               </dl>
             </div>
           </div>

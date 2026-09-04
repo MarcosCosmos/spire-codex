@@ -1,24 +1,26 @@
 import type { Metadata } from "next";
-import { buildPageMetadata } from "@/lib/seo";
-import { getLangOrDefault, LANG_NAMES } from "@/lib/languages";
-import { t } from "@/lib/ui-translations";
+import { SITE_NAME, SITE_URL, DEFAULT_OG_IMAGE } from "@/lib/seo";
 import PrivacyBody from "./PrivacyBody";
 
-type Props = { params: Promise<{ lang?: string }> };
+const title = `Privacy Policy | ${SITE_NAME}`;
+const description =
+  "How Spire Codex collects, uses, and retains data submitted through the website, API, and Overwolf overlay.";
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { lang: _lang } = await params;
-  const lang = getLangOrDefault(_lang);
-  const nativeName = LANG_NAMES[lang];
-  return buildPageMetadata({
-    lang: _lang,
-    path: "/privacy",
-    title: t("Privacy Policy", lang),
-    description: `${t("How Spire Codex collects, uses, and retains data submitted through the website, API, and Overwolf overlay.", lang)} ${nativeName}.`,
-  });
-}
+export const metadata: Metadata = {
+  title,
+  description,
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    url: `${SITE_URL}/privacy`,
+    title,
+    description,
+    images: [{ url: DEFAULT_OG_IMAGE }],
+  },
+  twitter: { card: "summary_large_image", title, description },
+  alternates: { canonical: "/privacy" },
+};
 
-export default async function PrivacyPage({ params }: Props) {
-  const { lang } = await params;
-  return <PrivacyBody lang={getLangOrDefault(lang)} />;
+export default function PrivacyPage() {
+  return <PrivacyBody lang="eng" />;
 }

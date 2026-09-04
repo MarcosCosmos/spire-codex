@@ -2,9 +2,7 @@ import type { Metadata } from "next";
 import CardDetail from "./CardDetail";
 import type { EntityStats } from "@/app/components/EntityRunStats";
 import { fetchEntityStats } from "@/lib/entity-stats";
-import { stripTags, stripTagsFlat, clipMetaDescription, buildPageMetadata } from "@/lib/seo";
-import { getLangOrDefault, LANG_GAME_NAME, LANG_HREFLANG, isValidLang } from "@/lib/languages";
-import { t } from "@/lib/ui-translations";
+import { stripTags, stripTagsFlat, clipMetaDescription, buildLanguageAlternates, SITE_NAME, SITE_URL } from "@/lib/seo";
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
@@ -24,87 +22,68 @@ export const revalidate = 3600;
 const API_INTERNAL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const API_PUBLIC = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_API_URL || "";
 
-type Props = {
-  params: Promise<{ lang?: string; id: string }>;
-  searchParams?: Promise<{ channel?: string }>;
-};
+type Props = { params: Promise<{ id: string }> };
 
-function langPrefix(lang?: string): string {
-  return lang && isValidLang(lang) ? `/${lang}` : "";
-}
-
-/** The /beta rewrites inject ?channel=beta; forward it to the API. */
-async function channelQS(searchParams: Props["searchParams"]): Promise<string> {
-  const channel = (await searchParams)?.channel;
-  return channel === "beta" ? "&channel=beta" : "";
-}
-
-/**
- * Shared with app/[lang]/cards/[id]/page.tsx, which re-exports this
- * directly, so card metadata logic exists in exactly one place.
- * `searchParams.channel` forwards the /beta rewrite's `&channel=beta`.
- */
-export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
-  const { id, lang: _lang } = await params;
-  const lang = getLangOrDefault(_lang);
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { id } = await params;
   try {
-    const extraQs = await channelQS(searchParams);
-    const qs = _lang ? `?lang=${_lang}${extraQs}` : extraQs ? `?${extraQs.slice(1)}` : "";
-    const res = await fetch(`${API_INTERNAL}/api/cards/${id}${qs}`, _lang ? undefined : { next: { revalidate: 3600 } });
-    if (!res.ok) return { title: "Card Not Found" };
+    const res = await fetch(`${API_INTERNAL}/api/cards/${id}`, {
+      next: { revalidate: 3600 },
+    });
+    if (!res.ok) return { title: "Card Not Found - Slay the Spire 2 (sts2) | Spire Codex" };
     const card = await res.json();
-    const gameName = LANG_GAME_NAME[lang];
+    const desc = stripTags(card.description || "");
     const color = (card.color || "").replace(/^\w/, (c: string) => c.toUpperCase());
-    // card.rarity / card.type already come back localized from the API.
-    const title = `${card.name} - ${card.rarity} ${card.type}`;
+    const title = `${card.name} - Slay the Spire 2 ${card.rarity} ${card.type} | Spire Codex`;
     const descFlat = stripTagsFlat(card.description || "");
     const keywords = card.keywords?.length ? ` Keywords: ${card.keywords.join(", ")}.` : "";
     const metaDesc = clipMetaDescription(
-      `${gameName}, ${card.name} (${card.cost ?? "X"}-cost ${card.rarity} ${card.type}, ${color}). ${descFlat}${keywords}`,
+      `${card.name} is a ${card.cost ?? "X"}-cost ${color} ${card.rarity} ${card.type} card in Slay the Spire 2 (sts2). ${descFlat}${keywords}`,
     );
-    // Full game-rendered card (base + upgraded) as the share image, in this language.
-    const ogImages = cardOgImages(card, lang);
-    const meta = buildPageMetadata({
-      lang: _lang,
-      path: `/cards/${id}`,
+    // Full game-rendered card (base + upgraded) as the share image, English.
+    const ogImages = cardOgImages(card, "eng");
+    return {
       title,
       description: metaDesc,
-      ogType: "article",
-    });
-    return { ...meta, openGraph: { ...meta.openGraph, images: ogImages } };
+      openGraph: {
+        type: "article",
+        siteName: SITE_NAME,
+        url: `${SITE_URL}/cards/${id}`,
+        title,
+        description: metaDesc,
+        images: ogImages,
+      },
+      twitter: { card: "summary_large_image", title, description: metaDesc, images: ogImages.map((i) => i.url) },
+      alternates: { canonical: `/cards/${id}`, languages: buildLanguageAlternates(`/cards/${id}`) },
+    };
   } catch {
-    return { title: "Database" };
+    return { title: "Database - Slay the Spire 2 (sts2) | Spire Codex" };
   }
 }
 
-export default async function Page({ params, searchParams }: Props) {
-  const { id, lang: _lang } = await params;
-  const lang = getLangOrDefault(_lang);
-  const prefix = langPrefix(_lang);
-  const qs = await channelQS(searchParams);
+export default async function Page({ params }: Props) {
+  const { id } = await params;
   let jsonLd = null;
   let card = null;
   let apiUnreachable = false;
   try {
-    const res = await fetchEntityRes(
-      `${API_INTERNAL}/api/cards/${id}${_lang ? `?lang=${_lang}${qs}` : qs ? `?${qs.slice(1)}` : ""}`,
-      _lang ? undefined : { next: { revalidate: 3600 } },
-    );
+    const res = await fetchEntityRes(`${API_INTERNAL}/api/cards/${id}`, {
+      next: { revalidate: 3600 },
+    });
     if (res.ok) {
       card = await res.json();
       const desc = stripTags(card.description || "");
       const detailJsonLd = buildDetailPageJsonLd({
         name: card.name,
         description: desc || `${card.name} card from Slay the Spire 2`,
-        path: `${prefix}/cards/${id}`,
-        imageUrl: cardOgImages(card, lang)[0]?.url,
+        path: `/cards/${id}`,
+        imageUrl: cardOgImages(card, "eng")[0]?.url,
         category: "Card",
         breadcrumbs: [
-          { name: t("Home", lang), href: prefix || "/" },
-          { name: t("Cards", lang), href: `${prefix}/cards` },
-          { name: card.name, href: `${prefix}/cards/${id}` },
+          { name: "Home", href: "/" },
+          { name: "Cards", href: "/cards" },
+          { name: card.name, href: `/cards/${id}` },
         ],
-        inLanguage: LANG_HREFLANG[lang],
       });
       const costText = card.is_x_cost ? "X energy" : card.is_x_star_cost ? "X stars" : card.star_cost ? `${card.star_cost} star(s)` : `${card.cost} energy`;
       const faqQuestions = [
@@ -128,7 +107,7 @@ export default async function Page({ params, searchParams }: Props) {
   // link equity and humans land on something useful.
   // Fail the render (500) instead of ISR-caching a contentless shell.
   if (apiUnreachable) throw new Error("entity API unreachable");
-  if (!card) redirectMissingEntity("cards", id, _lang);
+  if (!card) redirectMissingEntity("cards", id);
   // Server-render the community stats into the HTML (unique, crawlable data).
   const initialStats: EntityStats | null = card ? await fetchEntityStats("cards", id) : null;
   return (

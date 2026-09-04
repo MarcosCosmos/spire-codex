@@ -1,6 +1,63 @@
-export { generateMetadata, default } from "@/app/community-stats/page";
+import type { Metadata } from "next";
+import { CommunityStatsBody } from "@/app/community-stats/CommunityStatsBody";
+import { normalizeBracket } from "@/lib/content-brackets";
+import {
+  isValidLang,
+  LANG_GAME_NAME,
+  LANG_NAMES,
+  LANG_HREFLANG,
+  type LangCode,
+} from "@/lib/languages";
+import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL, buildLanguageAlternates } from "@/lib/seo";
+import { t } from "@/lib/ui-translations";
 
-// Redeclared rather than re-exported: Next only accepts a statically
-// analyzable literal for route segment config. Keep in sync with the
-// canonical module this re-exports.
+// Render per request like the English route (avoids a build-time empty bake
+// when the backend is unreachable); the shared body's fetch stays cached.
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ lang: string }>;
+}): Promise<Metadata> {
+  const { lang } = await params;
+  if (!isValidLang(lang)) return {};
+
+  const langCode = lang as LangCode;
+  const gameName = LANG_GAME_NAME[langCode];
+  const nativeName = LANG_NAMES[langCode];
+  const title = `${gameName} ${t("Community Stats", lang)} | Spire Codex (${nativeName})`;
+  const description = `Fun ${gameName} community stats: how players vote at every event, what kills runs most, win rates by ascension and character, and run records, all from community-submitted runs. ${nativeName}.`;
+
+  const languages = buildLanguageAlternates(`/community-stats`);
+
+  return {
+    title,
+    description,
+    openGraph: {
+      type: "website",
+      siteName: SITE_NAME,
+      url: `${SITE_URL}/${lang}/community-stats`,
+      title,
+      description,
+      locale: LANG_HREFLANG[langCode],
+      images: [{ url: DEFAULT_OG_IMAGE }],
+    },
+    twitter: { card: "summary_large_image", title, description },
+    alternates: { canonical: `/${lang}/community-stats`, languages },
+  };
+}
+
+export default async function LangCommunityStatsPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ lang: string }>;
+  searchParams: Promise<{ bracket?: string }>;
+}) {
+  const { lang } = await params;
+  if (!isValidLang(lang)) return null;
+  const sp = await searchParams;
+  const bracket = normalizeBracket(sp.bracket);
+  return <CommunityStatsBody lang={lang} bracket={bracket} />;
+}

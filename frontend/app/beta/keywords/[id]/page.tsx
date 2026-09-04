@@ -26,8 +26,8 @@ async function fetchBetaKeywordOrGlossary(id: string) {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const result = await fetchBetaKeywordOrGlossary(id);
-  if (!result) return { title: "Term Not Found - Beta" };
-  return { title: `${result.data.name} (Beta) - Keyword` };
+  if (!result) return { title: "Term Not Found - Beta | Spire Codex" };
+  return { title: `${result.data.name} (Beta) - Slay the Spire 2 Keyword | Spire Codex` };
 }
 
 export default async function Page({ params }: Props) {

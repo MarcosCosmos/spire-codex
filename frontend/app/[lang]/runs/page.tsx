@@ -1,14 +1,11 @@
-import type { Metadata } from "next";
-import {
-  generateMetadata as baseGenerateMetadata,
-  default as BrowseRunsPage,
-} from "@/app/runs/page";
+import { permanentRedirect } from "next/navigation";
 
-type Props = { params: Promise<{ lang?: string }> };
+export const dynamic = "force-dynamic";
 
-export async function generateMetadata(props: Props): Promise<Metadata> {
-  const meta = await baseGenerateMetadata(props);
-  return { ...meta, robots: { index: false, follow: false } };
+// /<lang>/runs is a localized chrome wrapper around the same Browse Runs
+// data as /runs. Google was bucketing the 13 localized variants as
+// duplicates of the canonical English page. Collapse them with a 301 so
+// the canonical /runs absorbs all the equity.
+export default function LangRunsRedirect() {
+  permanentRedirect("/runs");
 }
-
-export default BrowseRunsPage;

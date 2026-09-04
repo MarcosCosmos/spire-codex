@@ -23,12 +23,12 @@ interface ScoresMap {
 }
 
 export const metadata: Metadata = {
-  title: `Potion Tier List - All 63 Potions Ranked`,
+  title: `Potion Tier List - All 63 Potions Ranked - Slay the Spire 2 (sts2) | ${SITE_NAME}`,
   description:
     "Every Slay the Spire 2 (sts2) potion ranked S through F by community win rate. Codex Score with Bayesian shrinkage. Updated every 30 minutes.",
   alternates: { canonical: `${SITE_URL}/tier-list/potions` },
   openGraph: {
-    title: `Potion Tier List`,
+    title: `Potion Tier List - Slay the Spire 2 (sts2) | ${SITE_NAME}`,
     description: "Every Slay the Spire 2 potion ranked S through F by community win-rate data.",
     url: `${SITE_URL}/tier-list/potions`,
     siteName: SITE_NAME,
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: `Potion Tier List`,
+    title: `Potion Tier List - Slay the Spire 2 (sts2) | ${SITE_NAME}`,
     description: "Every Slay the Spire 2 potion ranked S through F by community win-rate data.",
   },
 };

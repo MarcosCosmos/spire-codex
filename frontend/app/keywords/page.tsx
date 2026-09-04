@@ -2,24 +2,6 @@ import Link from "next/link";
 import JsonLd from "@/app/components/JsonLd";
 import RichDescription from "@/app/components/RichDescription";
 import { buildBreadcrumbJsonLd, buildCollectionPageJsonLd } from "@/lib/jsonld";
-import type { Metadata } from "next";
-import { buildPageMetadata } from "@/lib/seo";
-import { getLangOrDefault, LANG_GAME_NAME } from "@/lib/languages";
-import { t } from "@/lib/ui-translations";
-
-type Props = { params: Promise<{ lang?: string }> };
-
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { lang: _lang } = await params;
-  const lang = getLangOrDefault(_lang);
-  const gameName = LANG_GAME_NAME[lang];
-  return buildPageMetadata({
-    lang: _lang,
-    path: "/keywords",
-    title: `Card ${t("Keywords", lang)}`,
-    description: `${gameName} Card ${t("Keywords", lang)}. Exhaust, Ethereal, Innate, Retain, Sly, Eternal, and more, with all cards using each.`,
-  });
-}
 
 // force-dynamic so the page SSRs at runtime instead of getting baked
 // into the Docker image at build time. The build container has no
@@ -59,35 +41,24 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 const CATEGORY_ORDER = ["combat", "mechanics", "zones", "rooms", "progression"];
 
-export default async function KeywordsPage({ params }: Props) {
-  const { lang: _lang } = await params;
-  const lang = getLangOrDefault(_lang);
-  const gameName = LANG_GAME_NAME[lang];
-  const prefix = _lang ? `/${_lang}` : "";
-
+export default async function KeywordsPage() {
   let keywords: Keyword[] = [];
   let glossary: GlossaryTerm[] = [];
   try {
     const [kwRes, glRes] = await Promise.all([
-      fetch(`${API}/api/keywords?lang=${lang}`, { next: { revalidate: 3600 } }),
-      fetch(`${API}/api/glossary?lang=${lang}`, { next: { revalidate: 3600 } }),
+      fetch(`${API}/api/keywords`, { next: { revalidate: 3600 } }),
+      fetch(`${API}/api/glossary`, { next: { revalidate: 3600 } }),
     ]);
     if (kwRes.ok) keywords = await kwRes.json();
     if (glRes.ok) glossary = await glRes.json();
   } catch {}
 
-  const jsonLd = [
-    buildBreadcrumbJsonLd([
-      { name: t("Home", lang), href: prefix || "/" },
-      { name: `Card ${t("Keywords", lang)}`, href: `${prefix}/keywords` },
-    ]),
-    buildCollectionPageJsonLd({
-      name: `${gameName} Card ${t("Keywords", lang)}`,
-      description: `All card keywords in ${gameName}.`,
-      path: `${prefix}/keywords`,
-      items: keywords.map((k) => ({ name: k.name, path: `${prefix}/keywords/${k.id.toLowerCase()}` })),
-    }),
-  ];
+  const jsonLd = buildCollectionPageJsonLd({
+    name: "Slay the Spire 2 Keywords & Game Terms",
+    description: "All card keywords and game term definitions in Slay the Spire 2.",
+    path: "/keywords",
+    items: keywords.map((k) => ({ name: k.name, path: `/keywords/${k.id.toLowerCase()}` })),
+  });
 
   // Group glossary by category
   const grouped = new Map<string, GlossaryTerm[]>();
@@ -101,14 +72,14 @@ export default async function KeywordsPage({ params }: Props) {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <JsonLd data={jsonLd} />
       <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-2">
-        {t("Keywords & Game Terms", lang)}
+        Keywords & Game Terms
       </h1>
       <p className="text-[var(--text-secondary)] mb-8">
-        {t("keywords_tagline", lang)}
+        Keywords define special card behaviors. Game terms explain core mechanics referenced throughout Slay the Spire 2.
       </p>
 
       {/* Keywords */}
-      <h2 className="text-xl font-bold text-[var(--text-primary)] mb-4">{t("Card Keywords", lang)}</h2>
+      <h2 className="text-xl font-bold text-[var(--text-primary)] mb-4">Card Keywords</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-12">
         {keywords
           .filter((k) => k.id !== "PERIOD")
@@ -116,7 +87,7 @@ export default async function KeywordsPage({ params }: Props) {
             <Link
               prefetch={false}
               key={kw.id}
-              href={`${prefix}/keywords/${kw.id.toLowerCase()}`}
+              href={`/keywords/${kw.id.toLowerCase()}`}
               className="bg-[var(--bg-card)] rounded-xl border border-[var(--border-subtle)] p-5 hover:bg-[var(--bg-card-hover)] hover:border-[var(--border-accent)] transition-all"
             >
               <h3 className="text-lg font-semibold text-[var(--accent-gold)] mb-2">
@@ -130,7 +101,7 @@ export default async function KeywordsPage({ params }: Props) {
       </div>
 
       {/* Game Terms */}
-      <h2 id="game-terms" className="text-xl font-bold text-[var(--text-primary)] mb-4">{t("Game Terms", lang)}</h2>
+      <h2 id="game-terms" className="text-xl font-bold text-[var(--text-primary)] mb-4">Game Terms</h2>
       {CATEGORY_ORDER.map((cat) => {
         const terms = grouped.get(cat);
         if (!terms?.length) return null;
@@ -144,7 +115,7 @@ export default async function KeywordsPage({ params }: Props) {
                 <Link
                   prefetch={false}
                   key={term.id}
-                  href={`${prefix}/keywords/${term.id.toLowerCase()}`}
+                  href={`/keywords/${term.id.toLowerCase()}`}
                   className="bg-[var(--bg-card)] rounded-lg border border-[var(--border-subtle)] p-4 hover:bg-[var(--bg-card-hover)] hover:border-[var(--border-accent)] transition-all"
                 >
                   <h4 className="font-semibold text-[var(--accent-gold)] mb-1">

@@ -14,10 +14,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   try {
     const res = await fetch(`${API_INTERNAL}/api/epochs/${id}`);
-    if (!res.ok) return { title: "Epoch Not Found" };
+    if (!res.ok) return { title: "Epoch Not Found - Slay the Spire 2 (sts2) | Spire Codex" };
     const epoch = await res.json();
     const desc = stripTagsFlat(epoch.description || "");
-    const title = `Timeline - ${epoch.title}`;
+    const title = `Timeline - ${epoch.title} - Slay the Spire 2 (sts2) | Spire Codex`;
     const metaDesc = clipMetaDescription(
       `Slay the Spire 2 timeline epoch, ${epoch.title}${desc ? `: ${desc}` : ""}`,
     );
@@ -36,7 +36,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       alternates: { canonical: `/timeline/${id}`, languages: buildLanguageAlternates(`/timeline/${id}`) },
     };
   } catch {
-    return { title: "Database" };
+    return { title: "Database - Slay the Spire 2 (sts2) | Spire Codex" };
   }
 }
 

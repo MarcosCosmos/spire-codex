@@ -24,8 +24,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   try {
     const card = await fetchBetaCard(id);
-    if (!card) return { title: "Card Not Found - Beta" };
-    return { title: `${card.name} (Beta) - Card` };
+    if (!card) return { title: "Card Not Found - Beta | Spire Codex" };
+    return { title: `${card.name} (Beta) - Slay the Spire 2 Card | Spire Codex` };
   } catch {
     return { title: "Spire Codex" };
   }

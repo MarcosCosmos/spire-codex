@@ -29,25 +29,14 @@ interface CharacterNameRow {
   name: string;
 }
 
-const CHARACTERS = [
-  "Ironclad",
-  "Silent",
-  "Defect",
-  "Necrobinder",
-  "Regent",
-] as const;
+const CHARACTERS = ["Ironclad", "Silent", "Defect", "Necrobinder", "Regent"] as const;
 
 function cleanId(id: string): string {
-  return id.replace(
-    /^(CHARACTER|CARD|RELIC|ENCOUNTER|EVENT|MONSTER|ACT|POTION)\./,
-    "",
-  );
+  return id.replace(/^(CHARACTER|CARD|RELIC|ENCOUNTER|EVENT|MONSTER|ACT|POTION)\./, "");
 }
 
 function displayName(id: string): string {
-  return cleanId(id)
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+  return cleanId(id).replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function stripThe(name: string): string {
@@ -61,11 +50,7 @@ function formatTimeShort(s: number): string {
 
 // Parse an ascension value: "20" → exact, "3-4" → range, "3+" → min.
 // Tolerates the in-game "A10" spelling ("a10", "a3-a7").
-function parseAscension(value: string): {
-  exact?: number;
-  min?: number;
-  max?: number;
-} {
+function parseAscension(value: string): { exact?: number; min?: number; max?: number } {
   const v = value.trim().replace(/a(?=\d)/gi, "");
   if (!v) return {};
   const range = /^(\d+)\s*-\s*(\d+)$/.exec(v);
@@ -89,19 +74,7 @@ type Sort = "date" | "time_asc" | "time_desc" | "ascension_desc";
 // Parse `key:value` expressions out of a free-text query.
 // Returns extracted filters and the remaining free-text (after stripping
 // recognized key:value pairs).
-type QueryKey =
-  | "user"
-  | "seed"
-  | "char"
-  | "asc"
-  | "version"
-  | "mode"
-  | "result"
-  | "players"
-  | "card"
-  | "relic"
-  | "shop"
-  | "winrate";
+type QueryKey = "user" | "seed" | "char" | "asc" | "version" | "mode" | "result" | "players" | "card" | "relic" | "shop" | "winrate";
 
 function parseQuery(q: string): {
   filters: Partial<Record<QueryKey, string>>;
@@ -118,11 +91,7 @@ function parseQuery(q: string): {
     // Tolerate a space after the colon ("asc: 10"): a bare "key:" token
     // absorbs the next token as its value. Without this the pair fell
     // through to the username search and silently matched nothing.
-    if (
-      /^[a-z]+:$/i.test(tok) &&
-      tokens[i + 1] &&
-      !tokens[i + 1].includes(":")
-    ) {
+    if (/^[a-z]+:$/i.test(tok) && tokens[i + 1] && !tokens[i + 1].includes(":")) {
       tok = tok + tokens[i + 1];
       i++;
     }
@@ -141,12 +110,9 @@ function parseQuery(q: string): {
     else if (["mode", "gamemode"].includes(key)) filters.mode = value;
     else if (["result", "win"].includes(key)) filters.result = value;
     else if (["players", "p"].includes(key)) filters.players = value;
-    else if (["card", "cards"].includes(key))
-      filters.card = appendMulti(filters.card, value);
-    else if (["relic", "relics"].includes(key))
-      filters.relic = appendMulti(filters.relic, value);
-    else if (["shop", "bought", "buy"].includes(key))
-      filters.shop = appendMulti(filters.shop, value);
+    else if (["card", "cards"].includes(key)) filters.card = appendMulti(filters.card, value);
+    else if (["relic", "relics"].includes(key)) filters.relic = appendMulti(filters.relic, value);
+    else if (["shop", "bought", "buy"].includes(key)) filters.shop = appendMulti(filters.shop, value);
     else if (["winrate", "wr"].includes(key)) filters.winrate = value;
     else restTokens.push(tok);
   }
@@ -209,45 +175,27 @@ function BrowseRunsClientInner() {
 
   // Filters (mirror the previous browse tab, kept as controlled UI but
   // also derivable from the search expression)
-  const [character, setCharacter] = useState(
-    () => searchParams.get("character") || "",
-  );
+  const [character, setCharacter] = useState(() => searchParams.get("character") || "");
   const [win, setWin] = useState<WinFilter>(() => {
     const v = searchParams.get("win");
     return v === "true" || v === "false" ? v : "";
   });
   const [user, setUser] = useState(() => searchParams.get("username") || "");
   const [seed, setSeed] = useState(() => searchParams.get("seed") || "");
-  const [buildId, setBuildId] = useState(
-    () => searchParams.get("build_id") || "",
-  );
+  const [buildId, setBuildId] = useState(() => searchParams.get("build_id") || "");
   const [mode, setMode] = useState<Mode>(() => {
     const v = searchParams.get("players");
     return v === "single" || v === "multi" ? v : "";
   });
   const [gameMode, setGameMode] = useState<GameMode>(() => {
     const v = searchParams.get("game_mode");
-    if (
-      v === "daily" ||
-      v === "custom" ||
-      v === "standard" ||
-      v === "daily_today"
-    )
-      return v;
+    if (v === "daily" || v === "custom" || v === "standard" || v === "daily_today") return v;
     return "";
   });
-  const [ascension, setAscension] = useState(
-    () => searchParams.get("ascension") || "",
-  );
+  const [ascension, setAscension] = useState(() => searchParams.get("ascension") || "");
   const [sort, setSort] = useState<Sort>(() => {
     const v = searchParams.get("sort");
-    if (
-      v === "date" ||
-      v === "time_asc" ||
-      v === "time_desc" ||
-      v === "ascension_desc"
-    )
-      return v;
+    if (v === "date" || v === "time_asc" || v === "time_desc" || v === "ascension_desc") return v;
     return "date";
   });
   const [page, setPage] = useState(1);
@@ -265,9 +213,7 @@ function BrowseRunsClientInner() {
       .then((data) => {
         const filtered = (data.versions || [])
           .filter((v: string) => !v.toLowerCase().includes("nonreleased"))
-          .sort((a: string, b: string) =>
-            b.localeCompare(a, undefined, { numeric: true }),
-          );
+          .sort((a: string, b: string) => b.localeCompare(a, undefined, { numeric: true }));
         setVersions(filtered);
       })
       .catch(() => {});
@@ -291,29 +237,15 @@ function BrowseRunsClientInner() {
   // Merge query expression filters with UI filters, UI takes precedence
   // for values explicitly set, otherwise expression filters apply.
   const { filters: queryFilters, rest } = parseQuery(query);
-  const effectiveChar =
-    character || (queryFilters.char ? queryFilters.char.toUpperCase() : "");
-  const effectiveWin =
-    win ||
-    (queryFilters.result === "win"
-      ? "true"
-      : queryFilters.result === "loss"
-        ? "false"
-        : "");
+  const effectiveChar = character || (queryFilters.char ? queryFilters.char.toUpperCase() : "");
+  const effectiveWin = win || (queryFilters.result === "win" ? "true" : queryFilters.result === "loss" ? "false" : "");
   const effectiveUser = user || queryFilters.user || rest || "";
   const effectiveSeed = seed || queryFilters.seed || "";
   const effectiveBuildId = buildId || queryFilters.version || "";
   const effectiveAscension = ascension || queryFilters.asc || "";
-  const effectivePlayers =
-    mode ||
-    (queryFilters.players === "single" || queryFilters.players === "multi"
-      ? queryFilters.players
-      : "");
-  const effectiveGameMode =
-    gameMode ||
-    (queryFilters.mode === "daily" ||
-    queryFilters.mode === "custom" ||
-    queryFilters.mode === "standard"
+  const effectivePlayers = mode || (queryFilters.players === "single" || queryFilters.players === "multi" ? queryFilters.players : "");
+  const effectiveGameMode = gameMode ||
+    (queryFilters.mode === "daily" || queryFilters.mode === "custom" || queryFilters.mode === "standard"
       ? queryFilters.mode
       : "");
   const effectiveCard = queryFilters.card || "";
@@ -324,18 +256,7 @@ function BrowseRunsClientInner() {
   // Reset page when any filter changes
   useEffect(() => {
     setPage(1);
-  }, [
-    query,
-    character,
-    win,
-    user,
-    seed,
-    buildId,
-    mode,
-    gameMode,
-    ascension,
-    sort,
-  ]);
+  }, [query, character, win, user, seed, buildId, mode, gameMode, ascension, sort]);
 
   // Sync state to URL for shareable links
   useEffect(() => {
@@ -351,22 +272,9 @@ function BrowseRunsClientInner() {
     if (ascension) params.set("ascension", ascension);
     if (sort !== "date") params.set("sort", sort);
     const qs = params.toString();
-    const url = qs
-      ? `${window.location.pathname}?${qs}`
-      : window.location.pathname;
+    const url = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
     window.history.replaceState(null, "", url);
-  }, [
-    query,
-    character,
-    win,
-    user,
-    seed,
-    buildId,
-    mode,
-    gameMode,
-    ascension,
-    sort,
-  ]);
+  }, [query, character, win, user, seed, buildId, mode, gameMode, ascension, sort]);
 
   // Fetch runs
   useEffect(() => {
@@ -378,10 +286,7 @@ function BrowseRunsClientInner() {
     if (effectiveSeed) params.set("seed", effectiveSeed);
     if (effectiveBuildId) {
       if (effectiveBuildId.includes("-") && versions.length > 0) {
-        params.set(
-          "build_ids",
-          expandVersionRange(effectiveBuildId, versions).join(","),
-        );
+        params.set("build_ids", expandVersionRange(effectiveBuildId, versions).join(","));
       } else {
         params.set("build_id", effectiveBuildId);
       }
@@ -420,23 +325,7 @@ function BrowseRunsClientInner() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [
-    effectiveChar,
-    effectiveWin,
-    effectiveUser,
-    effectiveSeed,
-    effectiveBuildId,
-    effectivePlayers,
-    effectiveGameMode,
-    effectiveAscension,
-    effectiveCard,
-    effectiveRelic,
-    effectiveShop,
-    effectiveWinrate,
-    versions,
-    sort,
-    page,
-  ]);
+  }, [effectiveChar, effectiveWin, effectiveUser, effectiveSeed, effectiveBuildId, effectivePlayers, effectiveGameMode, effectiveAscension, effectiveCard, effectiveRelic, effectiveShop, effectiveWinrate, versions, sort, page]);
 
   function clearAll() {
     setQuery("");
@@ -452,49 +341,26 @@ function BrowseRunsClientInner() {
   }
 
   const hasAnyFilter =
-    query ||
-    character ||
-    win ||
-    user ||
-    seed ||
-    buildId ||
-    mode ||
-    gameMode ||
-    ascension ||
-    sort !== "date";
+    query || character || win || user || seed || buildId || mode || gameMode || ascension || sort !== "date";
 
   return (
     <div className="mx-auto max-w-[1400px] px-3 sm:px-5 py-6">
       <div className="flex items-end justify-between mb-4">
-        <h1 className="text-3xl font-bold text-[var(--accent-gold)]">
-          {t("Browse Runs", lang)}
-        </h1>
-        <Link
-          href={`${lp}/leaderboards`}
-          className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
-        >
+        <h1 className="text-3xl font-bold text-[var(--accent-gold)]">{t("Browse Runs", lang)}</h1>
+        <Link href={`${lp}/leaderboards`} className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
           {t("Leaderboards", lang)} →
         </Link>
       </div>
 
       <p className="text-sm text-[var(--text-secondary)] mb-4">
-        <span className="font-semibold text-[var(--text-primary)]">
-          Find any run.
-        </span>{" "}
-        Type filters into the search bar or use the dropdowns below. Combine
-        anything:{" "}
-        <code className="text-[var(--accent-gold)]">
-          char:ironclad asc:5-10 relic:akabeko
-        </code>{" "}
+        <span className="font-semibold text-[var(--text-primary)]">Find any run.</span>{" "}
+        Type filters into the search bar or use the dropdowns below. Combine anything:{" "}
+        <code className="text-[var(--accent-gold)]">char:ironclad asc:5-10 relic:akabeko</code>{" "}
         finds high-ascension Ironclad runs that had Akabeko. Use{" "}
-        <code className="text-[var(--accent-gold)]">card:bash,anger</code> to
-        require multiple cards,{" "}
-        <code className="text-[var(--accent-gold)]">asc:3-7</code> for a range,
-        and{" "}
-        <code className="text-[var(--accent-gold)]">
-          version:v0.104.0-v0.106.0
-        </code>{" "}
-        to span patches. Click any run to see the full breakdown.
+        <code className="text-[var(--accent-gold)]">card:bash,anger</code> to require multiple cards,{" "}
+        <code className="text-[var(--accent-gold)]">asc:3-7</code> for a range, and{" "}
+        <code className="text-[var(--accent-gold)]">version:v0.104.0-v0.106.0</code> to span patches.
+        Click any run to see the full breakdown.
       </p>
 
       {/* Search bar */}
@@ -507,16 +373,7 @@ function BrowseRunsClientInner() {
           className="w-full text-sm px-4 py-2.5 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-subtle)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-gold)]"
         />
         <p className="mt-1.5 text-[10px] text-[var(--text-tertiary)]">
-          Expressions: <code>user:name</code>, <code>char:ironclad</code>,{" "}
-          <code>asc:10</code> or <code>asc:3-7</code>,{" "}
-          <code>card:bash,anger</code>, <code>relic:burning_blood</code>{" "}
-          (combine for AND), <code>shop:orange_dough</code> (bought at a shop —
-          cards, relics, or potions), <code>winrate:50-70</code>,{" "}
-          <code>winrate:&gt;50</code>, or <code>winrate:100</code> (submitter
-          win rate, min 5 runs), <code>version:v0.106.0</code> or{" "}
-          <code>version:v0.104.0-v0.106.0</code>, <code>seed:abc</code>,{" "}
-          <code>mode:daily</code>, <code>result:win</code>,{" "}
-          <code>players:single</code>
+          Expressions: <code>user:name</code>, <code>char:ironclad</code>, <code>asc:10</code> or <code>asc:3-7</code>, <code>card:bash,anger</code>, <code>relic:burning_blood</code> (combine for AND), <code>shop:orange_dough</code> (bought at a shop — cards, relics, or potions), <code>winrate:50-70</code>, <code>winrate:&gt;50</code>, or <code>winrate:100</code> (submitter win rate, min 5 runs), <code>version:v0.106.0</code> or <code>version:v0.104.0-v0.106.0</code>, <code>seed:abc</code>, <code>mode:daily</code>, <code>result:win</code>, <code>players:single</code>
         </p>
       </div>
 
@@ -529,9 +386,7 @@ function BrowseRunsClientInner() {
         >
           <option value="">{t("All Characters", lang)}</option>
           {CHARACTERS.map((ch) => (
-            <option key={ch} value={ch.toUpperCase()}>
-              {stripThe(charName(ch))}
-            </option>
+            <option key={ch} value={ch.toUpperCase()}>{stripThe(charName(ch))}</option>
           ))}
         </select>
 
@@ -599,9 +454,7 @@ function BrowseRunsClientInner() {
           >
             <option value="">{t("All Versions", lang)}</option>
             {versions.map((v) => (
-              <option key={v} value={v}>
-                {v}
-              </option>
+              <option key={v} value={v}>{v}</option>
             ))}
           </select>
         )}
@@ -634,16 +487,11 @@ function BrowseRunsClientInner() {
       {loading ? (
         <div className="space-y-2">
           {[...Array(8)].map((_, i) => (
-            <div
-              key={i}
-              className="h-14 bg-[var(--bg-card)] rounded-lg animate-pulse"
-            />
+            <div key={i} className="h-14 bg-[var(--bg-card)] rounded-lg animate-pulse" />
           ))}
         </div>
       ) : runs.length === 0 ? (
-        <p className="text-center py-8 text-[var(--text-muted)]">
-          {t("No runs found.", lang)}
-        </p>
+        <p className="text-center py-8 text-[var(--text-muted)]">{t("No runs found.", lang)}</p>
       ) : (
         <>
           <div className="space-y-2">
@@ -657,9 +505,7 @@ function BrowseRunsClientInner() {
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                   <span
                     className={`text-sm font-medium shrink-0 ${
-                      r.win
-                        ? "text-[var(--color-silent)]"
-                        : "text-[var(--color-ironclad)]"
+                      r.win ? "text-[var(--color-silent)]" : "text-[var(--color-ironclad)]"
                     }`}
                   >
                     {r.win ? "W" : r.was_abandoned ? "A" : "L"}
@@ -667,20 +513,14 @@ function BrowseRunsClientInner() {
                   <span className="text-sm text-[var(--text-primary)] truncate">
                     {stripThe(charName(r.character))}
                   </span>
-                  <span className="text-xs text-[var(--text-muted)] shrink-0">
-                    A{r.ascension}
-                  </span>
+                  <span className="text-xs text-[var(--text-muted)] shrink-0">A{r.ascension}</span>
                   {r.username && (
-                    <span className="text-xs text-[var(--accent-gold)] truncate">
-                      {r.username}
-                    </span>
+                    <span className="text-xs text-[var(--accent-gold)] truncate">{r.username}</span>
                   )}
                 </div>
                 <div className="flex items-center gap-3 sm:gap-4 text-xs text-[var(--text-muted)] shrink-0">
                   <span className="hidden sm:inline">{r.deck_size} cards</span>
-                  <span className="hidden sm:inline">
-                    {r.relic_count} relics
-                  </span>
+                  <span className="hidden sm:inline">{r.relic_count} relics</span>
                   <span>{r.floors_reached}f</span>
                   <span>{formatTimeShort(r.run_time)}</span>
                 </div>
@@ -727,14 +567,11 @@ export default function BrowseRunsClient() {
   // language context, so the fallback h1 is translated too (prerender
   // emits the English default; hydrated viewers see their language).
   const { lang } = useLanguage();
-  console.log("inferred lang", lang, "from context");
   return (
     <Suspense
       fallback={
         <div className="mx-auto max-w-[1400px] px-3 sm:px-5 py-6">
-          <h1 className="text-3xl font-bold text-[var(--accent-gold)]">
-            {t("Browse Runs", lang)}
-          </h1>
+          <h1 className="text-3xl font-bold text-[var(--accent-gold)]">{t("Browse Runs", lang)}</h1>
         </div>
       }
     >

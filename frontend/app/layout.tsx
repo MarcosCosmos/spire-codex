@@ -15,13 +15,7 @@ import { BetaVersionProvider } from "./contexts/BetaVersionContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ToastProvider } from "./components/Toast";
 import AuthNotice from "./components/AuthNotice";
-import {
-  SITE_NAME,
-  SITE_URL,
-  DEFAULT_OG_IMAGE,
-  TITLE_TEMPLATE,
-  TITLE_DEFAULT,
-} from "@/lib/seo";
+import { SITE_NAME, SITE_URL, DEFAULT_OG_IMAGE } from "@/lib/seo";
 
 // Self-hosted Umami analytics. Both values are public-by-design, the
 // browser fetches the script + sends the website ID on every page
@@ -72,16 +66,9 @@ const kreon = Kreon({
   weight: ["300", "400", "500", "600", "700"],
 });
 
-// The site title suffix lives in lib/seo.ts and is applied here. Pages
-// export only their own segment ("Relics") and the template appends the
-// rest, so a page cannot get the suffix wrong because it never writes one.
-//
-// `openGraph.title` needs its own copy: Next tracks the document title,
-// og:title and twitter:title as three independent template channels, so
-// `title.template` alone does not reach og.
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: { default: TITLE_DEFAULT, template: TITLE_TEMPLATE },
+  title: `Database - Slay the Spire 2 (sts2) | ${SITE_NAME}`,
   description:
     "Fan-built database for Slay the Spire 2 (sts2). Browse cards, relics, monsters, potions, events, powers, plus run stats and tier lists.",
   icons: {
@@ -93,22 +80,15 @@ export const metadata: Metadata = {
     apple: "/apple-touch-icon.png",
   },
   openGraph: {
-    title: { default: TITLE_DEFAULT, template: TITLE_TEMPLATE },
     type: "website",
-    siteName: SITE_NAME,
+    siteName: "Spire Codex",
     // Default social card for every page that doesn't set its own
     // `openGraph.images`. Home pages override to the bare logo;
     // entity detail pages override to the entity sprite.
     images: [{ url: DEFAULT_OG_IMAGE, width: 3000, height: 3000 }],
   },
-  // Load-bearing: pages deliberately export no `twitter` key at all, so
-  // this is inherited site-wide and Next auto-fills the card's title,
-  // description and images from openGraph. The template only matters for
-  // pages still setting `twitter.title` themselves mid-migration; it is
-  // inert once none do.
   twitter: {
     card: "summary_large_image",
-    title: { default: TITLE_DEFAULT, template: TITLE_TEMPLATE },
   },
 };
 

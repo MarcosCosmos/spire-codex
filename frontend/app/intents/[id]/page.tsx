@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import IntentDetail from "./IntentDetail";
-import { stripTags, stripTagsFlat, clipMetaDescription, buildPageMetadata } from "@/lib/seo";
-import { t } from "@/lib/ui-translations";
-import { getLangOrDefault, LANG_GAME_NAME, LANG_HREFLANG, isValidLang } from "@/lib/languages";
+import { stripTags, stripTagsFlat, clipMetaDescription, buildLanguageAlternates, DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
@@ -10,63 +8,61 @@ import { fetchEntityRes } from "@/lib/entity-fetch";
 
 const API_INTERNAL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-type Props = { params: Promise<{ lang?: string; id: string }> };
-
-function langPrefix(lang?: string): string {
-  return lang && isValidLang(lang) ? `/${lang}` : "";
-}
+type Props = { params: Promise<{ id: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id, lang: _lang } = await params;
-  const lang = getLangOrDefault(_lang);
+  const { id } = await params;
   try {
-    const res = await fetch(`${API_INTERNAL}/api/intents/${id}${lang ? `?lang=${lang}` : ""}`);
-    if (!res.ok) return { title: "Intent Not Found" };
-    const entity = await res.json();
-    const desc = stripTagsFlat(entity.description || "");
-    const name = entity.name || id;
-    const gameName = LANG_GAME_NAME[lang];
-    const title = `${name} - ${t("Monster Intent", lang)}`;
-    const meta = buildPageMetadata({
-      lang: _lang,
-      path: `/intents/${id}`,
+    const res = await fetch(`${API_INTERNAL}/api/intents/${id}`);
+    if (!res.ok) return { title: "Intent Not Found - Slay the Spire 2 (sts2) | Spire Codex" };
+    const intent = await res.json();
+    const desc = stripTagsFlat(intent.description || "");
+    const title = `${intent.name} - Slay the Spire 2 Monster Intent | Spire Codex`;
+    const metaDesc = clipMetaDescription(
+      `${intent.name} is a monster intent in Slay the Spire 2 (sts2)${desc ? `: ${desc}` : "."}`,
+    );
+    return {
       title,
-      description: clipMetaDescription(`${gameName} monster intent, ${name}${desc ? `: ${desc}` : ""}`),
-      ogType: "article",
-    });
-    return meta;
+      description: metaDesc,
+      openGraph: {
+        type: "article",
+        siteName: SITE_NAME,
+        url: `${SITE_URL}/intents/${id}`,
+        title,
+        description: metaDesc,
+        images: [{ url: DEFAULT_OG_IMAGE }],
+      },
+      twitter: { card: "summary_large_image", title, description: metaDesc },
+      alternates: { canonical: `/intents/${id}`, languages: buildLanguageAlternates(`/intents/${id}`) },
+    };
   } catch {
-    return { title: "Database" };
+    return { title: "Database - Slay the Spire 2 (sts2) | Spire Codex" };
   }
 }
 
 export default async function Page({ params }: Props) {
-  const { id, lang: _lang } = await params;
-  const lang = getLangOrDefault(_lang);
-  const prefix = langPrefix(_lang);
+  const { id } = await params;
   let jsonLd = null;
   let intent = null;
   let apiUnreachable = false;
   try {
-    const res = await fetchEntityRes(`${API_INTERNAL}/api/intents/${id}${_lang ? `?lang=${_lang}` : ""}`);
+    const res = await fetchEntityRes(`${API_INTERNAL}/api/intents/${id}`);
     if (res.ok) {
       intent = await res.json();
       const desc = stripTags(intent.description || "");
-      const name = intent.name || id;
       const detailJsonLd = buildDetailPageJsonLd({
-        name,
-        description: desc || `${name} intent from Slay the Spire 2`,
-        path: `${prefix}/intents/${id}`,
+        name: intent.name,
+        description: desc || `${intent.name} intent from Slay the Spire 2`,
+        path: `/intents/${id}`,
         category: "Intent",
         breadcrumbs: [
-          { name: t("Home", lang), href: prefix || "/" },
-          { name: t("Reference", lang), href: `${prefix}/reference` },
-          { name, href: `${prefix}/intents/${id}` },
+          { name: "Home", href: "/" },
+          { name: "Reference", href: "/reference" },
+          { name: intent.name, href: `/intents/${id}` },
         ],
-        inLanguage: LANG_HREFLANG[lang],
       });
       const faqQuestions = [
-        { question: `What does the ${name} intent mean in Slay the Spire 2?`, answer: desc || `${name} is a monster intent in Slay the Spire 2.` },
+        { question: `What does the ${intent.name} intent mean in Slay the Spire 2?`, answer: desc || `${intent.name} is a monster intent in Slay the Spire 2.` },
       ];
       jsonLd = [...detailJsonLd, buildFAQPageJsonLd(faqQuestions)];
     }
@@ -75,7 +71,7 @@ export default async function Page({ params }: Props) {
   }
   // Fail the render (500) instead of ISR-caching a contentless shell.
   if (apiUnreachable) throw new Error("entity API unreachable");
-  if (!intent) redirectMissingEntity("intents", id, _lang);
+  if (!intent) redirectMissingEntity("intents", id);
   return (
     <>
       {jsonLd && <JsonLd data={jsonLd} />}

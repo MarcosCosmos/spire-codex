@@ -1,42 +1,32 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { buildPageMetadata } from "@/lib/seo";
+import { SITE_URL, SITE_NAME, DEFAULT_OG_IMAGE, buildLanguageAlternates } from "@/lib/seo";
 import JsonLd from "@/app/components/JsonLd";
 import { buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { characterHex } from "@/lib/character-colors";
-import { getLangOrDefault, isValidLang } from "@/lib/languages";
-import { t } from "@/lib/ui-translations";
 
 const API_INTERNAL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export const revalidate = 600;
 
-type Props = { params: Promise<{ lang?: string }> };
+const TITLE = `Slay the Spire 2 Deck Archetypes - Community Builds Ranked (sts2) | ${SITE_NAME}`;
+const DESCRIPTION =
+  "Every Slay the Spire 2 (sts2) deck archetype discovered from community runs: defining cards and relics, popularity, and real win rates per build.";
 
-/**
- * The /[lang]/archetypes route re-exports this module, so it renders
- * both with and without a locale segment. Only prefix internal paths
- * when one is actually present.
- */
-function langPrefix(lang?: string): string {
-  return lang && isValidLang(lang) ? `/${lang}` : "";
-}
-
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { lang: _lang } = await params;
-  const lang = getLangOrDefault(_lang);
-
-  // Unlike /runs, archetype pages keep bidirectional hreflang (the
-  // default): the English page has always advertised the localized
-  // variants, so they self-canonicalize per locale rather than folding
-  // back to English.
-  return buildPageMetadata({
-    lang,
-    path: "/archetypes",
-    title: `${t("Deck Archetypes", lang)} - ${t("Community Builds Ranked", lang)} (sts2)`,
-    description: t("archetypes_tagline", lang),
-  });
-}
+export const metadata: Metadata = {
+  title: TITLE,
+  description: DESCRIPTION,
+  alternates: { canonical: `${SITE_URL}/archetypes`, languages: buildLanguageAlternates("/archetypes") },
+  openGraph: {
+    title: TITLE,
+    description: DESCRIPTION,
+    url: `${SITE_URL}/archetypes`,
+    siteName: SITE_NAME,
+    type: "website",
+    images: [{ url: DEFAULT_OG_IMAGE }],
+  },
+  twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
+};
 
 interface NamedEntity {
   id: string;
@@ -63,8 +53,8 @@ interface ArchetypesResponse {
 
 const CHARACTER_ORDER = ["IRONCLAD", "SILENT", "DEFECT", "NECROBINDER", "REGENT"];
 
-function characterLabel(c: string, lang: string): string {
-  return t(c.charAt(0) + c.slice(1).toLowerCase(), lang);
+function characterLabel(c: string): string {
+  return c.charAt(0) + c.slice(1).toLowerCase();
 }
 
 function winRateColor(pct: number): string {
@@ -127,15 +117,12 @@ async function loadArchetypes(): Promise<ArchetypesResponse | null> {
   }
 }
 
-export default async function ArchetypesPage({ params }: Props) {
-  const { lang: _lang } = await params;
-  const lang = getLangOrDefault(_lang);
-  const prefix = langPrefix(_lang);
+export default async function ArchetypesPage() {
   const data = await loadArchetypes();
   const jsonLd = [
     buildBreadcrumbJsonLd([
       { name: "Home", href: "/" },
-      { name: t("Archetypes", lang), href: `${prefix}/archetypes` },
+      { name: "Archetypes", href: "/archetypes" },
     ]),
   ];
 
@@ -160,17 +147,18 @@ export default async function ArchetypesPage({ params }: Props) {
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <JsonLd data={jsonLd} />
       <h1 className="text-3xl font-bold mb-2">
-        <span className="text-[var(--accent-gold)]">{t("Deck Archetypes", lang)}</span>
+        <span className="text-[var(--accent-gold)]">Deck Archetypes</span>
       </h1>
       <p className="text-sm text-[var(--text-muted)] mb-8 max-w-3xl">
-        {t("archetypes_body_tagline", lang)}
+        Builds discovered automatically from community-submitted runs: decks are
+        clustered by their cards and relics, so every archetype below is something
+        players actually pilot, with its real popularity and win rate. Rebuilt daily.
       </p>
 
       {data?.available && (risers.length > 0 || fallers.length > 0) && (
         <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 mb-8">
           <div className="text-xs uppercase tracking-wide text-[var(--text-tertiary)] mb-2">
-            {t("Meta movers", lang)}
-            {moversVersion ? ` · ${moversVersion}` : ""}
+            Meta movers{moversVersion ? ` · ${moversVersion}` : ""}
           </div>
           <div className="flex flex-wrap gap-2">
             {[...risers, ...fallers].map(({ ch, arch }, i) => (
@@ -197,7 +185,7 @@ export default async function ArchetypesPage({ params }: Props) {
 
       {!data?.available ? (
         <p className="text-sm text-[var(--text-muted)]">
-          {t("Archetype data is still building. Check back shortly.", lang)}
+          Archetype data is still building. Check back shortly.
         </p>
       ) : (
         CHARACTER_ORDER.filter((ch) => (data.characters[ch] ?? []).length > 0).map((ch) => {
@@ -205,7 +193,7 @@ export default async function ArchetypesPage({ params }: Props) {
           return (
             <section key={ch} className="mb-10">
               <h2 className="text-xl font-bold mb-4" style={{ color }}>
-                {characterLabel(ch, lang)}
+                {characterLabel(ch)}
               </h2>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {data.characters[ch].map((a, i) => (
@@ -226,13 +214,12 @@ export default async function ArchetypesPage({ params }: Props) {
                     </div>
                     <div className="flex items-end justify-between gap-2 mb-3">
                       <div className="text-xs text-[var(--text-muted)]">
-                        {a.share}% {t("of", lang)} {characterLabel(ch, lang)} {t("runs", lang)} ·{" "}
-                        {a.size.toLocaleString()} {t("decks", lang)}
+                        {a.share}% of {characterLabel(ch)} runs · {a.size.toLocaleString()} decks
                         {a.trend && Math.abs(a.trend.delta) >= 0.5 && (
                           <span
                             className="ml-2 font-semibold"
                             style={{ color: a.trend.delta > 0 ? "#22c55e" : "#ef4444" }}
-                            title={`${t("Share change in", lang)} ${a.trend.version} ${t("vs the previous version", lang)}`}
+                            title={`Share change in ${a.trend.version} vs the previous version`}
                           >
                             {a.trend.delta > 0 ? "▲" : "▼"} {Math.abs(a.trend.delta)}%
                           </span>
@@ -247,7 +234,7 @@ export default async function ArchetypesPage({ params }: Props) {
                         <Link
                           prefetch={false}
                           key={e.id}
-                          href={`${prefix}/cards/${e.id.toLowerCase()}`}
+                          href={`/cards/${e.id.toLowerCase()}`}
                           className="text-xs px-2 py-0.5 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-[var(--text-secondary)] hover:border-[var(--accent-gold)]/50 hover:text-[var(--accent-gold)] transition-colors"
                         >
                           {e.name}
@@ -257,7 +244,7 @@ export default async function ArchetypesPage({ params }: Props) {
                         <Link
                           prefetch={false}
                           key={e.id}
-                          href={`${prefix}/relics/${e.id.toLowerCase()}`}
+                          href={`/relics/${e.id.toLowerCase()}`}
                           className="text-xs px-2 py-0.5 rounded-md border border-sky-900/50 bg-[var(--bg-primary)] text-sky-300 hover:border-sky-500/60 transition-colors"
                         >
                           {e.name}
@@ -266,13 +253,13 @@ export default async function ArchetypesPage({ params }: Props) {
                     </div>
                     {a.example_runs.length > 0 && (
                       <div className="mt-3 text-xs text-[var(--text-muted)]">
-                        {t("Examples", lang)}:{" "}
+                        Examples:{" "}
                         {a.example_runs.map((h, j) => (
                           <span key={h}>
                             {j > 0 && ", "}
                             <Link
                               prefetch={false}
-                              href={`${prefix}/runs/${h}`}
+                              href={`/runs/${h}`}
                               className="text-[var(--accent-gold)] hover:underline font-mono"
                             >
                               {h.slice(0, 8)}

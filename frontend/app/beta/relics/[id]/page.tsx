@@ -21,8 +21,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   try {
     const relic = await fetchBetaRelic(id);
-    if (!relic) return { title: "Relic Not Found - Beta" };
-    return { title: `${relic.name} (Beta) - Relic` };
+    if (!relic) return { title: "Relic Not Found - Beta | Spire Codex" };
+    return { title: `${relic.name} (Beta) - Slay the Spire 2 Relic | Spire Codex` };
   } catch {
     return { title: "Spire Codex" };
   }

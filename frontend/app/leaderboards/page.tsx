@@ -2,50 +2,41 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import JsonLd from "@/app/components/JsonLd";
 import { buildBreadcrumbJsonLd, buildCollectionPageJsonLd } from "@/lib/jsonld";
-import { buildPageMetadata } from "@/lib/seo";
-import { getLangOrDefault, isValidLang, LANG_HREFLANG, LANG_GAME_NAME } from "@/lib/languages";
-import { t } from "@/lib/ui-translations";
+import { buildLanguageAlternates, DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
 import LeaderboardBrowseClient from "./LeaderboardBrowseClient";
 
 export const dynamic = "force-dynamic";
 
-function langPrefix(lang?: string): string {
-  return lang && isValidLang(lang) ? `/${lang}` : "";
-}
+const title = "Leaderboards - Slay the Spire 2 (sts2) | Spire Codex";
+const description =
+  "Browse community-submitted Slay the Spire 2 (sts2) runs. Filter by character, ascension level, and outcome. View leaderboards and detailed run breakdowns.";
 
-/** Shared with app/[lang]/leaderboards/page.tsx, which re-exports this directly. */
-export async function generateMetadata(
-  { params }: { params?: Promise<{ lang?: string }> } = {},
-): Promise<Metadata> {
-  const lang = (await params)?.lang;
-  return buildPageMetadata({
-    lang,
-    path: "/leaderboards",
-    title: t("Leaderboards", getLangOrDefault(lang)),
-    description: t("leaderboards_tagline", getLangOrDefault(lang)),
-  });
-}
+export const metadata: Metadata = {
+  title,
+  description,
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    url: `${SITE_URL}/leaderboards`,
+    title,
+    description,
+    images: [{ url: DEFAULT_OG_IMAGE }],
+  },
+  twitter: { card: "summary_large_image", title, description, images: [DEFAULT_OG_IMAGE] },
+  alternates: { canonical: `${SITE_URL}/leaderboards`, languages: buildLanguageAlternates("/leaderboards") },
+};
 
-export default async function ToolsPage({
-  params,
-}: {
-  params?: Promise<{ lang?: string }>;
-} = {}) {
-  const _lang = (await params)?.lang;
-  const lang = getLangOrDefault(_lang);
-  const prefix = langPrefix(_lang);
-  const gameName = LANG_GAME_NAME[lang];
-  const leaderboardsWord = t("Leaderboards", lang);
+export default function ToolsPage() {
   const jsonLd = [
     buildBreadcrumbJsonLd([
-      { name: t("Home", lang), href: prefix || "/" },
-      { name: leaderboardsWord, href: `${prefix}/leaderboards` },
+      { name: "Home", href: "/" },
+      { name: "Leaderboards", href: "/leaderboards" },
     ]),
     buildCollectionPageJsonLd({
-      name: `${gameName} ${leaderboardsWord}`,
-      description: t("leaderboards_tagline", lang),
-      path: `${prefix}/leaderboards`,
-      inLanguage: LANG_HREFLANG[lang],
+      name: "Slay the Spire 2 Leaderboards",
+      description:
+        "Community-submitted runs across every character and ascension. Filter by character, ascension, and outcome.",
+      path: "/leaderboards",
     }),
   ];
 

@@ -4,76 +4,72 @@ import JsonLd from "@/app/components/JsonLd";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
 import { fetchEntityRes } from "@/lib/entity-fetch";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
-import { stripTags, stripTagsFlat, clipMetaDescription, buildPageMetadata } from "@/lib/seo";
-import { getLangOrDefault, LANG_GAME_NAME, LANG_HREFLANG, isValidLang } from "@/lib/languages";
-import { t } from "@/lib/ui-translations";
+import { stripTags, stripTagsFlat, clipMetaDescription, buildLanguageAlternates, DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
 
 export const dynamic = "force-static";
 export const revalidate = 3600;
 
 const API_INTERNAL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-type Props = { params: Promise<{ lang?: string; id: string }> };
-
-function langPrefix(lang?: string): string {
-  return lang && isValidLang(lang) ? `/${lang}` : "";
-}
+type Props = { params: Promise<{ id: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id, lang: _lang } = await params;
-  const lang = getLangOrDefault(_lang);
+  const { id } = await params;
   try {
-    const res = await fetch(`${API_INTERNAL}/api/ascensions/${id}${_lang ? `?lang=${_lang}` : ""}`, {
+    const res = await fetch(`${API_INTERNAL}/api/ascensions/${id}`, {
       next: { revalidate: 3600 },
     });
-    if (!res.ok) return { title: "Ascension Not Found" };
+    if (!res.ok) return { title: "Ascension Not Found - Slay the Spire 2 (sts2) | Spire Codex" };
     const asc = await res.json();
     const desc = stripTagsFlat(asc.description);
-    const gameName = LANG_GAME_NAME[lang];
-    const title = `Ascension ${asc.level}: ${asc.name}`;
-    return buildPageMetadata({
-      lang: _lang,
-      path: `/ascensions/${id}`,
+    const title = `Ascension ${asc.level}: ${asc.name} - Slay the Spire 2 | Spire Codex`;
+    const metaDesc = clipMetaDescription(
+      `Ascension ${asc.level} (${asc.name}) in Slay the Spire 2 (sts2)${desc ? `: ${desc}` : "."}`,
+    );
+    return {
       title,
-      description: clipMetaDescription(
-        `${gameName} Ascension ${asc.level}, ${asc.name}${desc ? `: ${desc}` : ""}`,
-      ),
-      ogType: "article",
-    });
+      description: metaDesc,
+      openGraph: {
+        type: "article",
+        siteName: SITE_NAME,
+        url: `${SITE_URL}/ascensions/${id}`,
+        title,
+        description: metaDesc,
+        images: [{ url: DEFAULT_OG_IMAGE }],
+      },
+      twitter: { card: "summary_large_image", title, description: metaDesc },
+      alternates: { canonical: `/ascensions/${id}`, languages: buildLanguageAlternates(`/ascensions/${id}`) },
+    };
   } catch {
-    return { title: "Database" };
+    return { title: "Database - Slay the Spire 2 (sts2) | Spire Codex" };
   }
 }
 
 export default async function Page({ params }: Props) {
-  const { id, lang: _lang } = await params;
-  const lang = getLangOrDefault(_lang);
-  const prefix = langPrefix(_lang);
+  const { id } = await params;
   let jsonLd = null;
   let asc = null;
   let apiUnreachable = false;
   try {
-    const res = await fetchEntityRes(`${API_INTERNAL}/api/ascensions/${id}${_lang ? `?lang=${_lang}` : ""}`, {
+    const res = await fetchEntityRes(`${API_INTERNAL}/api/ascensions/${id}`, {
       next: { revalidate: 3600 },
     });
     if (res.ok) {
       asc = await res.json();
       const desc = stripTags(asc.description);
-      const gameName = LANG_GAME_NAME[lang];
       const detailJsonLd = buildDetailPageJsonLd({
         name: `Ascension ${asc.level}: ${asc.name}`,
-        description: `${desc} Ascension level ${asc.level} in ${gameName}.`,
-        path: `${prefix}/ascensions/${id}`,
+        description: `${desc} Ascension level ${asc.level} in Slay the Spire 2.`,
+        path: `/ascensions/${id}`,
         category: "Ascension",
         breadcrumbs: [
-          { name: t("Home", lang), href: prefix || "/" },
-          { name: t("Reference", lang), href: `${prefix}/reference` },
-          { name: `Ascension ${asc.level}`, href: `${prefix}/ascensions/${id}` },
+          { name: "Home", href: "/" },
+          { name: "Reference", href: "/reference" },
+          { name: `Ascension ${asc.level}`, href: `/ascensions/${id}` },
         ],
-        inLanguage: LANG_HREFLANG[lang],
       });
       const faqJsonLd = buildFAQPageJsonLd([
-        { question: `What does Ascension ${asc.level} do in ${gameName}?`, answer: desc },
+        { question: `What does Ascension ${asc.level} do in Slay the Spire 2?`, answer: desc },
       ]);
       jsonLd = [...detailJsonLd, faqJsonLd];
     }
@@ -82,7 +78,7 @@ export default async function Page({ params }: Props) {
   }
   // Fail the render (500) instead of ISR-caching a contentless shell.
   if (apiUnreachable) throw new Error("entity API unreachable");
-  if (!asc) redirectMissingEntity("ascensions", id, _lang);
+  if (!asc) redirectMissingEntity("ascensions", id);
   return (
     <>
       {jsonLd && <JsonLd data={jsonLd} />}

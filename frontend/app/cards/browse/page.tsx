@@ -2,16 +2,6 @@ import Link from "next/link";
 import JsonLd from "@/app/components/JsonLd";
 import { buildCollectionPageJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { SLUG_MAP, type SlugEntry } from "./slug-map";
-import type { Metadata } from "next";
-import { buildPageMetadata } from "@/lib/seo";
-
-export function generateMetadata(): Metadata {
-  return buildPageMetadata({
-    path: "/cards/browse",
-    title: "Cards - Browse by Category",
-    description: "Filtered card collections for Slay the Spire 2 (sts2), 41 curated lists by type, rarity, character, and keyword (Attack, Skill, Power, Rare, Ironclad, more).",
-  });
-}
 
 const GROUPS: { title: string; category: SlugEntry["category"]; icon: string }[] = [
   { title: "By Type", category: "type", icon: "⚔" },

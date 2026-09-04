@@ -1,14 +1,12 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { clipMetaDescription, buildPageMetadata, SITE_NAME } from "@/lib/seo";
+import { SITE_URL, SITE_NAME, DEFAULT_OG_IMAGE, clipMetaDescription, buildLanguageAlternates} from "@/lib/seo";
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd } from "@/lib/jsonld";
 import { fetchEntityRes } from "@/lib/entity-fetch";
 import Link from "next/link";
 import MechanicMarkdown from "./MechanicMarkdown";
 import type { MechanicSectionMeta } from "../page";
-import { getLangOrDefault, isValidLang, LANG_HREFLANG } from "@/lib/languages";
-import { t } from "@/lib/ui-translations";
 
 const API_INTERNAL =
   process.env.API_INTERNAL_URL ||
@@ -17,10 +15,6 @@ const API_INTERNAL =
 
 interface MechanicSectionDetail extends MechanicSectionMeta {
   body_markdown: string;
-}
-
-function langPrefix(lang?: string): string {
-  return lang && isValidLang(lang) ? `/${lang}` : "";
 }
 
 async function fetchSection(slug: string): Promise<MechanicSectionDetail | null> {
@@ -34,28 +28,38 @@ async function fetchSection(slug: string): Promise<MechanicSectionDetail | null>
   return (await res.json()) as MechanicSectionDetail;
 }
 
-type Props = { params: Promise<{ lang?: string; slug: string }> };
-
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { lang: _lang, slug } = await params;
-  const lang = getLangOrDefault(_lang);
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
   const section = await fetchSection(slug);
-  if (!section) return { title: `${t("Not Found", lang)} | ${SITE_NAME}` };
-  const title = `${section.title}`;
+  if (!section) return { title: `Not Found - Slay the Spire 2 (sts2) | ${SITE_NAME}` };
+  const title = `${section.title} - Slay the Spire 2 | ${SITE_NAME}`;
   const description = clipMetaDescription(section.description);
-  return buildPageMetadata({
-    lang: _lang,
-    path: `/mechanics/${slug}`,
+  return {
     title,
     description,
-    ogType: "article",
-  });
+    alternates: { canonical: `${SITE_URL}/mechanics/${slug}` },
+    openGraph: {
+      title,
+      description,
+      url: `${SITE_URL}/mechanics/${slug}`,
+      siteName: SITE_NAME,
+      type: "article",
+      images: [{ url: DEFAULT_OG_IMAGE }],
+    },
+    twitter: { card: "summary_large_image", title, description },
+  };
 }
 
-export default async function MechanicDetailPage({ params }: Props) {
-  const { lang: _lang, slug } = await params;
-  const lang = getLangOrDefault(_lang);
-  const prefix = langPrefix(_lang);
+export default async function MechanicDetailPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
   const section = await fetchSection(slug);
   if (!section) notFound();
 
@@ -65,24 +69,23 @@ export default async function MechanicDetailPage({ params }: Props) {
   const jsonLd = buildDetailPageJsonLd({
     name: `${section.title} - Slay the Spire 2`,
     description: section.description,
-    path: `${prefix}/mechanics/${slug}`,
+    path: `/mechanics/${slug}`,
     category: section.category === "secrets" ? "Secrets & Trivia" : "Game Mechanics",
     breadcrumbs: [
-      { name: t("Home", lang), href: prefix || "/" },
-      { name: t("Mechanics", lang), href: `${prefix}/mechanics` },
-      { name: section.title, href: `${prefix}/mechanics/${slug}` },
+      { name: "Home", href: "/" },
+      { name: "Mechanics", href: "/mechanics" },
+      { name: section.title, href: `/mechanics/${slug}` },
     ],
-    inLanguage: LANG_HREFLANG[lang],
   });
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <JsonLd data={jsonLd} />
       <Link
-        href={`${prefix}/mechanics`}
+        href="/mechanics"
         className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] mb-6 inline-flex items-center gap-1 transition-colors"
       >
-        <span>&larr;</span> {t("Back to", lang)} {t("Mechanics", lang)}
+        <span>&larr;</span> Back to Mechanics
       </Link>
       <h1 className="text-3xl font-bold mb-2">
         <span className="text-[var(--accent-gold)]">{section.title}</span>

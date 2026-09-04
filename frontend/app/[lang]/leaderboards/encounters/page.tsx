@@ -1,6 +1,78 @@
-export { generateMetadata, default } from "@/app/leaderboards/encounters/page";
+import type { Metadata } from "next";
+import JsonLd from "@/app/components/JsonLd";
+import { buildBreadcrumbJsonLd, buildCollectionPageJsonLd } from "@/lib/jsonld";
+import EncounterStatsClient from "@/app/leaderboards/encounters/EncounterStatsClient";
+import {
+  isValidLang,
+  LANG_GAME_NAME,
+  LANG_NAMES,
+  LANG_HREFLANG,
+  type LangCode,
+} from "@/lib/languages";
+import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL, buildLanguageAlternates } from "@/lib/seo";
+import { t } from "@/lib/ui-translations";
 
-// Redeclared rather than re-exported: Next only accepts a statically
-// analyzable literal for route segment config. Keep in sync with the
-// canonical module this re-exports.
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ lang: string }>;
+}): Promise<Metadata> {
+  const { lang } = await params;
+  if (!isValidLang(lang)) return {};
+
+  const langCode = lang as LangCode;
+  const gameName = LANG_GAME_NAME[langCode];
+  const nativeName = LANG_NAMES[langCode];
+  const title = `${gameName} ${t("Encounter Stats", lang)} | Spire Codex (${nativeName})`;
+  const description = t("encounter_stats_tagline", lang);
+
+  const languages = buildLanguageAlternates(`/leaderboards/encounters`);
+
+  return {
+    title,
+    description,
+    openGraph: {
+      type: "website",
+      siteName: SITE_NAME,
+      url: `${SITE_URL}/${lang}/leaderboards/encounters`,
+      title,
+      description,
+      locale: LANG_HREFLANG[langCode],
+      images: [{ url: DEFAULT_OG_IMAGE }],
+    },
+    twitter: { card: "summary_large_image", title, description },
+    alternates: { canonical: `/${lang}/leaderboards/encounters`, languages },
+  };
+}
+
+export default async function LangEncounterStatsPage({
+  params,
+}: {
+  params: Promise<{ lang: string }>;
+}) {
+  const { lang } = await params;
+  if (!isValidLang(lang)) return null;
+  const langCode = lang as LangCode;
+  const gameName = LANG_GAME_NAME[langCode];
+  const jsonLd = [
+    buildBreadcrumbJsonLd([
+      { name: t("Home", lang), href: `/${lang}` },
+      { name: t("Leaderboards", lang), href: `/${lang}/leaderboards` },
+      { name: t("Encounters", lang), href: `/${lang}/leaderboards/encounters` },
+    ]),
+    buildCollectionPageJsonLd({
+      name: `${gameName} ${t("Encounter Stats", lang)}`,
+      description: t("encounter_stats_tagline", lang),
+      path: `/${lang}/leaderboards/encounters`,
+      inLanguage: LANG_HREFLANG[langCode],
+    }),
+  ];
+  return (
+    <>
+      <JsonLd data={jsonLd} />
+      <EncounterStatsClient />
+    </>
+  );
+}

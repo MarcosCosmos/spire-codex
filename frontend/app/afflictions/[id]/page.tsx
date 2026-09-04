@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import AfflictionDetail from "./AfflictionDetail";
-import { stripTags, stripTagsFlat, clipMetaDescription, buildPageMetadata } from "@/lib/seo";
-import { t } from "@/lib/ui-translations";
-import { getLangOrDefault, LANG_GAME_NAME, LANG_HREFLANG, isValidLang } from "@/lib/languages";
+import { stripTags, stripTagsFlat, clipMetaDescription, buildLanguageAlternates, DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
@@ -10,64 +8,62 @@ import { fetchEntityRes } from "@/lib/entity-fetch";
 
 const API_INTERNAL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-type Props = { params: Promise<{ lang?: string; id: string }> };
-
-function langPrefix(lang?: string): string {
-  return lang && isValidLang(lang) ? `/${lang}` : "";
-}
+type Props = { params: Promise<{ id: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id, lang: _lang } = await params;
-  const lang = getLangOrDefault(_lang);
+  const { id } = await params;
   try {
-    const res = await fetch(`${API_INTERNAL}/api/afflictions/${id}${lang ? `?lang=${lang}` : ""}`);
-    if (!res.ok) return { title: "Affliction Not Found" };
-    const entity = await res.json();
-    const desc = stripTagsFlat(entity.description || "");
-    const name = entity.name || id;
-    const gameName = LANG_GAME_NAME[lang];
-    const title = `${name} - ${t("Affliction", lang)}`;
-    const meta = buildPageMetadata({
-      lang: _lang,
-      path: `/afflictions/${id}`,
+    const res = await fetch(`${API_INTERNAL}/api/afflictions/${id}`);
+    if (!res.ok) return { title: "Affliction Not Found - Slay the Spire 2 (sts2) | Spire Codex" };
+    const affliction = await res.json();
+    const desc = stripTagsFlat(affliction.description || "");
+    const title = `${affliction.name} - Slay the Spire 2 Affliction | Spire Codex`;
+    const metaDesc = clipMetaDescription(
+      `${affliction.name} is an affliction in Slay the Spire 2 (sts2)${desc ? `: ${desc}` : "."}`,
+    );
+    return {
       title,
-      description: clipMetaDescription(`${gameName} affliction, ${name}${desc ? `: ${desc}` : ""}`),
-      ogType: "article",
-    });
-    return meta;
+      description: metaDesc,
+      openGraph: {
+        type: "article",
+        siteName: SITE_NAME,
+        url: `${SITE_URL}/afflictions/${id}`,
+        title,
+        description: metaDesc,
+        images: [{ url: DEFAULT_OG_IMAGE }],
+      },
+      twitter: { card: "summary_large_image", title, description: metaDesc },
+      alternates: { canonical: `/afflictions/${id}`, languages: buildLanguageAlternates(`/afflictions/${id}`) },
+    };
   } catch {
-    return { title: "Database" };
+    return { title: "Database - Slay the Spire 2 (sts2) | Spire Codex" };
   }
 }
 
 export default async function Page({ params }: Props) {
-  const { id, lang: _lang } = await params;
-  const lang = getLangOrDefault(_lang);
-  const prefix = langPrefix(_lang);
+  const { id } = await params;
   let jsonLd = null;
   let affliction = null;
   let apiUnreachable = false;
   try {
-    const res = await fetchEntityRes(`${API_INTERNAL}/api/afflictions/${id}${_lang ? `?lang=${_lang}` : ""}`);
+    const res = await fetchEntityRes(`${API_INTERNAL}/api/afflictions/${id}`);
     if (res.ok) {
       affliction = await res.json();
       const desc = stripTags(affliction.description || "");
-      const name = affliction.name || id;
       const detailJsonLd = buildDetailPageJsonLd({
-        name,
-        description: desc || `${name} affliction from Slay the Spire 2`,
-        path: `${prefix}/afflictions/${id}`,
+        name: affliction.name,
+        description: desc || `${affliction.name} affliction from Slay the Spire 2`,
+        path: `/afflictions/${id}`,
         category: "Affliction",
         breadcrumbs: [
-          { name: t("Home", lang), href: prefix || "/" },
-          { name: t("Reference", lang), href: `${prefix}/reference` },
-          { name, href: `${prefix}/afflictions/${id}` },
+          { name: "Home", href: "/" },
+          { name: "Reference", href: "/reference" },
+          { name: affliction.name, href: `/afflictions/${id}` },
         ],
-        inLanguage: LANG_HREFLANG[lang],
       });
       const faqQuestions = [
-        { question: `What does ${name} do in Slay the Spire 2?`, answer: desc || `${name} is an affliction in Slay the Spire 2.` },
-        ...(affliction.is_stackable ? [{ question: `Is ${name} stackable?`, answer: `Yes, ${name} is stackable.` }] : []),
+        { question: `What does ${affliction.name} do in Slay the Spire 2?`, answer: desc || `${affliction.name} is an affliction in Slay the Spire 2.` },
+        ...(affliction.is_stackable ? [{ question: `Is ${affliction.name} stackable?`, answer: `Yes, ${affliction.name} is stackable.` }] : []),
       ];
       jsonLd = [...detailJsonLd, buildFAQPageJsonLd(faqQuestions)];
     }
@@ -76,7 +72,7 @@ export default async function Page({ params }: Props) {
   }
   // Fail the render (500) instead of ISR-caching a contentless shell.
   if (apiUnreachable) throw new Error("entity API unreachable");
-  if (!affliction) redirectMissingEntity("afflictions", id, _lang);
+  if (!affliction) redirectMissingEntity("afflictions", id);
   return (
     <>
       {jsonLd && <JsonLd data={jsonLd} />}

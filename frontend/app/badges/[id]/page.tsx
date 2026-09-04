@@ -5,9 +5,7 @@ import JsonLd from "@/app/components/JsonLd";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
 import RichDescription from "@/app/components/RichDescription";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
-import { stripTags, stripTagsFlat, clipMetaDescription, buildPageMetadata } from "@/lib/seo";
-import { getLangOrDefault, LANG_GAME_NAME, LANG_HREFLANG, isValidLang } from "@/lib/languages";
-import { t } from "@/lib/ui-translations";
+import { stripTags, stripTagsFlat, clipMetaDescription, buildLanguageAlternates, SITE_NAME, SITE_URL } from "@/lib/seo";
 import type { Badge } from "@/lib/api";
 import { imageUrl } from "@/lib/image-url";
 import "../../card-revamp.css";
@@ -33,11 +31,7 @@ const ABSOLUTE_BASE =
   process.env.NEXT_PUBLIC_API_URL ||
   "http://localhost:8000";
 
-type Props = { params: Promise<{ lang?: string; id: string }> };
-
-function langPrefix(lang?: string): string {
-  return lang && isValidLang(lang) ? `/${lang}` : "";
-}
+type Props = { params: Promise<{ id: string }> };
 
 const RARITY_LABEL: Record<string, string> = {
   bronze: "Bronze",
@@ -51,60 +45,65 @@ const RARITY_COLOR: Record<string, string> = {
   gold: "var(--accent-gold)",
 };
 
-async function fetchBadge(id: string, lang?: string): Promise<Badge | null> {
+async function fetchBadge(id: string): Promise<Badge | null> {
   try {
-    const res = await fetch(`${API_INTERNAL}/api/badges/${id}${lang ? `?lang=${lang}` : ""}`);
+    const res = await fetch(`${API_INTERNAL}/api/badges/${id}`);
     if (res.ok) return await res.json();
   } catch {}
   return null;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id, lang: _lang } = await params;
-  const lang = getLangOrDefault(_lang);
-  const badge = await fetchBadge(id, _lang);
-  if (!badge) return { title: "Badge Not Found" };
+  const { id } = await params;
+  const badge = await fetchBadge(id);
+  if (!badge) return { title: "Badge Not Found - Slay the Spire 2 (sts2) | Spire Codex" };
 
   const desc = stripTagsFlat(badge.description);
-  const gameName = LANG_GAME_NAME[lang];
-  const title = `${t("Badges", lang)} - ${badge.name}`;
+  const subtype = badge.tiered ? "Tiered" : "Badge";
+  const title = `${badge.name} - Slay the Spire 2 Badge | Spire Codex`;
   const metaDesc = clipMetaDescription(
-    `${gameName} run-end badge, ${badge.name}${desc ? `: ${desc}` : ""}`,
+    `${badge.name} is a ${subtype.toLowerCase()} run-end badge in Slay the Spire 2 (sts2)${desc ? `: ${desc}` : "."}`,
   );
-  return buildPageMetadata({
-    lang: _lang,
-    path: `/badges/${id}`,
+  return {
     title,
     description: metaDesc,
-    ogType: "article",
-  });
+    openGraph: {
+      type: "article",
+      siteName: SITE_NAME,
+      url: `${SITE_URL}/badges/${id}`,
+      title,
+      description: metaDesc,
+      images: badge.image_url
+        ? [{ url: imageUrl(badge.image_url) }]
+        : [],
+    },
+    twitter: { card: "summary_large_image", title, description: metaDesc },
+    alternates: { canonical: `/badges/${id}`, languages: buildLanguageAlternates(`/badges/${id}`) },
+  };
 }
 
 export default async function BadgePage({ params }: Props) {
-  const { id, lang: _lang } = await params;
-  const lang = getLangOrDefault(_lang);
-  const prefix = langPrefix(_lang);
-  const badge = await fetchBadge(id, _lang);
+  const { id } = await params;
+  const badge = await fetchBadge(id);
   // Unknown badge ID → 308 back to the badges hub so search engines
   // forward link equity to the parent page instead of dumping it on a
   // 404. `fetchBadge` already returns null on both unreachable-backend
   // *and* 404 responses, but a hot list page is a better landing for
   // either case than a dead end.
-  if (!badge) redirectMissingEntity("badges", id, _lang);
+  if (!badge) redirectMissingEntity("badges", id);
 
   const desc = stripTags(badge.description);
   const detailJsonLd = buildDetailPageJsonLd({
     name: badge.name,
     description: desc || `${badge.name} run-end badge from Slay the Spire 2`,
-    path: `${prefix}/badges/${id}`,
+    path: `/badges/${id}`,
     imageUrl: badge.image_url ? imageUrl(badge.image_url) : undefined,
     category: "Badge",
     breadcrumbs: [
-      { name: t("Home", lang), href: prefix || "/" },
-      { name: t("Badges", lang), href: `${prefix}/badges` },
-      { name: badge.name, href: `${prefix}/badges/${id}` },
+      { name: "Home", href: "/" },
+      { name: "Badges", href: "/badges" },
+      { name: badge.name, href: `/badges/${id}` },
     ],
-    inLanguage: LANG_HREFLANG[lang],
   });
 
   const faqQuestions = [
@@ -135,7 +134,7 @@ export default async function BadgePage({ params }: Props) {
       <JsonLd data={jsonLd} />
 
       <div className={hasImage ? "cd-top" : "cd-top solo"}>
-        <Link href={`${prefix}/badges`} className="cd-back">
+        <Link href="/badges" className="cd-back">
           &larr; Back to Badges
         </Link>
       </div>

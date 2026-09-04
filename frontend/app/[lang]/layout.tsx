@@ -9,7 +9,7 @@ import {
   LANG_DATABASE,
   type LangCode,
 } from "@/lib/languages";
-import { SITE_NAME, DEFAULT_OG_IMAGE } from "@/lib/seo";
+import { SITE_URL, SITE_NAME, DEFAULT_OG_IMAGE } from "@/lib/seo";
 import { LanguageProvider } from "@/app/contexts/LanguageContext";
 import HtmlLang from "@/app/components/HtmlLang";
 
@@ -22,11 +22,7 @@ export async function generateStaticParams() {
   return SUPPORTED_LANGS.map((lang) => ({ lang }));
 }
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ lang: string }>;
-}): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
   const { lang } = await params;
   if (!isValidLang(lang)) return {};
 
@@ -35,33 +31,34 @@ export async function generateMetadata({
   const dbWord = LANG_DATABASE[langCode];
   const nativeName = LANG_NAMES[langCode];
 
-  // Mirrors the root layout's structure exactly, with localized fragments
-  // as the only difference, so a page under either tree supplies just its
-  // own title segment. og:title is a separate template channel in Next and
-  // needs its own copy.
-  const template = `%s - ${gameName} | ${SITE_NAME} (${nativeName})`;
-  const fallback = `${gameName} ${dbWord} - ${SITE_NAME} (${nativeName})`;
+  const title = `${gameName} ${dbWord} - Spire Codex (${nativeName})`;
   const description = `Spire Codex, ${gameName} ${dbWord}. ${nativeName}.`;
 
+  // Build hreflang alternates: all other localized versions + English
+  const languages: Record<string, string> = {
+    "en": `${SITE_URL}/`,
+    "x-default": `${SITE_URL}/`,
+  };
+  for (const code of SUPPORTED_LANGS) {
+    languages[LANG_HREFLANG[code]] = `${SITE_URL}/${code}`;
+  }
+
   return {
-    title: { default: fallback, template },
+    title,
     description,
     openGraph: {
-      title: { default: fallback, template },
       type: "website",
       siteName: SITE_NAME,
+      title,
+      description,
       locale: LANG_HREFLANG[langCode],
       images: [{ url: DEFAULT_OG_IMAGE, width: 3000, height: 3000 }],
     },
-    // Only used by pages still setting `twitter.title` themselves
-    // mid-migration; inert once none do and the card inherits from og.
-    twitter: { card: "summary_large_image", title: { default: fallback, template } },
-    // No `alternates` here on purpose. It used to set canonical `/${lang}`,
-    // which every child that declared no alternates of its own inherited —
-    // so e.g. /esp/deck-lab announced itself as a duplicate of /esp. It
-    // also hand-rolled an hreflang map containing a "canonical" key, which
-    // is not a valid hreflang value. Canonical and hreflang are per-route,
-    // and belong to buildPageMetadata.
+    twitter: { card: "summary_large_image", title, description },
+    alternates: {
+      canonical: `/${lang}`,
+      languages,
+    },
   };
 }
 

@@ -1,22 +1,27 @@
 import type { Metadata } from "next";
-import { buildPageMetadata } from "@/lib/seo";
-import { getLangOrDefault } from "@/lib/languages";
-import { t } from "@/lib/ui-translations";
+import { buildLanguageAlternates, DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
 import JsonLd from "@/app/components/JsonLd";
 import { buildBreadcrumbJsonLd, buildCollectionPageJsonLd } from "@/lib/jsonld";
 
-/** Shared with app/[lang]/images/layout.tsx, which re-exports this directly. */
-export async function generateMetadata(
-  { params }: { params?: Promise<{ lang?: string }> } = {},
-): Promise<Metadata> {
-  const lang = (await params)?.lang;
-  return buildPageMetadata({
-    lang,
-    path: "/images",
-    title: t("Images", getLangOrDefault(lang)),
-    description: "Browse and download Slay the Spire 2 game assets, card portraits, relic icons, monster sprites, character art, and more.",
-  });
-}
+const title = "Images - Game Art & Assets - Slay the Spire 2 (sts2) | Spire Codex";
+const ogDesc =
+  "Browse and download Slay the Spire 2 game assets, card portraits, relic icons, monster sprites, and more.";
+
+export const metadata: Metadata = {
+  title,
+  description:
+    "Browse and download Slay the Spire 2 game assets, card portraits, relic icons, monster sprites, character art, and more.",
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    url: `${SITE_URL}/images`,
+    title,
+    description: ogDesc,
+    images: [{ url: DEFAULT_OG_IMAGE }],
+  },
+  twitter: { card: "summary_large_image", title, description: ogDesc },
+  alternates: { canonical: "/images", languages: buildLanguageAlternates("/images") },
+};
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const jsonLd = [

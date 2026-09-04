@@ -1,50 +1,44 @@
 import type { Metadata } from "next";
-import { buildPageMetadata } from "@/lib/seo";
-import { getLangOrDefault, LANG_GAME_NAME, LANG_HREFLANG, isValidLang } from "@/lib/languages";
-import { t } from "@/lib/ui-translations";
+import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL, buildLanguageAlternates } from "@/lib/seo";
 import JsonLd from "@/app/components/JsonLd";
 import { buildBreadcrumbJsonLd, buildCollectionPageJsonLd } from "@/lib/jsonld";
 import AncientsClient from "./AncientsClient";
 
 export const revalidate = 3600;
 
-function langPrefix(lang?: string): string {
-  return lang && isValidLang(lang) ? `/${lang}` : "";
-}
+const title = "Ancient Relic Pools - All Ancient Offerings - Slay the Spire 2 (sts2) | Spire Codex";
+const description =
+  "Relic pools for all 8 Slay the Spire 2 (sts2) Ancients, Neow, Tezcatara, Pael, Orobas, Darv, Nonupeipe, Tanx, Vakuu. Every offering and condition.";
 
-/** Shared with app/[lang]/ancients/page.tsx, which re-exports this directly. */
-export async function generateMetadata(
-  { params }: { params?: Promise<{ lang?: string }> } = {},
-): Promise<Metadata> {
-  const lang = (await params)?.lang;
-  const gameName = LANG_GAME_NAME[getLangOrDefault(lang)];
-  return buildPageMetadata({
-    lang,
-    path: "/ancients",
-    title: t("Ancients", getLangOrDefault(lang)),
-    description: `${gameName} Ancient relic pools. Every offering and condition for all 8 Ancients, Neow, Tezcatara, Pael, Orobas, Darv, Nonupeipe, and more.`,
-  });
-}
+export const metadata: Metadata = {
+  title,
+  description,
+  alternates: {
+    canonical: "/ancients",
+    languages: buildLanguageAlternates("/ancients"),
+  },
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    url: `${SITE_URL}/ancients`,
+    title,
+    description,
+    images: [{ url: DEFAULT_OG_IMAGE }],
+  },
+  twitter: { card: "summary_large_image", title, description },
+};
 
-export default async function AncientsPage({
-  params,
-}: {
-  params?: Promise<{ lang?: string }>;
-} = {}) {
-  const _lang = (await params)?.lang;
-  const lang = getLangOrDefault(_lang);
-  const prefix = langPrefix(_lang);
-  const gameName = LANG_GAME_NAME[lang];
+export default function AncientsPage() {
   const jsonLd = [
     buildBreadcrumbJsonLd([
-      { name: t("Home", lang), href: prefix || "/" },
-      { name: t("Ancients", lang), href: `${prefix}/ancients` },
+      { name: "Home", href: "/" },
+      { name: "Ancients", href: "/ancients" },
     ]),
     buildCollectionPageJsonLd({
-      name: `${gameName} Ancient Relic Pools`,
-      description: `Relic pools for all 8 ${gameName} Ancients, every offering and the conditions required to receive it.`,
-      path: `${prefix}/ancients`,
-      inLanguage: LANG_HREFLANG[lang],
+      name: "Slay the Spire 2 Ancient Relic Pools",
+      description:
+        "Relic pools for all 8 Slay the Spire 2 Ancients, every offering and the conditions required to receive it.",
+      path: "/ancients",
     }),
   ];
   return (

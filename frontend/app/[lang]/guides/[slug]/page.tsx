@@ -1,14 +1,14 @@
-import type { Metadata } from "next";
-import {
-  generateMetadata as baseGenerateMetadata,
-  default as GuideDetailPage,
-} from "@/app/guides/[slug]/page";
+import { permanentRedirect } from "next/navigation";
 
-type Props = { params: Promise<{ lang?: string; slug: string }> };
+type Props = { params: Promise<{ lang: string; slug: string }> };
 
-export async function generateMetadata(props: Props): Promise<Metadata> {
-  const meta = await baseGenerateMetadata(props);
-  return { ...meta, robots: { index: false, follow: false } };
+// Guides are English-language content; the localized wrappers served the
+// same English body on 13 URLs per guide, which crawlers flagged as
+// language mismatches and near-duplicates (same pattern as /<lang>/runs).
+// Collapse them onto the canonical English guide. The viewer's language
+// preference survives the redirect through the language context, so
+// navigation from the guide stays in their locale.
+export default async function LangGuideRedirect({ params }: Props) {
+  const { slug } = await params;
+  permanentRedirect(`/guides/${slug}`);
 }
-
-export default GuideDetailPage;

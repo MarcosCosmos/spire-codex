@@ -1,19 +1,6 @@
-import type { Metadata } from "next";
 import JsonLd from "@/app/components/JsonLd";
 import { buildCollectionPageJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import Link from "next/link";
-import { buildPageMetadata } from "@/lib/seo";
-import {
-  getLangOrDefault,
-  isValidLang,
-  LANG_GAME_NAME,
-  LANG_NAMES,
-  LANG_HREFLANG,
-} from "@/lib/languages";
-import { t } from "@/lib/ui-translations";
-
-const CATEGORY = "compare";
-const CATEGORY_LABEL = "Character Comparisons";
 
 const CHARACTERS = [
   { id: "ironclad", name: "Ironclad", color: "red" },
@@ -51,55 +38,23 @@ function generatePairs() {
   return pairs;
 }
 
-type Props = { params: Promise<{ lang?: string }> };
-
-function langPrefix(lang?: string): string {
-  return lang && isValidLang(lang) ? `/${lang}` : "";
-}
-
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { lang: _lang } = await params;
-  const lang = getLangOrDefault(_lang);
-  const gameName = LANG_GAME_NAME[lang];
-  const nativeName = LANG_NAMES[lang];
-
-  const title = _lang ? t(CATEGORY_LABEL, lang) : "Character Comparisons - Side by Side";
-  const description = _lang
-    ? `Compare all ${gameName} characters side by side. Stats, card pools, keywords, and starting decks. ${nativeName}.`
-    : "Side-by-side Slay the Spire 2 (sts2) character comparisons. Stat differences, card-pool breakdowns, keyword distribution, and starting decks for all 10 pairs.";
-
-  return buildPageMetadata({
-    lang: _lang,
-    path: `/${CATEGORY}`,
-    title,
-    description,
-  });
-}
-
-export default async function ComparePage({ params }: Props) {
-  const { lang: _lang } = await params;
-  const lang = getLangOrDefault(_lang);
-  const prefix = langPrefix(_lang);
-  const gameName = LANG_GAME_NAME[lang];
-  const nativeName = LANG_NAMES[lang];
+export default function ComparePage() {
   const pairs = generatePairs();
 
   const jsonLd = [
     buildBreadcrumbJsonLd([
       { name: "Home", href: "/" },
-      ...(_lang ? [{ name: nativeName, href: prefix }] : []),
-      { name: CATEGORY_LABEL, href: `${prefix}/${CATEGORY}` },
+      { name: "Compare", href: "/compare" },
     ]),
     buildCollectionPageJsonLd({
-      name: `${gameName} ${t(CATEGORY_LABEL, lang)}`,
+      name: "Slay the Spire 2 Character Comparisons",
       description:
-        "Compare all Slay the Spire 2 characters side by side. Stats, card pools, keywords, and starting decks.",
-      path: `${prefix}/${CATEGORY}`,
+        "Compare all Slay the Spire 2 (sts2) characters side by side. Stats, card pools, keywords, and starting decks.",
+      path: "/compare",
       items: pairs.map((p) => ({
         name: `${p.a.name} vs ${p.b.name}`,
-        path: `${prefix}/compare/${p.slug}`,
+        path: `/compare/${p.slug}`,
       })),
-      inLanguage: LANG_HREFLANG[lang],
     }),
   ];
 
@@ -107,17 +62,18 @@ export default async function ComparePage({ params }: Props) {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <JsonLd data={jsonLd} />
       <h1 className="text-3xl font-bold mb-2">
-        <span className="text-[var(--accent-gold)]">{t(CATEGORY_LABEL, lang)}</span>
+        <span className="text-[var(--accent-gold)]">Character Comparisons</span>
       </h1>
       <p className="text-sm text-[var(--text-muted)] mb-6">
-        {t("compare_tagline", lang)}
+        Compare Slay the Spire 2 characters side by side, stats, card pool breakdowns, keyword
+        distributions, and starting decks.
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {pairs.map((pair) => (
           <Link
             key={pair.slug}
-            href={`${prefix}/compare/${pair.slug}`}
+            href={`/compare/${pair.slug}`}
             className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 transition-all hover:shadow-lg hover:shadow-black/20 hover:border-[var(--accent-gold)]/40"
           >
             <div className="flex items-center justify-between gap-3">

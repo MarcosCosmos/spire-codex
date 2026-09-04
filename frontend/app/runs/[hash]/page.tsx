@@ -1,19 +1,14 @@
 import type { Metadata } from "next";
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd } from "@/lib/jsonld";
-import { buildPageMetadata, SITE_URL } from "@/lib/seo";
+import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
 import SharedRunClient from "./SharedRunClient";
-import { getLangOrDefault, LANG_GAME_NAME, LangCode } from "@/lib/languages";
-import { t } from "@/lib/ui-translations";
 
 export const dynamic = "force-dynamic";
 
-const API_INTERNAL =
-  process.env.API_INTERNAL_URL ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  "http://localhost:8000";
+const API_INTERNAL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-type Props = { params: Promise<{ lang?: string; hash: string }> };
+type Props = { params: Promise<{ hash: string }> };
 
 interface SharedRun {
   run_time?: number;
@@ -35,31 +30,20 @@ async function fetchRun(hash: string): Promise<SharedRun | null> {
   }
 }
 
-function describeRun(run: SharedRun, lang: LangCode) {
-  const rawChar =
-    run.players?.[0]?.character?.replace("CHARACTER.", "") || "Unknown";
-  const char = t(rawChar.charAt(0) + rawChar.slice(1).toLowerCase(), lang);
-  const result = t(
-    run.win ? "win" : run.was_abandoned ? "abandoned" : "loss",
-    lang,
-  );
+function describeRun(run: SharedRun) {
+  const rawChar = run.players?.[0]?.character?.replace("CHARACTER.", "") || "Unknown";
+  const char = rawChar.charAt(0) + rawChar.slice(1).toLowerCase();
+  const result = run.win ? "win" : run.was_abandoned ? "abandoned" : "loss";
   const username = run.username?.trim() || "Anonymous";
   const ascension = run.ascension ?? 0;
   return { char, result, username, ascension };
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { lang: _lang, hash } = await params;
-  const lang = getLangOrDefault(_lang);
+  const { hash } = await params;
   const run = await fetchRun(hash);
-  if (!run) return { title: t("Run not found", lang) };
-
-  const { char, result, username, ascension } = describeRun(run, lang);
-  const tranlatedAcension = t("Acension", lang);
-  const translatedCards = t("cards", lang);
-  const translatedRelics = t("relics", lang);
-  const deck = run.players?.[0]?.deck?.length || 0;
-  const relics = run.players?.[0]?.relics?.length || 0;
+  if (!run) return { title: "Run Not Found - Slay the Spire 2 (sts2) | Spire Codex" };
+  const { char, result, username, ascension } = describeRun(run);
   // Title format requested by user:
   //   "{username} - {character} - Ascension N win/loss - Slay the Spire 2 (sts2) | Spire Codex"
   // Anonymous runs need a discriminator: two anonymous wins with the same
@@ -73,43 +57,42 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     username === "Anonymous"
       ? `${mins > 0 ? ` in ${mins}m` : ""} #${hash.slice(0, 8)}`
       : "";
-  const meta = buildPageMetadata({
-    lang: _lang,
-    // Co-op sibling pages (one share hash per player, identical content)
-    // point at the player-0 hash the API reports, so crawlers stop
-    // counting each seat as a separate page.
-    path: `/runs/${run.primary_hash || hash}`,
-    title: `${username} - ${char} - ${tranlatedAcension} ${ascension} ${result}${anonTag}`,
-    description: `${username}'s ${run.win ? t("victorious", lang) : result} ${char} run at ${tranlatedAcension} ${ascension}. ${deck} ${translatedCards}, ${relics} ${translatedRelics}.`,
-    ogType: "article",
-    // A run share page is the same English game data whatever the locale
-    // chrome; these previously made up the bulk of a ~5,000 page
-    // "Duplicate without user-selected canonical" cluster in GSC, which
-    // is why /<lang>/runs/<hash> used to force-redirect to the English
-    // page instead of rendering. Canonical folds back to English and the
-    // [lang] variant (see app/[lang]/runs/[hash]/page.tsx) adds noindex on
-    // top. Drop both once locale variants are genuinely distinct.
-    offerLanguageAlternatives: false,
-  });
-  // og:url follows the page's own hash rather than the canonical
-  // player-0 one, so a shared link previews the seat that was shared.
+  const title = `${username} - ${char} - Ascension ${ascension} ${result}${anonTag} - Slay the Spire 2 (sts2) | Spire Codex`;
+  const description = `${username}'s ${result === "win" ? "victorious" : result} ${char} run at Ascension ${ascension}. ${run.players?.[0]?.deck?.length || 0} cards, ${run.players?.[0]?.relics?.length || 0} relics.`;
   return {
-    ...meta,
-    openGraph: { ...meta.openGraph, url: `${SITE_URL}/runs/${hash}` },
+    title,
+    description,
+    openGraph: {
+      type: "article",
+      siteName: SITE_NAME,
+      url: `${SITE_URL}/runs/${hash}`,
+      title,
+      description,
+      images: [{ url: DEFAULT_OG_IMAGE }],
+    },
+    twitter: { card: "summary_large_image", title, description },
+    // No hreflang alternates: a run-share page is inherently English
+    // game data (the same hash points at the same numbers regardless of
+    // locale chrome), so localized variants /<lang>/runs/<hash> read to
+    // Google as near-duplicates of the canonical /runs/<hash>. That was
+    // generating ~5,000 "Duplicate without user-selected canonical"
+    // pages in GSC.
+    // Co-op sibling pages (one share hash per player, identical content)
+    // canonical to the player-0 hash the API reports, so crawlers stop
+    // counting each seat as a duplicate page.
+    alternates: { canonical: `/runs/${run.primary_hash || hash}` },
   };
 }
 
 export default async function SharedRunPage({ params }: Props) {
-  const { lang: _lang, hash } = await params;
-  const lang = getLangOrDefault(_lang);
+  const { hash } = await params;
   const run = await fetchRun(hash);
   let jsonLd: ReturnType<typeof buildDetailPageJsonLd> | null = null;
   if (run) {
-    const { char, result, username, ascension } = describeRun(run, lang);
-    const tranlatedAcension = t("Acension", lang);
+    const { char, result, username, ascension } = describeRun(run);
     jsonLd = buildDetailPageJsonLd({
-      name: `${username} - ${char} - ${tranlatedAcension} ${ascension} ${result}`,
-      description: `${username}'s ${run.win ? t("victorious", lang) : result} ${char} run at ${tranlatedAcension} ${ascension} in ${LANG_GAME_NAME[lang]}`,
+      name: `${username} - ${char} - Ascension ${ascension} ${result}`,
+      description: `${username}'s ${result === "win" ? "victorious" : result} ${char} run at Ascension ${ascension} in Slay the Spire 2.`,
       path: `/runs/${hash}`,
       category: "Run",
       breadcrumbs: [

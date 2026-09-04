@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import UninstallFormClient from "./UninstallFormClient";
-import { buildPageMetadata } from "@/lib/seo";
 
 // Hidden survey loaded by the Overwolf client after a user uninstalls the
 // Spire Codex companion app. Not in nav, not in sitemap, not in robots,
@@ -8,21 +7,14 @@ import { buildPageMetadata } from "@/lib/seo";
 // Overwolf manifest's uninstall_window flow which loads
 // https://spire-codex.com/uninstall directly.
 export const metadata: Metadata = {
-  ...buildPageMetadata({
-    path: "/uninstall",
-    title: "Uninstall feedback",
-    description: "Share why you uninstalled the Spire Codex companion.",
-    offerLanguageAlternatives: false,
-    noindex: true,
-  }),
+  title: "Uninstall feedback | Spire Codex",
+  description: "Share why you uninstalled the Spire Codex companion.",
   robots: {
     index: false,
     follow: false,
     nocache: true,
     googleBot: { index: false, follow: false },
   },
-  // No canonical at all, not even self-referencing: this route isn't
-  // meant to be found or indexed under any URL.
   alternates: { canonical: undefined },
 };
 

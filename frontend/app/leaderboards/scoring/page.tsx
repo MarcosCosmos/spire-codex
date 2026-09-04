@@ -1,26 +1,30 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { buildPageMetadata } from "@/lib/seo";
-import { getLangOrDefault, LANG_GAME_NAME } from "@/lib/languages";
-import { t } from "@/lib/ui-translations";
+import { SITE_URL, SITE_NAME, DEFAULT_OG_IMAGE, buildLanguageAlternates } from "@/lib/seo";
 import JsonLd from "@/app/components/JsonLd";
 import { buildBreadcrumbJsonLd, buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
 import ScoreBadge from "@/app/components/ScoreBadge";
 
-/** Shared with app/[lang]/leaderboards/scoring/page.tsx, which re-exports this directly. */
-export async function generateMetadata(
-  { params }: { params?: Promise<{ lang?: string }> } = {},
-): Promise<Metadata> {
-  const lang = (await params)?.lang;
-  const gameName = LANG_GAME_NAME[getLangOrDefault(lang)];
-  return buildPageMetadata({
-    lang,
-    path: "/leaderboards/scoring",
-    title: `Codex Score - ${t("How scoring works", lang ?? "eng")}`,
-    description: `How Codex Score ranks every ${gameName} card, relic, and potion. Bayesian-shrunk win rate, S-through-F tier bands, and full formula methodology.`,
-    ogType: "article",
-  });
-}
+export const metadata: Metadata = {
+  title: `Codex Score - How Tier Ratings Work - Slay the Spire 2 (sts2) | ${SITE_NAME}`,
+  description:
+    "How Codex Score ranks every Slay the Spire 2 (sts2) card, relic, and potion. Bayesian-shrunk win rate, S-through-F tier bands, and full formula methodology.",
+  alternates: { canonical: `${SITE_URL}/leaderboards/scoring`, languages: buildLanguageAlternates(`/leaderboards/scoring`) },
+  openGraph: {
+    title: `Codex Score Methodology - Slay the Spire 2 (sts2) | ${SITE_NAME}`,
+    description:
+      "How we compute the 0-100 community-meta score on every card / relic / potion. Bayesian shrinkage, tier bands, formula breakdown.",
+    url: `${SITE_URL}/leaderboards/scoring`,
+    siteName: SITE_NAME,
+    type: "article",
+    images: [{ url: DEFAULT_OG_IMAGE }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `Codex Score Methodology - Slay the Spire 2 (sts2) | ${SITE_NAME}`,
+    description: "How we compute the 0-100 community-meta score on every card / relic / potion. Bayesian shrinkage, tier bands, formula breakdown.",
+  },
+};
 
 interface ExampleRow {
   label: string;
