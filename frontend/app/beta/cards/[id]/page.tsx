@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import CardDetail from "@/app/cards/[id]/CardDetail";
 import { enchantmentsForCard } from "@/lib/card-enchantments";
 
-/** Beta-channel card detail. A real route (not a middleware rewrite of
+/** Beta-channel card detail. A real route (not a proxy.ts rewrite of
  * /cards/[id]) because the stable page is ISR-cached: it must never read
  * per-request state like a channel param, or it loses its cache. This one
  * is per-request by nature, so it can just ask the API for beta data.
@@ -10,7 +10,10 @@ import { enchantmentsForCard } from "@/lib/card-enchantments";
 
 export const dynamic = "force-dynamic";
 
-const API_INTERNAL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_INTERNAL =
+  process.env.API_INTERNAL_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://localhost:8000";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -25,7 +28,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   try {
     const card = await fetchBetaCard(id);
     if (!card) return { title: "Card Not Found - Beta | Spire Codex" };
-    return { title: `${card.name} (Beta) - Slay the Spire 2 Card | Spire Codex` };
+    return {
+      title: `${card.name} (Beta) - Slay the Spire 2 Card | Spire Codex`,
+    };
   } catch {
     return { title: "Spire Codex" };
   }
@@ -40,5 +45,10 @@ export default async function Page({ params }: Props) {
     // CardDetail refetches client-side (with channel=beta via the /beta
     // path) and renders its own not-found state.
   }
-  return <CardDetail initialCard={card} initialEnchantments={enchantmentsForCard(id)} />;
+  return (
+    <CardDetail
+      initialCard={card}
+      initialEnchantments={enchantmentsForCard(id)}
+    />
+  );
 }

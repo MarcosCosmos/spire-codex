@@ -34,7 +34,7 @@ export default function SiteSwitcher() {
   const onBeta = useChannel() === "beta";
 
   // Path-preserving counterparts, keeping the language prefix: /jpn/cards/x
-  // <-> /jpn/beta/cards/x. The middleware serves any /beta/<page> via
+  // <-> /jpn/beta/cards/x. The proxy.ts serves any /beta/<page> via
   // rewrite, and entity pages missing on the other channel already bounce
   // to their hub, so switching never has to dump the visitor on the root.
   const parts = pathname.split("/");
@@ -46,7 +46,10 @@ export default function SiteSwitcher() {
   const betaHref = `${langPrefix}/beta${rest ? `/${rest}` : ""}`;
 
   useEffect(() => {
-    cachedFetch<{ beta_version: string | null; render_version?: string | null }>(`${API}/api/beta/version`)
+    cachedFetch<{
+      beta_version: string | null;
+      render_version?: string | null;
+    }>(`${API}/api/beta/version`)
       .then((d) => {
         setBetaVersion(d.beta_version);
         // Keep beta card-render URLs (cards-full/beta/<ver>/) on the right
@@ -100,7 +103,12 @@ export default function SiteSwitcher() {
           viewBox="0 0 24 24"
           aria-hidden
         >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M19 9l-7 7-7-7"
+          />
         </svg>
       </button>
 

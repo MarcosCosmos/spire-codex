@@ -7,11 +7,27 @@
     ]
   },
   {
+    "path": "/admin/elo",
+    "name": "Admin · Elo",
+    "keywords": [
+      "admin",
+      "elo"
+    ]
+  },
+  {
     "path": "/admin/keys",
     "name": "Admin · Keys",
     "keywords": [
       "admin",
       "keys"
+    ]
+  },
+  {
+    "path": "/admin/news",
+    "name": "Admin · News",
+    "keywords": [
+      "admin",
+      "news"
     ]
   },
   {
@@ -44,6 +60,13 @@
     "name": "Ancients",
     "keywords": [
       "ancients"
+    ]
+  },
+  {
+    "path": "/archetypes",
+    "name": "Archetypes",
+    "keywords": [
+      "archetypes"
     ]
   },
   {
@@ -105,6 +128,14 @@
     ]
   },
   {
+    "path": "/deck-lab",
+    "name": "Deck Lab",
+    "keywords": [
+      "deck",
+      "lab"
+    ]
+  },
+  {
     "path": "/developers",
     "name": "Developers",
     "keywords": [
@@ -130,6 +161,13 @@
     "name": "Events",
     "keywords": [
       "events"
+    ]
+  },
+  {
+    "path": "/exporter",
+    "name": "Exporter",
+    "keywords": [
+      "exporter"
     ]
   },
   {
@@ -238,6 +276,13 @@
     ]
   },
   {
+    "path": "/mod",
+    "name": "Mod",
+    "keywords": [
+      "mod"
+    ]
+  },
+  {
     "path": "/modifiers",
     "name": "Modifiers",
     "keywords": [
@@ -312,6 +357,14 @@
     "name": "Runs",
     "keywords": [
       "runs"
+    ]
+  },
+  {
+    "path": "/seed-lab",
+    "name": "Seed Lab",
+    "keywords": [
+      "seed",
+      "lab"
     ]
   },
   {
