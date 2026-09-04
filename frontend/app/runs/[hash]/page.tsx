@@ -8,7 +8,10 @@ import { t } from "@/lib/ui-translations";
 
 export const dynamic = "force-dynamic";
 
-const API_INTERNAL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_INTERNAL =
+  process.env.API_INTERNAL_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://localhost:8000";
 
 type Props = { params: Promise<{ lang?: string; hash: string }> };
 
@@ -33,9 +36,13 @@ async function fetchRun(hash: string): Promise<SharedRun | null> {
 }
 
 function describeRun(run: SharedRun, lang: LangCode) {
-  const rawChar = run.players?.[0]?.character?.replace("CHARACTER.", "") || "Unknown";
+  const rawChar =
+    run.players?.[0]?.character?.replace("CHARACTER.", "") || "Unknown";
   const char = t(rawChar.charAt(0) + rawChar.slice(1).toLowerCase(), lang);
-  const result = t(run.win ? "win" : run.was_abandoned ? "abandoned" : "loss", lang);
+  const result = t(
+    run.win ? "win" : run.was_abandoned ? "abandoned" : "loss",
+    lang,
+  );
   const username = run.username?.trim() || "Anonymous";
   const ascension = run.ascension ?? 0;
   return { char, result, username, ascension };
@@ -44,37 +51,48 @@ function describeRun(run: SharedRun, lang: LangCode) {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { lang: _lang, hash } = await params;
   const lang = getLangOrDefault(_lang);
+  let detail;
   const run = await fetchRun(hash);
-  if (!run) {
-    return { title: { absolute: TITLE_TEMPLATE.replace("%s", t("Run not found", lang)) } };
+  if (run) {
+    const { char, result, username, ascension } = describeRun(run, lang);
+    const translatedAscension = t("Ascension", lang);
+    const translatedCards = t("cards", lang);
+    const translatedRelics = t("relics", lang);
+    const deck = run.players?.[0]?.deck?.length || 0;
+    const relics = run.players?.[0]?.relics?.length || 0;
+    // Title format requested by user:
+    //   "{username} - {character} - Ascension N win/loss - Slay the Spire 2 (sts2) | Spire Codex"
+    // Anonymous runs need a discriminator: two anonymous wins with the same
+    // character and ascension otherwise share one title, and crawlers flag
+    // the collision. Duration alone wasn't enough (two anon Ironclad wins
+    // collided at the same minute — co-op siblings share the exact duration),
+    // so the page's own share hash rides along: it's the only component
+    // guaranteed unique per URL.
+    const mins = Math.round((run.run_time ?? 0) / 60);
+    const anonTag =
+      username === "Anonymous"
+        ? `${mins > 0 ? ` in ${mins}m` : ""} #${hash.slice(0, 8)}`
+        : "";
+    detail = {
+      title: `${username} - ${char} - ${translatedAscension} ${ascension} ${result}${anonTag}`,
+      description: `${username}'s ${run.win ? t("victorious", lang) : result} ${char} run at ${translatedAscension} ${ascension}. ${deck} ${translatedCards}, ${relics} ${translatedRelics}.`,
+      path: `/runs/${run.primary_hash || hash}`,
+    };
+  } else {
+    detail = {
+      title: `${t("Run", lang)} ${t("not found", lang)}`,
+      description: "",
+    };
   }
-  const { char, result, username, ascension } = describeRun(run, lang);
-  const translatedAscension = t("Ascension", lang);
-  const translatedCards = t("cards", lang);
-  const translatedRelics = t("relics", lang);
-  const deck = run.players?.[0]?.deck?.length || 0;
-  const relics = run.players?.[0]?.relics?.length || 0;
-  // Title format requested by user:
-  //   "{username} - {character} - Ascension N win/loss - Slay the Spire 2 (sts2) | Spire Codex"
-  // Anonymous runs need a discriminator: two anonymous wins with the same
-  // character and ascension otherwise share one title, and crawlers flag
-  // the collision. Duration alone wasn't enough (two anon Ironclad wins
-  // collided at the same minute — co-op siblings share the exact duration),
-  // so the page's own share hash rides along: it's the only component
-  // guaranteed unique per URL.
-  const mins = Math.round((run.run_time ?? 0) / 60);
-  const anonTag =
-    username === "Anonymous"
-      ? `${mins > 0 ? ` in ${mins}m` : ""} #${hash.slice(0, 8)}`
-      : "";
+
   const meta = buildPageMetadata({
+    path: `/runs/${hash}`,
+    ...detail,
     lang,
     // Co-op sibling pages (one share hash per player, identical content)
     // point at the player-0 hash the API reports, so crawlers stop
     // counting each seat as a separate page.
-    path: `/runs/${run.primary_hash || hash}`,
-    title: `${username} - ${char} - ${translatedAscension} ${ascension} ${result}${anonTag}`,
-    description: `${username}'s ${run.win ? t("victorious", lang) : result} ${char} run at ${translatedAscension} ${ascension}. ${deck} ${translatedCards}, ${relics} ${translatedRelics}.`,
+
     ogType: "article",
     // A run share page is the same English game data whatever the locale
     // chrome; these previously made up the bulk of a ~5,000 page
@@ -86,11 +104,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     // locale variants are genuinely distinct.
     supressLanguageAlternates: true,
   });
+
   // og:url follows the page's own hash rather than the canonical
   // player-0 one, so a shared link previews the seat that was shared.
   return {
     ...meta,
-    openGraph: { ...meta.openGraph, url: `${SITE_URL}/runs/${hash}` },
+    openGraph: { ...meta.openGraph, url: `/runs/${hash}` },
   };
 }
 

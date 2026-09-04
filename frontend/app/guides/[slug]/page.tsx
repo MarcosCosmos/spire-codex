@@ -38,7 +38,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     }
   } finally {
     detail ??= {
-      title: `${t("Guide", lang)} ${t("Not Found", lang)}`,
+      title: `${t("Guide", lang)} ${t("not found", lang)}`,
       description: ",",
     };
   }
