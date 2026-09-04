@@ -1,43 +1,60 @@
 import type { Metadata } from "next";
 import type { Guide } from "@/lib/api";
-import { SITE_URL, SITE_NAME, DEFAULT_OG_IMAGE, stripTags, stripTagsFlat, clipMetaDescription, buildLanguageAlternates} from "@/lib/seo";
-import JsonLd from "@/app/components/JsonLd";
-import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
+import {
+  buildPageMetadata,
+  stripTagsFlat,
+  clipMetaDescription,
+  TITLE_TEMPLATE,
+} from "@/lib/seo";
 import GuideDetail from "./GuideDetail";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
 import { fetchEntityRes } from "@/lib/entity-fetch";
+import { getLangOrDefault } from "@/lib/languages";
+import { t } from "@/lib/ui-translations";
+import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
+import JsonLd from "@/app/components/JsonLd";
 
 const API = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
-  const { slug } = await params;
+type Props = { params: Promise<{ lang?: string; slug: string }> };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { lang: _lang, slug } = await params;
+  const lang = getLangOrDefault(_lang);
   try {
     const res = await fetch(`${API}/api/guides/${slug}`, { next: { revalidate: 300 } });
-    if (!res.ok) return { title: `Guide Not Found - Slay the Spire 2 (sts2) | ${SITE_NAME}` };
+    if (!res.ok) {
+      return {
+        title: {
+          absolute: TITLE_TEMPLATE.replace("%s", `${t("Guides", lang)} ${t("Not Found", lang)}`),
+        },
+      };
+    }
     const guide: Guide = await res.json();
-    const title = `${guide.title} - Slay the Spire 2 Guide | ${SITE_NAME}`;
-    const description = clipMetaDescription(stripTagsFlat(guide.summary || ""));
-    return {
-      title,
-      description,
-      alternates: { canonical: `${SITE_URL}/guides/${slug}` },
-      openGraph: {
-        title,
-        description,
-        url: `${SITE_URL}/guides/${slug}`,
-        siteName: SITE_NAME,
-        type: "article",
-        images: [{ url: DEFAULT_OG_IMAGE }],
-      },
-      twitter: { card: "summary_large_image", title, description },
-    };
+    return buildPageMetadata({
+      lang,
+      path: `/guides/${slug}`,
+      title: guide.title,
+      description: clipMetaDescription(stripTagsFlat(guide.summary || "")),
+      ogType: "article",
+      // Guides are English-language content; the localized wrappers used
+      // to serve the same English body on 13 URLs per guide, which
+      // crawlers flagged as language mismatches — the reason
+      // /<lang>/guides/<slug> used to force-redirect to the English page
+      // instead of rendering. Canonical folds back to English and
+      // non-English requests get noindex automatically (see
+      // buildPageMetadata's supressLanguageAlternates). Drop this once
+      // the surrounding chrome is genuinely localized.
+      supressLanguageAlternates: true,
+    });
   } catch {
-    return { title: `Guide - Slay the Spire 2 (sts2) | ${SITE_NAME}` };
+    return { title: { absolute: TITLE_TEMPLATE.replace("%s", "Guide") } };
   }
 }
 
-export default async function GuideDetailPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
+export default async function GuideDetailPage({ params }: Props) {
+  const { lang: _lang, slug } = await params;
+  const lang = getLangOrDefault(_lang);
   let guide: Guide | null = null;
   let apiUnreachable = false;
   try {
@@ -58,8 +75,8 @@ export default async function GuideDetailPage({ params }: { params: Promise<{ sl
           path: `/guides/${slug}`,
           category: guide.category,
           breadcrumbs: [
-            { name: "Home", href: "/" },
-            { name: "Guides", href: "/guides" },
+            { name: t("Home", lang), href: "/" },
+            { name: t("Guides", lang), href: "/guides" },
             { name: guide.title, href: `/guides/${slug}` },
           ],
         }),
