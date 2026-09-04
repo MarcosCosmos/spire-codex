@@ -4,12 +4,20 @@ import JsonLd from "@/app/components/JsonLd";
 import { buildBreadcrumbJsonLd, buildCollectionPageJsonLd } from "@/lib/jsonld";
 import type { Metadata } from "next";
 import { buildPageMetadata } from "@/lib/seo";
+import { getLangOrDefault, LANG_GAME_NAME } from "@/lib/languages";
+import { t } from "@/lib/ui-translations";
 
-export function generateMetadata(): Metadata {
+type Props = { params: Promise<{ lang?: string }> };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { lang: _lang } = await params;
+  const lang = getLangOrDefault(_lang);
+  const gameName = LANG_GAME_NAME[lang];
   return buildPageMetadata({
+    lang: _lang,
     path: "/showcase",
-    title: "Community Showcase - Projects & Tools",
-    description: "Discover community projects and tools built with the Spire Codex API. Explore bots, widgets, apps, and more for Slay the Spire 2.",
+    title: t("Community Showcase", lang),
+    description: `Discover ${gameName} community projects and tools built with the Spire Codex API. Explore bots, widgets, apps, and more.`,
   });
 }
 
@@ -50,19 +58,23 @@ async function getShowcaseData(): Promise<ShowcaseProject[]> {
   return [];
 }
 
-export default async function ShowcasePage() {
+export default async function ShowcasePage({ params }: Props) {
+  const { lang: _lang } = await params;
+  const lang = getLangOrDefault(_lang);
+  const gameName = LANG_GAME_NAME[lang];
+  const prefix = _lang ? `/${_lang}` : "";
+
   const projects = await getShowcaseData();
 
   const jsonLd = [
     buildBreadcrumbJsonLd([
-      { name: "Home", href: "/" },
-      { name: "Showcase", href: "/showcase" },
+      { name: t("Home", lang), href: prefix || "/" },
+      { name: t("Community Showcase", lang), href: `${prefix}/showcase` },
     ]),
     buildCollectionPageJsonLd({
-      name: "Spire Codex Community Showcase",
-      description:
-        "Projects and tools built with the Spire Codex API, bots, widgets, apps, and content for the Slay the Spire 2 community.",
-      path: "/showcase",
+      name: `${gameName} Community Showcase`,
+      description: `Projects and tools built with the Spire Codex API, bots, widgets, apps, and content for the ${gameName} community.`,
+      path: `${prefix}/showcase`,
       // Project URLs are external (Discord, GitHub, third-party hosts),
       // so we don't pass them as ItemList entries, the schema's
       // ListItem URLs are auto-prefixed with SITE_URL. The
@@ -74,7 +86,7 @@ export default async function ShowcasePage() {
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <JsonLd data={jsonLd} />
       <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-2">
-        Community Showcase
+        {t("Community Showcase", lang)}
       </h1>
       <p className="text-[var(--text-secondary)] mb-8">
         Projects and tools built with the Spire Codex API. Want to add yours? Share it in the{" "}

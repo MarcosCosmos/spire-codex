@@ -1,4 +1,25 @@
-import { generateMetadata, default as LivePage } from "@/app/[lang]/live/page";
+import type { Metadata } from "next";
+import LiveClient from "./LiveClient";
+import { buildPageMetadata } from "@/lib/seo";
+import { getLangOrDefault } from "@/lib/languages";
+import { t } from "@/lib/ui-translations";
 
-export { generateMetadata };
-export default LivePage;
+type Props = { params: Promise<{ lang?: string }> };
+
+// noindex: this is an internal tool, so it needs no canonical or hreflang
+// wiring — only the title is localized.
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { lang: _lang } = await params;
+  const lang = getLangOrDefault(_lang);
+  return buildPageMetadata({
+    lang: _lang,
+    path: "/live",
+    title: t("Live", lang),
+    offerLanguageAlternatives: false,
+    noindex: true,
+  });
+}
+
+export default function LivePage() {
+  return <LiveClient />;
+}

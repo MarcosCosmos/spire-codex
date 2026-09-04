@@ -1,81 +1,80 @@
 import type { Metadata } from "next";
 import KeywordDetail from "./KeywordDetail";
 import JsonLd from "@/app/components/JsonLd";
+import { redirectMissingEntity } from "@/lib/redirect-helpers";
+import { fetchEntityRes } from "@/lib/entity-fetch";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
-import { stripTags, stripTagsFlat, clipMetaDescription, buildLanguageAlternates, DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
+import { stripTags, stripTagsFlat, clipMetaDescription, buildPageMetadata } from "@/lib/seo";
+import { getLangOrDefault, LANG_GAME_NAME, LANG_HREFLANG, isValidLang } from "@/lib/languages";
+import { t } from "@/lib/ui-translations";
 
 export const dynamic = "force-dynamic";
 
 const API_INTERNAL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-type Props = { params: Promise<{ id: string }> };
+type Props = { params: Promise<{ lang?: string; id: string }> };
 
-async function fetchKeywordOrGlossary(id: string) {
-  // Try keyword first
+function langPrefix(lang?: string): string {
+  return lang && isValidLang(lang) ? `/${lang}` : "";
+}
+
+// Glossary terms aren't locale-aware yet: the fallback only runs on the
+// canonical (no-lang) route, so a localized /<lang>/keywords/<id> only
+// ever resolves against /api/keywords, never /api/glossary.
+async function fetchKeywordOrGlossary(id: string, lang?: string) {
   try {
-    const res = await fetch(`${API_INTERNAL}/api/keywords/${id}`);
+    const res = await fetch(`${API_INTERNAL}/api/keywords/${id}${lang ? `?lang=${lang}` : ""}`);
     if (res.ok) return { type: "keyword" as const, data: await res.json() };
   } catch {}
-  // Fall back to glossary
-  try {
-    const res = await fetch(`${API_INTERNAL}/api/glossary/${id}`);
-    if (res.ok) return { type: "glossary" as const, data: await res.json() };
-  } catch {}
+  if (!lang) {
+    try {
+      const res = await fetch(`${API_INTERNAL}/api/glossary/${id}`);
+      if (res.ok) return { type: "glossary" as const, data: await res.json() };
+    } catch {}
+  }
   return null;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params;
-  const result = await fetchKeywordOrGlossary(id);
+  const { id, lang: _lang } = await params;
+  const lang = getLangOrDefault(_lang);
+  const result = await fetchKeywordOrGlossary(id, _lang);
   if (!result) return { title: "Term Not Found" };
 
   const { type, data } = result;
   const desc = stripTagsFlat(data.description);
+  const gameName = LANG_GAME_NAME[lang];
 
   if (type === "keyword") {
-    const title = `${data.name} - Slay the Spire 2 Keyword`;
-    const metaDesc = clipMetaDescription(
-      `${data.name} is a card keyword in Slay the Spire 2 (sts2)${desc ? `: ${desc}` : "."} See every card that uses ${data.name}.`,
-    );
-    return {
+    const title = `${data.name} - ${t("Keyword", lang)}`;
+    return buildPageMetadata({
+      lang: _lang,
+      path: `/keywords/${id}`,
       title,
-      description: metaDesc,
-      openGraph: {
-        type: "article",
-        siteName: SITE_NAME,
-        url: `${SITE_URL}/keywords/${id}`,
-        title,
-        description: metaDesc,
-        images: [{ url: DEFAULT_OG_IMAGE }],
-      },
-      twitter: { card: "summary_large_image", title, description: metaDesc },
-      alternates: { canonical: `/keywords/${id}`, languages: buildLanguageAlternates(`/keywords/${id}`) },
-    };
+      description: clipMetaDescription(
+        `${data.name} is a card keyword in ${gameName}${desc ? `: ${desc}` : "."} See every card that uses ${data.name}.`,
+      ),
+      ogType: "article",
+    });
   }
 
   const title = `${data.name} - Slay the Spire 2 Term`;
-  const metaDesc = clipMetaDescription(
-    `${data.name} is a game term in Slay the Spire 2 (sts2)${desc ? `: ${desc}` : "."}`,
-  );
-  return {
+  return buildPageMetadata({
+    lang: _lang,
+    path: `/keywords/${id}`,
     title,
-    description: metaDesc,
-    openGraph: {
-      type: "article",
-      siteName: SITE_NAME,
-      url: `${SITE_URL}/keywords/${id}`,
-      title,
-      description: metaDesc,
-      images: [{ url: DEFAULT_OG_IMAGE }],
-    },
-    twitter: { card: "summary_large_image", title, description: metaDesc },
-    alternates: { canonical: `/keywords/${id}`, languages: buildLanguageAlternates(`/keywords/${id}`) },
-  };
+    description: clipMetaDescription(
+      `${data.name} is a game term in ${gameName}${desc ? `: ${desc}` : "."}`,
+    ),
+    ogType: "article",
+  });
 }
 
 export default async function Page({ params }: Props) {
-  const { id } = await params;
-  const result = await fetchKeywordOrGlossary(id);
+  const { id, lang: _lang } = await params;
+  const lang = getLangOrDefault(_lang);
+  const prefix = langPrefix(_lang);
+  const result = await fetchKeywordOrGlossary(id, _lang);
 
   let jsonLd = null;
   if (result) {
@@ -86,13 +85,14 @@ export default async function Page({ params }: Props) {
       const detailJsonLd = buildDetailPageJsonLd({
         name: `${data.name} Cards`,
         description: `${desc} All cards with the ${data.name} keyword in Slay the Spire 2.`,
-        path: `/keywords/${id}`,
+        path: `${prefix}/keywords/${id}`,
         category: "Keyword",
         breadcrumbs: [
-          { name: "Home", href: "/" },
-          { name: "Keywords", href: "/keywords" },
-          { name: data.name, href: `/keywords/${id}` },
+          { name: t("Home", lang), href: prefix || "/" },
+          { name: t("Keywords", lang), href: `${prefix}/keywords` },
+          { name: data.name, href: `${prefix}/keywords/${id}` },
         ],
+        inLanguage: LANG_HREFLANG[lang],
       });
       const faqJsonLd = buildFAQPageJsonLd([
         { question: `What does ${data.name} do in Slay the Spire 2?`, answer: desc },
@@ -103,12 +103,12 @@ export default async function Page({ params }: Props) {
       const detailJsonLd = buildDetailPageJsonLd({
         name: data.name,
         description: `${desc} Game term definition for Slay the Spire 2.`,
-        path: `/keywords/${id}`,
+        path: `${prefix}/keywords/${id}`,
         category: "Game Term",
         breadcrumbs: [
-          { name: "Home", href: "/" },
-          { name: "Keywords & Game Terms", href: "/keywords" },
-          { name: data.name, href: `/keywords/${id}` },
+          { name: t("Home", lang), href: prefix || "/" },
+          { name: "Keywords & Game Terms", href: `${prefix}/keywords` },
+          { name: data.name, href: `${prefix}/keywords/${id}` },
         ],
       });
       const faqJsonLd = buildFAQPageJsonLd([
@@ -117,6 +117,7 @@ export default async function Page({ params }: Props) {
       jsonLd = [...detailJsonLd, faqJsonLd];
     }
   }
+  if (!result) redirectMissingEntity("keywords", id, _lang);
 
   return (
     <>

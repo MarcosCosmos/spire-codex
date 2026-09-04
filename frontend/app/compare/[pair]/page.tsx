@@ -3,7 +3,9 @@ import { permanentRedirect } from "next/navigation";
 import type { Character, Card } from "@/lib/api";
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd } from "@/lib/jsonld";
-import { DEFAULT_OG_IMAGE, buildLanguageAlternates, SITE_NAME, SITE_URL } from "@/lib/seo";
+import { buildPageMetadata } from "@/lib/seo";
+import { getLangOrDefault, isValidLang, LANG_GAME_NAME, LANG_HREFLANG } from "@/lib/languages";
+import { t } from "@/lib/ui-translations";
 import CompareDetail from "./CompareDetail";
 
 export const dynamic = "force-static";
@@ -39,41 +41,41 @@ function parsePair(pair: string): { a: string; b: string } | null {
   return { a, b };
 }
 
-type Props = { params: Promise<{ pair: string }> };
+function langPrefix(lang?: string): string {
+  return lang && isValidLang(lang) ? `/${lang}` : "";
+}
+
+type Props = { params: Promise<{ lang?: string; pair: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { pair } = await params;
+  const { lang: _lang, pair } = await params;
+  const lang = getLangOrDefault(_lang);
   const parsed = parsePair(pair);
   if (!parsed) return { title: "Comparison Not Found" };
 
+  const gameName = LANG_GAME_NAME[lang];
   const nameA = CHAR_NAMES[parsed.a];
   const nameB = CHAR_NAMES[parsed.b];
   const title = `${nameA} vs ${nameB} - Character Comparison`;
-  const description = `Compare ${nameA} and ${nameB} in Slay the Spire 2. Side-by-side stats, card pool breakdowns by type and rarity, keyword distributions, and starting decks.`;
+  const description = `Compare ${nameA} and ${nameB} in ${gameName}. Side-by-side stats, card pool breakdowns by type and rarity, keyword distributions, and starting decks.`;
 
-  return {
+  return buildPageMetadata({
+    lang: _lang,
+    path: `/compare/${pair}`,
     title,
     description,
-    openGraph: {
-      type: "article",
-      siteName: SITE_NAME,
-      url: `${SITE_URL}/compare/${pair}`,
-      title: `${nameA} vs ${nameB} - Character Comparison`,
-      description,
-      images: [{ url: DEFAULT_OG_IMAGE }],
-    },
-    twitter: { card: "summary_large_image", title: `${nameA} vs ${nameB} - Character Comparison`, description },
-    alternates: { canonical: `/compare/${pair}`, languages: buildLanguageAlternates(`/compare/${pair}`) },
-  };
+    ogType: "article",
+  });
 }
 
 async function fetchCharacterAndCards(
-  charId: string
+  charId: string,
+  lang: string,
 ): Promise<{ character: Character; cards: Card[] } | null> {
   try {
     const [charRes, cardsRes] = await Promise.all([
-      fetch(`${API_INTERNAL}/api/characters/${charId}`, { next: { revalidate: 300 } }),
-      fetch(`${API_INTERNAL}/api/cards?color=${charId}&lang=eng`, {
+      fetch(`${API_INTERNAL}/api/characters/${charId}?lang=${lang}`, { next: { revalidate: 300 } }),
+      fetch(`${API_INTERNAL}/api/cards?color=${charId}&lang=${lang}`, {
         next: { revalidate: 300 },
       }),
     ]);
@@ -87,36 +89,41 @@ async function fetchCharacterAndCards(
 }
 
 export default async function Page({ params }: Props) {
-  const { pair } = await params;
+  const { lang: _lang, pair } = await params;
+  const lang = getLangOrDefault(_lang);
+  const prefix = langPrefix(_lang);
   const parsed = parsePair(pair);
 
-  // Invalid pair slug → 308 back to /compare. The slug grammar is
-  // strictly `{charA}-vs-{charB}` from a fixed set of five characters,
-  // so anything else is a stale URL we'd rather forward equity from.
+  // Invalid pair slug → 308 back to the (possibly localized) /compare hub.
+  // The slug grammar is strictly `{charA}-vs-{charB}` from a fixed set of
+  // five characters, so anything else is a stale URL we'd rather forward
+  // equity from.
   if (!parsed) {
-    permanentRedirect("/compare");
+    permanentRedirect(`${prefix}/compare`);
   }
 
   const [dataA, dataB] = await Promise.all([
-    fetchCharacterAndCards(parsed.a),
-    fetchCharacterAndCards(parsed.b),
+    fetchCharacterAndCards(parsed.a, lang),
+    fetchCharacterAndCards(parsed.b, lang),
   ]);
 
   const nameA = CHAR_NAMES[parsed.a];
   const nameB = CHAR_NAMES[parsed.b];
+  const gameName = LANG_GAME_NAME[lang];
 
   let jsonLd = null;
   if (dataA && dataB) {
     jsonLd = buildDetailPageJsonLd({
       name: `${nameA} vs ${nameB}`,
-      description: `Side-by-side comparison of ${nameA} and ${nameB} in Slay the Spire 2.`,
-      path: `/compare/${pair}`,
+      description: `Side-by-side comparison of ${nameA} and ${nameB} in ${gameName}.`,
+      path: `${prefix}/compare/${pair}`,
       category: "Character Comparison",
       breadcrumbs: [
-        { name: "Home", href: "/" },
-        { name: "Compare", href: "/compare" },
-        { name: `${nameA} vs ${nameB}`, href: `/compare/${pair}` },
+        { name: t("Home", lang), href: prefix || "/" },
+        { name: t("Compare", lang), href: `${prefix}/compare` },
+        { name: `${nameA} vs ${nameB}`, href: `${prefix}/compare/${pair}` },
       ],
+      inLanguage: LANG_HREFLANG[lang],
     });
   }
 

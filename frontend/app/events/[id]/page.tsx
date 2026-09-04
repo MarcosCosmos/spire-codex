@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import EventDetail from "./EventDetail";
 import { fetchEventVotes } from "@/lib/event-votes";
 import { stripTags, stripTagsFlat, clipMetaDescription, buildPageMetadata } from "@/lib/seo";
-import { getLangOrDefault, LANG_GAME_NAME, isValidLang } from "@/lib/languages";
+import { getLangOrDefault, LANG_GAME_NAME, LANG_HREFLANG, isValidLang } from "@/lib/languages";
+import { t } from "@/lib/ui-translations";
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
@@ -14,9 +15,12 @@ const API_PUBLIC = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_A
 
 type Props = { params: Promise<{ lang?: string; id: string }> };
 
+function langPrefix(lang?: string): string {
+  return lang && isValidLang(lang) ? `/${lang}` : "";
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id, lang } = await params;
-  if (lang && !isValidLang(lang)) return {};
   try {
     const res = await fetch(`${API_INTERNAL}/api/events/${id}${lang ? `?lang=${lang}` : ""}`);
     if (!res.ok) return { title: "Event Not Found" };
@@ -47,33 +51,37 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function Page({ params }: Props) {
-  const { id } = await params;
+  const { id, lang: _lang } = await params;
+  const lang = getLangOrDefault(_lang);
+  const prefix = langPrefix(_lang);
   let jsonLd = null;
   let event = null;
   let apiUnreachable = false;
   try {
-    const res = await fetchEntityRes(`${API_INTERNAL}/api/events/${id}`);
+    const res = await fetchEntityRes(`${API_INTERNAL}/api/events/${id}${_lang ? `?lang=${_lang}` : ""}`);
     if (res.ok) {
       event = await res.json();
       const desc = stripTags(event.description || "");
+      const name = event.name || event.title || id;
       const detailJsonLd = buildDetailPageJsonLd({
-        name: event.name,
-        description: desc || `${event.name} event from Slay the Spire 2`,
-        path: `/events/${id}`,
+        name,
+        description: desc || `${name} event from Slay the Spire 2`,
+        path: `${prefix}/events/${id}`,
         imageUrl: event.image_url ? imageUrl(event.image_url) : undefined,
         category: "Event",
         breadcrumbs: [
-          { name: "Home", href: "/" },
-          { name: "Events", href: "/events" },
-          { name: event.name, href: `/events/${id}` },
+          { name: t("Home", lang), href: prefix || "/" },
+          { name: t("Events", lang), href: `${prefix}/events` },
+          { name, href: `${prefix}/events/${id}` },
         ],
+        inLanguage: LANG_HREFLANG[lang],
       });
       const faqQuestions = [
-        { question: `What happens in the ${event.name} event in Slay the Spire 2?`, answer: desc || `${event.name} is an event in Slay the Spire 2.` },
-        { question: `What type of event is ${event.name}?`, answer: `${event.name} is a ${event.type} event${event.act ? ` found in ${event.act}` : ""}.` },
+        { question: `What happens in the ${name} event in Slay the Spire 2?`, answer: desc || `${name} is an event in Slay the Spire 2.` },
+        { question: `What type of event is ${name}?`, answer: `${name} is a ${event.type} event${event.act ? ` found in ${event.act}` : ""}.` },
       ];
       if (event.options?.length) {
-        faqQuestions.push({ question: `What choices does ${event.name} offer?`, answer: `${event.name} offers ${event.options.length} choice(s): ${event.options.map((o: { title: string }) => o.title).join(", ")}.` });
+        faqQuestions.push({ question: `What choices does ${name} offer?`, answer: `${name} offers ${event.options.length} choice(s): ${event.options.map((o: { title: string }) => o.title).join(", ")}.` });
       }
       jsonLd = [...detailJsonLd, buildFAQPageJsonLd(faqQuestions)];
     }
@@ -82,7 +90,7 @@ export default async function Page({ params }: Props) {
   }
   // Fail the render (500) instead of ISR-caching a contentless shell.
   if (apiUnreachable) throw new Error("entity API unreachable");
-  if (!event) redirectMissingEntity("events", id);
+  if (!event) redirectMissingEntity("events", id, _lang);
   // Server-render the community choice distribution (unique, crawlable data).
   const voteStats = event ? await fetchEventVotes(id) : null;
   return (

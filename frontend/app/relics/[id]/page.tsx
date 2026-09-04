@@ -3,7 +3,7 @@ import RelicDetail from "./RelicDetail";
 import type { EntityStats } from "@/app/components/EntityRunStats";
 import { fetchEntityStats } from "@/lib/entity-stats";
 import { stripTags, stripTagsFlat, clipMetaDescription, buildPageMetadata } from "@/lib/seo";
-import { getLangOrDefault, LANG_GAME_NAME, isValidLang } from "@/lib/languages";
+import { getLangOrDefault, LANG_GAME_NAME, LANG_HREFLANG, isValidLang } from "@/lib/languages";
 import { t } from "@/lib/ui-translations";
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
@@ -25,6 +25,16 @@ type Props = {
   searchParams?: Promise<{ channel?: string }>;
 };
 
+function langPrefix(lang?: string): string {
+  return lang && isValidLang(lang) ? `/${lang}` : "";
+}
+
+/** The /beta rewrites inject ?channel=beta; forward it to the API. */
+async function channelQS(searchParams: Props["searchParams"]): Promise<string> {
+  const channel = (await searchParams)?.channel;
+  return channel === "beta" ? "&channel=beta" : "";
+}
+
 /**
  * Shared with app/[lang]/relics/[id]/page.tsx, which re-exports this
  * directly, so relic metadata logic exists in exactly one place.
@@ -32,10 +42,8 @@ type Props = {
  */
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const { id, lang } = await params;
-  if (lang && !isValidLang(lang)) return {};
   try {
-    const channel = (await searchParams)?.channel;
-    const extraQs = channel === "beta" ? "&channel=beta" : "";
+    const extraQs = await channelQS(searchParams);
     const qs = lang ? `?lang=${lang}${extraQs}` : extraQs ? `?${extraQs.slice(1)}` : "";
     const res = await fetch(`${API_INTERNAL}/api/relics/${id}${qs}`, lang ? undefined : { next: { revalidate: 3600 } });
     if (!res.ok) return { title: "Relic Not Found" };
@@ -73,34 +81,40 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   }
 }
 
-export default async function Page({ params }: Props) {
-  const { id } = await params;
+export default async function Page({ params, searchParams }: Props) {
+  const { id, lang: _lang } = await params;
+  const lang = getLangOrDefault(_lang);
+  const prefix = langPrefix(_lang);
+  const qs = await channelQS(searchParams);
   let jsonLd = null;
   let relic = null;
   let apiUnreachable = false;
   try {
-    const res = await fetchEntityRes(`${API_INTERNAL}/api/relics/${id}`, {
-      next: { revalidate: 3600 },
-    });
+    const res = await fetchEntityRes(
+      `${API_INTERNAL}/api/relics/${id}${_lang ? `?lang=${_lang}${qs}` : qs ? `?${qs.slice(1)}` : ""}`,
+      _lang ? undefined : { next: { revalidate: 3600 } },
+    );
     if (res.ok) {
       relic = await res.json();
       const desc = stripTags(relic.description || "");
+      const name = relic.name || id;
       const detailJsonLd = buildDetailPageJsonLd({
-        name: relic.name,
-        description: desc || `${relic.name} relic from Slay the Spire 2`,
-        path: `/relics/${id}`,
+        name,
+        description: desc || `${name} relic from Slay the Spire 2`,
+        path: `${prefix}/relics/${id}`,
         imageUrl: relic.image_url ? imageUrl(relic.image_url) : undefined,
         category: "Relic",
         breadcrumbs: [
-          { name: "Home", href: "/" },
-          { name: "Relics", href: "/relics" },
-          { name: relic.name, href: `/relics/${id}` },
+          { name: t("Home", lang), href: prefix || "/" },
+          { name: t("Relics", lang), href: `${prefix}/relics` },
+          { name, href: `${prefix}/relics/${id}` },
         ],
+        inLanguage: LANG_HREFLANG[lang],
       });
       const faqQuestions = [
-        { question: `What does ${relic.name} do in Slay the Spire 2?`, answer: desc || `${relic.name} is a relic in Slay the Spire 2.` },
-        { question: `How rare is ${relic.name}?`, answer: `${relic.name} is a ${relic.rarity} relic.` },
-        { question: `Which characters can find ${relic.name}?`, answer: `${relic.name} belongs to the ${relic.pool} pool.` },
+        { question: `What does ${name} do in Slay the Spire 2?`, answer: desc || `${name} is a relic in Slay the Spire 2.` },
+        { question: `How rare is ${name}?`, answer: `${name} is a ${relic.rarity} relic.` },
+        { question: `Which characters can find ${name}?`, answer: `${name} belongs to the ${relic.pool} pool.` },
       ];
       jsonLd = [...detailJsonLd, buildFAQPageJsonLd(faqQuestions)];
     }
@@ -109,7 +123,7 @@ export default async function Page({ params }: Props) {
   }
   // Fail the render (500) instead of ISR-caching a contentless shell.
   if (apiUnreachable) throw new Error("entity API unreachable");
-  if (!relic) redirectMissingEntity("relics", id);
+  if (!relic) redirectMissingEntity("relics", id, _lang);
   // Server-render the community stats into the HTML (unique, crawlable data).
   const initialStats: EntityStats | null = relic ? await fetchEntityStats("relics", id) : null;
   return (

@@ -8,8 +8,17 @@ import PotionsClient from "./PotionsClient";
 import type { Metadata } from "next";
 import { buildPageMetadata } from "@/lib/seo";
 import { api } from "@/lib/api";
+import { getLangOrDefault, LANG_GAME_NAME } from "@/lib/languages";
+import { t } from "@/lib/ui-translations";
 
-export async function generateMetadata(): Promise<Metadata> {
+const API = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+type Props = { params: Promise<{ lang?: string }> };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { lang: _lang } = await params;
+  const lang = getLangOrDefault(_lang);
+  const gameName = LANG_GAME_NAME[lang];
   let count = "63+";
   try {
     const stats = await api.getStatsBounded();
@@ -18,31 +27,35 @@ export async function generateMetadata(): Promise<Metadata> {
     // Fall back to the baseline count if the API is unreachable at build time.
   }
   return buildPageMetadata({
+    lang: _lang,
     path: "/potions",
-    title: "Potions - Complete Potion List",
-    description: `Every Slay the Spire 2 (sts2) potion, all ${count}. Filter by rarity (Common, Uncommon, Rare) and character pool. Effects, shop prices, and use timing.`,
+    title: t("Potions", lang),
+    description: `Every ${gameName} potion, all ${count}. Filter by rarity (Common, Uncommon, Rare) and character pool. Effects, shop prices, and use timing.`,
   });
 }
 
-const API = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+export default async function PotionsPage({ params }: Props) {
+  const { lang: _lang } = await params;
+  const lang = getLangOrDefault(_lang);
+  const gameName = LANG_GAME_NAME[lang];
+  const prefix = _lang ? `/${_lang}` : "";
 
-export default async function PotionsPage() {
   let potions: Potion[] = [];
   try {
-    const res = await fetch(`${API}/api/potions?lang=eng`, { next: { revalidate: 300 } });
+    const res = await fetch(`${API}/api/potions?lang=${lang}`, { next: { revalidate: 300 } });
     if (res.ok) potions = await res.json();
   } catch {}
 
   const jsonLd = [
     buildBreadcrumbJsonLd([
-      { name: "Home", href: "/" },
-      { name: "Potions", href: "/potions" },
+      { name: t("Home", lang), href: prefix || "/" },
+      { name: t("Potions", lang), href: `${prefix}/potions` },
     ]),
     buildCollectionPageJsonLd({
-      name: "Slay the Spire 2 Potions",
+      name: `${gameName} Potions`,
       description: "Browse every potion across all character pools.",
-      path: "/potions",
-      items: potions.map((p) => ({ name: p.name, path: `/potions/${p.id.toLowerCase()}` })),
+      path: `${prefix}/potions`,
+      items: potions.map((p) => ({ name: p.name, path: `${prefix}/potions/${p.id.toLowerCase()}` })),
     }),
   ];
 
@@ -50,21 +63,21 @@ export default async function PotionsPage() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <JsonLd data={jsonLd} />
       <h1 className="text-3xl font-bold mb-2">
-        <span className="text-[var(--accent-gold)]">Slay the Spire 2 (sts2) Potions</span>
+        <span className="text-[var(--accent-gold)]">{gameName} {t("Potions", lang)}</span>
       </h1>
       <p className="text-sm text-[var(--text-muted)] mb-6">
-        Browse every potion across Ironclad, Silent, Defect, Necrobinder, and Regent. Filter by rarity and character pool.
+        {t("potions_tagline", lang)}
       </p>
 
       <HighestRated
         entityType="potions"
         entities={potions}
         label="potions"
-        pathPrefix="/potions"
+        pathPrefix={`${prefix}/potions`}
         tierHref="/tier-list/potions"
       />
 
-      <RecentlyAdded entityType="potions" label="Potion" pathPrefix="/potions" />
+      <RecentlyAdded entityType="potions" label="Potion" pathPrefix={`${prefix}/potions`} />
 
       <Suspense>
         <PotionsClient initialPotions={potions} />

@@ -1,32 +1,35 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { SITE_URL, SITE_NAME, DEFAULT_OG_IMAGE, buildLanguageAlternates } from "@/lib/seo";
+import { buildPageMetadata } from "@/lib/seo";
+import { isValidLang } from "@/lib/languages";
 import JsonLd from "@/app/components/JsonLd";
 import { buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import ChartsClient from "./ChartsClient";
 
-export const metadata: Metadata = {
-  title: `Run Charts`,
-  description:
-    "Interactive charts over community-submitted Slay the Spire 2 runs: win rate by floor, ascension and over time, damage per encounter, run stat distributions and scatters. Filter by player count, ascension, game mode, or a single player.",
-  alternates: { canonical: `${SITE_URL}/charts`, languages: buildLanguageAlternates("/charts") },
-  openGraph: {
-    title: `Run Charts`,
-    description:
-      "Dig into aggregates of community-submitted Slay the Spire 2 runs with interactive charts.",
-    url: `${SITE_URL}/charts`,
-    siteName: SITE_NAME,
-    type: "website",
-    images: [{ url: DEFAULT_OG_IMAGE }],
-  },
-  twitter: { card: "summary_large_image", title: `Slay the Spire 2 (sts2) Run Charts | ${SITE_NAME}` },
-};
+type Props = { params: Promise<{ lang?: string }> };
 
-export default function ChartsPage() {
+function langPrefix(lang?: string): string {
+  return lang && isValidLang(lang) ? `/${lang}` : "";
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { lang } = await params;
+  return buildPageMetadata({
+    lang,
+    path: "/charts",
+    title: "Run Charts",
+    description:
+      "Interactive charts over community-submitted Slay the Spire 2 runs: win rate by floor, ascension and over time, damage per encounter, run stat distributions and scatters. Filter by player count, ascension, game mode, or a single player.",
+  });
+}
+
+export default async function ChartsPage({ params }: Props) {
+  const { lang } = await params;
+  const prefix = langPrefix(lang);
   const jsonLd = [
     buildBreadcrumbJsonLd([
-      { name: "Home", href: "/" },
-      { name: "Charts", href: "/charts" },
+      { name: "Home", href: prefix || "/" },
+      { name: "Charts", href: `${prefix}/charts` },
     ]),
   ];
   return (

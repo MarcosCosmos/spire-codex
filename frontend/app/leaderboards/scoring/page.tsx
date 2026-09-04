@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { buildPageMetadata } from "@/lib/seo";
-import { getLangOrDefault, LANG_GAME_NAME, isValidLang } from "@/lib/languages";
+import { getLangOrDefault, LANG_GAME_NAME } from "@/lib/languages";
 import { t } from "@/lib/ui-translations";
 import JsonLd from "@/app/components/JsonLd";
 import { buildBreadcrumbJsonLd, buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
@@ -12,7 +12,6 @@ export async function generateMetadata(
   { params }: { params?: Promise<{ lang?: string }> } = {},
 ): Promise<Metadata> {
   const lang = (await params)?.lang;
-  if (lang && !isValidLang(lang)) return {};
   const gameName = LANG_GAME_NAME[getLangOrDefault(lang)];
   return buildPageMetadata({
     lang,

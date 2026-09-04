@@ -3,7 +3,8 @@ import CardDetail from "./CardDetail";
 import type { EntityStats } from "@/app/components/EntityRunStats";
 import { fetchEntityStats } from "@/lib/entity-stats";
 import { stripTags, stripTagsFlat, clipMetaDescription, buildPageMetadata } from "@/lib/seo";
-import { getLangOrDefault, LANG_GAME_NAME, isValidLang } from "@/lib/languages";
+import { getLangOrDefault, LANG_GAME_NAME, LANG_HREFLANG, isValidLang } from "@/lib/languages";
+import { t } from "@/lib/ui-translations";
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
@@ -28,22 +29,31 @@ type Props = {
   searchParams?: Promise<{ channel?: string }>;
 };
 
+function langPrefix(lang?: string): string {
+  return lang && isValidLang(lang) ? `/${lang}` : "";
+}
+
+/** The /beta rewrites inject ?channel=beta; forward it to the API. */
+async function channelQS(searchParams: Props["searchParams"]): Promise<string> {
+  const channel = (await searchParams)?.channel;
+  return channel === "beta" ? "&channel=beta" : "";
+}
+
 /**
  * Shared with app/[lang]/cards/[id]/page.tsx, which re-exports this
  * directly, so card metadata logic exists in exactly one place.
  * `searchParams.channel` forwards the /beta rewrite's `&channel=beta`.
  */
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
-  const { id, lang } = await params;
-  if (lang && !isValidLang(lang)) return {};
+  const { id, lang: _lang } = await params;
+  const lang = getLangOrDefault(_lang);
   try {
-    const channel = (await searchParams)?.channel;
-    const extraQs = channel === "beta" ? "&channel=beta" : "";
-    const qs = lang ? `?lang=${lang}${extraQs}` : extraQs ? `?${extraQs.slice(1)}` : "";
-    const res = await fetch(`${API_INTERNAL}/api/cards/${id}${qs}`, lang ? undefined : { next: { revalidate: 3600 } });
+    const extraQs = await channelQS(searchParams);
+    const qs = _lang ? `?lang=${_lang}${extraQs}` : extraQs ? `?${extraQs.slice(1)}` : "";
+    const res = await fetch(`${API_INTERNAL}/api/cards/${id}${qs}`, _lang ? undefined : { next: { revalidate: 3600 } });
     if (!res.ok) return { title: "Card Not Found" };
     const card = await res.json();
-    const gameName = LANG_GAME_NAME[getLangOrDefault(lang)];
+    const gameName = LANG_GAME_NAME[lang];
     const color = (card.color || "").replace(/^\w/, (c: string) => c.toUpperCase());
     // card.rarity / card.type already come back localized from the API.
     const title = `${card.name} - ${card.rarity} ${card.type}`;
@@ -53,9 +63,9 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
       `${gameName}, ${card.name} (${card.cost ?? "X"}-cost ${card.rarity} ${card.type}, ${color}). ${descFlat}${keywords}`,
     );
     // Full game-rendered card (base + upgraded) as the share image, in this language.
-    const ogImages = cardOgImages(card, lang ?? "eng");
+    const ogImages = cardOgImages(card, lang);
     const meta = buildPageMetadata({
-      lang,
+      lang: _lang,
       path: `/cards/${id}`,
       title,
       description: metaDesc,
@@ -67,29 +77,34 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   }
 }
 
-export default async function Page({ params }: Props) {
-  const { id } = await params;
+export default async function Page({ params, searchParams }: Props) {
+  const { id, lang: _lang } = await params;
+  const lang = getLangOrDefault(_lang);
+  const prefix = langPrefix(_lang);
+  const qs = await channelQS(searchParams);
   let jsonLd = null;
   let card = null;
   let apiUnreachable = false;
   try {
-    const res = await fetchEntityRes(`${API_INTERNAL}/api/cards/${id}`, {
-      next: { revalidate: 3600 },
-    });
+    const res = await fetchEntityRes(
+      `${API_INTERNAL}/api/cards/${id}${_lang ? `?lang=${_lang}${qs}` : qs ? `?${qs.slice(1)}` : ""}`,
+      _lang ? undefined : { next: { revalidate: 3600 } },
+    );
     if (res.ok) {
       card = await res.json();
       const desc = stripTags(card.description || "");
       const detailJsonLd = buildDetailPageJsonLd({
         name: card.name,
         description: desc || `${card.name} card from Slay the Spire 2`,
-        path: `/cards/${id}`,
-        imageUrl: cardOgImages(card, "eng")[0]?.url,
+        path: `${prefix}/cards/${id}`,
+        imageUrl: cardOgImages(card, lang)[0]?.url,
         category: "Card",
         breadcrumbs: [
-          { name: "Home", href: "/" },
-          { name: "Cards", href: "/cards" },
-          { name: card.name, href: `/cards/${id}` },
+          { name: t("Home", lang), href: prefix || "/" },
+          { name: t("Cards", lang), href: `${prefix}/cards` },
+          { name: card.name, href: `${prefix}/cards/${id}` },
         ],
+        inLanguage: LANG_HREFLANG[lang],
       });
       const costText = card.is_x_cost ? "X energy" : card.is_x_star_cost ? "X stars" : card.star_cost ? `${card.star_cost} star(s)` : `${card.cost} energy`;
       const faqQuestions = [
@@ -113,7 +128,7 @@ export default async function Page({ params }: Props) {
   // link equity and humans land on something useful.
   // Fail the render (500) instead of ISR-caching a contentless shell.
   if (apiUnreachable) throw new Error("entity API unreachable");
-  if (!card) redirectMissingEntity("cards", id);
+  if (!card) redirectMissingEntity("cards", id, _lang);
   // Server-render the community stats into the HTML (unique, crawlable data).
   const initialStats: EntityStats | null = card ? await fetchEntityStats("cards", id) : null;
   return (

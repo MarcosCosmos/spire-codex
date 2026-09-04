@@ -15,8 +15,28 @@ import { t } from "@/lib/ui-translations";
 import type { Metadata } from "next";
 import { buildPageMetadata } from "@/lib/seo";
 import { api } from "@/lib/api";
+import {
+  getLangOrDefault,
+  isValidLang,
+  LANG_CARDS,
+  LANG_GAME_NAME,
+  LANG_HREFLANG,
+  LANG_NAMES,
+} from "@/lib/languages";
 
-export async function generateMetadata(): Promise<Metadata> {
+type Props = { params: Promise<{ lang?: string }> };
+
+function langPrefix(lang?: string): string {
+  return lang && isValidLang(lang) ? `/${lang}` : "";
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { lang: _lang } = await params;
+  const lang = getLangOrDefault(_lang);
+  const cardsWord = LANG_CARDS[lang];
+  const gameName = LANG_GAME_NAME[lang];
+  const nativeName = LANG_NAMES[lang];
+
   let count = "576+";
   try {
     const stats = await api.getStatsBounded();
@@ -24,10 +44,17 @@ export async function generateMetadata(): Promise<Metadata> {
   } catch {
     // Fall back to the baseline count if the API is unreachable at build time.
   }
+
+  const title = _lang ? cardsWord : "Cards - Complete Card List";
+  const description = _lang
+    ? `${gameName} ${cardsWord} (${nativeName}). Every card across Ironclad, Silent, Defect, Necrobinder, and Regent, art, stats, upgrades, and keywords.`
+    : `Every Slay the Spire 2 (sts2) card, all ${count}. Filter by character, type, rarity, and keyword. Art, stats, upgrade text, and related cards.`;
+
   return buildPageMetadata({
+    lang: _lang,
     path: "/cards",
-    title: "Cards - Complete Card List",
-    description: `Every Slay the Spire 2 (sts2) card, all ${count}. Filter by character, type, rarity, and keyword. Art, stats, upgrade text, and related cards.`,
+    title,
+    description,
   });
 }
 
@@ -83,18 +110,21 @@ interface ScoreEntry {
 }
 type ScoreRow = ScoreEntry & { entity_id: string };
 
-export default async function CardsPage() {
-  // The base /cards route renders in English; localized visitors get
-  // app/[lang]/cards. Thread eng through t() so the wrapped UI strings
-  // resolve to their English source here.
-  const lang = "eng";
+export default async function CardsPage({ params }: Props) {
+  const { lang: _lang } = await params;
+  const lang = getLangOrDefault(_lang);
+  const prefix = langPrefix(_lang);
+  const gameName = LANG_GAME_NAME[lang];
+  const cardsWord = LANG_CARDS[lang];
+  const nativeName = LANG_NAMES[lang];
+
   // Fetch the catalog + Codex Scores in parallel so the server-rendered
   // HTML carries every fact this page surfaces. No client-side hydration
   // step is required for Google to see the intro prose, the top-N
   // section, or the character breakdown -- they're all in the initial
   // response.
   const [cards, scoresRaw] = await Promise.all([
-    fetchJSON<Card[]>(`${API}/api/cards?lang=eng`, []),
+    fetchJSON<Card[]>(`${API}/api/cards?lang=${lang}`, []),
     fetchJSON<Record<string, ScoreEntry>>(
       `${API}/api/runs/scores/cards`,
       {},
@@ -159,14 +189,16 @@ export default async function CardsPage() {
   const jsonLd = [
     buildBreadcrumbJsonLd([
       { name: "Home", href: "/" },
-      { name: "Cards", href: "/cards" },
+      ...(_lang ? [{ name: nativeName, href: prefix }] : []),
+      { name: _lang ? cardsWord : "Cards", href: `${prefix}/cards` },
     ]),
     buildCollectionPageJsonLd({
-      name: "Slay the Spire 2 Cards",
+      name: `${gameName} ${cardsWord}`,
       description:
         "Browse every card across Ironclad, Silent, Defect, Necrobinder, and Regent.",
-      path: "/cards",
+      path: `${prefix}/cards`,
       items: cards.map((c) => ({ name: c.name, path: `/cards/${c.id.toLowerCase()}` })),
+      inLanguage: LANG_HREFLANG[lang],
     }),
     buildFAQPageJsonLd(faq),
   ];
@@ -176,7 +208,7 @@ export default async function CardsPage() {
       <JsonLd data={jsonLd} />
 
       <h1 className="text-3xl font-bold mb-3">
-        <span className="text-[var(--accent-gold)]">Slay the Spire 2 (sts2) Cards</span>
+        <span className="text-[var(--accent-gold)]">{gameName} {cardsWord}</span>
       </h1>
 
       {/* Server-rendered intro prose: this is what Google sees when it
@@ -194,12 +226,7 @@ export default async function CardsPage() {
           upload runs from the Overwolf overlay.
         </p>
         <p className="text-sm text-[var(--text-muted)]">
-          Sort the grid below by Codex Score to see the current meta picks at
-          a glance, or filter by character, rarity, type, or keyword to dig
-          into a specific archetype. Each card links to a detail page with
-          per-character win rates, upgrade values, recent runs that picked
-          it, and the full description (including resolved DynamicVars for
-          upgraded variants).
+          {t("cards_tagline", lang)}
         </p>
       </section>
 
@@ -235,7 +262,7 @@ export default async function CardsPage() {
           <ul className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             {topByScore.map(({ card, score }) => (
               <li key={card.id}>
-                <Link prefetch={false} href={`/cards/${card.id.toLowerCase()}`} className="block group">
+                <Link prefetch={false} href={`${prefix}/cards/${card.id.toLowerCase()}`} className="block group">
                   <img
                     src={fullCardUrl(card.id.toLowerCase())}
                     alt={`${card.name} - Slay the Spire 2 card`}
@@ -270,7 +297,7 @@ export default async function CardsPage() {
             <li key={char.id}>
               <Link
                 prefetch={false}
-                href={`/cards?color=${char.id}`}
+                href={`${prefix}/cards?color=${char.id}`}
                 className="block p-3 rounded-lg border border-[var(--border-subtle)] hover:border-[var(--accent-gold)] transition-colors"
               >
                 <div className="font-medium text-[var(--accent-gold)]">
@@ -307,7 +334,7 @@ export default async function CardsPage() {
         </p>
       </section>
 
-      <RecentlyAdded entityType="cards" label="Card" pathPrefix="/cards" />
+      <RecentlyAdded entityType="cards" label="Card" pathPrefix={`${prefix}/cards`} />
 
       <Suspense>
         <CardsClient initialCards={cards} />

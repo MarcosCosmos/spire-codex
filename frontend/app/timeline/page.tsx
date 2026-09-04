@@ -4,18 +4,31 @@ import { buildCollectionPageJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import TimelineClient from "./TimelineClient";
 import type { Metadata } from "next";
 import { buildPageMetadata } from "@/lib/seo";
+import { getLangOrDefault, LANG_GAME_NAME } from "@/lib/languages";
+import { t } from "@/lib/ui-translations";
 
-export function generateMetadata(): Metadata {
+type Props = { params: Promise<{ lang?: string }> };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { lang: _lang } = await params;
+  const lang = getLangOrDefault(_lang);
+  const gameName = LANG_GAME_NAME[lang];
   return buildPageMetadata({
+    lang: _lang,
     path: "/timeline",
-    title: "Timeline - Epochs & Unlocks",
-    description: "Slay the Spire 2 timeline covering all epochs, eras, and story arcs. Track unlockable cards, relics, and potions across every story progression path.",
+    title: t("Timeline", lang),
+    description: `${gameName} Timeline. All epochs, eras, and story arcs with cards, relics, and potions unlocked at each step.`,
   });
 }
 
 const API = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-export default async function TimelinePage() {
+export default async function TimelinePage({ params }: Props) {
+  const { lang: _lang } = await params;
+  const lang = getLangOrDefault(_lang);
+  const gameName = LANG_GAME_NAME[lang];
+  const prefix = _lang ? `/${_lang}` : "";
+
   let epochs: Epoch[] = [];
   let stories: Story[] = [];
   let cards: Card[] = [];
@@ -24,11 +37,11 @@ export default async function TimelinePage() {
 
   try {
     const [epochsRes, storiesRes, cardsRes, relicsRes, potionsRes] = await Promise.all([
-      fetch(`${API}/api/epochs?lang=eng`, { next: { revalidate: 300 } }),
-      fetch(`${API}/api/stories?lang=eng`, { next: { revalidate: 300 } }),
-      fetch(`${API}/api/cards?lang=eng`, { next: { revalidate: 300 } }),
-      fetch(`${API}/api/relics?lang=eng`, { next: { revalidate: 300 } }),
-      fetch(`${API}/api/potions?lang=eng`, { next: { revalidate: 300 } }),
+      fetch(`${API}/api/epochs?lang=${lang}`, { next: { revalidate: 300 } }),
+      fetch(`${API}/api/stories?lang=${lang}`, { next: { revalidate: 300 } }),
+      fetch(`${API}/api/cards?lang=${lang}`, { next: { revalidate: 300 } }),
+      fetch(`${API}/api/relics?lang=${lang}`, { next: { revalidate: 300 } }),
+      fetch(`${API}/api/potions?lang=${lang}`, { next: { revalidate: 300 } }),
     ]);
     if (epochsRes.ok) epochs = await epochsRes.json();
     if (storiesRes.ok) stories = await storiesRes.json();
@@ -42,13 +55,13 @@ export default async function TimelinePage() {
 
   const jsonLd = [
     buildBreadcrumbJsonLd([
-      { name: "Home", href: "/" },
-      { name: "Timeline", href: "/timeline" },
+      { name: t("Home", lang), href: prefix || "/" },
+      { name: t("Timeline", lang), href: `${prefix}/timeline` },
     ]),
     buildCollectionPageJsonLd({
-      name: "Slay the Spire 2 Timeline",
-      description: "Explore the full Slay the Spire 2 timeline across every epoch and story arc.",
-      path: "/timeline",
+      name: `${gameName} Timeline`,
+      description: `Explore the full ${gameName} timeline across every epoch and story arc.`,
+      path: `${prefix}/timeline`,
     }),
   ];
 
@@ -56,10 +69,10 @@ export default async function TimelinePage() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <JsonLd data={jsonLd} />
       <h1 className="text-3xl font-bold mb-2">
-        <span className="text-[var(--accent-gold)]">Slay the Spire 2 (sts2) Timeline</span>
+        <span className="text-[var(--accent-gold)]">{gameName} {t("Timeline", lang)}</span>
       </h1>
       <p className="text-sm text-[var(--text-muted)] mb-6">
-        Explore the full Slay the Spire 2 timeline across every epoch, story arc, and era. Track story progression, unlockable cards, relics, and potions.
+        {t("timeline_tagline", lang)}
       </p>
 
       <TimelineClient

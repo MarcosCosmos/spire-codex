@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import JsonLd from "@/app/components/JsonLd";
 import { buildBreadcrumbJsonLd, buildCollectionPageJsonLd } from "@/lib/jsonld";
 import { buildPageMetadata } from "@/lib/seo";
-import { isValidLang } from "@/lib/languages";
+import { getLangOrDefault, isValidLang, LANG_HREFLANG, LANG_GAME_NAME } from "@/lib/languages";
 import { t } from "@/lib/ui-translations";
 import MetricsClient from "./MetricsClient";
 import { loadMetrics } from "./metrics-data";
@@ -13,6 +13,10 @@ import { loadMetrics } from "./metrics-data";
 // work happens at most once per window across all requests; the per-request
 // SSR of the table itself is cheap.
 export const dynamic = "force-dynamic";
+
+function langPrefix(lang?: string): string {
+  return lang && isValidLang(lang) ? `/${lang}` : "";
+}
 
 /**
  * Shared with app/[lang]/leaderboards/metrics/page.tsx, which re-exports
@@ -29,40 +33,46 @@ export async function generateMetadata({
   searchParams: Promise<{ bracket?: string; character?: string }>;
 }): Promise<Metadata> {
   const lang = (await params)?.lang;
-  if (lang && !isValidLang(lang)) return {};
   const sp = await searchParams;
   const isVariant = Boolean(sp.bracket || sp.character);
   const meta = buildPageMetadata({
     lang,
     path: "/leaderboards/metrics",
-    title: t("Card Metrics", lang ?? "eng"),
-    description: t("metrics_tagline", lang ?? "eng"),
+    title: t("Card Metrics", getLangOrDefault(lang)),
+    description: t("metrics_tagline", getLangOrDefault(lang)),
   });
   return isVariant ? { ...meta, alternates: { ...meta.alternates, languages: undefined } } : meta;
 }
 
 export default async function MetricsPage({
+  params,
   searchParams,
 }: {
+  params?: Promise<{ lang?: string }>;
   searchParams: Promise<{ bracket?: string; character?: string }>;
 }) {
+  const _lang = (await params)?.lang;
+  const lang = getLangOrDefault(_lang);
+  const prefix = langPrefix(_lang);
+  const gameName = LANG_GAME_NAME[lang];
   const sp = await searchParams;
   const { rows, baselineWinRate, totalRuns, bracket, character } = await loadMetrics(
-    "eng",
+    lang,
     sp.bracket || "all",
     sp.character || ""
   );
 
   const jsonLd = [
     buildBreadcrumbJsonLd([
-      { name: "Home", href: "/" },
-      { name: "Leaderboards", href: "/leaderboards" },
-      { name: "Card Metrics", href: "/leaderboards/metrics" },
+      { name: t("Home", lang), href: prefix || "/" },
+      { name: t("Leaderboards", lang), href: `${prefix}/leaderboards` },
+      { name: t("Card Metrics", lang), href: `${prefix}/leaderboards/metrics` },
     ]),
     buildCollectionPageJsonLd({
-      name: "Slay the Spire 2 Card Metrics",
-      description: t("metrics_tagline", "eng"),
-      path: "/leaderboards/metrics",
+      name: `${gameName} ${t("Card Metrics", lang)}`,
+      description: t("metrics_tagline", lang),
+      path: `${prefix}/leaderboards/metrics`,
+      inLanguage: LANG_HREFLANG[lang],
     }),
   ];
 

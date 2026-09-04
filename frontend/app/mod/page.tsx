@@ -1,15 +1,26 @@
-import ModBody from "./ModBody";
 import type { Metadata } from "next";
+import ModBody from "./ModBody";
 import { buildPageMetadata } from "@/lib/seo";
+import { getLangOrDefault, LANG_GAME_NAME, LANG_NAMES } from "@/lib/languages";
+import { t } from "@/lib/ui-translations";
 
-export function generateMetadata(): Metadata {
+type Props = { params: Promise<{ lang?: string }> };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { lang: _lang } = await params;
+  const lang = getLangOrDefault(_lang);
+  const gameName = LANG_GAME_NAME[lang];
+  const nativeName = LANG_NAMES[lang];
   return buildPageMetadata({
+    lang: _lang,
     path: "/mod",
-    title: "Steam Workshop Mod",
-    description: "The Spire Codex mod for Slay the Spire 2 (sts2), installed from the Steam Workshop. Automatic run uploads, post-run community insights in game, ancient pick tips, and a route planner.",
+    title: t("Steam Mod", lang),
+    description: `The official Spire Codex mod for ${gameName}, from the Steam Workshop. Automatic run uploads, in-game community insights, and a route planner. ${nativeName}.`,
   });
 }
 
-export default function ModPage() {
-  return <ModBody lang="eng" />;
+export default async function ModPage({ params }: Props) {
+  const { lang: _lang } = await params;
+  const lang = getLangOrDefault(_lang);
+  return <ModBody lang={lang} />;
 }

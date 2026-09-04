@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import JsonLd from "@/app/components/JsonLd";
 import { buildBreadcrumbJsonLd, buildCollectionPageJsonLd } from "@/lib/jsonld";
-import { SITE_URL, SITE_NAME, DEFAULT_OG_IMAGE, buildLanguageAlternates } from "@/lib/seo";
+import { buildPageMetadata } from "@/lib/seo";
 import type { NewsArticle, NewsListResponse } from "@/lib/api";
 import { newsExcerpt, formatNewsDate, newsSlugForArticle } from "@/lib/steam-news";
 import { ANNOUNCEMENTS, type Announcement } from "@/lib/announcements";
+import { getLangOrDefault, isValidLang, LANG_HREFLANG } from "@/lib/languages";
+import { t } from "@/lib/ui-translations";
 import MarkAnnouncementsSeen from "./MarkAnnouncementsSeen";
 
 async function loadCodexNews(): Promise<{ items: Announcement[]; latestId: string }> {
@@ -24,52 +26,49 @@ async function loadCodexNews(): Promise<{ items: Announcement[]; latestId: strin
 
 const API = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+export const dynamic = "force-dynamic";
 // 30min ISR. The on-demand generation pattern means Docker build
 // doesn't need backend access, first request after deploy regenerates.
 export const revalidate = 1800;
 
-// Meta follows the standard `Slay the Spire 2 {Topic} - {Descriptor} | Spire Codex`
-// format used across the rest of the site (see /changelog, /cards, /relics, etc.).
-// The visible page tagline below is separate marketing copy.
-// Lead with the query people actually type ("slay the spire 2 patch notes",
-// "sts2 patch notes / updates") rather than a generic "News -".
-const NEWS_TITLE = "Patch Notes & Updates";
-
-export const metadata: Metadata = {
-  title: NEWS_TITLE,
-  description:
-    "Slay the Spire 2 (sts2) patch notes, dev announcements, and press coverage. Track every Mega Crit update plus external articles from PCGamesN, RPS, and more.",
-  alternates: { canonical: `${SITE_URL}/news`, languages: buildLanguageAlternates("/news") },
-  openGraph: {
-    title: NEWS_TITLE,
-    description:
-      "Slay the Spire 2 (sts2) patch notes, dev announcements, and press coverage. Track every Mega Crit update plus external articles from PCGamesN, RPS, and more.",
-    url: `${SITE_URL}/news`,
-    siteName: SITE_NAME,
-    type: "website",
-    images: [{ url: DEFAULT_OG_IMAGE }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: NEWS_TITLE,
-    description: "Slay the Spire 2 (sts2) patch notes, dev announcements, and press coverage. Track every Mega Crit update plus external articles from PCGamesN, RPS, and more.",
-    images: [DEFAULT_OG_IMAGE],
-  },
-};
+function langPrefix(lang?: string): string {
+  return lang && isValidLang(lang) ? `/${lang}` : "";
+}
 
 type Tab = "community" | "codex" | "press" | "all";
 
-const TABS: { key: Tab; label: string; sublabel: string; feedType: number | null }[] = [
-  { key: "community", label: "Mega Crit", sublabel: "Steam announcements", feedType: 1 },
-  { key: "codex", label: "Spire Codex", sublabel: "Site updates & new features", feedType: null },
-  { key: "press", label: "Press", sublabel: "PCGamesN, RPS, GamingOnLinux…", feedType: 0 },
-  { key: "all", label: "All", sublabel: "Everything", feedType: null },
+const TABS: { key: Tab; feedType: number | null }[] = [
+  { key: "community", feedType: 1 },
+  { key: "codex", feedType: null },
+  { key: "press", feedType: 0 },
+  { key: "all", feedType: null },
 ];
 
 function tabFromParam(value: string | string[] | undefined): Tab {
   const v = Array.isArray(value) ? value[0] : value;
   if (v === "codex" || v === "press" || v === "all") return v;
   return "community";
+}
+
+type Props = {
+  params: Promise<{ lang?: string }>;
+  searchParams: Promise<{ tab?: string }>;
+};
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { lang: _lang } = await params;
+  const lang = getLangOrDefault(_lang);
+  // Title + description use the standard format mirrored from /changelog,
+  // visible page copy uses `news_tagline`, meta uses the tighter
+  // `news_meta_description`.
+  const title = `${t("News", lang)} - ${t("News - Subtitle", lang)}`;
+  const description = t("news_meta_description", lang);
+  return buildPageMetadata({
+    lang: _lang,
+    path: "/news",
+    title,
+    description,
+  });
 }
 
 async function loadNews(feedType: number | null): Promise<NewsListResponse> {
@@ -84,32 +83,41 @@ async function loadNews(feedType: number | null): Promise<NewsListResponse> {
   }
 }
 
-export default async function NewsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ tab?: string }>;
-}) {
+export default async function NewsPage({ params, searchParams }: Props) {
+  const { lang: _lang } = await params;
+  const lang = getLangOrDefault(_lang);
+  const prefix = langPrefix(_lang);
   const sp = await searchParams;
   const activeTab = tabFromParam(sp.tab);
-  const tabConfig = TABS.find((t) => t.key === activeTab) ?? TABS[0];
+  const tabConfig = TABS.find((tb) => tb.key === activeTab) ?? TABS[0];
   const isCodex = activeTab === "codex";
   const codex = isCodex ? await loadCodexNews() : { items: [], latestId: "" };
   const data = isCodex
     ? { total: 0, limit: 0, offset: 0, items: [] }
     : await loadNews(tabConfig.feedType);
   const items = data.items;
-  const latest = items[0];
+
+  // Localized tab labels, falls back to the English source label if the
+  // translation key isn't present yet. The "codex" (Spire Codex site
+  // updates) tab has no translation keys yet, so it stays English-only.
+  const tabLabels: Record<Tab, { label: string; sublabel: string }> = {
+    community: { label: t("Mega Crit", lang), sublabel: t("news_tab_community", lang) },
+    codex: { label: "Spire Codex", sublabel: "Site updates & new features" },
+    press: { label: t("Press", lang), sublabel: t("news_tab_press", lang) },
+    all: { label: t("All", lang), sublabel: t("news_tab_all", lang) },
+  };
 
   const jsonLd = [
     buildBreadcrumbJsonLd([
-      { name: "Home", href: "/" },
-      { name: "News", href: "/news" },
+      { name: t("Home", lang), href: prefix || "/" },
+      { name: t("News", lang), href: `${prefix}/news` },
     ]),
     buildCollectionPageJsonLd({
-      name: `Slay the Spire 2 News`,
-      description: "Patch notes, dev updates, and community announcements.",
-      path: "/news",
-      items: items.slice(0, 50).map((n) => ({ name: n.title, path: newsSlugForArticle(n.gid) })),
+      name: `Slay the Spire 2 ${t("News", lang)}`,
+      description: t("news_tagline", lang),
+      path: `${prefix}/news`,
+      items: items.slice(0, 50).map((n) => ({ name: n.title, path: newsSlugForArticle(n.gid, `${prefix}/news`) })),
+      inLanguage: LANG_HREFLANG[lang],
     }),
   ];
 
@@ -117,19 +125,15 @@ export default async function NewsPage({
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <JsonLd data={jsonLd} />
       <h1 className="text-3xl font-bold mb-2">
-        <span className="text-[var(--accent-gold)]">Slay the Spire 2</span> Patch Notes &amp; News
+        <span className="text-[var(--accent-gold)]">{t("News", lang)}</span>
       </h1>
-      <p className="text-sm text-[var(--text-muted)] mb-6">
-        Every Slay the Spire 2 (sts2) patch note, dev update, and announcement from Mega Crit,
-        mirrored from Steam the moment it posts, plus press coverage from PCGamesN, RPS, and more.
-        {latest ? ` The most recent update is ${latest.title} (${formatNewsDate(latest.date)}).` : ""}
-      </p>
+      <p className="text-sm text-[var(--text-muted)] mb-6">{t("news_tagline", lang)}</p>
 
       {/* Tabs, Community is the default; Press surfaces external coverage */}
       <div className="flex gap-1 mb-6 border-b border-[var(--border-subtle)]">
         {TABS.map((tb) => {
           const isActive = tb.key === activeTab;
-          const href = tb.key === "community" ? "/news" : `/news?tab=${tb.key}`;
+          const href = tb.key === "community" ? `${prefix}/news` : `${prefix}/news?tab=${tb.key}`;
           return (
             <Link
               key={tb.key}
@@ -140,9 +144,9 @@ export default async function NewsPage({
                   : "border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
               }`}
             >
-              <span>{tb.label}</span>
+              <span>{tabLabels[tb.key].label}</span>
               <span className="hidden sm:inline text-xs text-[var(--text-muted)] ml-2 font-normal">
-                {tb.sublabel}
+                {tabLabels[tb.key].sublabel}
               </span>
             </Link>
           );
@@ -156,7 +160,7 @@ export default async function NewsPage({
             {codex.items.map((a) => (
               <li key={a.id}>
                 <Link
-                  href={a.href || `/news/codex/${a.id}`}
+                  href={a.href || `${prefix}/news/codex/${a.id}`}
                   className="block bg-[var(--bg-card)] rounded-xl border border-[var(--border-subtle)] p-5 hover:border-[var(--border-accent)] transition-colors"
                 >
                   <div className="flex items-baseline justify-between gap-3 mb-1">
@@ -176,25 +180,21 @@ export default async function NewsPage({
           </ul>
         </>
       ) : items.length === 0 ? (
-        <p className="text-[var(--text-muted)]">No news available right now. Check back soon.</p>
+        <p className="text-[var(--text-muted)]">{t("news_empty", lang)}</p>
       ) : (
         <ul className="space-y-3">
           {items.map((n) => (
-            <NewsRow key={n.gid} article={n} basePath="/news" />
+            <NewsRow key={n.gid} article={n} basePath={`${prefix}/news`} lang={lang} />
           ))}
         </ul>
       )}
 
-      <p className="text-xs text-[var(--text-muted)] mt-8">
-        Article content © Mega Crit Games (Steam Community Announcements) and the respective
-        publishers. Spire Codex mirrors and archives this feed for searchability, original
-        links are preserved on every post.
-      </p>
+      <p className="text-xs text-[var(--text-muted)] mt-8">{t("news_attribution", lang)}</p>
     </div>
   );
 }
 
-export function NewsRow({ article, basePath }: { article: NewsArticle; basePath: string }) {
+export function NewsRow({ article, basePath, lang }: { article: NewsArticle; basePath: string; lang: string }) {
   const date = formatNewsDate(article.date);
   const excerpt = newsExcerpt(article.contents ?? "", 220);
   const tagBadges = article.tags?.slice(0, 3) ?? [];
@@ -212,7 +212,7 @@ export function NewsRow({ article, basePath }: { article: NewsArticle; basePath:
         <p className="text-xs text-[var(--text-muted)] mb-2">
           {article.feedlabel}
           {article.author ? ` · ${article.author}` : ""}
-          {isPatchNotes ? " · Patch Notes" : ""}
+          {isPatchNotes ? ` · ${t("Patch Notes", lang)}` : ""}
         </p>
         {excerpt && (
           <p className="text-sm text-[var(--text-secondary)] leading-relaxed">{excerpt}</p>

@@ -12,17 +12,19 @@ import JsonLd from "./components/JsonLd";
 import SearchTrigger from "./components/SearchTrigger";
 import { buildWebSiteJsonLd, buildVideoGameJsonLd } from "@/lib/jsonld";
 import { fetchSteamMeta } from "@/lib/steam-meta";
-import { SITE_NAME, buildLanguageAlternates, HOME_OG_IMAGE } from "@/lib/seo";
+import { t } from "@/lib/ui-translations";
+import {
+  getLangOrDefault,
+  isValidLang,
+  LANG_GAME_NAME,
+  LANG_DATABASE,
+  LANG_NAMES,
+  LANG_HREFLANG,
+} from "@/lib/languages";
+import { SITE_NAME, HOME_OG_IMAGE, buildLanguageAlternates } from "@/lib/seo";
 import "./home-revamp.css";
 
 const API = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-
-// Absolute, not a segment: a layout's `title.template` does not apply to a
-// page.tsx in that same segment, and the home page shares the root
-// layout's segment — so it carries the full title itself.
-const title = `Slay the Spire 2 (sts2) Database, Wiki & Guide | ${SITE_NAME}`;
-const description =
-  "The complete Slay the Spire 2 (sts2) database. Browse cards, relics, characters, monsters, potions, events, and powers. Filter by character, rarity, and keyword.";
 
 // ISR with 60s revalidation. The HTML caches at CF edge for 60s so
 // most visits return without hitting Next.js at all. After 60s the
@@ -42,27 +44,54 @@ export const revalidate = 60;
 // every other page inherits the branded composition from layout.tsx.
 const homeOgImage = { url: HOME_OG_IMAGE, width: 2006, height: 2251 };
 
-export const metadata: Metadata = {
-  title: { absolute: title },
-  description,
-  openGraph: {
-    type: "website",
-    siteName: SITE_NAME,
+type Props = { params: Promise<{ lang?: string }> };
+
+function langPrefix(lang?: string): string {
+  return lang && isValidLang(lang) ? `/${lang}` : "";
+}
+
+// Absolute, not a segment: a layout's `title.template` does not apply to a
+// page.tsx in that same segment, and the home page shares the root/[lang]
+// layout's segment — so it carries the full title itself.
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { lang: _lang } = await params;
+  const lang = getLangOrDefault(_lang);
+  const gameName = LANG_GAME_NAME[lang];
+  const dbWord = LANG_DATABASE[lang];
+  const nativeName = LANG_NAMES[lang];
+
+  const title = _lang
+    ? `Spire Codex - ${gameName} ${dbWord} (${nativeName})`
+    : `Slay the Spire 2 (sts2) Database, Wiki & Guide | ${SITE_NAME}`;
+  // The tail sentence is translated: an English description on a localized
+  // page reads as a language mismatch to crawlers (flagged on all 13 homes).
+  const description = _lang
+    ? `${gameName} ${dbWord} (${nativeName}), Spire Codex. ${t("Browse cards, relics, characters, monsters, potions, events, and powers.", lang)}`
+    : "The complete Slay the Spire 2 (sts2) database. Browse cards, relics, characters, monsters, potions, events, and powers. Filter by character, rarity, and keyword.";
+
+  return {
     title: { absolute: title },
     description,
-    images: [homeOgImage],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title,
-    description,
-    images: [HOME_OG_IMAGE],
-  },
-  alternates: {
-    canonical: "/",
-    languages: buildLanguageAlternates("/"),
-  },
-};
+    openGraph: {
+      type: "website",
+      siteName: SITE_NAME,
+      title: { absolute: title },
+      description,
+      locale: LANG_HREFLANG[lang],
+      images: [homeOgImage],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: { absolute: title },
+      description,
+      images: [HOME_OG_IMAGE],
+    },
+    alternates: {
+      canonical: langPrefix(_lang) || "/",
+      languages: buildLanguageAlternates("/"),
+    },
+  };
+}
 
 interface Translations {
   sections?: Record<string, string>;
@@ -83,13 +112,15 @@ async function fetchJSON<T>(url: string): Promise<T | null> {
   }
 }
 
-export default async function Home() {
+export default async function Home({ params }: Props) {
+  const { lang: _lang } = await params;
+  const lang = getLangOrDefault(_lang);
+  const prefix = langPrefix(_lang);
+
   const [stats, translations] = await Promise.all([
-    fetchJSON<Stats>(`${API}/api/stats?lang=eng`),
-    fetchJSON<Translations>(`${API}/api/translations?lang=eng`),
+    fetchJSON<Stats>(`${API}/api/stats?lang=${lang}`),
+    fetchJSON<Translations>(`${API}/api/translations?lang=${lang}`),
   ]);
-
-
 
   return (
     <div className="min-h-screen">
@@ -101,8 +132,9 @@ export default async function Home() {
               SPIRE <span>CODEX</span>
             </h1>
             <p className="htag">
-              The complete database for Slay the Spire 2, every card, relic,
-              monster, and run, searchable and cross-referenced.
+              {_lang
+                ? t("The complete database for Slay the Spire 2", lang)
+                : "The complete database for Slay the Spire 2, every card, relic, monster, and run, searchable and cross-referenced."}
             </p>
             <div style={{ maxWidth: 540, margin: "18px auto 0" }}>
               <SearchTrigger variant="hero" />
@@ -116,13 +148,13 @@ export default async function Home() {
       {/* Latest 3 community announcements rendered as image-card blocks
           mirroring the grid above. Server-rendered so search snippets
           and OG previews can pick up the headlines. */}
-      <HomeNewsSection />
-      <HomeLeaderboardSection characterNames={translations?.character_names} />
-      <HomeStatsSection characterNames={translations?.character_names} />
-      <HomeMetricsSection />
-      <HomeGuidesSection />
-      <HomeShowcaseSection />
-      <HomeFAQ stats={stats} />
+      <HomeNewsSection langPrefix={prefix} lang={lang} />
+      <HomeLeaderboardSection langPrefix={prefix} lang={lang} characterNames={translations?.character_names} />
+      <HomeStatsSection langPrefix={prefix} lang={lang} characterNames={translations?.character_names} />
+      <HomeMetricsSection langPrefix={prefix} lang={lang} />
+      <HomeGuidesSection langPrefix={prefix} lang={lang} />
+      <HomeShowcaseSection langPrefix={prefix} lang={lang} />
+      <HomeFAQ stats={stats} lang={lang} />
     </div>
   );
 }

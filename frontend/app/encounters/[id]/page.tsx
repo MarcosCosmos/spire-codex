@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import EncounterDetail from "./EncounterDetail";
 import { stripTags, clipMetaDescription, buildPageMetadata } from "@/lib/seo";
-import { getLangOrDefault, LANG_GAME_NAME, isValidLang } from "@/lib/languages";
+import { getLangOrDefault, LANG_GAME_NAME, LANG_HREFLANG, isValidLang } from "@/lib/languages";
 import { t } from "@/lib/ui-translations";
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
@@ -14,9 +14,12 @@ const API_PUBLIC = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_A
 
 type Props = { params: Promise<{ lang?: string; id: string }> };
 
+function langPrefix(lang?: string): string {
+  return lang && isValidLang(lang) ? `/${lang}` : "";
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id, lang } = await params;
-  if (lang && !isValidLang(lang)) return {};
   try {
     const res = await fetch(`${API_INTERNAL}/api/encounters/${id}${lang ? `?lang=${lang}` : ""}`);
     if (!res.ok) return { title: "Encounter Not Found" };
@@ -48,31 +51,35 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function Page({ params }: Props) {
-  const { id } = await params;
+  const { id, lang: _lang } = await params;
+  const lang = getLangOrDefault(_lang);
+  const prefix = langPrefix(_lang);
   let jsonLd = null;
   let encounter = null;
   let apiUnreachable = false;
   try {
-    const res = await fetchEntityRes(`${API_INTERNAL}/api/encounters/${id}`);
+    const res = await fetchEntityRes(`${API_INTERNAL}/api/encounters/${id}${_lang ? `?lang=${_lang}` : ""}`);
     if (res.ok) {
       encounter = await res.json();
+      const name = encounter.name || id;
       const desc = encounter.monsters?.length
-        ? `${encounter.name} is a ${encounter.room_type} encounter featuring ${encounter.monsters.map((m: { name: string }) => m.name).join(", ")}.`
-        : `${encounter.name} encounter from Slay the Spire 2`;
+        ? `${name} is a ${encounter.room_type} encounter featuring ${encounter.monsters.map((m: { name: string }) => m.name).join(", ")}.`
+        : `${name} encounter from Slay the Spire 2`;
       const detailJsonLd = buildDetailPageJsonLd({
-        name: encounter.name,
+        name,
         description: desc,
-        path: `/encounters/${id}`,
+        path: `${prefix}/encounters/${id}`,
         category: "Encounter",
         breadcrumbs: [
-          { name: "Home", href: "/" },
-          { name: "Encounters", href: "/encounters" },
-          { name: encounter.name, href: `/encounters/${id}` },
+          { name: t("Home", lang), href: prefix || "/" },
+          { name: t("Encounters", lang), href: `${prefix}/encounters` },
+          { name, href: `${prefix}/encounters/${id}` },
         ],
+        inLanguage: LANG_HREFLANG[lang],
       });
       const faqQuestions = [
-        { question: `What type of encounter is ${encounter.name} in Slay the Spire 2?`, answer: `${encounter.name} is a ${encounter.room_type} encounter${encounter.act ? ` found in ${encounter.act}` : ""}.` },
-        { question: `What monsters appear in ${encounter.name}?`, answer: encounter.monsters?.length ? `${encounter.name} features: ${encounter.monsters.map((m: { name: string }) => m.name).join(", ")}.` : `${encounter.name} has no listed monsters.` },
+        { question: `What type of encounter is ${name} in Slay the Spire 2?`, answer: `${name} is a ${encounter.room_type} encounter${encounter.act ? ` found in ${encounter.act}` : ""}.` },
+        { question: `What monsters appear in ${name}?`, answer: encounter.monsters?.length ? `${name} features: ${encounter.monsters.map((m: { name: string }) => m.name).join(", ")}.` : `${name} has no listed monsters.` },
       ];
       jsonLd = [...detailJsonLd, buildFAQPageJsonLd(faqQuestions)];
     }
@@ -81,7 +88,7 @@ export default async function Page({ params }: Props) {
   }
   // Fail the render (500) instead of ISR-caching a contentless shell.
   if (apiUnreachable) throw new Error("entity API unreachable");
-  if (!encounter) redirectMissingEntity("encounters", id);
+  if (!encounter) redirectMissingEntity("encounters", id, _lang);
   // Community "how deadly" numbers for this fight (encountered / killed), SSR'd.
   const stats = encounter?.id ? await fetchEncounterStats([encounter.id]) : [];
   const encounterStat = stats[0] ?? null;

@@ -3,7 +3,7 @@ import PotionDetail from "./PotionDetail";
 import type { EntityStats } from "@/app/components/EntityRunStats";
 import { fetchEntityStats } from "@/lib/entity-stats";
 import { stripTags, stripTagsFlat, clipMetaDescription, buildPageMetadata } from "@/lib/seo";
-import { getLangOrDefault, LANG_GAME_NAME, isValidLang } from "@/lib/languages";
+import { getLangOrDefault, LANG_GAME_NAME, LANG_HREFLANG, isValidLang } from "@/lib/languages";
 import { t } from "@/lib/ui-translations";
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
@@ -16,9 +16,12 @@ const API_PUBLIC = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_A
 
 type Props = { params: Promise<{ lang?: string; id: string }> };
 
+function langPrefix(lang?: string): string {
+  return lang && isValidLang(lang) ? `/${lang}` : "";
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id, lang } = await params;
-  if (lang && !isValidLang(lang)) return {};
   try {
     const res = await fetch(`${API_INTERNAL}/api/potions/${id}${lang ? `?lang=${lang}` : ""}`);
     if (!res.ok) return { title: "Potion Not Found" };
@@ -54,30 +57,34 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function Page({ params }: Props) {
-  const { id } = await params;
+  const { id, lang: _lang } = await params;
+  const lang = getLangOrDefault(_lang);
+  const prefix = langPrefix(_lang);
   let jsonLd = null;
   let potion = null;
   let apiUnreachable = false;
   try {
-    const res = await fetchEntityRes(`${API_INTERNAL}/api/potions/${id}`);
+    const res = await fetchEntityRes(`${API_INTERNAL}/api/potions/${id}${_lang ? `?lang=${_lang}` : ""}`);
     if (res.ok) {
       potion = await res.json();
       const desc = stripTags(potion.description || "");
+      const name = potion.name || id;
       const detailJsonLd = buildDetailPageJsonLd({
-        name: potion.name,
-        description: desc || `${potion.name} potion from Slay the Spire 2`,
-        path: `/potions/${id}`,
+        name,
+        description: desc || `${name} potion from Slay the Spire 2`,
+        path: `${prefix}/potions/${id}`,
         imageUrl: potion.image_url ? imageUrl(potion.image_url) : undefined,
         category: "Potion",
         breadcrumbs: [
-          { name: "Home", href: "/" },
-          { name: "Potions", href: "/potions" },
-          { name: potion.name, href: `/potions/${id}` },
+          { name: t("Home", lang), href: prefix || "/" },
+          { name: t("Potions", lang), href: `${prefix}/potions` },
+          { name, href: `${prefix}/potions/${id}` },
         ],
+        inLanguage: LANG_HREFLANG[lang],
       });
       const faqQuestions = [
-        { question: `What does ${potion.name} do in Slay the Spire 2?`, answer: desc || `${potion.name} is a potion in Slay the Spire 2.` },
-        { question: `How rare is ${potion.name}?`, answer: `${potion.name} is a ${potion.rarity} potion.` },
+        { question: `What does ${name} do in Slay the Spire 2?`, answer: desc || `${name} is a potion in Slay the Spire 2.` },
+        { question: `How rare is ${name}?`, answer: `${name} is a ${potion.rarity} potion.` },
       ];
       jsonLd = [...detailJsonLd, buildFAQPageJsonLd(faqQuestions)];
     }
@@ -86,7 +93,7 @@ export default async function Page({ params }: Props) {
   }
   // Fail the render (500) instead of ISR-caching a contentless shell.
   if (apiUnreachable) throw new Error("entity API unreachable");
-  if (!potion) redirectMissingEntity("potions", id);
+  if (!potion) redirectMissingEntity("potions", id, _lang);
   // Server-render the community stats into the HTML (unique, crawlable data).
   const initialStats: EntityStats | null = potion ? await fetchEntityStats("potions", id) : null;
   return (

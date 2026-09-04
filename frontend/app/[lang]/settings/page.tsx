@@ -1,30 +1,6 @@
-import type { Metadata } from "next";
-import { isValidLang } from "@/lib/languages";
-import { t } from "@/lib/ui-translations";
-import SettingsClient from "@/app/settings/SettingsClient";
+export { generateMetadata, default } from "@/app/settings/page";
 
+// Redeclared rather than re-exported: Next only accepts a statically
+// analyzable literal for route segment config. Keep in sync with the
+// canonical module this re-exports.
 export const dynamic = "force-dynamic";
-
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ lang: string }>;
-}): Promise<Metadata> {
-  const { lang } = await params;
-  if (!isValidLang(lang)) return {};
-  return {
-    title: `${t("Settings", lang)}`,
-    description: "Manage your display name, email, and connected accounts.",
-    robots: { index: false },
-  };
-}
-
-export default async function LangSettingsPage({
-  params,
-}: {
-  params: Promise<{ lang: string }>;
-}) {
-  const { lang } = await params;
-  if (!isValidLang(lang)) return null;
-  return <SettingsClient />;
-}

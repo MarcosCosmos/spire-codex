@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { buildPageMetadata } from "@/lib/seo";
-import { isValidLang } from "@/lib/languages";
 import GiveawayClient from "./GiveawayClient";
 
 /** Shared with app/[lang]/giveaway/page.tsx, which re-exports this directly. */
@@ -8,7 +7,6 @@ export async function generateMetadata(
   { params }: { params?: Promise<{ lang?: string }> } = {},
 ): Promise<Metadata> {
   const lang = (await params)?.lang;
-  if (lang && !isValidLang(lang)) return {};
   return buildPageMetadata({
     lang,
     path: "/giveaway",

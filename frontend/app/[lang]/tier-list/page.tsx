@@ -1,58 +1,6 @@
-import type { Metadata } from "next";
-import { TierListBody } from "@/app/tier-list/TierListBody";
-import {
-  isValidLang,
-  LANG_GAME_NAME,
-  LANG_NAMES,
-  LANG_HREFLANG,
-  type LangCode,
-} from "@/lib/languages";
-import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL, buildLanguageAlternates } from "@/lib/seo";
-import { t } from "@/lib/ui-translations";
+export { generateMetadata, default } from "@/app/tier-list/page";
 
-// Render per request like the English route (avoids a build-time empty bake
-// when the backend is unreachable); the shared body's fetches stay cached.
+// Redeclared rather than re-exported: Next only accepts a statically
+// analyzable literal for route segment config. Keep in sync with the
+// canonical module this re-exports.
 export const revalidate = 300;
-
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ lang: string }>;
-}): Promise<Metadata> {
-  const { lang } = await params;
-  if (!isValidLang(lang)) return {};
-
-  const langCode = lang as LangCode;
-  const gameName = LANG_GAME_NAME[langCode];
-  const nativeName = LANG_NAMES[langCode];
-  const title = `${t("Tier List", lang)}`;
-  const description = `${gameName} tier list ranking every card, relic, and potion S through F. Codex Score from community win rates. ${nativeName}.`;
-
-  const languages = buildLanguageAlternates(`/tier-list`);
-
-  return {
-    title,
-    description,
-    openGraph: {
-      type: "website",
-      siteName: SITE_NAME,
-      url: `${SITE_URL}/${lang}/tier-list`,
-      title,
-      description,
-      locale: LANG_HREFLANG[langCode],
-      images: [{ url: DEFAULT_OG_IMAGE }],
-    },
-    twitter: { card: "summary_large_image", title, description },
-    alternates: { canonical: `/${lang}/tier-list`, languages },
-  };
-}
-
-export default async function LangTierListPage({
-  params,
-}: {
-  params: Promise<{ lang: string }>;
-}) {
-  const { lang } = await params;
-  if (!isValidLang(lang)) return null;
-  return <TierListBody lang={lang} />;
-}

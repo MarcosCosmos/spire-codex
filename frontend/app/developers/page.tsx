@@ -4,16 +4,20 @@ import JsonLd from "@/app/components/JsonLd";
 import { buildSoftwareApplicationJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { buildPageMetadata } from "@/lib/seo";
 import { getLangOrDefault, LANG_GAME_NAME, isValidLang } from "@/lib/languages";
+import { t } from "@/lib/ui-translations";
 import TinyCard, { TINY_CARD_POOL_COLOR, TINY_CARD_BANNER_COLOR } from "@/app/components/TinyCard";
 
 const API_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://spire-codex.com";
+
+function langPrefix(lang?: string): string {
+  return lang && isValidLang(lang) ? `/${lang}` : "";
+}
 
 /** Shared with app/[lang]/developers/page.tsx, which re-exports this directly. */
 export async function generateMetadata(
   { params }: { params?: Promise<{ lang?: string }> } = {},
 ): Promise<Metadata> {
   const lang = (await params)?.lang;
-  if (lang && !isValidLang(lang)) return {};
   const gameName = LANG_GAME_NAME[getLangOrDefault(lang)];
   return buildPageMetadata({
     lang,
@@ -49,13 +53,20 @@ const TIER_ROWS: { key: string; label: string; how: string }[] = [
   { key: "paid", label: "Paid", how: "supporters" },
 ];
 
-export default async function DevelopersPage() {
+export default async function DevelopersPage({
+  params,
+}: {
+  params?: Promise<{ lang?: string }>;
+} = {}) {
+  const _lang = (await params)?.lang;
+  const lang = getLangOrDefault(_lang);
+  const prefix = langPrefix(_lang);
   const limits = await fetchRateLimits();
   const jsonLd = [
     buildSoftwareApplicationJsonLd(),
     buildBreadcrumbJsonLd([
-      { name: "Home", href: "/" },
-      { name: "Developers", href: "/developers" },
+      { name: t("Home", lang), href: prefix || "/" },
+      { name: t("Developers", lang), href: `${prefix}/developers` },
     ]),
   ];
 
@@ -63,10 +74,10 @@ export default async function DevelopersPage() {
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <JsonLd data={jsonLd} />
       <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-2">
-        Developers
+        {t("Developers", lang)}
       </h1>
       <p className="text-[var(--text-secondary)] mb-8">
-        Build tools, bots, and content with Spire Codex data. Everything is free and open.
+        {t("developers_tagline", lang)}
       </p>
 
       {/* Tooltip Widget */}

@@ -1,39 +1,44 @@
 import type { Metadata } from "next";
-import { buildLanguageAlternates, DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
+import UnlocksClient from "./UnlocksClient";
+import { buildPageMetadata } from "@/lib/seo";
+import { getLangOrDefault, LANG_GAME_NAME, LANG_HREFLANG, isValidLang } from "@/lib/languages";
+import { t } from "@/lib/ui-translations";
 import JsonLd from "@/app/components/JsonLd";
 import { buildBreadcrumbJsonLd, buildCollectionPageJsonLd } from "@/lib/jsonld";
-import UnlocksClient from "./UnlocksClient";
 
-const title = "Unlocks - All Unlockable Cards, Relics & Potions";
-const description =
-  "Complete list of all unlockable content in Slay the Spire 2, 60 cards, 45 relics, 21 potions, and 4 characters unlocked through timeline progression.";
+type Props = { params: Promise<{ lang?: string }> };
 
-export const metadata: Metadata = {
-  title,
-  description,
-  alternates: { canonical: "/unlocks", languages: buildLanguageAlternates("/unlocks") },
-  openGraph: {
-    type: "website",
-    siteName: SITE_NAME,
-    url: `${SITE_URL}/unlocks`,
-    title,
-    description,
-    images: [{ url: DEFAULT_OG_IMAGE }],
-  },
-  twitter: { card: "summary_large_image", title, description },
-};
+function langPrefix(lang?: string): string {
+  return lang && isValidLang(lang) ? `/${lang}` : "";
+}
 
-export default function Page() {
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { lang: _lang } = await params;
+  const lang = getLangOrDefault(_lang);
+  const gameName = LANG_GAME_NAME[lang];
+  return buildPageMetadata({
+    lang: _lang,
+    path: "/unlocks",
+    title: t("Unlocks", lang),
+    description: `${gameName} unlocks. All unlockable cards, relics, potions, and characters with their epoch progression and score thresholds.`,
+  });
+}
+
+export default async function Page({ params }: Props) {
+  const { lang: _lang } = await params;
+  const lang = getLangOrDefault(_lang);
+  const prefix = langPrefix(_lang);
+  const gameName = LANG_GAME_NAME[lang];
   const jsonLd = [
     buildBreadcrumbJsonLd([
-      { name: "Home", href: "/" },
-      { name: "Unlocks", href: "/unlocks" },
+      { name: t("Home", lang), href: prefix || "/" },
+      { name: t("Unlocks", lang), href: `${prefix}/unlocks` },
     ]),
     buildCollectionPageJsonLd({
-      name: "Slay the Spire 2 Unlocks",
-      description:
-        "All unlockable cards, relics, potions, and characters in Slay the Spire 2 with their epoch progression and score thresholds.",
-      path: "/unlocks",
+      name: `${gameName} ${t("Unlocks", lang)}`,
+      description: `${gameName} unlocks, all unlockable cards, relics, potions, and characters with epoch progression and score thresholds.`,
+      path: `${prefix}/unlocks`,
+      inLanguage: LANG_HREFLANG[lang],
     }),
   ];
   return (

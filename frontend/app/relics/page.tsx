@@ -8,8 +8,18 @@ import RelicsClient from "./RelicsClient";
 import type { Metadata } from "next";
 import { buildPageMetadata } from "@/lib/seo";
 import { api } from "@/lib/api";
+import { getLangOrDefault, LANG_GAME_NAME, LANG_RELICS } from "@/lib/languages";
+import { t } from "@/lib/ui-translations";
 
-export async function generateMetadata(): Promise<Metadata> {
+const API = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+type Props = { params: Promise<{ lang?: string }> };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { lang: _lang } = await params;
+  const lang = getLangOrDefault(_lang);
+  const gameName = LANG_GAME_NAME[lang];
+  const relicsWord = LANG_RELICS[lang];
   let count = "289+";
   try {
     const stats = await api.getStatsBounded();
@@ -18,31 +28,36 @@ export async function generateMetadata(): Promise<Metadata> {
     // Fall back to the baseline count if the API is unreachable at build time.
   }
   return buildPageMetadata({
+    lang: _lang,
     path: "/relics",
-    title: "Relics - Complete Relic List",
-    description: `Every Slay the Spire 2 (sts2) relic, all ${count}. Filter by rarity (Common to Ancient) and character pool. Effects, flavor text, and shop prices.`,
+    title: relicsWord,
+    description: `Every ${gameName} relic, all ${count}. Filter by rarity (Common to Ancient) and character pool. Effects, flavor text, and shop prices.`,
   });
 }
 
-const API = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+export default async function RelicsPage({ params }: Props) {
+  const { lang: _lang } = await params;
+  const lang = getLangOrDefault(_lang);
+  const gameName = LANG_GAME_NAME[lang];
+  const relicsWord = LANG_RELICS[lang];
+  const prefix = _lang ? `/${_lang}` : "";
 
-export default async function RelicsPage() {
   let relics: Relic[] = [];
   try {
-    const res = await fetch(`${API}/api/relics?lang=eng`, { next: { revalidate: 300 } });
+    const res = await fetch(`${API}/api/relics?lang=${lang}`, { next: { revalidate: 300 } });
     if (res.ok) relics = await res.json();
   } catch {}
 
   const jsonLd = [
     buildBreadcrumbJsonLd([
-      { name: "Home", href: "/" },
-      { name: "Relics", href: "/relics" },
+      { name: t("Home", lang), href: prefix || "/" },
+      { name: relicsWord, href: `${prefix}/relics` },
     ]),
     buildCollectionPageJsonLd({
-      name: "Slay the Spire 2 Relics",
+      name: `${gameName} ${relicsWord}`,
       description: "Browse every relic across all rarities and character pools.",
-      path: "/relics",
-      items: relics.map((r) => ({ name: r.name, path: `/relics/${r.id.toLowerCase()}` })),
+      path: `${prefix}/relics`,
+      items: relics.map((r) => ({ name: r.name, path: `${prefix}/relics/${r.id.toLowerCase()}` })),
     }),
   ];
 
@@ -50,21 +65,21 @@ export default async function RelicsPage() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <JsonLd data={jsonLd} />
       <h1 className="text-3xl font-bold mb-2">
-        <span className="text-[var(--accent-gold)]">Slay the Spire 2 (sts2) Relics</span>
+        <span className="text-[var(--accent-gold)]">{gameName} {relicsWord}</span>
       </h1>
       <p className="text-sm text-[var(--text-muted)] mb-6">
-        Browse every relic across Ironclad, Silent, Defect, Necrobinder, and Regent. Filter by rarity and character pool.
+        {t("relics_tagline", lang)}
       </p>
 
       <HighestRated
         entityType="relics"
         entities={relics}
         label="relics"
-        pathPrefix="/relics"
+        pathPrefix={`${prefix}/relics`}
         tierHref="/tier-list/relics"
       />
 
-      <RecentlyAdded entityType="relics" label="Relic" pathPrefix="/relics" />
+      <RecentlyAdded entityType="relics" label="Relic" pathPrefix={`${prefix}/relics`} />
 
       <Suspense>
         <RelicsClient initialRelics={relics} />
