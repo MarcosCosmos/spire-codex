@@ -27,7 +27,9 @@ export const LANGUAGES: { code: string; name: string }[] = [
   { code: "zht", name: "繁體中文" },
 ];
 
-const LANG_CODES = new Set(LANGUAGES.map((l) => l.code));
+const LANG_CODES = new Set(
+  LANGUAGES.map((l) => l.code).filter((c) => c !== "eng"),
+);
 const STORAGE_KEY = "spire-codex-lang";
 
 interface LanguageContextType {
@@ -44,7 +46,7 @@ const LanguageContext = createContext<LanguageContextType>({
  * Get language from URL path first, then localStorage, then default to English.
  * URL always takes priority, if you're on /jpn/cards, lang is "jpn".
  */
-function getLangFromUrl(): string | null {
+export function getLangFromUrl(): string | null {
   if (typeof window === "undefined") return null;
   const first = window.location.pathname.split("/")[1];
   if (first && LANG_CODES.has(first)) return first;
@@ -89,6 +91,17 @@ export function LanguageProvider({
       if (first !== lang) {
         setLangState(first);
         localStorage.setItem(STORAGE_KEY, first);
+      }
+    } else if (lang !== "eng") {
+      // On English pages, only reset if we navigated away from a lang URL
+      // (don't reset if user manually set lang via selector)
+      const urlHadLang = getLangFromUrl();
+      if (
+        (urlHadLang === null && pathname === "/") ||
+        !pathname.startsWith(`/${lang}`)
+      ) {
+        setLangState("eng");
+        localStorage.setItem(STORAGE_KEY, "eng");
       }
     }
   }, [pathname]);

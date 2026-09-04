@@ -2,12 +2,15 @@ import type { Metadata } from "next";
 import OrbDetail from "@/app/orbs/[id]/OrbDetail";
 
 /** Beta-channel orb detail. See beta/cards/[id]/page.tsx for why this
- * is a real route instead of a middleware rewrite of the ISR-cached stable
+ * is a real route instead of a proxy.ts rewrite of the ISR-cached stable
  * page. Noindexed via the /beta X-Robots-Tag header. */
 
 export const dynamic = "force-dynamic";
 
-const API_INTERNAL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_INTERNAL =
+  process.env.API_INTERNAL_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://localhost:8000";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -22,7 +25,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   try {
     const item = await fetchBeta(id);
     if (!item) return { title: "Orb Not Found - Beta | Spire Codex" };
-    return { title: `${item.name} (Beta) - Slay the Spire 2 Orb | Spire Codex` };
+    return {
+      title: `${item.name} (Beta) - Slay the Spire 2 Orb | Spire Codex`,
+    };
   } catch {
     return { title: "Spire Codex" };
   }

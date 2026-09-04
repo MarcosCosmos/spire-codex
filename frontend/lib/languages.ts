@@ -26,7 +26,7 @@ export type LangCode = (typeof SUPPORTED_LANGS)[number];
 
 /**
  * URL-prefix membership test, shared by every consumer that parses a
- * /<lang>/... path (middleware, nav, selector, fetch cache, lang prefix
+ * /<lang>/... path (proxy.ts, nav, selector, fetch cache, lang prefix
  * hook). One source of truth: five separate hardcoded copies of this set
  * each silently missed zht when it shipped, which made the language
  * switcher append /zht onto already-prefixed paths.
