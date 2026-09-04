@@ -4,6 +4,7 @@ import {
   LANG_HREFLANG,
   isValidLang,
   getLangOrDefault,
+  LangCode,
 } from "./languages";
 
 export const SITE_URL =
@@ -83,7 +84,7 @@ export function buildLanguageAlternates(path: string): Record<string, string> {
  * (so `/eng/cards` renders), but /eng/... and the bare page are the same
  * English content, so canonical hands all the equity to one URL.
  */
-export function localizedPath(lang: string | undefined, path: string): string {
+export function localizedPath(lang: string, path: string): string {
   const bare = path.startsWith("/") ? path : `/${path}`;
   if (!lang || lang === "eng" || !isValidLang(lang)) return bare;
   // The home page localizes to `/<code>`, not `/<code>/` — the trailing
@@ -94,12 +95,10 @@ export function localizedPath(lang: string | undefined, path: string): string {
 
 export interface PageMetadataInput {
   /**
-   * Raw `[lang]` route segment, or undefined on the canonical English
-   * route. Used for the canonical prefix exactly as given, never
-   * defaulted. (`openGraph.locale` does need a concrete value, and
-   * defaults to `en` — keep the two uses distinct.)
+   * `[lang]` parameter on those routes. / routes default to 'eng'. @see getLangOrDefault provides a helper to resolve a raw string.
+   * However, callers are currently expected to apply some localisation to the input title/desc so it should already be resolved before this call.
    */
-  lang?: string;
+  lang: LangCode;
   /** Bare path, never locale-prefixed: "/relics", "/cards/strike", "/". */
   path: string;
   /**
@@ -112,87 +111,66 @@ export interface PageMetadataInput {
   /** Defaults to "website". */
   ogType?: "website" | "article" | "profile";
   /**
-   * Adds robots noindex and suppresses hreflang, while keeping the
-   * canonical. A noindexed page should not anchor an hreflang cluster,
-   * and most noindexed routes (admin, tools) have no localized variants
-   * to advertise in the first place.
+   * Adds robots noindex for all languages, or explicitly prevents that from being added if it would be inferred from other parameters (with explicit false)
    */
-  noindex?: boolean;
+  noIndex?: boolean;
   /**
    * Whether this route self-canonicalizes per locale and advertises
-   * hreflang. Defaults to true.
+   * hreflang or will only index the english route.
    *
-   * Set false for a route whose content doesn't actually vary by locale
-   * (English-only user/game data wearing localized chrome) — canonical
-   * always points at the bare English path regardless of `lang`, and no
-   * hreflang alternates are emitted, since there is only one indexable
-   * URL to advertise. This is the flag that replaces those routes'
-   * previous behaviour of force-redirecting `/<lang>/foo` to `/foo`:
-   * pair it with `noindex: Boolean(lang)` so the canonical English page
-   * stays indexed while every locale variant does not (yet).
+   * Used mostly as a temporary stopgap when SEO is suffering due to insufficient localisation coverage in the page body.
+   * When true, non-english routes will also have no-index robots added (unless no-index is explicitly false).
    */
-  offerLanguageAlternatives?: boolean;
+  supressLanguageAlternates?: boolean;
 }
 
 /**
- * Build a page's Next.js `Metadata`.
- *
- * Canonical and hreflang are both *derived* from the route (and the
- * `offerLanguageAlternatives` flag) rather than passed separately, so they
- * cannot drift apart. By default canonical self-references the path's own
- * locale (`/esp/cards` → `/esp/cards`, `/cards` → `/cards`) and hreflang is
- * emitted; see `offerLanguageAlternatives` on `PageMetadataInput` for the
- * English-only alternative.
- *
- * Deliberately omits four fields Next fills in better than we can:
- * `openGraph.title`, `openGraph.description`, and the whole `twitter`
- * block. Next inherits og/twitter title+description from the *resolved*
- * page title (so they pick up the layout template), and inherits
- * `twitter.card` from the root layout. Setting them here would write one
- * string into three places, which is what this helper exists to stop.
- *
- * Callers needing something rarer — a different OG image, an off-site
- * canonical, article timestamps — spread the result and override. Spread
- * the nested object too, or the other openGraph fields are dropped:
- *
- *   const meta = buildPageMetadata({ ... });
- *   return { ...meta, openGraph: { ...meta.openGraph, images } };
+ * Build a page's Next.js `Metadata` in a standardised/templated way suitable typically for all routes and their [lang] counterparts
+ * @see PageMetadataInput for parameter details
  */
-export function buildPageMetadata(input: PageMetadataInput): Metadata {
-  const {
-    lang,
-    path,
-    title,
-    description,
-    ogType,
-    noindex,
-    offerLanguageAlternatives = true,
-  } = input;
-  const canonical = offerLanguageAlternatives
-    ? localizedPath(lang, path)
-    : localizedPath(undefined, path); // always the bare English path
+export function buildPageMetadata({
+  lang,
+  path,
+  title,
+  description,
+  ogType,
+  noIndex,
+  supressLanguageAlternates,
+}: PageMetadataInput): Metadata {
+  noIndex ??= supressLanguageAlternates && lang !== "eng";
 
+  const canonical = localizedPath(
+    supressLanguageAlternates ? "eng" : lang,
+    path,
+  );
+  // because we are trying to incrementally introduce this now, and don't yet have the template applying at the layout level as such (and because it's almost moot when using a helper)
+  // we'll bridge the compatibility by having the helper manually apply the template and force an absolute override
+  const titleToApply = {
+    absolute: TITLE_TEMPLATE.replace("%s", title),
+  };
   return {
-    title,
+    metadataBase: SITE_URL,
+    title: titleToApply,
     description,
     openGraph: {
-      // Must stay complete: Next replaces `openGraph` wholesale rather
-      // than merging it, so anything the root layout sets has to be
-      // restated here or it is lost.
+      title: titleToApply,
+      description,
       type: ogType ?? "website",
       siteName: SITE_NAME,
-      url: `${SITE_URL}${canonical}`,
-      locale: LANG_HREFLANG[getLangOrDefault(lang)],
+      url: canonical,
       images: [{ url: DEFAULT_OG_IMAGE }],
     },
-    ...(noindex && { robots: { index: false, follow: false } }),
     alternates: {
       canonical,
-      languages:
-        noindex || !offerLanguageAlternatives
-          ? undefined
-          : buildLanguageAlternates(path),
+      languages: supressLanguageAlternates
+        ? undefined
+        : buildLanguageAlternates(path),
     },
+    twitter: {
+      card: "summary_large_image",
+      title: titleToApply,
+    },
+    ...(noIndex && { robots: { index: false, follow: false } }),
   };
 }
 
@@ -208,7 +186,10 @@ export function stripTags(text: string): string {
 
 /** Strip tags and collapse all newlines into a single line for meta descriptions. */
 export function stripTagsFlat(text: string): string {
-  return stripTags(text).replace(/\n/g, " ").replace(/\s{2,}/g, " ").trim();
+  return stripTags(text)
+    .replace(/\n/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
 }
 
 /**
@@ -221,7 +202,10 @@ export function stripTagsFlat(text: string): string {
  */
 export function clipMetaDescription(text: string, max = 160): string {
   if (!text) return text;
-  const flat = text.replace(/\n/g, " ").replace(/\s{2,}/g, " ").trim();
+  const flat = text
+    .replace(/\n/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
   if (flat.length <= max) return flat;
   // Reserve 1 char for the ellipsis we append. Slice to (max-1), then
   // back up to the previous word boundary so we don't truncate
