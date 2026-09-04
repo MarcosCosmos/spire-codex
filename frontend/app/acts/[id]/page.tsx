@@ -4,41 +4,38 @@ import JsonLd from "@/app/components/JsonLd";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
 import { fetchEntityRes } from "@/lib/entity-fetch";
 import { buildDetailPageJsonLd } from "@/lib/jsonld";
-import { stripTags, clipMetaDescription, buildLanguageAlternates, DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
+import { clipMetaDescription, buildPageMetadata } from "@/lib/seo";
+import { getLangOrDefault, LANG_GAME_NAME } from "@/lib/languages";
+import { t } from "@/lib/ui-translations";
 
 export const dynamic = "force-static";
 export const revalidate = 3600;
 
 const API_INTERNAL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-type Props = { params: Promise<{ id: string }> };
+type Props = { params: Promise<{ lang?: string; id: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params;
+  const { id, lang: _lang } = await params;
+  const lang = getLangOrDefault(_lang);
   try {
-    const res = await fetch(`${API_INTERNAL}/api/acts/${id}`, {
+    const res = await fetch(`${API_INTERNAL}/api/acts/${id}${lang ? `?lang=${lang}` : ""}`, {
       next: { revalidate: 3600 },
     });
     if (!res.ok) return { title: "Act Not Found" };
     const act = await res.json();
-    const title = `${act.name} - Slay the Spire 2 Act`;
-    const desc = clipMetaDescription(
-      `${act.name} is an act in Slay the Spire 2 (sts2). ${act.num_rooms || "?"} rooms, ${act.bosses.length} bosses, ${act.encounters.length} encounters, ${act.events.length} events.`,
-    );
-    return {
+    const gameName = LANG_GAME_NAME[getLangOrDefault(lang)];
+    const title = `${act.name} - ${t("Act", lang ?? "eng")}`;
+    const meta = buildPageMetadata({
+      lang,
+      path: `/acts/${id}`,
       title,
-      description: desc,
-      openGraph: {
-        type: "article",
-        siteName: SITE_NAME,
-        url: `${SITE_URL}/acts/${id}`,
-        title,
-        description: desc,
-        images: [{ url: DEFAULT_OG_IMAGE }],
-      },
-      twitter: { card: "summary_large_image", title, description: desc },
-      alternates: { canonical: `/acts/${id}`, languages: buildLanguageAlternates(`/acts/${id}`) },
-    };
+      description: clipMetaDescription(
+        `${gameName} act, ${act.name}. ${act.num_rooms || "?"} rooms, ${act.bosses.length} bosses, ${act.encounters.length} encounters, ${act.events.length} events.`,
+      ),
+      ogType: "article",
+    });
+    return meta;
   } catch {
     return { title: "Database" };
   }
