@@ -7,13 +7,13 @@ import { buildPageMetadata } from "@/lib/seo";
 type Props = { params: Promise<{ lang?: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { lang: _lang } = await params;
-  const lang = getLangOrDefault(_lang);
+  const { lang } = await params;
+  const langCode = getLangOrDefault(lang);
   return buildPageMetadata({
-    lang,
+    langParam: lang,
     path: "/runs",
-    title: t("Browse Runs", lang),
-    description: t("runs_tagline", lang),
+    title: t("Browse Runs", langCode),
+    description: t("runs_tagline", langCode),
     // The run list is the same English game data whatever the locale
     // chrome, and localized variants used to generate a "Duplicate
     // without user-selected canonical" cluster in GSC — this route used

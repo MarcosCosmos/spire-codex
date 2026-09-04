@@ -95,10 +95,9 @@ export function localizedPath(lang: string, path: string): string {
 
 export interface PageMetadataInput {
   /**
-   * `[lang]` parameter on those routes. / routes default to 'eng'. @see getLangOrDefault provides a helper to resolve a raw string.
-   * However, callers are currently expected to apply some localisation to the input title/desc so it should already be resolved before this call.
+   * `[lang]` parameter on those routes. You should pass the actual param as given, so the method knows whether to de-index any non-canonical paths we may allow to render.
    */
-  lang: LangCode;
+  langParam?: string;
   /** Bare path, never locale-prefixed: "/relics", "/cards/strike", "/". */
   path: string;
   /**
@@ -111,7 +110,8 @@ export interface PageMetadataInput {
   /** Defaults to "website". */
   ogType?: "website" | "article" | "profile";
   /**
-   * Adds robots noindex for all languages, or explicitly prevents that from being added if it would be inferred from other parameters (with explicit false)
+   * Adds robots noindex for all languages, or explicitly prevents that from being added if it would be inferred from other parameters (with explicit false).
+   * By default we no-index when either langParam is `"eng"` (since undefined is the canonical path for English) or when supressLanguageAlternates is true and langParam is anything other than `undefined`.
    */
   noIndex?: boolean;
   /**
@@ -129,7 +129,7 @@ export interface PageMetadataInput {
  * @see PageMetadataInput for parameter details
  */
 export function buildPageMetadata({
-  lang,
+  langParam,
   path,
   title,
   description,
@@ -137,7 +137,10 @@ export function buildPageMetadata({
   noIndex,
   supressLanguageAlternates,
 }: PageMetadataInput): Metadata {
-  noIndex ??= supressLanguageAlternates && lang !== "eng";
+  const lang = getLangOrDefault(langParam);
+  noIndex ??=
+    langParam === "eng" ||
+    (supressLanguageAlternates && langParam !== undefined);
 
   const canonical = localizedPath(
     supressLanguageAlternates ? "eng" : lang,
@@ -155,9 +158,10 @@ export function buildPageMetadata({
     openGraph: {
       title: titleToApply,
       description,
+      url: canonical,
       type: ogType ?? "website",
       siteName: SITE_NAME,
-      url: canonical,
+      locale: LANG_HREFLANG[lang],
       images: [{ url: DEFAULT_OG_IMAGE }],
     },
     alternates: {
@@ -169,6 +173,7 @@ export function buildPageMetadata({
     twitter: {
       card: "summary_large_image",
       title: titleToApply,
+      description,
     },
     ...(noIndex && { robots: { index: false, follow: false } }),
   };

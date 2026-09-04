@@ -22,8 +22,8 @@ const API =
 type Props = { params: Promise<{ lang?: string; slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { lang: _lang, slug } = await params;
-  const lang = getLangOrDefault(_lang);
+  const { lang, slug } = await params;
+  const langCode = getLangOrDefault(lang);
   let detail = null;
   try {
     const res = await fetch(`${API}/api/guides/${slug}`, {
@@ -38,13 +38,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     }
   } finally {
     detail ??= {
-      title: `${t("Guide", lang)} ${t("not found", lang)}`,
+      title: `${t("Guide", langCode)} ${t("not found", langCode)}`,
       description: ",",
     };
   }
   return buildPageMetadata({
     ...detail,
-    lang,
+    langParam: lang,
     path: `/guides/${slug}`,
     ogType: "article",
     // Guides are English-language content; the localized wrappers used

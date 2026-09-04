@@ -49,15 +49,15 @@ function describeRun(run: SharedRun, lang: LangCode) {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { lang: _lang, hash } = await params;
-  const lang = getLangOrDefault(_lang);
+  const { lang, hash } = await params;
+  const langCode = getLangOrDefault(lang);
   let detail;
   const run = await fetchRun(hash);
   if (run) {
-    const { char, result, username, ascension } = describeRun(run, lang);
-    const translatedAscension = t("Ascension", lang);
-    const translatedCards = t("cards", lang);
-    const translatedRelics = t("relics", lang);
+    const { char, result, username, ascension } = describeRun(run, langCode);
+    const translatedAscension = t("Ascension", langCode);
+    const translatedCards = t("cards", langCode);
+    const translatedRelics = t("relics", langCode);
     const deck = run.players?.[0]?.deck?.length || 0;
     const relics = run.players?.[0]?.relics?.length || 0;
     // Title format requested by user:
@@ -75,12 +75,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         : "";
     detail = {
       title: `${username} - ${char} - ${translatedAscension} ${ascension} ${result}${anonTag}`,
-      description: `${username}'s ${run.win ? t("victorious", lang) : result} ${char} run at ${translatedAscension} ${ascension}. ${deck} ${translatedCards}, ${relics} ${translatedRelics}.`,
+      description: `${username}'s ${run.win ? t("victorious", langCode) : result} ${char} run at ${translatedAscension} ${ascension}. ${deck} ${translatedCards}, ${relics} ${translatedRelics}.`,
       path: `/runs/${run.primary_hash || hash}`,
     };
   } else {
     detail = {
-      title: `${t("Run", lang)} ${t("not found", lang)}`,
+      title: `${t("Run", langCode)} ${t("not found", langCode)}`,
       description: "",
     };
   }
