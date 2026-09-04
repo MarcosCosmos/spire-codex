@@ -88,7 +88,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const meta = buildPageMetadata({
     path: `/runs/${hash}`,
     ...detail,
-    lang,
+    langParam: lang,
     // Co-op sibling pages (one share hash per player, identical content)
     // point at the player-0 hash the API reports, so crawlers stop
     // counting each seat as a separate page.
