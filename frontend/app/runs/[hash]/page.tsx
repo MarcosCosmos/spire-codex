@@ -82,11 +82,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     detail = {
       title: `${t("Run", langCode)} ${t("not found", langCode)}`,
       description: "",
+      path: `/runs/${hash}`,
     };
   }
 
   const meta = buildPageMetadata({
-    path: `/runs/${hash}`,
     ...detail,
     langParam: lang,
     // Co-op sibling pages (one share hash per player, identical content)
