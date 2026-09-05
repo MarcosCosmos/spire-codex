@@ -55,3 +55,4 @@ infrastructure/ansible/inventory.yml
 
 # on-box analytics lab output
 lake/
+tools/spine-renderer/node_modules/
