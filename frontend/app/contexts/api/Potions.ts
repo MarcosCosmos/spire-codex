@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { ApiConfig, ApiConfigContext } from "../ApiConfigContext";
+import { CodexApiConfig, ApiConfigContext } from "../ApiConfigContext";
 import { cachedFetch } from "@/lib/fetch-cache";
 import { API, useListEndpoint } from "./common";
 
@@ -12,9 +12,8 @@ export interface PotionData {
 }
 
 export const usePotions = (
-  config?: ApiConfig,
-): Record<string, PotionData> | undefined =>
-  useListEndpoint("potions", config);
+  config?: CodexApiConfig,
+): Record<string, PotionData> | undefined => useListEndpoint("potions", config);
 
 const PotionsContext = createContext<Record<string, PotionData> | undefined>(
   undefined,

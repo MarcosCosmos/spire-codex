@@ -20,28 +20,19 @@ import { imageUrl } from "@/lib/image-url";
 import { fmtDateTime, fmtDateTimePacific } from "@/lib/pacific";
 import CardsContext from "@/app/contexts/api/Cards";
 import RelicsContext from "@/app/contexts/api/Relics";
-import {
-  useCleanLocalize,
-  useEventChoiceLocalize,
-  useMapPointLocalize,
-  useRoomLocalize,
-} from "./cleanLocalize";
 import PotionsContext from "@/app/contexts/api/Potions";
 import {
-  MapPoint,
   Run,
-  Player,
   DeckCard,
-  RawPlayerStats,
-  LocalizationKey,
   Floor,
-  Event,
   Encounter,
   RawRoom,
   Room,
-  EncounterType,
   PlayerStats,
 } from "../../../contexts/api/run/types";
+import SharedRunContext from "@/app/contexts/api/run/SharedRun";
+import { useBetaPrefix } from "@/lib/use-lang-prefix";
+import { ApiConfigContext } from "@/app/contexts/ApiConfigContext";
 const ICON_BASE = imageUrl("/static/images/ui/run_history");
 
 const RARITY_ORDER = [
@@ -165,20 +156,22 @@ function encounterSlug(encounter: Encounter) {
 //   return null;
 // }
 
-function roomHref(room: Room, bp: string): string | undefined {
-  switch (room.type) {
-    case "ANCIENT":
-      return `${bp}/events/${room.id}`;
-    case "ENCOUNTER":
-      return `${bp}/monsters/${room.id}`;
-    case "EVENT":
-      return `${bp}/events/${room.id}`;
-    case "MERCHANT":
-      return `${bp}/merchant`;
-    case "REST":
-      return `{bp}/mechanics/campfire/options`;
-    case "TREASURE":
-      return undefined;
+function useRoomHref(room: Room | RawRoom): string | undefined {
+  if ("type" in room) {
+    switch (room.type) {
+      case "ANCIENT":
+        return `events/${room.id}`;
+      case "ENCOUNTER":
+        return `/monsters/${room.id}`;
+      case "EVENT":
+        return `/events/${room.id}`;
+      case "MERCHANT":
+        return `/merchant`;
+      case "REST":
+        return `/mechanics/campfire/options`;
+      case "TREASURE":
+        return undefined;
+    }
   }
 }
 
@@ -251,22 +244,10 @@ function iconFor(
   };
 }
 
-interface Props {
-  run: Run;
-  player: Player;
-  charColor: string;
-  langPrefix: string;
-}
-
 // TODO: LOCALISE NUMBERS!
-export default function RunSummary({
-  run,
-  player,
-  charColor,
-  langPrefix,
-}: Props) {
+export default function RunSummary() {
   const t = useT();
-
+  const run = useContext(SharedRunContext);
   const gT = useGameTranslations();
   const tryGT = useTryGameTranslations();
   const dateLocale = hreflangOf(useGameLocale());
@@ -274,9 +255,12 @@ export default function RunSummary({
   useEffect(() => setMounted(true), []);
   const cards = useContext(CardsContext);
   const relics = useContext(RelicsContext);
-  const stackedCards = useStackCards(player.deck);
+  const bp = useBetaPrefix();
+  const _player = run?.players[run.player_index ?? 0];
+  const stackedCards = useStackCards(_player?.deck || []);
 
-  if (cards && relics) {
+  if (run && cards && relics) {
+    const player = _player!;
     const charName =
       tryGT(`characters.${player.character}.title`) ?? player.character;
     const encounterName =
@@ -316,21 +300,20 @@ export default function RunSummary({
       <div
         className="rounded-xl border p-4 sm:p-5 mb-4"
         style={{
-          borderColor: `color-mix(in srgb, ${charColor} 35%, transparent)`,
-          background: `color-mix(in srgb, ${charColor} 6%, var(--bg-card))`,
+          borderColor: `color-mix(in srgb, var(--color-${charSlug}, var(--color-gold)) 35%, transparent)`,
+          background: `color-mix(in srgb, var(--color-${charSlug}, var(--color-gold)) 6%, var(--bg-card))`,
         }}
       >
         {/* Top stats bar, game iconography */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm mb-3 pb-3 border-b border-[var(--border-subtle)]">
-          <Link
-            href={`${langPrefix}/characters/${charSlug}`}
-            className="flex-shrink-0"
-          >
+          <Link href={`${bp}/characters/${charSlug}`} className="flex-shrink-0">
             <img
               src={charIcon}
               alt={charName}
               className="w-9 h-9 rounded-full object-cover border-2"
-              style={{ borderColor: charColor }}
+              style={{
+                borderColor: "var(--color-${charSlug}, var(--color-gold))",
+              }}
               crossOrigin="anonymous"
             />
           </Link>
@@ -346,11 +329,7 @@ export default function RunSummary({
             value={finalStats?.current_gold ?? "?"}
             color="var(--accent-gold)"
           />
-          <PotionSlots
-            potions={playerPotions}
-            total={potionSlots}
-            bp={langPrefix}
-          />
+          <PotionSlots potions={playerPotions} total={potionSlots} />
           <IconStat
             icon={imageUrl("/static/images/ui/top_bar/top_bar_map.webp")}
             alt={t("Floor")}
@@ -375,7 +354,7 @@ export default function RunSummary({
             {run.username && (
               <div className="truncate">
                 <Link
-                  href={`${langPrefix}/runs?username=${encodeURIComponent(run.username)}`}
+                  href={`${bp}/runs?username=${encodeURIComponent(run.username)}`}
                   className="text-[var(--text-secondary)] hover:text-[var(--accent-gold)] hover:underline"
                   title={t("View all runs by this player")}
                 >
@@ -429,7 +408,6 @@ export default function RunSummary({
                       key={j}
                       floor={floor}
                       floorNum={actStartFloor + j}
-                      langPrefix={langPrefix}
                       buildId={run.build_id}
                     />
                   ))}
@@ -454,7 +432,6 @@ export default function RunSummary({
                 <RelicPill
                   key={`${relic.id}-${i}`}
                   relicId={relic.id}
-                  bp={langPrefix}
                   className="w-8 h-8 sm:w-9 sm:h-9 rounded-md bg-scrim/30 flex items-center justify-center hover:bg-scrim/50 transition-colors"
                 >
                   {info?.image_url ? (
@@ -496,8 +473,7 @@ export default function RunSummary({
                   key={`${entry.id}-${entry.upgraded ? "u" : "n"}-${entry.enchantment ?? ""}-${i}`}
                   cardId={entry.id}
                   upgraded={entry.upgraded}
-                  enchantment={entry.enchantment}
-                  bp={langPrefix}
+                  enchantmentId={entry.enchantment}
                   className="flex items-center gap-1.5 text-xs hover:bg-[var(--bg-card-hover)] rounded px-1 py-0.5 transition-colors"
                 >
                   <TinyCard
@@ -524,15 +500,40 @@ export default function RunSummary({
   }
 }
 
+function localizeFloorTitle(
+  floor: Floor,
+  tryGT: ReturnType<typeof useTryGameTranslations>,
+) {
+  const room = floor.rooms[0];
+  if ("type" in room) {
+    switch (room.type) {
+      case "ANCIENT":
+        return `${tryGT(`static_hover_tips.ROOM_ANCIENT.title`)}: ${tryGT(`events.${room.id}.title`) ?? room.id}`;
+      case "EVENT":
+        return `${tryGT(`static_hover_tips.ROOM_EVENT.title`)}: ${tryGT(`events.${room.id}.title`) ?? room.id}`;
+      case "ENCOUNTER":
+        return `${tryGT(`static_hover_tips.ROOM_${floor.was_unknown ? "UNKNOWN_" : ""}${room.encounter_type}.title`)}: ${tryGT(`encounters.${room.id}.title`) ?? room.id}`;
+      case "MERCHANT":
+        return tryGT(
+          `static_hover_tips.ROOM_${floor.was_unknown ? "UNKNOWN_" : ""}_MERCHANT.title`,
+        );
+      case "TREASURE":
+        return tryGT(
+          `static_hover_tips.ROOM_${floor.was_unknown ? "UNKNOWN_" : ""}_TREASURE.title`,
+        );
+      case "REST":
+        return tryGT(`static_hover_tips.ROOM_REST.title`);
+    }
+  }
+}
+
 function MapNode({
   floor,
   floorNum,
-  langPrefix,
   buildId,
 }: {
   floor: Floor;
   floorNum: number;
-  langPrefix: string;
   buildId?: string;
 }) {
   const t = useT();
@@ -540,11 +541,12 @@ function MapNode({
   const gT = useGameTranslations();
   const tryGT = useTryGameTranslations();
   const [show, setShow] = useState(false);
+  const bp = useBetaPrefix();
   const { src, betaSrc, tier, alt } = iconFor(floor, tryGT, buildId);
   const room = floor.rooms?.[0];
   const ps = floor.player_stats?.[0];
   // Click target, encounter/event detail page derived from the room's model_id.
-  const href = "type" in room && roomHref(room, langPrefix);
+  const href = `${bp}${useRoomHref(room)}`;
 
   const iconImg = (
     <img
@@ -566,33 +568,6 @@ function MapNode({
     />
   );
 
-  let nodeTitle: string | undefined;
-  if ("type" in room) {
-    switch (room.type) {
-      case "ANCIENT":
-        nodeTitle = `${tryGT(`static_hover_tips.ROOM_EVENT.title`)}: ${tryGT(`events.${room.id}.title`) ?? room.id}`;
-        break;
-      case "EVENT":
-        nodeTitle = `${tryGT(`static_hover_tips.ROOM_EVENT.title`)}: ${tryGT(`events.${room.id}.title`) ?? room.id}`;
-        break;
-      case "ENCOUNTER":
-        nodeTitle = `${tryGT(`static_hover_tips.ROOM_${floor.was_unknown ? "UNKNOWN_" : ""}${room.encounter_type}.title`)}: ${tryGT(`encounters.${room.id}.title`) ?? room.id}`;
-        break;
-      case "MERCHANT":
-        nodeTitle = tryGT(
-          `static_hover_tips.ROOM_${floor.was_unknown ? "UNKNOWN_" : ""}_MERCHANT.title`,
-        );
-      case "TREASURE":
-        nodeTitle = tryGT(
-          `static_hover_tips.ROOM_${floor.was_unknown ? "UNKNOWN_" : ""}_TREASURE.title`,
-        );
-        break;
-      case "REST":
-        nodeTitle = tryGT(`static_hover_tips.ROOM_REST.title`);
-        break;
-    }
-  }
-
   const tooltip = show && (
     <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card)] shadow-xl pointer-events-none text-left">
       <div className="flex items-center justify-between mb-1.5">
@@ -604,7 +579,7 @@ function MapNode({
         </div>
       </div>
       <div className="text-[10px] text-[var(--text-muted)] mb-1.5 capitalize">
-        {nodeTitle}
+        {localizeFloorTitle(floor, tryGT)}
         {tier && ` · ${t(TIER_LABELS[tier])}`}
         {"turns_taken" in room &&
           room.turns_taken != null &&
@@ -689,6 +664,7 @@ function MapNode({
               })}
             </div>
           )}
+          {/* todo: some choices, like bonus rest site choices, might be missing here (lift, dug) */}
         </>
       )}
       <div className="absolute left-1/2 -translate-x-1/2 top-full w-2 h-2 bg-[var(--bg-card)] border-r border-b border-[var(--border-subtle)] rotate-45 -mt-1" />
@@ -751,14 +727,12 @@ function IconStat({
 function PotionSlots({
   potions,
   total,
-  bp,
 }: {
   potions: { id: string; slot_index: number }[];
   total: number;
-  bp: string;
 }) {
   const potionData = useContext(PotionsContext);
-  const cleanT = useCleanLocalize();
+  const tryGT = useTryGameTranslations();
   if (potionData) {
     // Sort potions into a slot array so empty slots render as dashed outlines.
     const bySlot: ((typeof potions)[number] | null)[] = Array(total).fill(null);
@@ -782,13 +756,12 @@ function PotionSlots({
             <PotionPill
               key={i}
               potionId={p.id}
-              bp={bp}
               className="w-5 h-5 flex items-center justify-center hover:scale-110 transition-transform"
             >
               {potion?.image_url ? (
                 <img
                   src={imageUrl(potion.image_url)}
-                  alt={cleanT((id) => `potions.${id}.name`, p.id)}
+                  alt={tryGT(`potions.${p.id}.title`) ?? p.id}
                   className="w-5 h-5 object-contain"
                   crossOrigin="anonymous"
                 />
@@ -867,8 +840,8 @@ function useStackCards(deck: DeckCard[]): StackEntry[] {
     const ra = rarityScore[cards?.[a.id]?.rarity ?? ""] ?? 2;
     const rb = rarityScore[cards?.[b.id]?.rarity ?? ""] ?? 2;
     if (ra !== rb) return rb - ra;
-    return (tryGT(`${a.id}.name`) ?? a.id).localeCompare(
-      tryGT(`${a.id}.name`) ?? b.id,
+    return (tryGT(`${a.id}.title`) ?? a.id).localeCompare(
+      tryGT(`${a.id}.title`) ?? b.id,
     );
   });
 }

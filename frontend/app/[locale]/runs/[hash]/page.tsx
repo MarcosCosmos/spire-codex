@@ -1,16 +1,11 @@
 import type { Metadata } from "next";
 import JsonLd from "@/app/components/JsonLd";
-import {
-  getGameTranslations,
-  getT,
-  getTryGameTranslations,
-} from "@/lib/i18n-server";
+import { getT, getTryGameTranslations } from "@/lib/i18n-server";
 import { buildDetailPageJsonLd } from "@/lib/jsonld";
 import { gameNameFor, inLanguageOf, localeOf, localePath } from "@/lib/locale";
 import { buildPageMetadata } from "@/lib/seo";
 import SharedRunClient from "./SharedRunClient";
 import { TFn } from "@/lib/i18n";
-import { getCleanLocalize } from "./cleanLocalize-server";
 import { RawRun, Run } from "../../../contexts/api/run/types";
 import { cleanRun } from "@/app/contexts/api/run/util";
 import SharedRunContext from "@/app/contexts/api/run/SharedRun";
@@ -41,7 +36,7 @@ function describeRun(
 ) {
   // todo: this needs to be .title later
   const char =
-    tryT(`${run.players?.[0]?.character}.name`) ??
+    tryT(`${run.players?.[0]?.character}.title`) ??
     tryT(`LOCKED.title`) ??
     t("Unknown");
   const resultLabel = run.win
@@ -60,7 +55,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale: rawLocale, hash } = await params;
   const locale = localeOf(rawLocale);
   const t = await getT(locale);
-  const gT = await getCleanLocalize({ namespace: "characters", locale });
+  const tryGT = await getTryGameTranslations({ namespace: "characters", locale });
   const run = await fetchRun(hash);
   if (!run) {
     return buildPageMetadata({
@@ -73,7 +68,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { char, resultLabel, username, anonymous, ascension } = describeRun(
     run,
     t,
-    gT,
+    tryGT,
   );
   // Title format requested by user:
   //   "{username} - {character} - Ascension N win/loss - Slay the Spire 2 (sts2) | Spire Codex"
@@ -106,11 +101,11 @@ export default async function SharedRunPage({ params }: Props) {
   const { locale: rawLocale, hash } = await params;
   const locale = localeOf(rawLocale);
   const t = await getT(locale);
-  const gT = await getTryGameTranslations({ namespace: "characters", locale });
+  const tryGT = await getTryGameTranslations({ namespace: "characters", locale });
   const run = await fetchRun(hash);
   let jsonLd: ReturnType<typeof buildDetailPageJsonLd> | null = null;
   if (run) {
-    const { char, resultLabel, username, ascension } = describeRun(run, t, gT);
+    const { char, resultLabel, username, ascension } = describeRun(run, t, tryGT);
     jsonLd = buildDetailPageJsonLd({
       name: `${username} - ${char} - ${t("Ascension")} ${ascension} ${resultLabel}`,
       description: `${username}: ${char}, ${t("Ascension")} ${ascension}, ${resultLabel}. ${gameNameFor(locale)}.`,
@@ -133,7 +128,7 @@ export default async function SharedRunPage({ params }: Props) {
       {/* The run is passed down so the page server-renders with real
           content; without it every run page was an identical client-side
           shell (duplicate content, no unique text for crawlers). */}
-      <SharedRunClient/>
+      <SharedRunClient />
     </SharedRunContext>
   );
 }

@@ -1,5 +1,5 @@
 import { createContext } from "react";
-import { ApiConfig } from "../ApiConfigContext";
+import { CodexApiConfig } from "../ApiConfigContext";
 import { useListEndpoint } from "./common";
 
 /**
@@ -14,7 +14,7 @@ export interface CardData {
   image_url: string | null;
 }
 export const useCards = (
-  config?: ApiConfig,
+  config?: CodexApiConfig,
 ): Record<string, CardData> | undefined => useListEndpoint("cards", config);
 
 const CardsContext = createContext<Record<string, CardData> | undefined>(

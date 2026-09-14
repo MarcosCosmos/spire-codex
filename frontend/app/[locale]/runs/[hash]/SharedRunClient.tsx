@@ -1,7 +1,7 @@
 "use client";
 
-import { useT, useGameLocale, useTryGameTranslations } from "@/lib/i18n";
-import { useContext, useState } from "react";
+import { useT, useTryGameTranslations } from "@/lib/i18n";
+import { useContext, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import { useBetaPrefix } from "@/lib/use-lang-prefix";
@@ -16,6 +16,9 @@ import CardsContext, { useCards } from "@/app/contexts/api/Cards";
 import PotionsContext, { usePotions } from "@/app/contexts/api/Potions";
 import RelicsContext, { useRelics } from "@/app/contexts/api/Relics";
 import SharedRunContext from "@/app/contexts/api/run/SharedRun";
+import EnchantmentsContext, {
+  useEnchantments,
+} from "@/app/contexts/api/Enchantments";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -33,13 +36,12 @@ const CHAR_CSS_VAR: Record<string, string> = {
 // identical to crawlers (duplicate content) and carried no unique text.
 export default function SharedRunClient() {
   const { hash } = useParams<{ hash: string }>();
-  const bp = useBetaPrefix();
-  const lang = useGameLocale();
   const t = useT();
   const tryGT = useTryGameTranslations();
   const { user } = useAuth();
   const { toast } = useToast();
   const run = useContext(SharedRunContext);
+  const bp = useBetaPrefix(run?.is_beta);
   const [hidden, setHidden] = useState<boolean>(false);
   const loading = !run;
   const [copied, setCopied] = useState(false);
@@ -52,10 +54,14 @@ export default function SharedRunClient() {
   const [reportError, setReportError] = useState<string | null>(null);
   const [unhiding, setUnhiding] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
-  const apiConfig = { beta: run?.is_beta ?? false };
+  const apiConfig = useMemo(
+    () => ({ beta: run?.is_beta ?? false }),
+    [run?.is_beta],
+  );
   const cards = useCards(apiConfig);
   const relics = useRelics(apiConfig);
   const potions = usePotions(apiConfig);
+  const enchantments = useEnchantments(apiConfig);
 
   function copyLink() {
     navigator.clipboard.writeText(window.location.href).then(() => {
@@ -153,404 +159,420 @@ export default function SharedRunClient() {
         <CardsContext value={cards}>
           <RelicsContext value={relics}>
             <PotionsContext value={potions}>
-              <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <div className="flex items-center justify-between mb-4">
-                  <Link
-                    href={`${bp}/leaderboards`}
-                    className="text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
-                  >
-                    &larr; {t("Back to")}
-                  </Link>
-                  <div className="flex items-center gap-2">
-                    {user?.is_admin && (
-                      <button
-                        onClick={toggleHidden}
-                        disabled={unhiding}
-                        className="text-xs px-3 py-1.5 rounded-lg border border-[var(--accent-gold)]/40 text-[var(--accent-gold)] hover:border-[var(--accent-gold)] transition-colors disabled:opacity-50"
-                      >
-                        {unhiding ? "..." : hidden ? t("Unhide") : t("Hide")}
-                      </button>
-                    )}
-                    <button
-                      onClick={() => setShowReport(true)}
-                      className="text-xs px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--border-accent)] transition-colors"
+              <EnchantmentsContext value={enchantments}>
+                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                  <div className="flex items-center justify-between mb-4">
+                    <Link
+                      href={`${bp}/leaderboards`}
+                      className="text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
                     >
-                      {t("Report")}
-                    </button>
-                    <button
-                      onClick={copyLink}
-                      className="text-xs px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--border-accent)] transition-colors"
-                    >
-                      {copied ? t("Copied!") : t("Share")}
-                    </button>
-                  </div>
-                </div>
-                {showReport && (
-                  <div
-                    className="fixed inset-0 z-50 bg-scrim/60 flex items-center justify-center p-4"
-                    onClick={() =>
-                      reportState !== "sending" && setShowReport(false)
-                    }
-                  >
-                    <div
-                      className="bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-xl p-5 w-full max-w-md"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <h2 className="text-lg font-bold text-[var(--text-primary)] mb-3">
-                        {t("Report run")}
-                      </h2>
-                      {reportState === "sent" ? (
-                        <p className="text-sm text-[var(--color-silent)] py-4">
-                          {t("Report sent. Thanks!")}
-                        </p>
-                      ) : (
-                        <div className="space-y-3">
-                          <label className="block">
-                            <span className="text-xs text-[var(--text-muted)]">
-                              {t("Why are you reporting this run?")}
-                            </span>
-                            <textarea
-                              value={reportReason}
-                              onChange={(e) => setReportReason(e.target.value)}
-                              rows={4}
-                              maxLength={2000}
-                              className="mt-1 w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[var(--border-accent)] focus:outline-none"
-                            />
-                          </label>
-                          <label className="block">
-                            <span className="text-xs text-[var(--text-muted)]">
-                              {t("Email")}
-                            </span>
-                            <input
-                              type="email"
-                              value={reportEmail}
-                              onChange={(e) => setReportEmail(e.target.value)}
-                              required
-                              maxLength={254}
-                              className="mt-1 w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[var(--border-accent)] focus:outline-none"
-                            />
-                            {reportEmail.trim() !== "" && !emailOk && (
-                              <span className="text-xs text-[var(--color-ironclad)]">
-                                {t("Enter a valid email address.")}
-                              </span>
-                            )}
-                          </label>
-                          {reportState === "error" && (
-                            <p className="text-xs text-[var(--color-ironclad)]">
-                              {reportError || t("Could not send the report.")}
-                            </p>
-                          )}
-                          <div className="flex justify-end gap-2 pt-1">
-                            <button
-                              onClick={() => setShowReport(false)}
-                              className="text-xs px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
-                            >
-                              {t("Cancel")}
-                            </button>
-                            <button
-                              onClick={submitReport}
-                              disabled={
-                                reportState === "sending" ||
-                                !emailOk ||
-                                !reportReason.trim()
-                              }
-                              className="text-xs px-3 py-1.5 rounded-lg border border-[var(--accent-gold)]/40 bg-[var(--accent-gold)]/10 text-[var(--accent-gold)] hover:border-[var(--accent-gold)] transition-colors disabled:opacity-50"
-                            >
-                              {reportState === "sending"
-                                ? "..."
-                                : t("Send report")}
-                            </button>
-                          </div>
-                        </div>
+                      &larr; {t("Back to")}
+                    </Link>
+                    <div className="flex items-center gap-2">
+                      {user?.is_admin && (
+                        <button
+                          onClick={toggleHidden}
+                          disabled={unhiding}
+                          className="text-xs px-3 py-1.5 rounded-lg border border-[var(--accent-gold)]/40 text-[var(--accent-gold)] hover:border-[var(--accent-gold)] transition-colors disabled:opacity-50"
+                        >
+                          {unhiding ? "..." : hidden ? t("Unhide") : t("Hide")}
+                        </button>
                       )}
+                      <button
+                        onClick={() => setShowReport(true)}
+                        className="text-xs px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--border-accent)] transition-colors"
+                      >
+                        {t("Report")}
+                      </button>
+                      <button
+                        onClick={copyLink}
+                        className="text-xs px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--border-accent)] transition-colors"
+                      >
+                        {copied ? t("Copied!") : t("Share")}
+                      </button>
                     </div>
                   </div>
-                )}
-                {hidden && (
-                  <div className="mb-4 rounded-lg border border-[var(--accent-gold)]/40 bg-[var(--accent-gold)]/10 px-4 py-3 text-sm text-[var(--text-secondary)]">
-                    {t(
-                      "This run doesn't count toward leaderboards or community stats.",
-                    )}{" "}
-                    <a
-                      href="https://discord.gg/xMsTBeh"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[var(--accent-gold)] hover:underline"
+                  {showReport && (
+                    <div
+                      className="fixed inset-0 z-50 bg-scrim/60 flex items-center justify-center p-4"
+                      onClick={() =>
+                        reportState !== "sending" && setShowReport(false)
+                      }
                     >
-                      {t("Reach out on Discord if that seems wrong.")}
-                    </a>
-                  </div>
-                )}
-
-                {/* Compact header, Victory/Defeat banner + ascension */}
-                <div
-                  className="rounded-xl border px-4 py-3 mb-4 flex items-center justify-between flex-wrap gap-2"
-                  style={{
-                    borderColor: `color-mix(in srgb, ${charColor} 40%, transparent)`,
-                    background: `color-mix(in srgb, ${charColor} 8%, var(--bg-card))`,
-                  }}
-                >
-                  {/* h1 on purpose: this line is the page's one heading, and run pages
-            audited as headingless before it. */}
-                  <h1 className="flex items-center gap-3 text-xl font-bold">
-                    <span
-                      style={{
-                        color: run.win
-                          ? "var(--color-silent)"
-                          : run.was_abandoned
-                            ? "var(--text-muted)"
-                            : "var(--color-ironclad)",
-                      }}
-                    >
-                      {run.win
-                        ? t("Victory")
-                        : run.was_abandoned
-                          ? t("Abandoned")
-                          : t("Defeat")}
-                    </span>
-                    <Link
-                      href={`${bp}/characters/${charId.toLowerCase()}`}
-                      className="text-base font-normal hover:underline"
-                      style={{ color: charColor }}
-                    >
-                      {tryGT(`characters.${player.character}.name`) ??
-                        tryGT("characters.LOCKED.title") ??
-                        t("Unknown")}
-                    </Link>
-                  </h1>
-                  <div className="text-sm text-[var(--text-muted)]">
-                    {t("Ascension")} {run.ascension || 0}
-                    {!run.win &&
-                      !run.was_abandoned &&
-                      run.killed_by_encounter &&
-                      run.killed_by_encounter !== "NONE.NONE" && (
-                        <>
-                          {" · "}
-                          {t("Killed by")}{" "}
-                          <Link
-                            href={`${bp}/encounters/${run.killed_by_encounter.toLowerCase()}`}
-                            className="hover:underline"
-                            style={{ color: "var(--color-ironclad)" }}
-                          >
-                            {tryGT(
-                              `encounters.${run.killed_by_encounter}.title`,
-                            )}
-                          </Link>
-                        </>
-                      )}
-                  </div>
-                </div>
-
-                {/* In-game-style run summary */}
-                <RunSummary
-                  run={run}
-                  player={player}
-                  charColor={charColor}
-                  langPrefix={bp}
-                />
-
-                {/* Detailed history toggle */}
-                <button
-                  onClick={() => setShowDetails((v) => !v)}
-                  className="w-full text-left text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors mb-3 flex items-center gap-2"
-                >
-                  <span
-                    className={`inline-block transition-transform ${showDetails ? "rotate-90" : ""}`}
-                  >
-                    &gt;
-                  </span>
-                  {showDetails ? t("Hide") : t("Show")} {t("detailed history")}
-                </button>
-
-                {showDetails && (
-                  <>
-                    {/* Deck */}
-                    <div className="bg-[var(--bg-card)] rounded-xl border border-[var(--border-subtle)] p-5 mb-4">
-                      <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">
-                        {t("Final Deck")} ({player.deck.length})
-                      </h2>
-                      <div className="flex flex-wrap gap-1.5">
-                        {player.deck
-                          .sort((a, b) => a.id.localeCompare(b.id))
-                          .map((card, i) => {
-                            return (
-                              <CardPill
-                                key={`${card.id}-${i}`}
-                                cardId={card.id}
-                                upgraded={!!card.current_upgrade_level}
-                                enchantment={card.enchantment?.id}
-                                bp={bp}
-                                className={`text-xs px-2 py-1 rounded border transition-colors hover:bg-[var(--bg-card-hover)] ${
-                                  card.current_upgrade_level
-                                    ? "border-[var(--color-silent)]/30 bg-[var(--color-silent)]/10 text-[var(--color-silent)]"
-                                    : "bg-[var(--bg-primary)] border-[var(--border-subtle)] text-[var(--text-secondary)]"
-                                }`}
+                      <div
+                        className="bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-xl p-5 w-full max-w-md"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <h2 className="text-lg font-bold text-[var(--text-primary)] mb-3">
+                          {t("Report run")}
+                        </h2>
+                        {reportState === "sent" ? (
+                          <p className="text-sm text-[var(--color-silent)] py-4">
+                            {t("Report sent. Thanks!")}
+                          </p>
+                        ) : (
+                          <div className="space-y-3">
+                            <label className="block">
+                              <span className="text-xs text-[var(--text-muted)]">
+                                {t("Why are you reporting this run?")}
+                              </span>
+                              <textarea
+                                value={reportReason}
+                                onChange={(e) =>
+                                  setReportReason(e.target.value)
+                                }
+                                rows={4}
+                                maxLength={2000}
+                                className="mt-1 w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[var(--border-accent)] focus:outline-none"
                               />
+                            </label>
+                            <label className="block">
+                              <span className="text-xs text-[var(--text-muted)]">
+                                {t("Email")}
+                              </span>
+                              <input
+                                type="email"
+                                value={reportEmail}
+                                onChange={(e) => setReportEmail(e.target.value)}
+                                required
+                                maxLength={254}
+                                className="mt-1 w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[var(--border-accent)] focus:outline-none"
+                              />
+                              {reportEmail.trim() !== "" && !emailOk && (
+                                <span className="text-xs text-[var(--color-ironclad)]">
+                                  {t("Enter a valid email address.")}
+                                </span>
+                              )}
+                            </label>
+                            {reportState === "error" && (
+                              <p className="text-xs text-[var(--color-ironclad)]">
+                                {reportError || t("Could not send the report.")}
+                              </p>
+                            )}
+                            <div className="flex justify-end gap-2 pt-1">
+                              <button
+                                onClick={() => setShowReport(false)}
+                                className="text-xs px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                              >
+                                {t("Cancel")}
+                              </button>
+                              <button
+                                onClick={submitReport}
+                                disabled={
+                                  reportState === "sending" ||
+                                  !emailOk ||
+                                  !reportReason.trim()
+                                }
+                                className="text-xs px-3 py-1.5 rounded-lg border border-[var(--accent-gold)]/40 bg-[var(--accent-gold)]/10 text-[var(--accent-gold)] hover:border-[var(--accent-gold)] transition-colors disabled:opacity-50"
+                              >
+                                {reportState === "sending"
+                                  ? "..."
+                                  : t("Send report")}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {hidden && (
+                    <div className="mb-4 rounded-lg border border-[var(--accent-gold)]/40 bg-[var(--accent-gold)]/10 px-4 py-3 text-sm text-[var(--text-secondary)]">
+                      {t(
+                        "This run doesn't count toward leaderboards or community stats.",
+                      )}{" "}
+                      <a
+                        href="https://discord.gg/xMsTBeh"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[var(--accent-gold)] hover:underline"
+                      >
+                        {t("Reach out on Discord if that seems wrong.")}
+                      </a>
+                    </div>
+                  )}
+
+                  {/* Compact header, Victory/Defeat banner + ascension */}
+                  <div
+                    className="rounded-xl border px-4 py-3 mb-4 flex items-center justify-between flex-wrap gap-2"
+                    style={{
+                      borderColor: `color-mix(in srgb, ${charColor} 40%, transparent)`,
+                      background: `color-mix(in srgb, ${charColor} 8%, var(--bg-card))`,
+                    }}
+                  >
+                    {/* h1 on purpose: this line is the page's one heading, and run pages
+            audited as headingless before it. */}
+                    <h1 className="flex items-center gap-3 text-xl font-bold">
+                      <span
+                        style={{
+                          color: run.win
+                            ? "var(--color-silent)"
+                            : run.was_abandoned
+                              ? "var(--text-muted)"
+                              : "var(--color-ironclad)",
+                        }}
+                      >
+                        {run.win
+                          ? t("Victory")
+                          : run.was_abandoned
+                            ? t("Abandoned")
+                            : t("Defeat")}
+                      </span>
+                      <Link
+                        href={`${bp}/characters/${charId.toLowerCase()}`}
+                        className="text-base font-normal hover:underline"
+                        style={{ color: charColor }}
+                      >
+                        {tryGT(`characters.${player.character}.title`) ??
+                          tryGT("characters.LOCKED.title") ??
+                          t("Unknown")}
+                      </Link>
+                    </h1>
+                    <div className="text-sm text-[var(--text-muted)]">
+                      {t("Ascension")} {run.ascension || 0}
+                      {!run.win &&
+                        !run.was_abandoned &&
+                        run.killed_by_encounter &&
+                        run.killed_by_encounter !== "NONE.NONE" && (
+                          <>
+                            {" · "}
+                            {t("Killed by")}{" "}
+                            <Link
+                              href={`${bp}/encounters/${run.killed_by_encounter.toLowerCase()}`}
+                              className="hover:underline"
+                              style={{ color: "var(--color-ironclad)" }}
+                            >
+                              {tryGT(
+                                `encounters.${run.killed_by_encounter}.title`,
+                              )}
+                            </Link>
+                          </>
+                        )}
+                    </div>
+                  </div>
+
+                  {/* In-game-style run summary */}
+                  <RunSummary />
+
+                  {/* Detailed history toggle */}
+                  <button
+                    onClick={() => setShowDetails((v) => !v)}
+                    className="w-full text-left text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors mb-3 flex items-center gap-2"
+                  >
+                    <span
+                      className={`inline-block transition-transform ${showDetails ? "rotate-90" : ""}`}
+                    >
+                      &gt;
+                    </span>
+                    {showDetails ? t("Hide") : t("Show")}{" "}
+                    {t("detailed history")}
+                  </button>
+
+                  {showDetails && (
+                    <>
+                      {/* Deck */}
+                      <div className="bg-[var(--bg-card)] rounded-xl border border-[var(--border-subtle)] p-5 mb-4">
+                        <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">
+                          {t("Final Deck")} ({player.deck.length})
+                        </h2>
+                        <div className="flex flex-wrap gap-1.5">
+                          {player.deck
+                            .sort((a, b) => a.id.localeCompare(b.id))
+                            .map((card, i) => {
+                              return (
+                                <CardPill
+                                  key={`${card.id}-${i}`}
+                                  cardId={card.id}
+                                  upgraded={!!card.current_upgrade_level}
+                                  enchantmentId={card.enchantment?.id}
+                                  className={`text-xs px-2 py-1 rounded border transition-colors hover:bg-[var(--bg-card-hover)] ${
+                                    card.current_upgrade_level
+                                      ? "border-[var(--color-silent)]/30 bg-[var(--color-silent)]/10 text-[var(--color-silent)]"
+                                      : "bg-[var(--bg-primary)] border-[var(--border-subtle)] text-[var(--text-secondary)]"
+                                  }`}
+                                />
+                              );
+                            })}
+                        </div>
+                      </div>
+
+                      {/* Relics */}
+                      <div className="bg-[var(--bg-card)] rounded-xl border border-[var(--border-subtle)] p-5 mb-4">
+                        <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">
+                          {t("Relics")} ({player.relics.length})
+                        </h2>
+                        <div className="flex flex-wrap gap-1.5">
+                          {player.relics.map((relic, i) => {
+                            return (
+                              <RelicPill
+                                key={`${relic.id}-${i}`}
+                                relicId={relic.id}
+                                className="text-xs px-2 py-1 rounded bg-[var(--bg-primary)] border border-[var(--border-subtle)] text-[var(--accent-gold)] hover:bg-[var(--bg-card-hover)] transition-colors"
+                              >
+                                {tryGT(`relics.${relic.id}.title`) ?? relic.id}
+                                <span className="text-[var(--text-muted)] ml-1">
+                                  F{relic.floor_added_to_deck}
+                                </span>
+                              </RelicPill>
                             );
                           })}
+                        </div>
                       </div>
-                    </div>
 
-                    {/* Relics */}
-                    <div className="bg-[var(--bg-card)] rounded-xl border border-[var(--border-subtle)] p-5 mb-4">
-                      <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">
-                        {t("Relics")} ({player.relics.length})
-                      </h2>
-                      <div className="flex flex-wrap gap-1.5">
-                        {player.relics.map((relic, i) => {
-                          return (
-                            <RelicPill
-                              key={`${relic.id}-${i}`}
-                              relicId={relic.id}
-                              bp={bp}
-                              className="text-xs px-2 py-1 rounded bg-[var(--bg-primary)] border border-[var(--border-subtle)] text-[var(--accent-gold)] hover:bg-[var(--bg-card-hover)] transition-colors"
-                            >
-                              {tryGT(`relics.${relic.id}.title`) ?? relic.id}
-                              <span className="text-[var(--text-muted)] ml-1">
-                                F{relic.floor_added_to_deck}
-                              </span>
-                            </RelicPill>
-                          );
-                        })}
-                      </div>
-                    </div>
+                      {/* Floor History */}
+                      <div className="bg-[var(--bg-card)] rounded-xl border border-[var(--border-subtle)] p-5">
+                        <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">
+                          {t("Floor History")}
+                        </h2>
+                        <div className="space-y-1">
+                          {run.floor_history?.map((actFloors, actIdx) => {
+                            const actId = run.acts?.[actIdx];
+                            const actName =
+                              (actId
+                                ? tryGT(`acts.${actId}.title`)
+                                : undefined) ?? t("Act {n}", { n: actIdx + 1 });
+                            return (
+                              <div key={actIdx}>
+                                <h3 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mt-3 mb-1.5">
+                                  {actName}
+                                </h3>
+                                {actFloors.map((floor, floorIdx) => {
+                                  const ps = floor.player_stats[0];
+                                  const room = floor.rooms[0];
 
-                    {/* Floor History */}
-                    <div className="bg-[var(--bg-card)] rounded-xl border border-[var(--border-subtle)] p-5">
-                      <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">
-                        {t("Floor History")}
-                      </h2>
-                      <div className="space-y-1">
-                        {run.floor_history?.map((actFloors, actIdx) => {
-                          const actId = run.acts?.[actIdx];
-                          const actName =
-                            (actId
-                              ? tryGT(`acts.${actId}.title`)
-                              : undefined) ?? t("Act {n}", { n: actIdx + 1 });
-                          return (
-                            <div key={actIdx}>
-                              <h3 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mt-3 mb-1.5">
-                                {actName}
-                              </h3>
-                              {actFloors.map((floor, floorIdx) => {
-                                const ps = floor.player_stats[0];
-                                const room = floor.rooms[0];
-
-                                const encounterName = roomT(room ?? {});
-
-                                const roomColors: Record<string, string> = {
-                                  monster: "var(--text-secondary)",
-                                  elite: "var(--accent-gold)",
-                                  boss: "var(--color-ironclad)",
-                                  rest: "var(--color-silent)",
-                                  shop: "var(--accent-teal)",
-                                  event: "var(--color-necrobinder)",
-                                  treasure: "var(--accent-gold)",
-                                };
-                                const picked =
-                                  ps?.card_choices
-                                    ?.filter(({ was_picked }) => was_picked)
-                                    .map(
-                                      ({ card: { id } }) =>
-                                        tryGT(`cards.${id}.name`) ?? c.id,
-                                    ) || [];
-                                const skipped =
-                                  ps?.card_choices
-                                    ?.filter(({ was_picked }) => !was_picked)
-                                    .map(
-                                      ({ card: { id } }) =>
-                                        tryGT(`cards.${id}.name`) ?? id,
-                                    ) || [];
-                                return (
-                                  <div
-                                    key={floorIdx}
-                                    className="flex items-start gap-3 py-1.5 border-b border-[var(--border-subtle)] last:border-0 text-xs"
-                                  >
-                                    <span className="text-[var(--text-muted)] w-6 text-right flex-shrink-0">
-                                      {floorIdx + 1}
-                                    </span>
-                                    <span
-                                      className="w-14 flex-shrink-0 font-medium"
-                                      style={{
-                                        color:
-                                          roomColors[floor.raw_type] ||
-                                          "var(--text-secondary)",
-                                      }}
+                                  const roomColors: Record<string, string> = {
+                                    monster: "var(--text-secondary)",
+                                    elite: "var(--accent-gold)",
+                                    boss: "var(--color-ironclad)",
+                                    rest: "var(--color-silent)",
+                                    shop: "var(--accent-teal)",
+                                    event: "var(--color-necrobinder)",
+                                    treasure: "var(--accent-gold)",
+                                  };
+                                  const picked =
+                                    ps?.card_choices
+                                      ?.filter(({ was_picked }) => was_picked)
+                                      .map(
+                                        ({ card: { id } }) =>
+                                          tryGT(`cards.${id}.title`) ?? id,
+                                      ) || [];
+                                  const skipped =
+                                    ps?.card_choices
+                                      ?.filter(({ was_picked }) => !was_picked)
+                                      .map(
+                                        ({ card: { id } }) =>
+                                          tryGT(`cards.${id}.title`) ?? id,
+                                      ) || [];
+                                  let floorTypeTitle: string | undefined;
+                                  if ("type" in room) {
+                                    switch (room.type) {
+                                      case "ENCOUNTER":
+                                        floorTypeTitle = tryGT(
+                                          `static_hover_tips.ROOM_${floor.was_unknown ? "UNKNOWN_" : ""}${room.encounter_type}.title`,
+                                        );
+                                        break;
+                                      case "ANCIENT":
+                                      case "EVENT":
+                                      case "MERCHANT":
+                                      case "REST":
+                                        floorTypeTitle = tryGT(
+                                          `static_hover_tips.ROOM_${floor.was_unknown ? "UNKNOWN_" : ""}_${room.type}.title`,
+                                        );
+                                        break;
+                                    }
+                                  }
+                                  floorTypeTitle ??= floor.raw_type;
+                                  return (
+                                    <div
+                                      key={floorIdx}
+                                      className="flex items-start gap-3 py-1.5 border-b border-[var(--border-subtle)] last:border-0 text-xs"
                                     >
-                                      {floor.floor_type
-                                        ? (tryGT(
-                                            `static_hover_tooltips.ROOM_${floor.was_unknown ? "UNKNOWN_" : ""}${floor.floor_type}.title`,
-                                          ) ?? t("map.LEGEND_UNKNOWN.title"))
-                                        : floor.raw_type}
-                                    </span>
-                                    <div className="flex-1 min-w-0">
-                                      <span className="text-[var(--text-secondary)]">
-                                        {encounterName}
+                                      <span className="text-[var(--text-muted)] w-6 text-right flex-shrink-0">
+                                        {floorIdx + 1}
                                       </span>
-
-                                      {
-                                        //todo: localise this properly instead of just T?
-                                        "type" in room &&
+                                      <span
+                                        className="w-14 flex-shrink-0 font-medium"
+                                        style={{
+                                          color:
+                                            roomColors[floor.raw_type] ||
+                                            "var(--text-secondary)",
+                                        }}
+                                      >
+                                        {floorTypeTitle}
+                                      </span>
+                                      <div className="flex-1 min-w-0">
+                                        {"type" in room &&
                                           room.type === "ENCOUNTER" && (
-                                            <span className="text-[var(--text-muted)] ml-1">
-                                              ({room.turns_taken}T)
+                                            <span className="text-[var(--text-secondary)]">
+                                              {tryGT(
+                                                `encounters.${room.id}.title`,
+                                              ) ?? room.id}
                                             </span>
-                                          )
-                                      }
-                                      {picked.length > 0 && (
-                                        <span
-                                          className="ml-2"
-                                          style={{
-                                            color: "var(--color-silent)",
-                                          }}
-                                        >
-                                          +{picked.join(", ")}
-                                        </span>
-                                      )}
-                                      {skipped.length > 0 && (
-                                        <span className="text-[var(--text-muted)] ml-1 line-through">
-                                          {skipped.join(", ")}
-                                        </span>
-                                      )}
-                                    </div>
-                                    {ps && (
-                                      <div className="flex items-center gap-2 flex-shrink-0 text-[var(--text-muted)]">
-                                        {(ps.damage_taken ?? 0) > 0 && (
+                                          )}
+                                        {
+                                          //todo: localise this properly instead of just T?
+                                          "type" in room &&
+                                            room.type === "ENCOUNTER" && (
+                                              <span className="text-[var(--text-muted)] ml-1">
+                                                ({room.turns_taken}T)
+                                              </span>
+                                            )
+                                        }
+                                        {picked.length > 0 && (
                                           <span
-                                            style={{
-                                              color: "var(--color-ironclad)",
-                                            }}
-                                          >
-                                            -{ps.damage_taken}
-                                          </span>
-                                        )}
-                                        {(ps.hp_healed ?? 0) > 0 && (
-                                          <span
+                                            className="ml-2"
                                             style={{
                                               color: "var(--color-silent)",
                                             }}
                                           >
-                                            +{ps.hp_healed}
+                                            +{picked.join(", ")}
                                           </span>
                                         )}
-                                        <span>
-                                          {ps.current_hp}/{ps.max_hp}
-                                        </span>
+                                        {skipped.length > 0 && (
+                                          <span className="text-[var(--text-muted)] ml-1 line-through">
+                                            {skipped.join(", ")}
+                                          </span>
+                                        )}
                                       </div>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          );
-                        })}
+                                      {ps && (
+                                        <div className="flex items-center gap-2 flex-shrink-0 text-[var(--text-muted)]">
+                                          {(ps.damage_taken ?? 0) > 0 && (
+                                            <span
+                                              style={{
+                                                color: "var(--color-ironclad)",
+                                              }}
+                                            >
+                                              -{ps.damage_taken}
+                                            </span>
+                                          )}
+                                          {(ps.hp_healed ?? 0) > 0 && (
+                                            <span
+                                              style={{
+                                                color: "var(--color-silent)",
+                                              }}
+                                            >
+                                              +{ps.hp_healed}
+                                            </span>
+                                          )}
+                                          <span>
+                                            {ps.current_hp}/{ps.max_hp}
+                                          </span>
+                                        </div>
+                                      )}
+                                      {/* todo: some choices, like bonus rest site choices, might be missing here (lift, dug) */}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
 
-                    <SimilarRuns hash={hash} />
-                  </>
-                )}
-              </div>
+                      <SimilarRuns hash={hash} />
+                    </>
+                  )}
+                </div>
+              </EnchantmentsContext>
             </PotionsContext>
           </RelicsContext>
         </CardsContext>

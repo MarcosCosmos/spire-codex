@@ -26,6 +26,7 @@ export function useGameLocale(): Locale {
 /**
  * Currently this assumes that beta-specific localisation will be handled at the requestConfiguration level; we might change that to have this pull a context
  * The details on that are TODO.
+ * TODO: OBJECT.IS (DEFAULT MEMOISATION/HOOK RECALL FLAG) IS POTENTIALLY A PROBLEM FOR US WITH THESE ARGS.
  */
 export function useGameTranslations(args?: {
   namespace?: string;

@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { ApiConfig, ApiConfigContext } from "../ApiConfigContext";
+import { CodexApiConfig, ApiConfigContext } from "../ApiConfigContext";
 import { cachedFetch } from "@/lib/fetch-cache";
 import { API, useListEndpoint } from "./common";
 
@@ -12,7 +12,7 @@ export interface RelicData {
 }
 
 export const useRelics = (
-  config?: ApiConfig,
+  config?: CodexApiConfig,
 ): Record<string, RelicData> | undefined => useListEndpoint("relics", config);
 
 const RelicsContext = createContext<Record<string, RelicData> | undefined>(

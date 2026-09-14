@@ -1,14 +1,18 @@
-import { ApiConfig, ApiConfigContext } from "@/app/contexts/ApiConfigContext";
+import {
+  CodexApiConfig,
+  ApiConfigContext,
+} from "@/app/contexts/ApiConfigContext";
 import { cachedFetch } from "@/lib/fetch-cache";
+import { useChannel } from "@/lib/use-lang-prefix";
 import { useContext, useState, useEffect } from "react";
 
 export const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
-export type KnownListEndpoint = "cards" | "relics" | "potions";
+export type KnownListEndpoint = "cards" | "relics" | "potions" | "enchantments";
 
 export function useListEndpoint<R, Entry = R & { id: string }>(
   endpoint: KnownListEndpoint,
-  config?: ApiConfig,
+  config?: CodexApiConfig,
 ): Record<string, R> | undefined {
   const payload = useApiEndpoint<Entry[]>(endpoint, config);
   return (
@@ -19,16 +23,17 @@ export function useListEndpoint<R, Entry = R & { id: string }>(
 
 export const useApiEndpoint = <T>(
   endpoint: string,
-  config?: ApiConfig,
+  config?: CodexApiConfig,
 ): T | undefined => {
   const apiConfig = useContext(ApiConfigContext);
   const { beta } = config ?? apiConfig;
   const [result, setResult] = useState<T>();
+  const channel = useChannel(beta);
   useEffect(() => {
     let cancelled = false;
     (async () => {
       const payload = await cachedFetch<T>(
-        `${API}/api/${endpoint}${beta ? "?channel=beta" : ""}`,
+        `${API}/api/${endpoint}?channel=${channel}`,
       );
       if (!cancelled) {
         setResult(payload);
@@ -37,6 +42,6 @@ export const useApiEndpoint = <T>(
     return () => {
       cancelled = true;
     };
-  }, [endpoint, beta]);
+  }, [endpoint, channel]);
   return result;
 };
