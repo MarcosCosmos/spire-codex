@@ -8,7 +8,7 @@ import SharedRunClient from "./SharedRunClient";
 import { TFn } from "@/lib/i18n";
 import { RawRun, Run } from "../../../contexts/api/run/types";
 import { cleanRun } from "@/app/contexts/api/run/util";
-import SharedRunContext from "@/app/contexts/api/run/SharedRun";
+import SharedRunContext from "@/app/contexts/api/run/Run.client.";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +55,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale: rawLocale, hash } = await params;
   const locale = localeOf(rawLocale);
   const t = await getT(locale);
-  const tryGT = await getTryGameTranslations({ namespace: "characters", locale });
+  const tryGT = await getTryGameTranslations({
+    namespace: "characters",
+    locale,
+  });
   const run = await fetchRun(hash);
   if (!run) {
     return buildPageMetadata({
@@ -101,11 +104,18 @@ export default async function SharedRunPage({ params }: Props) {
   const { locale: rawLocale, hash } = await params;
   const locale = localeOf(rawLocale);
   const t = await getT(locale);
-  const tryGT = await getTryGameTranslations({ namespace: "characters", locale });
+  const tryGT = await getTryGameTranslations({
+    namespace: "characters",
+    locale,
+  });
   const run = await fetchRun(hash);
   let jsonLd: ReturnType<typeof buildDetailPageJsonLd> | null = null;
   if (run) {
-    const { char, resultLabel, username, ascension } = describeRun(run, t, tryGT);
+    const { char, resultLabel, username, ascension } = describeRun(
+      run,
+      t,
+      tryGT,
+    );
     jsonLd = buildDetailPageJsonLd({
       name: `${username} - ${char} - ${t("Ascension")} ${ascension} ${resultLabel}`,
       description: `${username}: ${char}, ${t("Ascension")} ${ascension}, ${resultLabel}. ${gameNameFor(locale)}.`,

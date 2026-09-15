@@ -1,21 +1,13 @@
-import { createContext, useContext, useEffect, useState } from "react";
-import { CodexApiConfig, ApiConfigContext } from "../ApiConfigContext";
-import { cachedFetch } from "@/lib/fetch-cache";
-import { API, useListEndpoint } from "./common";
-
-/**
- * Expand as needed; omits localisable fields so they come from translations instead
- */
-export interface PotionData {
-  rarity: string;
-  image_url: string | null;
-}
+import { createContext } from "react";
+import { CodexApiConfig } from "../ApiConfigContext";
+import { useEntitiesEndpoint } from "./endpoint.client";
+import { Potion } from "@/lib/api";
 
 export const usePotions = (
   config?: CodexApiConfig,
-): Record<string, PotionData> | undefined => useListEndpoint("potions", config);
+): Record<string, Potion> | undefined => useEntitiesEndpoint("potions", config);
 
-const PotionsContext = createContext<Record<string, PotionData> | undefined>(
+const PotionsContext = createContext<Record<string, Potion> | undefined>(
   undefined,
 );
 

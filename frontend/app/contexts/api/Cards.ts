@@ -1,23 +1,11 @@
 import { createContext } from "react";
 import { CodexApiConfig } from "../ApiConfigContext";
-import { useListEndpoint } from "./common";
+import { useEntitiesEndpoint } from "./endpoint.client";
+import { Card } from "@/lib/api";
 
-/**
- * Expand as needed; omits localisable fields so they come from translations instead
- * todo: I think technically these are supposed to be contexts so that not every component calls the logic, easily fixed.
- */
-export interface CardData {
-  type: string;
-  rarity: string;
-  cost: number;
-  color: string;
-  image_url: string | null;
-}
 export const useCards = (
   config?: CodexApiConfig,
-): Record<string, CardData> | undefined => useListEndpoint("cards", config);
+): Record<string, Card> | undefined => useEntitiesEndpoint("cards", config);
 
-const CardsContext = createContext<Record<string, CardData> | undefined>(
-  undefined,
-);
+const CardsContext = createContext<Record<string, Card> | undefined>(undefined);
 export default CardsContext;

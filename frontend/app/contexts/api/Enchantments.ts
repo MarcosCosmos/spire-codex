@@ -1,19 +1,15 @@
-import { useListEndpoint } from "./common";
+import { useEntitiesEndpoint } from "./endpoint.client";
 import { CodexApiConfig } from "../ApiConfigContext";
 import { createContext } from "react";
+import { Enchantment } from "@/lib/api";
 
-export interface EnchantmentData {
-  card_type: string | null;
-  is_stackable: boolean;
-  image_url: string | null;
-}
 export const useEnchantments = (
   config?: CodexApiConfig,
-): Record<string, EnchantmentData> | undefined =>
-  useListEndpoint("enchantments", config);
+): Record<string, Enchantment> | undefined =>
+  useEntitiesEndpoint("enchantments", config);
 
 const EnchantmentsContext = createContext<
-  Record<string, EnchantmentData> | undefined
+  Record<string, Enchantment> | undefined
 >(undefined);
 
 export default EnchantmentsContext;

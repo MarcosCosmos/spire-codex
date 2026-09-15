@@ -15,7 +15,7 @@ import { ApiConfigContext } from "@/app/contexts/ApiConfigContext";
 import CardsContext, { useCards } from "@/app/contexts/api/Cards";
 import PotionsContext, { usePotions } from "@/app/contexts/api/Potions";
 import RelicsContext, { useRelics } from "@/app/contexts/api/Relics";
-import SharedRunContext from "@/app/contexts/api/run/SharedRun";
+import SharedRunContext from "@/app/contexts/api/run/Run.client.";
 import EnchantmentsContext, {
   useEnchantments,
 } from "@/app/contexts/api/Enchantments";

@@ -30,7 +30,7 @@ import {
   Room,
   PlayerStats,
 } from "../../../contexts/api/run/types";
-import SharedRunContext from "@/app/contexts/api/run/SharedRun";
+import SharedRunContext from "@/app/contexts/api/run/Run.client.";
 import { useBetaPrefix } from "@/lib/use-lang-prefix";
 import { ApiConfigContext } from "@/app/contexts/ApiConfigContext";
 const ICON_BASE = imageUrl("/static/images/ui/run_history");

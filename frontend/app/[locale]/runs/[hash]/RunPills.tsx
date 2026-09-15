@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  useGameLocale,
-  useGameTranslations,
-  useTryGameTranslations,
-} from "@/lib/i18n";
+import { useGameLocale, useGameTranslations } from "@/lib/i18n";
 import { Ref, useContext, useRef, useState, type ReactNode } from "react";
 import { Link } from "@/i18n/navigation";
 import RichDescription from "@/app/components/RichDescription";
@@ -12,36 +8,8 @@ import { imageUrl, fullCardUrl, enchantedCardUrl } from "@/lib/image-url";
 import RelicsContext from "@/app/contexts/api/Relics";
 import CardsContext from "@/app/contexts/api/Cards";
 import PotionsContext from "@/app/contexts/api/Potions";
-import { ApiConfigContext } from "@/app/contexts/ApiConfigContext";
 import { useBetaPrefix, useChannel } from "@/lib/use-lang-prefix";
 import EnchantmentsContext from "@/app/contexts/api/Enchantments";
-
-export interface CardInfo {
-  id: string;
-  name: string;
-  description: string;
-  type: string;
-  rarity: string;
-  cost: number;
-  color: string;
-  image_url: string | null;
-}
-
-export interface RelicInfo {
-  id: string;
-  name: string;
-  description: string;
-  rarity: string;
-  image_url: string | null;
-}
-
-export interface PotionInfo {
-  id: string;
-  name: string;
-  description: string;
-  rarity: string;
-  image_url: string | null;
-}
 
 export function CardPill({
   cardId,

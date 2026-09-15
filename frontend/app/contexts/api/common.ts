@@ -1,47 +1,10 @@
-import {
-  CodexApiConfig,
-  ApiConfigContext,
-} from "@/app/contexts/ApiConfigContext";
-import { cachedFetch } from "@/lib/fetch-cache";
-import { useChannel } from "@/lib/use-lang-prefix";
-import { useContext, useState, useEffect } from "react";
-
 export const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-
-export type KnownListEndpoint = "cards" | "relics" | "potions" | "enchantments";
-
-export function useListEndpoint<R, Entry = R & { id: string }>(
-  endpoint: KnownListEndpoint,
-  config?: CodexApiConfig,
-): Record<string, R> | undefined {
-  const payload = useApiEndpoint<Entry[]>(endpoint, config);
-  return (
-    payload &&
-    Object.fromEntries(payload.map(({ id, ...data }: Entry) => [id, data]))
-  );
-}
-
-export const useApiEndpoint = <T>(
-  endpoint: string,
-  config?: CodexApiConfig,
-): T | undefined => {
-  const apiConfig = useContext(ApiConfigContext);
-  const { beta } = config ?? apiConfig;
-  const [result, setResult] = useState<T>();
-  const channel = useChannel(beta);
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const payload = await cachedFetch<T>(
-        `${API}/api/${endpoint}?channel=${channel}`,
-      );
-      if (!cancelled) {
-        setResult(payload);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [endpoint, channel]);
-  return result;
-};
+export const API_INTERNAL =
+  process.env.API_INTERNAL_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://localhost:8000";
+export type KnownEntitiesEndpoints =
+  | "cards"
+  | "relics"
+  | "potions"
+  | "enchantments";

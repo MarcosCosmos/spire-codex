@@ -1,10 +1,10 @@
 import { createContext } from "react";
 import { CodexApiConfig } from "../../ApiConfigContext";
-import { useApiEndpoint } from "../common";
-import { Run } from "./types";
+import { useApiEndpoint } from "../endpoint.client";
+import { RawRun, Run } from "./types";
 import { cleanRun } from "./util";
 
-export const useSharedRun = (
+export const useRun = (
   hash: string,
   config?: CodexApiConfig,
 ): Run | undefined => {

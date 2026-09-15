@@ -1,21 +1,13 @@
-import { createContext, useContext, useEffect, useState } from "react";
-import { CodexApiConfig, ApiConfigContext } from "../ApiConfigContext";
-import { cachedFetch } from "@/lib/fetch-cache";
-import { API, useListEndpoint } from "./common";
-
-/**
- * Expand as needed; omits localisable fields so they come from translations instead
- */
-export interface RelicData {
-  rarity: string;
-  image_url: string | null;
-}
+import { createContext } from "react";
+import { CodexApiConfig } from "../ApiConfigContext";
+import { useEntitiesEndpoint } from "./endpoint.client";
+import { Relic } from "@/lib/api";
 
 export const useRelics = (
   config?: CodexApiConfig,
-): Record<string, RelicData> | undefined => useListEndpoint("relics", config);
+): Record<string, Relic> | undefined => useEntitiesEndpoint("relics", config);
 
-const RelicsContext = createContext<Record<string, RelicData> | undefined>(
+const RelicsContext = createContext<Record<string, Relic> | undefined>(
   undefined,
 );
 export default RelicsContext;
