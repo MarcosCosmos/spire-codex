@@ -125,13 +125,7 @@ export interface RawRun {
 
 export type EncounterType = "BOSS" | "ELITE" | "ENEMY";
 
-export type RoomType =
-  | "ENCOUNTER"
-  | "ANCIENT"
-  | "EVENT"
-  | "MERCHANT"
-  | "REST"
-  | "TREASURE";
+export type RoomType = "ENCOUNTER" | "EVENT" | "MERCHANT" | "REST" | "TREASURE";
 
 export type FloorType = RoomType | "ANCIENT";
 
@@ -144,9 +138,9 @@ export interface Floor {
   player_stats: PlayerStats[];
 }
 
-export type Room = Ancient | Encounter | Event | Treasure | RestSite | Merchant;
+export type Room = EncounterRoom | EventRoom | TreasureRoom | RestSite | Shop;
 
-export interface Encounter {
+export interface EncounterRoom {
   type: "ENCOUNTER";
   encounter_type: EncounterType;
   id: string;
@@ -154,21 +148,16 @@ export interface Encounter {
   turns_taken: number;
 }
 
-export interface Event {
+export interface EventRoom {
   type: "EVENT";
   id: string;
 }
 
-export interface Ancient {
-  type: "ANCIENT";
-  id: string;
-}
-
-export interface Merchant {
+export interface Shop {
   type: "MERCHANT";
 }
 
-export interface Treasure {
+export interface TreasureRoom {
   type: "TREASURE";
 }
 

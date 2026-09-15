@@ -146,15 +146,12 @@ export default function SharedRunClient() {
   const player = run.players[run.player_index ?? 0] ?? run.players[0];
   const charId = player.character;
   const charColor = CHAR_CSS_VAR[charId.toUpperCase()] || "var(--accent-gold)";
-  const totalFloors = run.floor_history.reduce(
-    (sum, act) => sum + act.length,
-    0,
-  );
 
   return (
     cards &&
     potions &&
-    relics && (
+    relics &&
+    enchantments && (
       <ApiConfigContext value={{ beta: run.is_beta }}>
         <CardsContext value={cards}>
           <RelicsContext value={relics}>
@@ -470,12 +467,12 @@ export default function SharedRunClient() {
                                           `static_hover_tips.ROOM_${floor.was_unknown ? "UNKNOWN_" : ""}${room.encounter_type}.title`,
                                         );
                                         break;
-                                      case "ANCIENT":
                                       case "EVENT":
                                       case "MERCHANT":
                                       case "REST":
+                                      case "TREASURE":
                                         floorTypeTitle = tryGT(
-                                          `static_hover_tips.ROOM_${floor.was_unknown ? "UNKNOWN_" : ""}_${room.type}.title`,
+                                          `static_hover_tips.ROOM_${floor.was_unknown ? "UNKNOWN_" : ""}${floor.floor_type!}.title`,
                                         );
                                         break;
                                     }
@@ -500,6 +497,14 @@ export default function SharedRunClient() {
                                         {floorTypeTitle}
                                       </span>
                                       <div className="flex-1 min-w-0">
+                                        {"type" in room &&
+                                          room.type === "EVENT" && (
+                                            <span className="text-[var(--text-secondary)]">
+                                              {tryGT(
+                                                `${floor.floor_type!.toLowerCase()}s.${room.id}.title`,
+                                              ) ?? room.id}
+                                            </span>
+                                          )}
                                         {"type" in room &&
                                           room.type === "ENCOUNTER" && (
                                             <span className="text-[var(--text-secondary)]">

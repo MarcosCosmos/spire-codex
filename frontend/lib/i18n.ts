@@ -27,6 +27,7 @@ export function useGameLocale(): Locale {
  * Currently this assumes that beta-specific localisation will be handled at the requestConfiguration level; we might change that to have this pull a context
  * The details on that are TODO.
  * TODO: OBJECT.IS (DEFAULT MEMOISATION/HOOK RECALL FLAG) IS POTENTIALLY A PROBLEM FOR US WITH THESE ARGS.
+ * TODO: add documentation on the game messages to ai-friendly readme, including special ! keys (probably when making the actual api)
  */
 export function useGameTranslations(args?: {
   namespace?: string;
@@ -49,6 +50,16 @@ export function useTryGameTranslations(args?: {
   namespace?: string;
   beta?: boolean;
 }) {
+  const apiConfig = useContext(ApiConfigContext);
   const gT = useGameTranslations(args);
-  return (key: string) => (gT.has(key) ? gT(key) : undefined);
+  return (key: string) => {
+    if (!gT.has(key)) {
+      console.error(
+        "got a miss for key",
+        args?.namespace ? `${args.namespace}.${key}` : key,
+        args ?? apiConfig,
+      );
+    }
+    return gT.has(key) ? gT(key) : undefined;
+  };
 }

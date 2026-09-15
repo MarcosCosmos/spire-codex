@@ -136,11 +136,11 @@ export function RelicPill({
 }) {
   const [show, setShow] = useState(false);
   const relics = useContext(RelicsContext);
-  const gT = useGameTranslations({ namespace: "relics" });
+  const gT = useGameTranslations();
   const bp = useBetaPrefix();
   if (relics) {
     const relic = relics[relicId];
-    const name = relic ? gT(`${relicId}.title`) : relicId;
+    const name = relic ? gT(`relics.${relicId}.title`) : relicId;
 
     return (
       <Link
@@ -166,16 +166,21 @@ export function RelicPill({
                   {name}
                 </div>
                 <div className="text-[10px] text-[var(--text-muted)]">
-                  {relic && gT(`gameplay_ui.RELIC_RARITY_${relic.rarity}`)}
+                  {relic &&
+                    gT(
+                      `gameplay_ui.RELIC_RARITY.${relic.rarity_key?.toUpperCase()}`,
+                    )}
                 </div>
               </div>
             </div>
             <div className="text-[10px] text-[var(--text-secondary)] leading-relaxed">
               <RichDescription
                 text={
-                  relic
-                    ? gT(`${relic}.description`)
-                    : gT(`DEPRECATED_RELIC.description`)
+                  /* we can't use description messages yet as I haven't translated them */
+                  /*                  relic
+                    ? gT(`relics.${relicId}.description`)
+                    : gT(`relics.DEPRECATED_RELIC.description`) */
+                  relic.description
                 }
               />
             </div>

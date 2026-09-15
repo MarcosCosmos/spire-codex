@@ -11,8 +11,23 @@ import { useEffect, useMemo, useState } from "react";
 import { cachedFetch } from "@/lib/fetch-cache";
 import { imageUrl, fullCardUrl } from "@/lib/image-url";
 import { cleanId, displayName } from "@/lib/display-name";
-import type { CardInfo, PotionInfo, RelicInfo } from "../runs/[hash]/RunPills";
 import TwitchIcon from "@/app/components/TwitchIcon";
+import { useApiEndpointIdMapped } from "@/app/contexts/api/endpoint.client";
+import { useCards } from "@/app/contexts/api/Cards";
+import { useRelics } from "@/app/contexts/api/Relics";
+import { usePotions } from "@/app/contexts/api/Potions";
+import {
+  Act,
+  Card,
+  Encounter,
+  GameEvent,
+  Modifier,
+  Monster,
+  Orb,
+  Potion,
+  Power,
+  Relic,
+} from "@/lib/api";
 
 export const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -288,25 +303,9 @@ export interface LivePlayer {
   is_partner?: boolean;
 }
 
-export interface MonsterInfo {
-  id: string;
-  name: string;
-  image_url?: string | null;
-}
-
-export type MonsterMap = Record<string, MonsterInfo>;
-
 /** A per-node map reveal: [col, row, resolved room_type, encounter/event id|null]
  * for a visited node. Same coord space as the map nodes; grows as the player walks. */
 export type Reveal = [number, number, string, string | null];
-
-export interface EncounterInfo {
-  id: string;
-  name?: string;
-  monsters?: { id: string; name?: string }[];
-}
-
-export type EncounterMap = Record<string, EncounterInfo>;
 
 export interface NamedInfo {
   id: string;
@@ -314,20 +313,18 @@ export interface NamedInfo {
   image_url?: string | null;
 }
 
-export type NamedMap = Record<string, NamedInfo>;
-
 /** Every localized catalog the live views resolve ids against, fetched once per
  * locale. Names always come from here in the viewer's language; the mod's own
  * strings (in the player's language) are only a fallback. */
 export interface LiveCatalogs {
-  cards: Record<string, CardInfo>;
-  relics: Record<string, RelicInfo>;
-  potions: Record<string, PotionInfo>;
-  events: NamedMap;
-  powers: NamedMap;
-  orbs: NamedMap;
-  acts: NamedMap;
-  modifiers: NamedMap;
+  cards: Record<string, Card>;
+  relics: Record<string, Relic>;
+  potions: Record<string, Potion>;
+  events: Record<string, GameEvent>;
+  powers: Record<string, Power>;
+  orbs: Record<string, Orb>;
+  acts: Record<string, Act>;
+  modifiers: Record<string, Modifier>;
   characterNames: Record<string, string>;
 }
 
@@ -391,33 +388,21 @@ export function characterName(
 }
 
 /** A power id (presence sends FRAIL_POWER, the catalog is keyed FRAIL). */
-export function powerName(id: string, powers: NamedMap): string {
+export function powerName(id: string, powers: Record<string, Power>): string {
   const bare = cleanId(id);
   const info = powers[bare] ?? powers[bare.replace(/_POWER$/, "")];
   return info?.name || displayName(bare);
 }
 
-export function namedOr(id: string | null | undefined, map: NamedMap, fallback?: string): string {
+export function namedOr(
+  id: string | null | undefined,
+  map: Record<string,  NamedInfo>,
+  fallback?: string,
+): string {
   const bare = cleanId(id ?? "");
-  return (bare && map[bare]?.name) || fallback || (bare ? displayName(bare) : "");
-}
-
-/** Lazy id -> item map from a localized list endpoint; refetches on a locale
- * change and only once enabled. */
-export function useIdMap<T extends { id: string }>(path: string, enabled = true): Record<string, T> {
-  const lang = useGameLocale();
-  const [map, setMap] = useState<Record<string, T>>({});
-  useEffect(() => {
-    if (!enabled) return;
-    cachedFetch<T[]>(`${API}${path}?lang=${lang}`)
-      .then((items) => {
-        const m: Record<string, T> = {};
-        for (const x of items) m[x.id] = x;
-        setMap(m);
-      })
-      .catch(() => {});
-  }, [enabled, lang, path]);
-  return map;
+  return (
+    (bare && map[bare]?.name) || fallback || (bare ? displayName(bare) : "")
+  );
 }
 
 export function useCharacterNames(): Record<string, string> {
@@ -433,23 +418,58 @@ export function useCharacterNames(): Record<string, string> {
   return names;
 }
 
-export function useLiveCatalogs(): LiveCatalogs {
-  const cards = useIdMap<CardInfo>("/api/cards");
-  const relics = useIdMap<RelicInfo>("/api/relics");
-  const potions = useIdMap<PotionInfo>("/api/potions");
-  const events = useIdMap<NamedInfo>("/api/events");
-  const powers = useIdMap<NamedInfo>("/api/powers");
-  const orbs = useIdMap<NamedInfo>("/api/orbs");
-  const acts = useIdMap<NamedInfo>("/api/acts");
-  const modifiers = useIdMap<NamedInfo>("/api/modifiers");
-  const characterNames = useCharacterNames();
+export function useLiveCatalogs(): LiveCatalogs | undefined {
+  const cards = useCards();
+  const relics = useRelics();
+  const potions = usePotions();
+  // todo: give these fully fledged hooks like above
+  const events = useApiEndpointIdMapped<GameEvent>("events");
+  const powers = useApiEndpointIdMapped<Power>("powers");
+  const orbs = useApiEndpointIdMapped<Orb>("orbs");
+  const acts = useApiEndpointIdMapped<Act>("acts");
+  const modifiers = useApiEndpointIdMapped<Modifier>("modifiers");
+  const characterNames = useCharacterNames(); // todo: convert to new localisation method
   return useMemo(
-    () => ({ cards, relics, potions, events, powers, orbs, acts, modifiers, characterNames }),
-    [cards, relics, potions, events, powers, orbs, acts, modifiers, characterNames],
+    () =>
+      cards &&
+      events &&
+      relics &&
+      potions &&
+      powers &&
+      orbs &&
+      acts &&
+      modifiers &&
+      characterNames
+        ? {
+            cards,
+            relics,
+            potions,
+            events,
+            powers,
+            orbs,
+            acts,
+            modifiers,
+            characterNames,
+          }
+        : undefined,
+    [
+      cards,
+      relics,
+      potions,
+      events,
+      powers,
+      orbs,
+      acts,
+      modifiers,
+      characterNames,
+    ],
   );
 }
 
-export function elapsed(startedAt?: string | null, underMinute = "under a minute"): string {
+export function elapsed(
+  startedAt?: string | null,
+  underMinute = "under a minute",
+): string {
   if (!startedAt) return "";
   const ms = Date.now() - new Date(startedAt).getTime();
   if (ms <= 0) return "";
@@ -490,7 +510,9 @@ export function safeId(id: string): boolean {
  * per-id occurrence ordinal, so appending or removing one item does not
  * reshuffle the keys of the items before it. Plain array-index keys do, which
  * remounts rows on every poll and drops open hover tooltips. */
-export function withOrdinalKeys(items: string[]): { item: string; key: string }[] {
+export function withOrdinalKeys(
+  items: string[],
+): { item: string; key: string }[] {
   const seen: Record<string, number> = {};
   return items.map((item) => {
     const n = seen[item] ?? 0;
@@ -602,7 +624,9 @@ export function WatchOnTwitch({
       <TwitchIcon className="w-3.5 h-3.5" />
       {t("Watch on Twitch")}
       {viewers != null && (
-        <span className="font-normal opacity-80">· {viewers.toLocaleString()}</span>
+        <span className="font-normal opacity-80">
+          · {viewers.toLocaleString()}
+        </span>
       )}
     </a>
   );
@@ -629,22 +653,24 @@ export function usePoll(fn: () => void, ms: number) {
   }, []);
 }
 
+// todo: give these fully fledged too
 /** Lazy monster id -> {name, image_url} map; only fetches once enabled
  * (i.e. once somebody is actually in a fight). */
-export function useMonsterMap(enabled: boolean): MonsterMap {
-  return useIdMap<MonsterInfo>("/api/monsters", enabled);
-}
+export const useMonsterMap = (enabled: boolean) =>
+  useApiEndpointIdMapped<Monster>("monsters", undefined, enabled);
 
 /** Lazy encounter id -> {name, monsters} map, for resolving a map reveal's
  * encounter id to a representative monster portrait. Fetches once enabled. */
-export function useEncounterMap(enabled: boolean): EncounterMap {
-  return useIdMap<EncounterInfo>("/api/encounters", enabled);
-}
+export const useEncounterMap = (enabled: boolean) =>
+  useApiEndpointIdMapped<Encounter>("encounters", undefined, enabled);
 
 /** The catalog monster for an id, also matching encounter-style ids
  * (FROG_KNIGHT_NORMAL, BATTLEWORN_DUMMY_EVENT_V2_ENCOUNTER) by dropping
  * trailing segments until a monster id is left. */
-export function findMonster(id: string, monsters: MonsterMap): MonsterInfo | undefined {
+export function findMonster(
+  id: string,
+  monsters: Record<string, Monster>,
+): Monster | undefined {
   const parts = cleanId(id).split("_");
   for (let n = parts.length; n > 0; n--) {
     const hit = monsters[parts.slice(0, n).join("_")];
@@ -653,7 +679,10 @@ export function findMonster(id: string, monsters: MonsterMap): MonsterInfo | und
   return undefined;
 }
 
-export function monsterName(id: string, monsters: MonsterMap): string {
+export function monsterName(
+  id: string,
+  monsters: Record<string, Monster>,
+): string {
   return findMonster(id, monsters)?.name || displayName(`MONSTER.${id}`);
 }
 
@@ -661,12 +690,15 @@ export function monsterName(id: string, monsters: MonsterMap): string {
  * the prettified id last. Also fits pets and route nodes. */
 export function enemyName(
   e: { id?: string | null; name?: string | null },
-  monsters: MonsterMap,
-  encounters?: EncounterMap,
+  monsters: Record<string, Monster>,
+  encounters?: Record<string, Encounter>,
 ): string {
   const id = e.id ? cleanId(e.id) : "";
   return (
-    (id && (monsters[id]?.name || encounters?.[id]?.name || findMonster(id, monsters)?.name)) ||
+    (id &&
+      (monsters[id]?.name ||
+        encounters?.[id]?.name ||
+        findMonster(id, monsters)?.name)) ||
     e.name ||
     (id ? displayName(id) : "")
   );
@@ -678,7 +710,7 @@ export function EnemyCircle({
   className = "w-7 h-7",
 }: {
   id: string;
-  monsters: MonsterMap;
+  monsters: Record<string, Monster>;
   className?: string;
 }) {
   const mid = cleanId(id);
@@ -715,38 +747,53 @@ export function FightingChip({
   circle = "w-6 h-6",
 }: {
   p: LivePlayer;
-  monsters: MonsterMap;
+  monsters?: Record<string, Monster>;
   circle?: string;
 }) {
   const t = useT();
-  if (p.screen !== "combat" || !p.fighting?.length) return null;
-  // Merge identical enemies (a multi-segment foe like Decimillipede arrives as
-  // the same id repeated) into one entry with a count, so the chip stays short.
-  const groups: { id: string; count: number }[] = [];
-  for (const id of p.fighting) {
-    const g = groups.find((x) => x.id === id);
-    if (g) g.count += 1;
-    else groups.push({ id, count: 1 });
-  }
-  const names = groups.map((g) => {
-    const n = monsterName(g.id, monsters);
-    return g.count > 1 ? `${n} ×${g.count}` : n;
-  });
-  const label =
-    names.length <= 2 ? names.join(" & ") : `${names[0]} +${names.length - 1}`;
-  return (
-    <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 px-2 py-1 rounded-full bg-danger/10 border border-danger/30 text-xs text-danger">
-      <span className="flex -space-x-2 shrink-0">
-        {withOrdinalKeys(groups.slice(0, 3).map((g) => g.id)).map(({ item, key }) => (
-          <EnemyCircle key={key} id={item} monsters={monsters} className={circle} />
-        ))}
+  if (monsters) {
+    if (p.screen !== "combat" || !p.fighting?.length) return null;
+    // Merge identical enemies (a multi-segment foe like Decimillipede arrives as
+    // the same id repeated) into one entry with a count, so the chip stays short.
+    const groups: { id: string; count: number }[] = [];
+    for (const id of p.fighting) {
+      const g = groups.find((x) => x.id === id);
+      if (g) g.count += 1;
+      else groups.push({ id, count: 1 });
+    }
+    const names = groups.map((g) => {
+      const n = monsterName(g.id, monsters);
+      return g.count > 1 ? `${n} ×${g.count}` : n;
+    });
+    const label =
+      names.length <= 2
+        ? names.join(" & ")
+        : `${names[0]} +${names.length - 1}`;
+    return (
+      <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 px-2 py-1 rounded-full bg-danger/10 border border-danger/30 text-xs text-danger">
+        <span className="flex -space-x-2 shrink-0">
+          {withOrdinalKeys(groups.slice(0, 3).map((g) => g.id)).map(
+            ({ item, key }) => (
+              <EnemyCircle
+                key={key}
+                id={item}
+                monsters={monsters}
+                className={circle}
+              />
+            ),
+          )}
+        </span>
+        <span className="min-w-0 truncate">
+          {t("Fighting {label}", { label })}
+        </span>
+        {p.turn != null && p.turn > 0 && (
+          <span className="text-danger/80 whitespace-nowrap shrink-0">
+            · {t("Turn {n}", { n: p.turn })}
+          </span>
+        )}
       </span>
-      <span className="min-w-0 truncate">{t("Fighting {label}", { label })}</span>
-      {p.turn != null && p.turn > 0 && (
-        <span className="text-danger/80 whitespace-nowrap shrink-0">· {t("Turn {n}", { n: p.turn })}</span>
-      )}
-    </span>
-  );
+    );
+  }
 }
 
 // One intent as a short colored label. `type` is the codex intent category;
@@ -760,12 +807,16 @@ function intentLabel(it: EnemyIntent, t: TFn): { text: string; cls: string } {
   const emerald = "text-success bg-success/10 border-success/30";
   const fuchsia = "text-special bg-special/10 border-special/30";
   const amber = "text-warning bg-warning/10 border-warning/30";
-  const muted = "text-[var(--text-muted)] bg-[var(--bg-primary)] border-[var(--border-subtle)]";
+  const muted =
+    "text-[var(--text-muted)] bg-[var(--bg-primary)] border-[var(--border-subtle)]";
   switch (kind) {
     case "attack":
       return { text: dmg ? t("ATK {dmg}", { dmg }) : t("ATK"), cls: rose };
     case "deathblow":
-      return { text: dmg ? t("LETHAL {dmg}", { dmg }) : t("LETHAL"), cls: "text-danger bg-danger/10 border-danger/60" };
+      return {
+        text: dmg ? t("LETHAL {dmg}", { dmg }) : t("LETHAL"),
+        cls: "text-danger bg-danger/10 border-danger/60",
+      };
     case "defend":
       return { text: t("BLOCK"), cls: sky };
     case "buff":
@@ -794,7 +845,13 @@ function intentLabel(it: EnemyIntent, t: TFn): { text: string; cls: string } {
  * still shows something on an older mod. Gated on enemy data, not the screen:
  * the backend clears enemies/fighting when combat ends, so data presence is the
  * correct gate and the panel naturally disappears after a fight. */
-export function LiveEnemiesPanel({ p, monsters }: { p: LivePlayer; monsters: MonsterMap }) {
+export function LiveEnemiesPanel({
+  p,
+  monsters,
+}: {
+  p: LivePlayer;
+  monsters?: Record<string, Monster>;
+}) {
   const t = useT();
   const rich = (p.enemies ?? []).filter((e) => e && (e.id || e.name));
   const enemies: Enemy[] = rich.length
@@ -803,70 +860,92 @@ export function LiveEnemiesPanel({ p, monsters }: { p: LivePlayer; monsters: Mon
   if (!enemies.length) return null;
 
   return (
-    <div className="rounded-lg border border-danger/30 bg-danger/10 p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-danger">{t("Fighting")}</span>
-        {p.turn != null && p.turn > 0 && (
-          <span className="ml-auto text-xs text-danger tabular-nums">{t("Turn {n}", { n: p.turn })}</span>
-        )}
-      </div>
-      <ul className="space-y-2.5">
-        {withOrdinalKeys(enemies.map((e) => e.id || e.name || "?")).map(({ key }, i) => {
-          const e = enemies[i];
-          const name = enemyName(e, monsters) || t("Enemy");
-          const hpPct =
-            e.hp != null && e.max_hp ? Math.max(0, Math.min(100, (e.hp / e.max_hp) * 100)) : null;
-          const intents = e.intents ?? [];
-          return (
-            <li key={key} className="flex items-center gap-2.5">
-              {e.id ? (
-                <EnemyCircle id={e.id} monsters={monsters} className="w-10 h-10" />
-              ) : (
-                <span className="inline-flex w-10 h-10 shrink-0 items-center justify-center rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-sm text-[var(--text-muted)]">
-                  {(name[0] || "?").toUpperCase()}
-                </span>
-              )}
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm text-danger truncate">{name}</span>
-                  {(e.block ?? 0) > 0 && (
-                    <span className="text-[10px] text-info tabular-nums shrink-0" title={t("block")}>
-                      [{e.block}]
+    monsters && (
+      <div className="rounded-lg border border-danger/30 bg-danger/10 p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-danger">
+            {t("Fighting")}
+          </span>
+          {p.turn != null && p.turn > 0 && (
+            <span className="ml-auto text-xs text-danger tabular-nums">
+              {t("Turn {n}", { n: p.turn })}
+            </span>
+          )}
+        </div>
+        <ul className="space-y-2.5">
+          {withOrdinalKeys(enemies.map((e) => e.id || e.name || "?")).map(
+            ({ key }, i) => {
+              const e = enemies[i];
+              const name = enemyName(e, monsters) || t("Enemy");
+              const hpPct =
+                e.hp != null && e.max_hp
+                  ? Math.max(0, Math.min(100, (e.hp / e.max_hp) * 100))
+                  : null;
+              const intents = e.intents ?? [];
+              return (
+                <li key={key} className="flex items-center gap-2.5">
+                  {e.id ? (
+                    <EnemyCircle
+                      id={e.id}
+                      monsters={monsters}
+                      className="w-10 h-10"
+                    />
+                  ) : (
+                    <span className="inline-flex w-10 h-10 shrink-0 items-center justify-center rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-sm text-[var(--text-muted)]">
+                      {(name[0] || "?").toUpperCase()}
                     </span>
                   )}
-                  <span className="ml-auto flex items-center gap-1 shrink-0">
-                    {intents.map((it, j) => {
-                      const l = intentLabel(it, t);
-                      return (
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm text-danger truncate">
+                        {name}
+                      </span>
+                      {(e.block ?? 0) > 0 && (
                         <span
-                          key={`${it.type}-${j}`}
-                          className={`text-[10px] font-bold rounded border px-1.5 py-0.5 ${l.cls}`}
+                          className="text-[10px] text-info tabular-nums shrink-0"
+                          title={t("block")}
                         >
-                          {l.text}
+                          [{e.block}]
                         </span>
-                      );
-                    })}
-                  </span>
-                </div>
-                {hpPct != null ? (
-                  <div className="mt-1">
-                    <div className="flex justify-between text-[9px] text-danger/70 tabular-nums">
-                      <span>{t("HP")}</span>
-                      <span>
-                        {e.hp}/{e.max_hp}
+                      )}
+                      <span className="ml-auto flex items-center gap-1 shrink-0">
+                        {intents.map((it, j) => {
+                          const l = intentLabel(it, t);
+                          return (
+                            <span
+                              key={`${it.type}-${j}`}
+                              className={`text-[10px] font-bold rounded border px-1.5 py-0.5 ${l.cls}`}
+                            >
+                              {l.text}
+                            </span>
+                          );
+                        })}
                       </span>
                     </div>
-                    <div className="h-1.5 rounded bg-[var(--bg-primary)]">
-                      <div className="h-1.5 rounded bg-danger-fill" style={{ width: `${hpPct}%` }} />
-                    </div>
+                    {hpPct != null ? (
+                      <div className="mt-1">
+                        <div className="flex justify-between text-[9px] text-danger/70 tabular-nums">
+                          <span>{t("HP")}</span>
+                          <span>
+                            {e.hp}/{e.max_hp}
+                          </span>
+                        </div>
+                        <div className="h-1.5 rounded bg-[var(--bg-primary)]">
+                          <div
+                            className="h-1.5 rounded bg-danger-fill"
+                            style={{ width: `${hpPct}%` }}
+                          />
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
-                ) : null}
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
+                </li>
+              );
+            },
+          )}
+        </ul>
+      </div>
+    )
   );
 }
 

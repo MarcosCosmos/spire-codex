@@ -71,7 +71,7 @@ const cleanCard = ({
   enchantment: enchantment && cleanEnchantment(enchantment),
 });
 const cleanEnchantment = ({ id, amount }: RunEnchantment): RunEnchantment => ({
-  id: id.split(/^ENCHANMENT\./).at(-1)!,
+  id: id.split(/^ENCHANTMENT\./).at(-1)!,
   amount,
 });
 const cleanRelic = ({ id, floor_added_to_deck }: RunRelic): RunRelic => ({
@@ -233,8 +233,6 @@ const resolveRoomType = (raw_type: string): RoomType | undefined => {
       return "ENCOUNTER";
     case "event":
       return "EVENT";
-    case "ancient":
-      return "ANCIENT";
     case "shop":
       return "MERCHANT";
     case "treasure":

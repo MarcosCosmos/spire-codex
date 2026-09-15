@@ -28,20 +28,22 @@ import {
   enemyName,
   findMonster,
   safeId,
-  type Coord,
-  type EncounterMap,
   type LiveCatalogs,
   type FloorReward,
   type FloorSummary,
   type LiveMapData,
   type LiveRoute,
-  type MonsterMap,
   type Reveal,
+  Coord,
 } from "./live-shared";
+import { Encounter, Monster } from "@/lib/api";
 
 // Per-node-type styling. Types arrive lowercase; an unrecognized type falls
 // back to the neutral "node" entry so a new map symbol never breaks rendering.
-const NODE_STYLE: Record<string, { fill: string; ring: string; glyph: string }> = {
+const NODE_STYLE: Record<
+  string,
+  { fill: string; ring: string; glyph: string }
+> = {
   monster: { fill: "#9aa0a6", ring: "#c5c9ce", glyph: "M" },
   elite: { fill: "#e0843a", ring: "#ffb37a", glyph: "E" },
   boss: { fill: "#d53b27", ring: "#ff7a6a", glyph: "B" },
@@ -87,7 +89,13 @@ function hideImg(e: React.SyntheticEvent<HTMLImageElement>) {
 
 // One taken/skipped item: a small icon (best-effort by convention, hidden on a
 // 404) plus its prettified name.
-function RewardRow({ item, cat }: { item: FloorReward; cat?: Partial<LiveCatalogs> }) {
+function RewardRow({
+  item,
+  cat,
+}: {
+  item: FloorReward;
+  cat?: Partial<LiveCatalogs>;
+}) {
   const id = cleanId(item.id);
   const info =
     item.kind === "card"
@@ -95,16 +103,15 @@ function RewardRow({ item, cat }: { item: FloorReward; cat?: Partial<LiveCatalog
       : item.kind === "relic"
         ? cat?.relics?.[id]
         : cat?.potions?.[id];
-  const src =
-    !safeId(id)
-      ? ""
-      : info?.image_url
-        ? imageUrl(info.image_url)
-        : item.kind === "card"
-          ? imageUrl(`/static/images/cards/${id.toLowerCase()}.webp`)
-          : item.kind === "relic"
-            ? imageUrl(`/static/images/relics/${id.toLowerCase()}.png`)
-            : imageUrl(`/static/images/potions/${id.toLowerCase()}.png`);
+  const src = !safeId(id)
+    ? ""
+    : info?.image_url
+      ? imageUrl(info.image_url)
+      : item.kind === "card"
+        ? imageUrl(`/static/images/cards/${id.toLowerCase()}.webp`)
+        : item.kind === "relic"
+          ? imageUrl(`/static/images/relics/${id.toLowerCase()}.png`)
+          : imageUrl(`/static/images/potions/${id.toLowerCase()}.png`);
   return (
     <li className="flex items-center gap-1.5">
       {src ? (
@@ -118,7 +125,9 @@ function RewardRow({ item, cat }: { item: FloorReward; cat?: Partial<LiveCatalog
       ) : (
         <span className="h-4 w-4 shrink-0" />
       )}
-      <span className="truncate text-[var(--text-secondary)]">{info?.name || displayName(id)}</span>
+      <span className="truncate text-[var(--text-secondary)]">
+        {info?.name || displayName(id)}
+      </span>
     </li>
   );
 }
@@ -142,7 +151,9 @@ function RewardList({
     <div className="mt-1.5">
       <div
         className={`text-[10px] font-bold uppercase tracking-wide ${
-          tone === "reward" ? "text-[var(--accent-gold)]" : "text-[var(--text-muted)]"
+          tone === "reward"
+            ? "text-[var(--accent-gold)]"
+            : "text-[var(--text-muted)]"
         }`}
       >
         {label}
@@ -157,7 +168,9 @@ function RewardList({
               crossOrigin="anonymous"
               onError={hideImg}
             />
-            <span className="tabular-nums text-warning">{t("{n} Gold", { n: gold })}</span>
+            <span className="tabular-nums text-warning">
+              {t("{n} Gold", { n: gold })}
+            </span>
           </li>
         ) : null}
         {(items ?? []).map((it, i) => (
@@ -172,8 +185,8 @@ function RewardList({
 // viewer's language, trying each catalog before prettifying the id.
 function roomName(
   id: string,
-  encounters?: EncounterMap,
-  monsters?: MonsterMap,
+  encounters?: Record<string, Encounter>,
+  monsters?: Record<string, Monster>,
   cat?: Partial<LiveCatalogs>,
 ): string {
   const bare = cleanId(id);
@@ -194,18 +207,21 @@ function FloorCard({
   cat,
 }: {
   f: FloorSummary;
-  encounters?: EncounterMap;
-  monsters?: MonsterMap;
+  encounters?: Record<string, Encounter>;
+  monsters?: Record<string, Monster>;
   cat?: Partial<LiveCatalogs>;
 }) {
   const t = useT();
-  const isCombat = f.type === "monster" || f.type === "elite" || f.type === "boss";
+  const isCombat =
+    f.type === "monster" || f.type === "elite" || f.type === "boss";
   const encName = f.encounter_id
     ? roomName(f.encounter_id, encounters, monsters, cat)
     : null;
   return (
     <div>
-      <div className="text-sm font-bold text-[var(--accent-gold)]">{t("Floor {n}", { n: f.floor })}</div>
+      <div className="text-sm font-bold text-[var(--accent-gold)]">
+        {t("Floor {n}", { n: f.floor })}
+      </div>
       <div className="mt-0.5 flex gap-3 text-[11px] tabular-nums">
         <span className="text-danger">
           {f.hp}/{f.max_hp} {t("HP")}
@@ -220,27 +236,48 @@ function FloorCard({
               {t(ROOM_LABEL[f.type] ?? "Enemy")}: {encName ?? t("Enemy")}
             </div>
             {f.damage_taken ? (
-              <div className="tabular-nums text-danger">{t("{n} Damage", { n: f.damage_taken })}</div>
+              <div className="tabular-nums text-danger">
+                {t("{n} Damage", { n: f.damage_taken })}
+              </div>
             ) : null}
             {f.turns != null ? (
-              <div className="tabular-nums text-[var(--text-muted)]">{t("{n} Turns", { n: f.turns })}</div>
+              <div className="tabular-nums text-[var(--text-muted)]">
+                {t("{n} Turns", { n: f.turns })}
+              </div>
             ) : null}
           </>
         ) : f.type === "event" && encName ? (
           <div className="text-[var(--text-secondary)]">{encName}</div>
         ) : (
-          <div className="text-[var(--text-secondary)]">{t(ROOM_LABEL[f.type] ?? "Room")}</div>
+          <div className="text-[var(--text-secondary)]">
+            {t(ROOM_LABEL[f.type] ?? "Room")}
+          </div>
         )}
         {f.healed ? (
-          <div className="tabular-nums text-success">{t("{n} Healed", { n: f.healed })}</div>
+          <div className="tabular-nums text-success">
+            {t("{n} Healed", { n: f.healed })}
+          </div>
         ) : null}
         {f.gold_spent ? (
-          <div className="tabular-nums text-warning/80">{t("Spent {n} Gold", { n: f.gold_spent })}</div>
+          <div className="tabular-nums text-warning/80">
+            {t("Spent {n} Gold", { n: f.gold_spent })}
+          </div>
         ) : null}
       </div>
 
-      <RewardList label={t("Rewards")} items={f.rewards} gold={f.gold_gained} tone="reward" cat={cat} />
-      <RewardList label={t("Skipped")} items={f.skipped} tone="skip" cat={cat} />
+      <RewardList
+        label={t("Rewards")}
+        items={f.rewards}
+        gold={f.gold_gained}
+        tone="reward"
+        cat={cat}
+      />
+      <RewardList
+        label={t("Skipped")}
+        items={f.skipped}
+        tone="skip"
+        cat={cat}
+      />
     </div>
   );
 }
@@ -261,8 +298,8 @@ export default function LiveMap({
   pos?: Coord | null;
   reveals?: Reveal[];
   route?: LiveRoute | null;
-  monsters?: MonsterMap;
-  encounters?: EncounterMap;
+  monsters?: Record<string, Monster>;
+  encounters?: Record<string, Encounter>;
   floorHistory?: FloorSummary[];
   cat?: Partial<LiveCatalogs>;
 }) {
@@ -327,22 +364,33 @@ export default function LiveMap({
       return null; // shop/rest/treasure/event reveal: no portrait, keep glyph
     }
     if (baseType === "boss" && route?.boss?.id) {
-      return imageUrl(`/static/images/misc/bosses/${route.boss.id.toLowerCase()}.png`);
+      return imageUrl(
+        `/static/images/misc/bosses/${route.boss.id.toLowerCase()}.png`,
+      );
     }
     if (baseType === "ancient" && route?.ancient?.id) {
-      return imageUrl(`/static/images/misc/ancients/${route.ancient.id.toLowerCase()}.png`);
+      return imageUrl(
+        `/static/images/misc/ancients/${route.ancient.id.toLowerCase()}.png`,
+      );
     }
     return null;
   }
 
-  function titleFor(c: number, r: number, baseType: string, effType: string): string {
+  function titleFor(
+    c: number,
+    r: number,
+    baseType: string,
+    effType: string,
+  ): string {
     const rv = revealMap.get(key(c, r));
     if (rv && rv[3]) return roomName(rv[3], encounters, monsters, cat);
     if (baseType === "boss" && route?.boss) {
       return enemyName(route.boss, monsters ?? {}, encounters) || t("Boss");
     }
     if (baseType === "ancient" && route?.ancient) {
-      return enemyName(route.ancient, monsters ?? {}, encounters) || t("Ancient");
+      return (
+        enemyName(route.ancient, monsters ?? {}, encounters) || t("Ancient")
+      );
     }
     return t(ROOM_LABEL[effType] ?? effType);
   }
@@ -407,9 +455,26 @@ export default function LiveMap({
                   they sit on top of the circle. */}
               <circle cx={x(c)} cy={y(r)} r={R} fill="var(--bg-primary)" />
               {here && (
-                <circle cx={x(c)} cy={y(r)} r={R + 4} fill="none" stroke="var(--accent-gold)" strokeWidth={2}>
-                  <animate attributeName="r" values={`${R + 2};${R + 6};${R + 2}`} dur="1.4s" repeatCount="indefinite" />
-                  <animate attributeName="stroke-opacity" values="1;0.3;1" dur="1.4s" repeatCount="indefinite" />
+                <circle
+                  cx={x(c)}
+                  cy={y(r)}
+                  r={R + 4}
+                  fill="none"
+                  stroke="var(--accent-gold)"
+                  strokeWidth={2}
+                >
+                  <animate
+                    attributeName="r"
+                    values={`${R + 2};${R + 6};${R + 2}`}
+                    dur="1.4s"
+                    repeatCount="indefinite"
+                  />
+                  <animate
+                    attributeName="stroke-opacity"
+                    values="1;0.3;1"
+                    dur="1.4s"
+                    repeatCount="indefinite"
+                  />
                 </circle>
               )}
               {portrait ? (
@@ -472,7 +537,12 @@ export default function LiveMap({
           className="pointer-events-none absolute z-50 w-56 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card)] px-3 py-2 text-xs shadow-xl"
           style={{ left: `${lx}%`, top: `${ty}%`, transform: tipTransform }}
         >
-          <FloorCard f={hoverFloor} encounters={encounters} monsters={monsters} cat={cat} />
+          <FloorCard
+            f={hoverFloor}
+            encounters={encounters}
+            monsters={monsters}
+            cat={cat}
+          />
         </div>
       )}
     </div>

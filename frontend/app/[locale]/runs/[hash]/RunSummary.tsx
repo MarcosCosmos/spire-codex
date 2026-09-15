@@ -25,7 +25,7 @@ import {
   Run,
   DeckCard,
   Floor,
-  Encounter,
+  EncounterRoom,
   RawRoom,
   Room,
   PlayerStats,
@@ -118,7 +118,7 @@ function formatDate(
 
 /** Decide the tier ("weak"|"normal"|"elite"|"boss") for an encounter. */
 function encounterTier(
-  encounter: Encounter,
+  encounter: EncounterRoom,
 ): "weak" | "normal" | "elite" | "boss" | "" {
   switch (encounter.encounter_type) {
     case "ENEMY":
@@ -130,7 +130,7 @@ function encounterTier(
   }
 }
 
-function encounterSlug(encounter: Encounter) {
+function encounterSlug(encounter: EncounterRoom) {
   switch (encounter.encounter_type) {
     case "ENEMY":
       return "monster";
@@ -159,8 +159,6 @@ function encounterSlug(encounter: Encounter) {
 function useRoomHref(room: Room | RawRoom): string | undefined {
   if ("type" in room) {
     switch (room.type) {
-      case "ANCIENT":
-        return `events/${room.id}`;
       case "ENCOUNTER":
         return `/monsters/${room.id}`;
       case "EVENT":
@@ -196,17 +194,13 @@ function iconFor(
   });
   if ("type" in room) {
     switch (room.type) {
-      case "ANCIENT":
-        return {
-          ...resolve(room.id.toLowerCase()),
-          alt: tryGT(`static_hover_tips.ROOM_EVENT.title`),
-        };
       case "EVENT":
         return {
-          ...resolve("event"),
-          alt: tryGT(`static_hover_tips.ROOM_EVENT.title`),
+          ...resolve(
+            floor.floor_type === "ANCIENT" ? room.id.toLowerCase() : "event",
+          ),
+          alt: tryGT(`static_hover_tips.ROOM_${floor.floor_type!}.title`),
         };
-        break;
       case "ENCOUNTER":
         return {
           ...resolve(
@@ -221,14 +215,14 @@ function iconFor(
         return {
           ...resolve(floor.was_unknown ? "unknown_shop" : "shop"),
           alt: tryGT(
-            `static_hover_tips.ROOM_${floor.was_unknown ? "UNKNOWN_" : ""}_MERCHANT.title`,
+            `static_hover_tips.ROOM_${floor.was_unknown ? "UNKNOWN_" : ""}MERCHANT.title`,
           ),
         };
       case "TREASURE":
         return {
           ...resolve(floor.was_unknown ? "unknown_treasture" : "treasure"),
           alt: tryGT(
-            `static_hover_tips.ROOM_${floor.was_unknown ? "UNKNOWN_" : ""}_TREASURE.title`,
+            `static_hover_tips.ROOM_${floor.was_unknown ? "UNKNOWN_" : ""}TREASURE.title`,
           ),
         };
       case "REST":
@@ -507,22 +501,20 @@ function localizeFloorTitle(
   const room = floor.rooms[0];
   if ("type" in room) {
     switch (room.type) {
-      case "ANCIENT":
-        return `${tryGT(`static_hover_tips.ROOM_ANCIENT.title`)}: ${tryGT(`events.${room.id}.title`) ?? room.id}`;
       case "EVENT":
-        return `${tryGT(`static_hover_tips.ROOM_EVENT.title`)}: ${tryGT(`events.${room.id}.title`) ?? room.id}`;
+        if (floor.floor_type === "ANCIENT") {
+          return `${tryGT(`static_hover_tips.ROOM_EVENT.title`)}: ${tryGT(`ancients.${room.id}.title`) ?? room.id}`;
+        } else {
+          return `${tryGT(`static_hover_tips.ROOM_EVENT.title`)}: ${tryGT(`events.${room.id}.title`) ?? room.id}`;
+        }
       case "ENCOUNTER":
         return `${tryGT(`static_hover_tips.ROOM_${floor.was_unknown ? "UNKNOWN_" : ""}${room.encounter_type}.title`)}: ${tryGT(`encounters.${room.id}.title`) ?? room.id}`;
       case "MERCHANT":
-        return tryGT(
-          `static_hover_tips.ROOM_${floor.was_unknown ? "UNKNOWN_" : ""}_MERCHANT.title`,
-        );
       case "TREASURE":
-        return tryGT(
-          `static_hover_tips.ROOM_${floor.was_unknown ? "UNKNOWN_" : ""}_TREASURE.title`,
-        );
       case "REST":
-        return tryGT(`static_hover_tips.ROOM_REST.title`);
+        return tryGT(
+          `static_hover_tips.ROOM_${floor.was_unknown ? "UNKNOWN_" : ""}${floor.floor_type!}.title`,
+        );
     }
   }
 }
@@ -589,7 +581,7 @@ function MapNode({
         <div className="text-[10px] text-[var(--text-secondary)] mb-1.5">
           {t("vs")}{" "}
           {room.monsters
-            .map((id) => tryGT(`monsters.${id}.title`) ?? id)
+            .map((id) => tryGT(`monsters.${id}.name`) ?? id)
             .join(", ")}
         </div>
       )}
@@ -786,14 +778,14 @@ function RaritySummary({
   const counts = countUniques(rarities);
   // note: technically we should cache the input key to this I think but react compiler might handle it for us, worth checking
   const gT = useTryGameTranslations({
-    namespace: `translations.${itemKind}_rarities`,
+    namespace: `gameplay_ui.${itemKind.toUpperCase()}_RARITY`,
   });
   const parts = RARITY_ORDER.map((rarity): [string, number] => [
     rarity,
     counts.get(rarity) ?? 0,
   ])
     .filter(([, count]) => count > 0)
-    .map(([rarity, n]) => `${n} ${gT(rarity)}`);
+    .map(([rarity, n]) => `${n} ${gT(rarity.toUpperCase())}`);
   return <span className="text-[var(--text-muted)]">{parts.join(", ")}</span>;
 }
 

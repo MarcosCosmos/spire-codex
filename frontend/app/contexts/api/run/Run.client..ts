@@ -1,3 +1,4 @@
+"use client";
 import { createContext } from "react";
 import { CodexApiConfig } from "../../ApiConfigContext";
 import { useApiEndpoint } from "../endpoint.client";
