@@ -1805,6 +1805,14 @@ def _leaderboard_summary_coll():
     return _get_collection().database[LEADERBOARD_SUMMARY_COLLECTION_NAME]
 
 
+def _players_key(players: str | None) -> str | None:
+    """One spelling per party size for keys: the page sends "1", the boards
+    were built as "single", and both mean player_count == 1."""
+    if players in ("1", "single"):
+        return "single"
+    return players or None
+
+
 def _leaderboard_key(
     category: str = "fastest",
     character: str | None = None,
@@ -1814,8 +1822,8 @@ def _leaderboard_key(
     """Composite cache key for leaderboard_summary docs. Mirrors the
     HOT_LEADERBOARD_COMBOS shape: (category, character, players,
     game_mode), covering both the bare API default and the combo the
-    frontend actually sends (players=single, game_mode=standard)."""
-    return f"{category}|{character or '_'}|{players or '_'}|{game_mode or '_'}"
+    frontend actually sends (players=1, game_mode=standard)."""
+    return f"{category}|{character or '_'}|{_players_key(players) or '_'}|{game_mode or '_'}"
 
 
 def _lease_coll():
@@ -1937,8 +1945,23 @@ _ASCENSION_COMBOS_PER_CYCLE = 2
 
 # Every combo the refresher owns. Reads serve these regardless of age — a
 # minutes-stale doc beats recomputing a multi-aggregation inline.
+# Third tier: the player-count axis the stats page offers (Solo, 2P, 3P, 4P+),
+# alone, per character, and per ascension. Any of these on the live path scans
+# the whole collection and dies at the 20 s cap, so they are lake-built like
+# the ascension slices.
+PLAYERS_FILTER_COMBOS: list[dict] = [
+    {**({"character": c} if c else {}), "players": p}
+    for p in ("1", "2", "3", "4")
+    for c in (None, "IRONCLAD", "SILENT", "DEFECT", "NECROBINDER", "REGENT")
+] + [
+    {"players": p, "ascension": str(a)}
+    for p in ("1", "2", "3", "4")
+    for a in range(0, 11)
+]
+
 MATERIALIZED_STATS_KEYS = frozenset(
-    _filter_key(**f) for f in (*HOT_FILTER_COMBOS, *ASCENSION_FILTER_COMBOS)
+    _filter_key(**f)
+    for f in (*HOT_FILTER_COMBOS, *ASCENSION_FILTER_COMBOS, *PLAYERS_FILTER_COMBOS)
 )
 
 
@@ -1950,12 +1973,27 @@ _LEADERBOARD_CATEGORIES = ("fastest", "highest_ascension")
 _LEADERBOARD_CHARACTERS = ("IRONCLAD", "SILENT", "DEFECT", "NECROBINDER", "REGENT")
 # Two variants per (category, character): the bare API default, and the
 # players=single + game_mode=standard combo the frontend always sends.
+# Every party size the page can pick, on the standard ladder, plus the bare
+# API default. Anything outside this list computes live against Mongo, which
+# at 1.6M runs takes tens of seconds, so the list must cover what the page
+# sends by default.
 HOT_LEADERBOARD_COMBOS: list[dict] = [
     {"category": cat, "character": ch, "players": pl, "game_mode": gm}
     for cat in _LEADERBOARD_CATEGORIES
     for ch in (None, *_LEADERBOARD_CHARACTERS)
-    for (pl, gm) in ((None, None), ("single", "standard"))
+    for (pl, gm) in (
+        (None, None),
+        ("single", "standard"),
+        ("2", "standard"),
+        ("3", "standard"),
+        ("4", "standard"),
+        ("multi", "standard"),
+    )
 ]
+
+# Rows stored per materialized board. The page shows 20 a time, so this
+# serves the first 50 pages without touching the live query.
+LEADERBOARD_BOARD_ROWS = 1000
 
 
 def try_acquire_refresh_lease() -> bool:
@@ -2153,7 +2191,7 @@ def refresh_leaderboard_summary() -> int:
                 game_mode=game_mode,
                 today=False,
                 page=1,
-                limit=50,
+                limit=LEADERBOARD_BOARD_ROWS,
             )
             key = _leaderboard_key(
                 category=category,
@@ -2627,17 +2665,10 @@ def leaderboard(
     """
     # Fast path: serve from the materialized summary when the combo is one
     # we materialize (find_one misses otherwise and we fall to live). Docs
-    # store 50 rows, so any page-1 request up to that size can be sliced.
-    # An ascension_min / winrate_min / build_id filter isn't materialized, so
-    # skip to live.
-    if (
-        ascension_min is None
-        and winrate_min is None
-        and build_id is None
-        and not today
-        and page == 1
-        and limit <= 50
-    ):
+    # store LEADERBOARD_BOARD_ROWS rows, so any page that fits inside them
+    # is a slice. An ascension_min / winrate_min / build_id filter isn't
+    # materialized, so skip to live.
+    if ascension_min is None and winrate_min is None and build_id is None and not today:
         try:
             key = _leaderboard_key(
                 category=category,
@@ -2647,13 +2678,9 @@ def leaderboard(
             )
             doc = _leaderboard_summary_coll().find_one({"_id": key})
             if doc:
-                doc.pop("_id", None)
-                doc.pop("updated_at", None)
-                if limit < 50:
-                    doc["runs"] = doc.get("runs", [])[:limit]
-                    doc["per_page"] = limit
-                    doc["total_pages"] = (doc.get("total", 0) + limit - 1) // limit
-                return doc
+                sliced = _slice_board(doc, page, limit)
+                if sliced is not None:
+                    return sliced
         except Exception:
             pass
 
@@ -2669,6 +2696,23 @@ def leaderboard(
         winrate_min=winrate_min,
         build_id=build_id,
     )
+
+
+def _slice_board(doc: dict, page: int, limit: int) -> dict | None:
+    """One page out of a stored board, or None when the page runs past the
+    rows the board holds (the live query answers that one)."""
+    rows = doc.get("runs") or []
+    total = int(doc.get("total") or 0)
+    per_page = max(1, min(limit, 100))
+    offset = (max(page, 1) - 1) * per_page
+    if len(rows) < total and offset + per_page > len(rows):
+        return None
+    out = {k: v for k, v in doc.items() if k not in ("_id", "updated_at")}
+    out["runs"] = rows[offset : offset + per_page]
+    out["page"] = max(page, 1)
+    out["per_page"] = per_page
+    out["total_pages"] = (total + per_page - 1) // per_page
+    return out
 
 
 def _leaderboard_live(

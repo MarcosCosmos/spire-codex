@@ -59,6 +59,7 @@ interface CommunityStats {
   total_runs: number;
   total_wins: number;
   total_losses: number;
+  total_abandoned?: number;
   win_rate: number;
   by_ascension: AscRow[];
   by_character: CharRow[];

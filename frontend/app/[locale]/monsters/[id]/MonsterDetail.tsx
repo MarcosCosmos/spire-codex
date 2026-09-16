@@ -18,6 +18,10 @@ import type {
   AttackPattern,
 } from "@/lib/api/types";
 import type { EncounterStat } from "@/lib/encounter-stats";
+import {
+  randomPatternSentences,
+  randomPatternSummary,
+} from "@/lib/attack-pattern";
 import { cachedFetch } from "@/lib/fetch-cache";
 import { useBetaPrefix } from "@/lib/use-lang-prefix";
 import RichDescription from "@/app/components/RichDescription";
@@ -705,6 +709,33 @@ export default function MonsterDetail({
                   );
                   const desc = monster.attack_pattern!.description;
                   const isCycle = monster.attack_pattern!.type === "cycle";
+                  const summary = isCycle
+                    ? null
+                    : randomPatternSummary(monster.attack_pattern!);
+                  const moveName = (mid: string) =>
+                    (monster.moves || []).find((m) => m.id === mid)?.name ||
+                    titleCaseId(mid);
+                  if (summary) {
+                    const sentences = randomPatternSentences(
+                      summary,
+                      moveName,
+                      t,
+                      lang,
+                    );
+                    return (
+                      <>
+                        <h3 className="subh">{t("Attack Pattern")}</h3>
+                        <p className="desc-body">{sentences.join(" ")}</p>
+                        <div className="atk-seq">
+                          {steps.map((s, i) => (
+                            <span key={i} className="atk-step-wrap">
+                              <span className="atk-step">{s}</span>
+                            </span>
+                          ))}
+                        </div>
+                      </>
+                    );
+                  }
                   return (
                     <>
                       <h3 className="subh">{t("Attack Pattern")}</h3>

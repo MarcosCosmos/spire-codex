@@ -370,7 +370,7 @@ def community_payload(bracket: str | None = None) -> dict | None:
             accs.append(_acc_from_json(acc_raw))
         from . import community_stats as cs
 
-        payload = cs._finalize_one(_merge_accs(accs))
+        payload = cs._finalize_one(_merge_accs(accs), version=version)
         payload["data_through"] = raw.get("data_through")
         folded[ckey] = payload
         return payload
@@ -461,6 +461,7 @@ def _merge_accs(cells: list[dict]) -> dict:
     for acc in cells:
         out["total_runs"] += acc["total_runs"]
         out["total_wins"] += acc["total_wins"]
+        out["total_abandoned"] += acc.get("total_abandoned") or 0
         out["reward_screens"] += acc.get("reward_screens") or 0
         out["reward_skips"] += acc.get("reward_skips") or 0
         for field in (
@@ -473,6 +474,8 @@ def _merge_accs(cells: list[dict]) -> dict:
         ):
             for k, v in (acc.get(field) or {}).items():
                 rec = out[field].setdefault(k, [0] * len(v))
+                if len(rec) < len(v):
+                    rec.extend([0] * (len(v) - len(rec)))
                 for i, x in enumerate(v):
                     rec[i] += x
         for field in (
@@ -530,20 +533,25 @@ def _build_community_cube() -> dict[str, dict]:
     try:
         _prepare_sources(con, lake)
 
-        for cell, char, asc, runs, wins in con.execute(
+        for cell, char, asc, runs, wins, abandoned in con.execute(
             "SELECT cell, lower(character), coalesce(ascension, 0)::INT, count(*),"
-            " count(*) FILTER (win) FROM cells GROUP BY 1, 2, 3"
+            " count(*) FILTER (win), count(*) FILTER (coalesce(was_abandoned, false))"
+            " FROM cells GROUP BY 1, 2, 3"
         ).fetchall():
             acc = acc_for(cell, char)
             acc["total_runs"] += runs
             acc["total_wins"] += wins
+            acc["total_abandoned"] += abandoned
             for rec in (
-                acc["by_ascension"].setdefault(asc, [0, 0]),
-                acc["by_character"].setdefault(char, [0, 0]),
-                acc["char_asc"].setdefault(char, {}).setdefault(asc, [0, 0]),
+                acc["by_ascension"].setdefault(asc, [0, 0, 0]),
+                acc["by_character"].setdefault(char, [0, 0, 0]),
             ):
                 rec[0] += runs
                 rec[1] += wins
+                rec[2] += abandoned
+            ca = acc["char_asc"].setdefault(char, {}).setdefault(asc, [0, 0])
+            ca[0] += runs
+            ca[1] += wins
 
         for col, key in (("encounter", "deaths_encounter"), ("event", "deaths_event")):
             for cell, char, eid, n in con.execute(
@@ -747,7 +755,7 @@ def _ensure_choice_rows(con) -> None:
     from . import run_entity_stats as res
 
     con.execute(_ELIGIBLE_SQL.format(lake=LAKE_DIR))
-    _ids_temp_table(con, "excluded_cards", res._excluded_card_ids())
+    _ids_temp_table(con, "excluded_cards", res._non_reward_card_ids())
     con.execute(
         f"CREATE TABLE IF NOT EXISTS choice_rows AS "
         f"WITH {_CHOICES_CTE.format(lake=LAKE_DIR)} SELECT * FROM choices"
@@ -1915,6 +1923,20 @@ def bracket_elo_for(bracket: str | None) -> dict | None:
 # ── Stats-summary core: the homepage numbers, from the lake ──────────────────
 
 
+def _players_match(pc: int, players: str | None) -> bool:
+    """The stats page's player-count filter against a run's party size,
+    clamped to 4 the way _build_match clamps it (4 means four or more)."""
+    if players is None:
+        return True
+    if players in ("single", "1"):
+        return pc == 1
+    if players == "4":
+        return pc >= 4
+    if players == "multi":
+        return pc > 1
+    return pc == int(players)
+
+
 def _stats_core_results() -> list[tuple[dict, dict]]:
     """(filters, core-result) for every materialized stats combo, computed
     from one pass over runs.parquet with get_stats' core semantics:
@@ -1926,6 +1948,7 @@ def _stats_core_results() -> list[tuple[dict, dict]]:
         ASCENSION_FILTER_COMBOS,
         HOT_FILTER_COMBOS,
         OFFICIAL_CHARACTERS,
+        PLAYERS_FILTER_COMBOS,
     )
 
     con = _connect()
@@ -1934,13 +1957,14 @@ def _stats_core_results() -> list[tuple[dict, dict]]:
             f"""
             SELECT coalesce(upper(r.character), '') AS ch,
               coalesce(r.ascension, 0)::INT AS asc,
+              least(coalesce(r.player_count, 1), 4)::INT AS pc,
               count(*) AS n, count(*) FILTER (r.win) AS w,
               count(*) FILTER (r.was_abandoned) AS ab
             FROM read_parquet('{LAKE_DIR}/runs.parquet') r
             ANTI JOIN read_parquet('{LAKE_DIR}/excluded.parquet') x
               ON r.run_hash = x.run_hash
             WHERE r.ascension BETWEEN 0 AND 10
-            GROUP BY 1, 2
+            GROUP BY 1, 2, 3
             """
         ).fetchall()
     finally:
@@ -1955,41 +1979,48 @@ def _stats_core_results() -> list[tuple[dict, dict]]:
     # table; abandons stay their own visible number, never folded into
     # losses; win_rate remains wins over total attempts.
     cells = [c for c in cells if c[0] in OFFICIAL_CHARACTERS]
-    for f in [*HOT_FILTER_COMBOS, *ASCENSION_FILTER_COMBOS]:
+    for f in [*HOT_FILTER_COMBOS, *ASCENSION_FILTER_COMBOS, *PLAYERS_FILTER_COMBOS]:
         char_f = f.get("character")
         asc_f = int(f["ascension"]) if "ascension" in f else None
+        pl_f = f.get("players")
         filters = {
             "character": char_f,
             "win": None,
             "ascension": f.get("ascension"),
             "game_mode": None,
-            "players": None,
+            "players": pl_f,
             "username": None,
         }
         rows = [
             c
             for c in cells
-            if (char_f is None or c[0] == char_f) and (asc_f is None or c[1] == asc_f)
+            if (char_f is None or c[0] == char_f)
+            and (asc_f is None or c[1] == asc_f)
+            and _players_match(c[2], pl_f)
         ]
-        total = sum(c[2] for c in rows)
+        total = sum(c[3] for c in rows)
         if total == 0:
             out.append((f, {"total_runs": 0, "filters": filters}))
             continue
-        wins = sum(c[3] for c in rows)
-        abandoned = sum(c[4] for c in rows)
-        no_char = [c for c in cells if asc_f is None or c[1] == asc_f]
+        wins = sum(c[4] for c in rows)
+        abandoned = sum(c[5] for c in rows)
+        no_char = [
+            c
+            for c in cells
+            if (asc_f is None or c[1] == asc_f) and _players_match(c[2], pl_f)
+        ]
         char_totals: dict[str, list[int]] = {}
         for c in no_char:
             rec = char_totals.setdefault(c[0], [0, 0, 0])
-            rec[0] += c[2]
-            rec[1] += c[3]
-            rec[2] += c[4]
+            rec[0] += c[3]
+            rec[1] += c[4]
+            rec[2] += c[5]
         asc_totals: dict[int, list[int]] = {}
         for c in rows:
             rec = asc_totals.setdefault(c[1], [0, 0, 0])
-            rec[0] += c[2]
-            rec[1] += c[3]
-            rec[2] += c[4]
+            rec[0] += c[3]
+            rec[1] += c[4]
+            rec[2] += c[5]
         out.append(
             (
                 f,
@@ -2093,17 +2124,19 @@ def _parquet_columns(con, name: str) -> set[str]:
     return {d[0] for d in res.description}
 
 
-def _fold_deep(rows, char_f, asc_f, official):
-    """Sum grouped (character, ascension, key, *counts) rows into one combo's
-    {key: (counts...)} map. The official filter applies even unfiltered,
-    matching get_stats' _build_match."""
+def _fold_deep(rows, char_f, asc_f, official, pl_f=None):
+    """Sum grouped (character, ascension, party size, key, *counts) rows into
+    one combo's {key: (counts...)} map. The official filter applies even
+    unfiltered, matching get_stats' _build_match."""
     out: dict[str, list[int]] = {}
-    for ch, a, key, *counts in rows:
+    for ch, a, pc, key, *counts in rows:
         if ch not in official:
             continue
         if char_f is not None and ch != char_f:
             continue
         if asc_f is not None and a != asc_f:
+            continue
+        if not _players_match(pc, pl_f):
             continue
         if key is None:
             continue
@@ -2127,6 +2160,7 @@ def build_deep_tables() -> int:
         ASCENSION_FILTER_COMBOS,
         HOT_FILTER_COMBOS,
         OFFICIAL_CHARACTERS,
+        PLAYERS_FILTER_COMBOS,
     )
 
     if not available():
@@ -2142,6 +2176,7 @@ def build_deep_tables() -> int:
             f"""
             SELECT coalesce(upper(r.character), '') AS ch,
               coalesce(r.ascension, 0)::INT AS a,
+              least(coalesce(r.player_count, 1), 4)::INT AS pc,
               coalesce(r.killed_by_encounter, r.killed_by_event) AS kb,
               count(*) AS n
             FROM {runs_p} r
@@ -2153,38 +2188,40 @@ def build_deep_tables() -> int:
               -- counting it crowned "NONE" the deadliest encounter.
               AND coalesce(r.killed_by_encounter, r.killed_by_event)
                   NOT IN ('NONE', '')
-            GROUP BY 1, 2, 3
+            GROUP BY 1, 2, 3, 4
             """
         ).fetchall()
         picks = con.execute(
             f"""
             SELECT p.character AS ch, coalesce(r.ascension, 0)::INT AS a,
+              least(coalesce(r.player_count, 1), 4)::INT AS pc,
               c.cid, count(*) AS offered, count(*) FILTER (c.picked) AS picked
             FROM choice_rows c
             JOIN {players_p} p
               ON c.run_hash = p.run_hash AND c.pidx = p.player_idx
             JOIN {runs_p} r ON c.run_hash = r.run_hash
-            GROUP BY 1, 2, 3
+            GROUP BY 1, 2, 3, 4
             """
         ).fetchall()
 
         def item_rows(table: str, col: str):
             return con.execute(
                 f"""
-                SELECT ch, a, item, sum(copies)::BIGINT,
+                SELECT ch, a, pc, item, sum(copies)::BIGINT,
                   coalesce(sum(copies) FILTER (win), 0)::BIGINT,
                   coalesce(sum(copies) FILTER (NOT win), 0)::BIGINT,
                   count(*)::BIGINT, count(*) FILTER (win)::BIGINT
                 FROM (
                   SELECT d.character AS ch, coalesce(r.ascension, 0)::INT AS a,
+                    least(coalesce(r.player_count, 1), 4)::INT AS pc,
                     d.{col} AS item, d.run_hash, d.player_idx,
                     count(*) AS copies, bool_or(coalesce(r.win, false)) AS win
                   FROM read_parquet('{LAKE_DIR}/{table}.parquet') d
                   JOIN {runs_p} r ON d.run_hash = r.run_hash
                   ANTI JOIN {excl_p} x ON d.run_hash = x.run_hash
                   WHERE r.ascension BETWEEN 0 AND 10 AND d.{col} IS NOT NULL
-                  GROUP BY 1, 2, 3, d.run_hash, d.player_idx
-                ) GROUP BY 1, 2, 3
+                  GROUP BY 1, 2, 3, 4, d.run_hash, d.player_idx
+                ) GROUP BY 1, 2, 3, 4
                 """
             ).fetchall()
 
@@ -2200,12 +2237,13 @@ def build_deep_tables() -> int:
             used = con.execute(
                 f"""
                 SELECT d.character AS ch, coalesce(r.ascension, 0)::INT AS a,
+                  least(coalesce(r.player_count, 1), 4)::INT AS pc,
                   d.potion AS item, count(*) FILTER (d.was_used)::BIGINT AS used
                 FROM read_parquet('{LAKE_DIR}/potions.parquet') d
                 JOIN {runs_p} r ON d.run_hash = r.run_hash
                 ANTI JOIN {excl_p} x ON d.run_hash = x.run_hash
                 WHERE r.ascension BETWEEN 0 AND 10
-                GROUP BY 1, 2, 3
+                GROUP BY 1, 2, 3, 4
                 """
             ).fetchall()
         shop = []
@@ -2213,6 +2251,7 @@ def build_deep_tables() -> int:
             shop = con.execute(
                 f"""
                 SELECT p.character AS ch, coalesce(r.ascension, 0)::INT AS a,
+                  least(coalesce(r.player_count, 1), 4)::INT AS pc,
                   s.potion AS item, count(*) AS offered,
                   count(*) FILTER (s.was_picked)::BIGINT AS picked
                 FROM read_parquet('{LAKE_DIR}/shop_potions.parquet') s
@@ -2221,7 +2260,7 @@ def build_deep_tables() -> int:
                 JOIN {runs_p} r ON s.run_hash = r.run_hash
                 ANTI JOIN {excl_p} x ON s.run_hash = x.run_hash
                 WHERE r.ascension BETWEEN 0 AND 10
-                GROUP BY 1, 2, 3
+                GROUP BY 1, 2, 3, 4
                 """
             ).fetchall()
     finally:
@@ -2232,13 +2271,14 @@ def build_deep_tables() -> int:
 
     official = frozenset(OFFICIAL_CHARACTERS)
     combos = []
-    for f in [*HOT_FILTER_COMBOS, *ASCENSION_FILTER_COMBOS]:
+    for f in [*HOT_FILTER_COMBOS, *ASCENSION_FILTER_COMBOS, *PLAYERS_FILTER_COMBOS]:
         char_f = f.get("character")
         asc_f = int(f["ascension"]) if "ascension" in f else None
-        d = _fold_deep(deaths, char_f, asc_f, official)
-        pk = _fold_deep(picks, char_f, asc_f, official)
-        cd = _fold_deep(cards, char_f, asc_f, official)
-        rl = _fold_deep(relics, char_f, asc_f, official)
+        pl_f = f.get("players")
+        d = _fold_deep(deaths, char_f, asc_f, official, pl_f)
+        pk = _fold_deep(picks, char_f, asc_f, official, pl_f)
+        cd = _fold_deep(cards, char_f, asc_f, official, pl_f)
+        rl = _fold_deep(relics, char_f, asc_f, official, pl_f)
         tables: dict = {
             "deadliest": [
                 {"encounter": k, "count": v[0]}
@@ -2275,9 +2315,9 @@ def build_deep_tables() -> int:
             ],
         }
         if shop and used:
-            po = _fold_deep(potions_owned, char_f, asc_f, official)
-            us = _fold_deep(used, char_f, asc_f, official)
-            sh = _fold_deep(shop, char_f, asc_f, official)
+            po = _fold_deep(potions_owned, char_f, asc_f, official, pl_f)
+            us = _fold_deep(used, char_f, asc_f, official, pl_f)
+            sh = _fold_deep(shop, char_f, asc_f, official, pl_f)
             tables["top_potions"] = [
                 {
                     "potion_id": k,
@@ -2307,6 +2347,7 @@ def leaderboard_boards() -> dict[str, dict] | None:
     mirrors the legacy 10k count cap. None when the lake is incomplete."""
     from .runs_db_mongo import (
         HOT_LEADERBOARD_COMBOS,
+        LEADERBOARD_BOARD_ROWS,
         OFFICIAL_CHARACTERS,
         _leaderboard_key,
     )
@@ -2375,7 +2416,8 @@ def leaderboard_boards() -> dict[str, dict] | None:
                 else "run_time ASC"
             )
             rows = con.execute(
-                f"SELECT {cols} FROM lb WHERE {wsql} ORDER BY {order} LIMIT 50",
+                f"SELECT {cols} FROM lb WHERE {wsql} ORDER BY {order}"
+                f" LIMIT {int(LEADERBOARD_BOARD_ROWS)}",
                 args,
             ).fetchall()
             total = min(

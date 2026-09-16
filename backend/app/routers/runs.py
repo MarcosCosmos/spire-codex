@@ -1302,9 +1302,10 @@ def runs_snapshot_status(request: Request, response: Response):
 @router.get("/pulse", tags=["Runs"])
 @limiter.limit(rate_limit_config.endpoint_limit("runs.runs_pulse", "240/minute"))
 def runs_pulse(request: Request, response: Response):
-    """Live community totals: the snapshot baseline plus the hot overlay's
-    counters, which update within milliseconds of each accepted upload.
-    5s shared cache so the edge absorbs all polling."""
+    """Community totals as of the store cursor, plus the hot overlay's
+    counters. The hot counters are reported, not added: nothing rebases them
+    against the store yet, so adding them counts every upload since the
+    cursor a second time. 5s shared cache so the edge absorbs all polling."""
     response.headers["Cache-Control"] = "public, max-age=5, s-maxage=5"
     from ..services.live_overlay import hot_totals
     from ..services.run_entity_stats import global_totals
@@ -1313,8 +1314,8 @@ def runs_pulse(request: Request, response: Response):
     hot = hot_totals()
     st = snapshot_status()
     return {
-        "total_runs": (base.get("total_runs") or 0) + hot.get("runs", 0),
-        "total_wins": (base.get("total_wins") or 0) + hot.get("wins", 0),
+        "total_runs": base.get("total_runs") or 0,
+        "total_wins": base.get("total_wins") or 0,
         "hot_runs": hot.get("runs", 0),
         "data_through": st.get("data_through"),
     }
@@ -2371,3 +2372,25 @@ def get_pick_coach(
     app_cache.set_json(cache_key, payload, ttl_seconds=600)
     response.headers["Cache-Control"] = "public, max-age=300"
     return payload
+
+
+@router.post("/{run_hash}/hidden", tags=["Runs"])
+def set_hidden_from_run_page(request: Request, run_hash: str, body: dict | None = None):
+    """Hide or unhide a run from its own page. Same effect as the admin
+    console's route, but it lives outside the /api/admin prefix that the edge
+    login screen protects, so a signed-in admin's browser can call it from the
+    public site without an edge session."""
+    from ..services.auth_jwt import require_admin
+
+    require_admin(request)
+    if not os.environ.get("MONGO_URL", "").strip():
+        raise HTTPException(status_code=503, detail="run hiding needs MongoDB")
+    hidden = bool((body or {}).get("hidden", True))
+    from ..services.runs_db_mongo import set_run_hidden
+
+    result = set_run_hidden(run_hash.strip(), hidden)
+    _load_run_blob_cached.cache_clear()
+    logger.info(
+        "admin set hidden=%s on run %s from its page: %s", hidden, run_hash, result
+    )
+    return {"run_hash": run_hash, "hidden": hidden, **result}

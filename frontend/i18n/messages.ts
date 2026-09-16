@@ -16,6 +16,10 @@ import { X8C } from "@/lib/i18n-x8c";
 import { X8D } from "@/lib/i18n-x8d";
 import { X8E } from "@/lib/i18n-x8e";
 import { X9A } from "@/lib/i18n-x9a";
+import { X9B } from "@/lib/i18n-x9b";
+import { X9C } from "@/lib/i18n-x9c";
+import { X9D } from "@/lib/i18n-x9d";
+import { X9E } from "@/lib/i18n-x9e";
 import { UI_TRANSLATIONS } from "@/lib/ui-translations";
 import { safeKey } from "@/lib/i18n-keys";
 import type { Locale } from "./routing";
@@ -44,6 +48,10 @@ const TABLES = [
   X8D,
   X8E,
   X9A,
+  X9B,
+  X9C,
+  X9D,
+  X9E,
 ];
 const cache = new Map<string, Record<string, string>>();
 
