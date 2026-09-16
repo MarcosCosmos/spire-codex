@@ -7,7 +7,14 @@ import { characterHex } from "@/lib/character-colors";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
-const CHARACTERS = ["ANY", "IRONCLAD", "SILENT", "DEFECT", "NECROBINDER", "REGENT"];
+const CHARACTERS = [
+  "ANY",
+  "IRONCLAD",
+  "SILENT",
+  "DEFECT",
+  "NECROBINDER",
+  "REGENT",
+];
 
 interface CatalogItem {
   id: string;
@@ -62,7 +69,8 @@ function Picker({
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
-      if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false);
+      if (boxRef.current && !boxRef.current.contains(e.target as Node))
+        setOpen(false);
     }
     document.addEventListener("mousedown", onDocClick);
     return () => document.removeEventListener("mousedown", onDocClick);
@@ -128,10 +136,15 @@ function CountedChips({
         <span
           key={p.id}
           className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-md border bg-[var(--bg-primary)] ${
-            accent || "border-[var(--border-subtle)] text-[var(--text-secondary)]"
+            accent ||
+            "border-[var(--border-subtle)] text-[var(--text-secondary)]"
           }`}
         >
-          <button type="button" onClick={() => onBump(p.id)} title={t("Click to require one more")}>
+          <button
+            type="button"
+            onClick={() => onBump(p.id)}
+            title={t("Click to require one more")}
+          >
             {p.name}
             {p.count > 1 ? ` ×${p.count}` : ""}
           </button>
@@ -176,13 +189,22 @@ export default function SeedLabClient() {
         ]);
         if (dead) return;
         setCards(
-          cardRes.map((c: any) => ({ id: String(c.id).toUpperCase(), name: c.name })),
+          cardRes.map((c: any) => ({
+            id: String(c.id).toUpperCase(),
+            name: c.name,
+          })),
         );
         setRelicCatalog(
-          relicRes.map((r: any) => ({ id: String(r.id).toUpperCase(), name: r.name })),
+          relicRes.map((r: any) => ({
+            id: String(r.id).toUpperCase(),
+            name: r.name,
+          })),
         );
         setEventCatalog(
-          eventRes.map((e: any) => ({ id: String(e.id).toUpperCase(), name: e.name })),
+          eventRes.map((e: any) => ({
+            id: String(e.id).toUpperCase(),
+            name: e.name,
+          })),
         );
       } catch {}
     }
@@ -213,12 +235,16 @@ export default function SeedLabClient() {
       if (deckPicks.length)
         params.set(
           "deck",
-          deckPicks.map((p) => (p.count > 1 ? `${p.id}:${p.count}` : p.id)).join(","),
+          deckPicks
+            .map((p) => (p.count > 1 ? `${p.id}:${p.count}` : p.id))
+            .join(","),
         );
       if (offerPicks.length)
         params.set(
           "offered",
-          offerPicks.map((p) => (p.count > 1 ? `${p.id}:${p.count}` : p.id)).join(","),
+          offerPicks
+            .map((p) => (p.count > 1 ? `${p.id}:${p.count}` : p.id))
+            .join(","),
         );
       if (relicPicks.length)
         params.set("relics", relicPicks.map((p) => p.id).join(","));
@@ -228,27 +254,37 @@ export default function SeedLabClient() {
         params.set("ancient", ancientPick.id);
         if (ancientAct) params.set("ancient_act", String(ancientAct));
       }
-      const res = await fetch(`${API}/api/runs/seed-finder?${params.toString()}`);
+      const res = await fetch(
+        `${API}/api/runs/seed-finder?${params.toString()}`,
+      );
       if (res.status === 429) {
         setError(t("Rate limited — give it a minute and try again."));
         return;
       }
       if (!res.ok) {
-        setError(t("Search failed ({status}). Try again in a moment.", { status: res.status }));
+        setError(
+          t("Search failed ({status}). Try again in a moment.", {
+            status: res.status,
+          }),
+        );
         return;
       }
       const data = (await res.json()) as FinderResponse;
       if (!data.available) {
         setError(
           data.detail ||
-            t("The finder isn't available right now (vector data may still be building)."),
+            t(
+              "The finder isn't available right now (vector data may still be building).",
+            ),
         );
         return;
       }
       setResult(data);
     } catch {
       setError(
-        t("The search didn't come back — it may have timed out. A cold query can take a while; try again, the result gets cached."),
+        t(
+          "The search didn't come back — it may have timed out. A cold query can take a while; try again, the result gets cached.",
+        ),
       );
     } finally {
       setLoading(false);
@@ -257,12 +293,16 @@ export default function SeedLabClient() {
 
   const names = useMemo(() => {
     const m: Record<string, string> = {};
-    for (const i of [...cards, ...relicCatalog, ...eventCatalog]) m[i.id] = i.name;
+    for (const i of [...cards, ...relicCatalog, ...eventCatalog])
+      m[i.id] = i.name;
     return m;
   }, [cards, relicCatalog, eventCatalog]);
 
   function labelFor(tag: string): string {
-    const [kind, rest] = [tag.slice(0, tag.indexOf(":")), tag.slice(tag.indexOf(":") + 1)];
+    const [kind, rest] = [
+      tag.slice(0, tag.indexOf(":")),
+      tag.slice(tag.indexOf(":") + 1),
+    ];
     const m = rest.match(/^(.*?)(?:x(\d+))?(?::act(\d))?$/);
     const id = m?.[1] ?? rest;
     const count = m?.[2] ? ` ×${m[2]}` : "";
@@ -275,15 +315,27 @@ export default function SeedLabClient() {
     return t("ancient offered {name}", { name });
   }
 
-  const bump = (setter: React.Dispatch<React.SetStateAction<CountedPick[]>>) => (id: string) =>
-    setter((ps) => ps.map((p) => (p.id === id ? { ...p, count: Math.min(4, p.count + 1) } : p)));
-  const drop = (setter: React.Dispatch<React.SetStateAction<CountedPick[]>>) => (id: string) =>
-    setter((ps) => ps.filter((p) => p.id !== id));
+  const bump =
+    (setter: React.Dispatch<React.SetStateAction<CountedPick[]>>) =>
+    (id: string) =>
+      setter((ps) =>
+        ps.map((p) =>
+          p.id === id ? { ...p, count: Math.min(4, p.count + 1) } : p,
+        ),
+      );
+  const drop =
+    (setter: React.Dispatch<React.SetStateAction<CountedPick[]>>) =>
+    (id: string) =>
+      setter((ps) => ps.filter((p) => p.id !== id));
   const addCounted =
-    (setter: React.Dispatch<React.SetStateAction<CountedPick[]>>) => (i: CatalogItem) =>
-      setter((ps) => (ps.some((p) => p.id === i.id) ? ps : [...ps, { ...i, count: 1 }]));
+    (setter: React.Dispatch<React.SetStateAction<CountedPick[]>>) =>
+    (i: CatalogItem) =>
+      setter((ps) =>
+        ps.some((p) => p.id === i.id) ? ps : [...ps, { ...i, count: 1 }],
+      );
 
-  const card = "rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4";
+  const card =
+    "rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4";
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -296,7 +348,9 @@ export default function SeedLabClient() {
         </span>
       </div>
       <p className="text-sm text-[var(--text-muted)] mb-6 max-w-3xl">
-        {t("Search community runs for seeds that demonstrably produced a combination of content: cards offered or kept, relics obtained, events encountered, ancient offers. A hit is a real run — open it to see the route that got there.")}
+        {t(
+          "Search community runs for seeds that demonstrably produced a combination of content: cards offered or kept, relics obtained, events encountered, ancient offers. A hit is a real run — open it to see the route that got there.",
+        )}
       </p>
 
       <div className="flex flex-wrap items-center gap-1.5 mb-5">
@@ -323,11 +377,19 @@ export default function SeedLabClient() {
 
       <div className="grid gap-4 sm:grid-cols-2 mb-5">
         <div className={card}>
-          <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-1">{t("Cards offered")}</h2>
+          <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-1">
+            {t("Cards offered")}
+          </h2>
           <p className="text-xs text-[var(--text-muted)] mb-2">
-            {t("Appeared as a card reward. Click a chip to require more copies.")}
+            {t(
+              "Appeared as a card reward. Click a chip to require more copies.",
+            )}
           </p>
-          <Picker placeholder={t("Add a card…")} items={cards} onPick={addCounted(setOfferPicks)} />
+          <Picker
+            placeholder={t("Add a card…")}
+            items={cards}
+            onPick={addCounted(setOfferPicks)}
+          />
           <CountedChips
             picks={offerPicks}
             onBump={bump(setOfferPicks)}
@@ -337,23 +399,41 @@ export default function SeedLabClient() {
         </div>
 
         <div className={card}>
-          <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-1">{t("Cards kept")}</h2>
+          <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-1">
+            {t("Cards kept")}
+          </h2>
           <p className="text-xs text-[var(--text-muted)] mb-2">
             {t("In the final deck. Click a chip to require more copies.")}
           </p>
-          <Picker placeholder={t("Add a card…")} items={cards} onPick={addCounted(setDeckPicks)} />
-          <CountedChips picks={deckPicks} onBump={bump(setDeckPicks)} onRemove={drop(setDeckPicks)} />
+          <Picker
+            placeholder={t("Add a card…")}
+            items={cards}
+            onPick={addCounted(setDeckPicks)}
+          />
+          <CountedChips
+            picks={deckPicks}
+            onBump={bump(setDeckPicks)}
+            onRemove={drop(setDeckPicks)}
+          />
         </div>
 
         <div className={card}>
-          <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-1">{t("Relics obtained")}</h2>
+          <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-1">
+            {t("Relics obtained")}
+          </h2>
           <p className="text-xs text-[var(--text-muted)] mb-2">
-            {t("Picked up during the run (shop stock the player skipped isn't recorded).")}
+            {t(
+              "Picked up during the run (shop stock the player skipped isn't recorded).",
+            )}
           </p>
           <Picker
             placeholder={t("Add a relic…")}
             items={relicCatalog}
-            onPick={(i) => setRelicPicks((ps) => (ps.some((p) => p.id === i.id) ? ps : [...ps, i]))}
+            onPick={(i) =>
+              setRelicPicks((ps) =>
+                ps.some((p) => p.id === i.id) ? ps : [...ps, i],
+              )
+            }
           />
           {relicPicks.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mt-2">
@@ -361,7 +441,9 @@ export default function SeedLabClient() {
                 <button
                   key={p.id}
                   type="button"
-                  onClick={() => setRelicPicks((ps) => ps.filter((x) => x.id !== p.id))}
+                  onClick={() =>
+                    setRelicPicks((ps) => ps.filter((x) => x.id !== p.id))
+                  }
                   className="text-xs px-2 py-0.5 rounded-md border border-info/30 bg-[var(--bg-primary)] text-info hover:border-danger/50"
                 >
                   {p.name} ✕
@@ -372,12 +454,20 @@ export default function SeedLabClient() {
         </div>
 
         <div className={card}>
-          <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-1">{t("Events seen")}</h2>
-          <p className="text-xs text-[var(--text-muted)] mb-2">{t("Encountered anywhere in the run.")}</p>
+          <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-1">
+            {t("Events seen")}
+          </h2>
+          <p className="text-xs text-[var(--text-muted)] mb-2">
+            {t("Encountered anywhere in the run.")}
+          </p>
           <Picker
             placeholder={t("Add an event…")}
             items={eventCatalog}
-            onPick={(i) => setEventPicks((ps) => (ps.some((p) => p.id === i.id) ? ps : [...ps, i]))}
+            onPick={(i) =>
+              setEventPicks((ps) =>
+                ps.some((p) => p.id === i.id) ? ps : [...ps, i],
+              )
+            }
           />
           {eventPicks.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mt-2">
@@ -385,7 +475,9 @@ export default function SeedLabClient() {
                 <button
                   key={p.id}
                   type="button"
-                  onClick={() => setEventPicks((ps) => ps.filter((x) => x.id !== p.id))}
+                  onClick={() =>
+                    setEventPicks((ps) => ps.filter((x) => x.id !== p.id))
+                  }
                   className="text-xs px-2 py-0.5 rounded-md border border-special/30 bg-[var(--bg-primary)] text-special hover:border-danger/50"
                 >
                   {p.name} ✕
@@ -396,7 +488,9 @@ export default function SeedLabClient() {
         </div>
 
         <div className={`${card} sm:col-span-2`}>
-          <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-1">{t("Ancient offer")}</h2>
+          <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-1">
+            {t("Ancient offer")}
+          </h2>
           <p className="text-xs text-[var(--text-muted)] mb-2">
             {t("A relic offered by an ancient, optionally locked to an act.")}
           </p>
@@ -454,10 +548,14 @@ export default function SeedLabClient() {
       {loading && (
         <div className={`${card} animate-pulse`}>
           <p className="text-sm text-[var(--text-secondary)]">
-            {t("Digging through the community runs — combing candidate decks, then verifying offers, events, and ancient rolls.")}
+            {t(
+              "Digging through the community runs — combing candidate decks, then verifying offers, events, and ancient rolls.",
+            )}
           </p>
           <p className="text-xs text-[var(--text-muted)] mt-1">
-            {t("A cold query can take up to a minute; repeats are cached and come back instantly.")}
+            {t(
+              "A cold query can take up to a minute; repeats are cached and come back instantly.",
+            )}
           </p>
         </div>
       )}
@@ -471,16 +569,26 @@ export default function SeedLabClient() {
       {result && result.available && (
         <div className={card}>
           <div className="text-xs text-[var(--text-muted)] mb-3">
-            {t("Scanned {n} candidate runs", { n: result.scanned?.toLocaleString() ?? "" })}
-            {result.sampled ? ` ${t("(sampled — add a card kept or relic to search everything)")}` : ""}.
+            {t("Scanned {n} candidate runs", {
+              n: result.scanned?.toLocaleString() ?? "",
+            })}
+            {result.sampled
+              ? ` ${t("(sampled — add a card kept or relic to search everything)")}`
+              : ""}
+            .
           </div>
           {(result.unknown ?? []).length > 0 ? (
             <p className="text-sm text-danger">
-              {t("Unknown ids: {ids} — these don't exist in the game data, check the spelling.", { ids: result.unknown!.join(", ") })}
+              {t(
+                "Unknown ids: {ids} — these don't exist in the game data, check the spelling.",
+                { ids: result.unknown!.join(", ") },
+              )}
             </p>
           ) : (result.results ?? []).length === 0 ? (
             <p className="text-sm text-[var(--text-secondary)]">
-              {t("Nothing matched. Loosen a predicate or drop the character filter.")}
+              {t(
+                "Nothing matched. Loosen a predicate or drop the character filter.",
+              )}
             </p>
           ) : (
             <div className="space-y-2">
@@ -490,13 +598,18 @@ export default function SeedLabClient() {
                   className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-subtle)]"
                   style={
                     r.full_match
-                      ? { borderColor: "color-mix(in srgb, var(--accent-gold) 50%, transparent)" }
+                      ? {
+                          borderColor:
+                            "color-mix(in srgb, var(--accent-gold) 50%, transparent)",
+                        }
                       : undefined
                   }
                 >
                   <span
                     className="w-2 h-2 rounded-full shrink-0"
-                    style={{ backgroundColor: characterHex(r.character) || "#888" }}
+                    style={{
+                      backgroundColor: characterHex(r.character) || "#888",
+                    }}
                   />
                   <code
                     className="text-sm font-semibold text-[var(--accent-gold)] cursor-pointer"
@@ -506,17 +619,23 @@ export default function SeedLabClient() {
                     {r.seed}
                   </code>
                   <span className="text-xs text-[var(--text-muted)]">
-                    {r.character ? t(characterLabel(r.character)) : ""} · A{r.ascension} ·{" "}
-                    {r.win ? t("win") : t("loss")} · {r.date}
+                    {r.character ? t(characterLabel(r.character)) : ""} · A
+                    {r.ascension} · {r.win ? t("win") : t("loss")} · {r.date}
                   </span>
                   <span className="flex flex-wrap gap-1 text-[11px]">
                     {r.matched.map((t) => (
-                      <span key={t} className="px-1.5 py-0.5 rounded bg-success/10 text-success">
+                      <span
+                        key={t}
+                        className="px-1.5 py-0.5 rounded bg-success/10 text-success"
+                      >
                         ✓ {labelFor(t)}
                       </span>
                     ))}
                     {r.missing.map((t) => (
-                      <span key={t} className="px-1.5 py-0.5 rounded bg-[var(--bg-card)] text-[var(--text-muted)]">
+                      <span
+                        key={t}
+                        className="px-1.5 py-0.5 rounded bg-[var(--bg-card)] text-[var(--text-muted)]"
+                      >
                         ✗ {labelFor(t)}
                       </span>
                     ))}

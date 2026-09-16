@@ -12,11 +12,23 @@ const TARGET_ASCENSION = 10;
 const POLL_MS = 20_000;
 
 const ARROW = (
-  <svg className="arw" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+  <svg
+    className="arw"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M5 12h14M13 6l6 6-6 6" />
+  </svg>
 );
 
 function characterIcon(character: string): string {
-  return imageUrl(`/static/images/characters/character_icon_${character.toLowerCase()}.webp`);
+  return imageUrl(
+    `/static/images/characters/character_icon_${character.toLowerCase()}.webp`,
+  );
 }
 
 const ENGLISH_CHARACTER_LABELS: Record<string, string> = {
@@ -27,13 +39,16 @@ const ENGLISH_CHARACTER_LABELS: Record<string, string> = {
   REGENT: "Regent",
 };
 
-
 /** Resolve a character key (uppercase from the runs API: `IRONCLAD`,
  * `SILENT`, etc.) to its localized display name. The translations API
  * keys characters in lowercase, so we lowercase before looking up.
  * Falls back to the English label, then a title-cased raw key. */
 function characterLabel(c: string, names?: Record<string, string>): string {
-  return names?.[c.toLowerCase()] ?? ENGLISH_CHARACTER_LABELS[c] ?? c.charAt(0) + c.slice(1).toLowerCase();
+  return (
+    names?.[c.toLowerCase()] ??
+    ENGLISH_CHARACTER_LABELS[c] ??
+    c.charAt(0) + c.slice(1).toLowerCase()
+  );
 }
 
 function formatRunTime(seconds: number): string {
@@ -95,17 +110,26 @@ export default function HomeLeaderboardLive({
   useEffect(() => {
     let active = true;
     const grab = (url: string) =>
-      fetch(url).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      fetch(url)
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null);
     const load = () => {
       if (document.hidden) return;
-      grab(`${pollBase}/api/runs/leaderboard?category=fastest&ascension_min=${TARGET_ASCENSION}&players=single&game_mode=standard&limit=5`).then((d) => {
+      grab(
+        `${pollBase}/api/runs/leaderboard?category=fastest&ascension_min=${TARGET_ASCENSION}&players=single&game_mode=standard&limit=5`,
+      ).then((d) => {
         if (active && d?.runs) {
-          const runs = (d.runs as RunRow[]).filter((r) => r.win === 1).slice(0, 5);
+          const runs = (d.runs as RunRow[])
+            .filter((r) => r.win === 1)
+            .slice(0, 5);
           if (runs.length) setFastest({ runs, ascension: TARGET_ASCENSION });
         }
       });
-      grab(`${pollBase}/api/runs/leaderboard?category=highest_ascension&game_mode=daily&today=true&limit=20`).then((d) => {
-        if (active && d?.runs) setDaily(dedupePartyRows(d.runs as RunRow[]).slice(0, 5));
+      grab(
+        `${pollBase}/api/runs/leaderboard?category=highest_ascension&game_mode=daily&today=true&limit=20`,
+      ).then((d) => {
+        if (active && d?.runs)
+          setDaily(dedupePartyRows(d.runs as RunRow[]).slice(0, 5));
       });
       grab(`${pollBase}/api/runs/list?limit=5&sort=newest`).then((d) => {
         if (active && d?.runs) setRecent(d.runs as RunRow[]);
@@ -145,7 +169,11 @@ export default function HomeLeaderboardLive({
         <div className="hsec">
           <div className="s-head">
             <h2>{t("Leaderboards")}</h2>
-            <Link prefetch={false} className="viewmore" href={`${lbBase}/submit`}>
+            <Link
+              prefetch={false}
+              className="viewmore"
+              href={`${lbBase}/submit`}
+            >
               {t("Upload your runs")} {ARROW}
             </Link>
           </div>
@@ -161,38 +189,66 @@ export default function HomeLeaderboardLive({
                 </Link>
               </div>
               {fastest.runs.length === 0 ? (
-                <p className="lb-empty">{t("No A10 wins submitted yet, be the first.")}</p>
+                <p className="lb-empty">
+                  {t("No A10 wins submitted yet, be the first.")}
+                </p>
               ) : (
-                <div className="overflow-x-auto"><table className="dtable">
-                  <thead>
-                    <tr>
-                      <th className="rk">#</th>
-                      <th>{t("Character")}</th>
-                      <th className="num">{t("Asc")}</th>
-                      <th className="num">{t("Time")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {fastest.runs.map((r, i) => (
-                      <tr key={r.run_hash}>
-                        <td className="rk">{i + 1}</td>
-                        <td>
-                          <Link prefetch={false} className="ent" href={`${runsBase}/${r.run_hash}`}>
-                            <img crossOrigin="anonymous" className="lb-ico" src={characterIcon(r.character)} alt={characterLabel(r.character, characterNames)} loading="lazy" />
-                            <span className="lb-who">
-                              <span className="lb-name" style={{ color: characterHex(r.character) || undefined }}>
-                                {characterLabel(r.character, characterNames)}
-                              </span>
-                              <span className="lb-sub">{r.username ?? t("Anonymous")} · fl{r.floors_reached}</span>
-                            </span>
-                          </Link>
-                        </td>
-                        <td className="num">A{r.ascension}</td>
-                        <td className="num mono">{formatRunTime(r.run_time)}</td>
+                <div className="overflow-x-auto">
+                  <table className="dtable">
+                    <thead>
+                      <tr>
+                        <th className="rk">#</th>
+                        <th>{t("Character")}</th>
+                        <th className="num">{t("Asc")}</th>
+                        <th className="num">{t("Time")}</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table></div>
+                    </thead>
+                    <tbody>
+                      {fastest.runs.map((r, i) => (
+                        <tr key={r.run_hash}>
+                          <td className="rk">{i + 1}</td>
+                          <td>
+                            <Link
+                              prefetch={false}
+                              className="ent"
+                              href={`${runsBase}/${r.run_hash}`}
+                            >
+                              <img
+                                crossOrigin="anonymous"
+                                className="lb-ico"
+                                src={characterIcon(r.character)}
+                                alt={characterLabel(
+                                  r.character,
+                                  characterNames,
+                                )}
+                                loading="lazy"
+                              />
+                              <span className="lb-who">
+                                <span
+                                  className="lb-name"
+                                  style={{
+                                    color:
+                                      characterHex(r.character) || undefined,
+                                  }}
+                                >
+                                  {characterLabel(r.character, characterNames)}
+                                </span>
+                                <span className="lb-sub">
+                                  {r.username ?? t("Anonymous")} · fl
+                                  {r.floors_reached}
+                                </span>
+                              </span>
+                            </Link>
+                          </td>
+                          <td className="num">A{r.ascension}</td>
+                          <td className="num mono">
+                            {formatRunTime(r.run_time)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </section>
 
@@ -201,43 +257,73 @@ export default function HomeLeaderboardLive({
               <div className="s-head">
                 <span className="s-kick">{t("resets 00:00 UTC")}</span>
                 <h2>{t("Daily Climb")}</h2>
-                <Link prefetch={false} className="viewmore" href={`${runsBase}?win=true&game_mode=daily_today&sort=ascension_desc`}>
+                <Link
+                  prefetch={false}
+                  className="viewmore"
+                  href={`${runsBase}?win=true&game_mode=daily_today&sort=ascension_desc`}
+                >
                   {t("View more")} {ARROW}
                 </Link>
               </div>
               {daily.length === 0 ? (
                 <p className="lb-empty">{t("No daily runs yet today.")}</p>
               ) : (
-                <div className="overflow-x-auto"><table className="dtable">
-                  <thead>
-                    <tr>
-                      <th className="rk">#</th>
-                      <th>{t("Character")}</th>
-                      <th className="num">{t("Asc")}</th>
-                      <th className="num">{t("Time")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {daily.map((r, i) => (
-                      <tr key={r.run_hash}>
-                        <td className="rk">{i + 1}</td>
-                        <td>
-                          <Link prefetch={false} className="ent" href={`${runsBase}/${r.run_hash}`}>
-                            <img crossOrigin="anonymous" className="lb-ico" src={characterIcon(r.character)} alt={characterLabel(r.character, characterNames)} loading="lazy" />
-                            <span className="lb-who">
-                              <span className="lb-name" style={{ color: characterHex(r.character) || undefined }}>
-                                {characterLabel(r.character, characterNames)}
-                              </span>
-                              <span className="lb-sub">{r.username ?? t("Anonymous")} · fl{r.floors_reached}</span>
-                            </span>
-                          </Link>
-                        </td>
-                        <td className="num">A{r.ascension}</td>
-                        <td className="num mono">{formatRunTime(r.run_time)}</td>
+                <div className="overflow-x-auto">
+                  <table className="dtable">
+                    <thead>
+                      <tr>
+                        <th className="rk">#</th>
+                        <th>{t("Character")}</th>
+                        <th className="num">{t("Asc")}</th>
+                        <th className="num">{t("Time")}</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table></div>
+                    </thead>
+                    <tbody>
+                      {daily.map((r, i) => (
+                        <tr key={r.run_hash}>
+                          <td className="rk">{i + 1}</td>
+                          <td>
+                            <Link
+                              prefetch={false}
+                              className="ent"
+                              href={`${runsBase}/${r.run_hash}`}
+                            >
+                              <img
+                                crossOrigin="anonymous"
+                                className="lb-ico"
+                                src={characterIcon(r.character)}
+                                alt={characterLabel(
+                                  r.character,
+                                  characterNames,
+                                )}
+                                loading="lazy"
+                              />
+                              <span className="lb-who">
+                                <span
+                                  className="lb-name"
+                                  style={{
+                                    color:
+                                      characterHex(r.character) || undefined,
+                                  }}
+                                >
+                                  {characterLabel(r.character, characterNames)}
+                                </span>
+                                <span className="lb-sub">
+                                  {r.username ?? t("Anonymous")} · fl
+                                  {r.floors_reached}
+                                </span>
+                              </span>
+                            </Link>
+                          </td>
+                          <td className="num">A{r.ascension}</td>
+                          <td className="num mono">
+                            {formatRunTime(r.run_time)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </section>
 
@@ -256,8 +342,12 @@ export default function HomeLeaderboardLive({
                   <thead>
                     <tr>
                       <th>{t("Character")}</th>
-                      <th className="num" style={{ width: "2.75rem" }}>{t("Result")}</th>
-                      <th className="num" style={{ width: "5rem" }}>{t("When")}</th>
+                      <th className="num" style={{ width: "2.75rem" }}>
+                        {t("Result")}
+                      </th>
+                      <th className="num" style={{ width: "5rem" }}>
+                        {t("When")}
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -277,26 +367,62 @@ export default function HomeLeaderboardLive({
                       return (
                         <tr key={r.run_hash}>
                           <td>
-                            <Link prefetch={false} className="ent" href={`${runsBase}/${r.run_hash}`}>
-                              <img crossOrigin="anonymous" className="lb-ico" src={characterIcon(r.character)} alt={characterLabel(r.character, characterNames)} loading="lazy" />
+                            <Link
+                              prefetch={false}
+                              className="ent"
+                              href={`${runsBase}/${r.run_hash}`}
+                            >
+                              <img
+                                crossOrigin="anonymous"
+                                className="lb-ico"
+                                src={characterIcon(r.character)}
+                                alt={characterLabel(
+                                  r.character,
+                                  characterNames,
+                                )}
+                                loading="lazy"
+                              />
                               <span className="lb-who">
-                                <span className="lb-name" style={{ color: characterHex(r.character) || undefined }}>
+                                <span
+                                  className="lb-name"
+                                  style={{
+                                    color:
+                                      characterHex(r.character) || undefined,
+                                  }}
+                                >
                                   {characterLabel(r.character, characterNames)}
                                   <span className="dim"> A{r.ascension}</span>
                                 </span>
                                 <span className="lb-sub">
-                                  fl{r.floors_reached} · {formatRunTime(r.run_time)}
-                                  {killerShort && result === "loss" ? ` · ${t("died to {name}", { name: killerShort })}` : ""}
+                                  fl{r.floors_reached} ·{" "}
+                                  {formatRunTime(r.run_time)}
+                                  {killerShort && result === "loss"
+                                    ? ` · ${t("died to {name}", { name: killerShort })}`
+                                    : ""}
                                 </span>
                               </span>
                             </Link>
                           </td>
                           <td className="num">
-                            {result === "win" && <span className="wr-sg" title={t("Win")}>W</span>}
-                            {result === "loss" && <span className="wr-loss" title={t("Loss")}>L</span>}
-                            {result === "abandoned" && <span className="dim" title={t("Abandoned")}>A</span>}
+                            {result === "win" && (
+                              <span className="wr-sg" title={t("Win")}>
+                                W
+                              </span>
+                            )}
+                            {result === "loss" && (
+                              <span className="wr-loss" title={t("Loss")}>
+                                L
+                              </span>
+                            )}
+                            {result === "abandoned" && (
+                              <span className="dim" title={t("Abandoned")}>
+                                A
+                              </span>
+                            )}
                           </td>
-                          <td className="num dim">{formatRelativeDate(r.submitted_at, t)}</td>
+                          <td className="num dim">
+                            {formatRelativeDate(r.submitted_at, t)}
+                          </td>
                         </tr>
                       );
                     })}

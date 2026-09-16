@@ -39,15 +39,51 @@ export const ENTITY_LABEL: Record<EntityType, string> = {
 /** Ancients aren't a normal API entity (the pool data carries no name/image),
  * so the eight are defined here with their "cute" portrait from misc/. The
  * raw path is resolved through imageUrl() in fetchEntities. */
-export const ANCIENT_ENTITIES: { id: string; name: string; image_path: string }[] = [
-  { id: "NEOW", name: "Neow", image_path: "/static/images/misc/ancients/neow.webp" },
-  { id: "TEZCATARA", name: "Tezcatara", image_path: "/static/images/misc/ancients/tezcatara.webp" },
-  { id: "PAEL", name: "Pael", image_path: "/static/images/misc/ancients/pael.webp" },
-  { id: "OROBAS", name: "Orobas", image_path: "/static/images/misc/ancients/orobas.webp" },
-  { id: "DARV", name: "Darv", image_path: "/static/images/misc/ancients/darv.webp" },
-  { id: "NONUPEIPE", name: "Nonupeipe", image_path: "/static/images/misc/ancients/nonupeipe.webp" },
-  { id: "TANX", name: "Tanx", image_path: "/static/images/misc/ancients/tanx.webp" },
-  { id: "VAKUU", name: "Vakuu", image_path: "/static/images/misc/ancients/vakuu.webp" },
+export const ANCIENT_ENTITIES: {
+  id: string;
+  name: string;
+  image_path: string;
+}[] = [
+  {
+    id: "NEOW",
+    name: "Neow",
+    image_path: "/static/images/misc/ancients/neow.webp",
+  },
+  {
+    id: "TEZCATARA",
+    name: "Tezcatara",
+    image_path: "/static/images/misc/ancients/tezcatara.webp",
+  },
+  {
+    id: "PAEL",
+    name: "Pael",
+    image_path: "/static/images/misc/ancients/pael.webp",
+  },
+  {
+    id: "OROBAS",
+    name: "Orobas",
+    image_path: "/static/images/misc/ancients/orobas.webp",
+  },
+  {
+    id: "DARV",
+    name: "Darv",
+    image_path: "/static/images/misc/ancients/darv.webp",
+  },
+  {
+    id: "NONUPEIPE",
+    name: "Nonupeipe",
+    image_path: "/static/images/misc/ancients/nonupeipe.webp",
+  },
+  {
+    id: "TANX",
+    name: "Tanx",
+    image_path: "/static/images/misc/ancients/tanx.webp",
+  },
+  {
+    id: "VAKUU",
+    name: "Vakuu",
+    image_path: "/static/images/misc/ancients/vakuu.webp",
+  },
 ];
 
 /** A single rankable thing, resolved from the entity API for display. */
@@ -135,7 +171,9 @@ export const MONSTER_GROUPS: { value: string; label: string }[] = [
 ];
 
 /** Tray filter groups per entity type (cards, relics, and monsters today). */
-export const GROUPS_BY_TYPE: Partial<Record<EntityType, { value: string; label: string }[]>> = {
+export const GROUPS_BY_TYPE: Partial<
+  Record<EntityType, { value: string; label: string }[]>
+> = {
   cards: CARD_GROUPS,
   relics: RELIC_GROUPS,
   monsters: MONSTER_GROUPS,

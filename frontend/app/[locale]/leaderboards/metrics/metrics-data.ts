@@ -1,7 +1,9 @@
 import type { MetricRow } from "./MetricsClient";
 
 const API_INTERNAL =
-  process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  process.env.API_INTERNAL_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://localhost:8000";
 
 const FETCH_TTL = 300;
 
@@ -94,7 +96,7 @@ const CHARACTERS = ["IRONCLAD", "SILENT", "DEFECT", "NECROBINDER", "REGENT"];
 export async function loadMetrics(
   lang = "eng",
   bracket = "all",
-  character = ""
+  character = "",
 ): Promise<{
   rows: MetricRow[];
   baselineWinRate: number;
@@ -103,11 +105,13 @@ export async function loadMetrics(
   character: string;
 }> {
   const valid = isValidBracket(bracket) ? bracket : "all";
-  const char = CHARACTERS.includes(character.toUpperCase()) ? character.toUpperCase() : "";
+  const char = CHARACTERS.includes(character.toUpperCase())
+    ? character.toUpperCase()
+    : "";
   const [cards, metrics] = await Promise.all([
     fetchJson<ApiCard[]>(`${API_INTERNAL}/api/cards?lang=${lang}`),
     fetchJson<MetricsResponse>(
-      `${API_INTERNAL}/api/runs/metrics/cards?bracket=${valid}${char ? `&character=${char}` : ""}`
+      `${API_INTERNAL}/api/runs/metrics/cards?bracket=${valid}${char ? `&character=${char}` : ""}`,
     ),
   ]);
 

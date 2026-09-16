@@ -15,9 +15,19 @@ const OUT = join(FRONTEND, "lib", "site-pages.json");
 // Routes that exist but don't belong in a search palette: post-action
 // landers, bare redirects, sub-flows of another page, and the operator panel.
 const EXCLUDE = new Set([
-  "/thank-you", "/uninstall", "/meta", "/tier-list-maker/new", "/beta",
-  "/admin", "/admin/runs", "/admin/feedback", "/admin/guides", "/admin/cache",
-  "/admin/banners", "/admin/analytics", "/live",
+  "/thank-you",
+  "/uninstall",
+  "/meta",
+  "/tier-list-maker/new",
+  "/beta",
+  "/admin",
+  "/admin/runs",
+  "/admin/feedback",
+  "/admin/guides",
+  "/admin/cache",
+  "/admin/banners",
+  "/admin/analytics",
+  "/live",
 ]);
 
 function walk(dir, segments = []) {

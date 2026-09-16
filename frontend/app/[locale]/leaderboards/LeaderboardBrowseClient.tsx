@@ -16,11 +16,16 @@ import {
 } from "@/lib/content-brackets";
 
 function cleanId(id: string): string {
-  return id.replace(/^(CHARACTER|CARD|RELIC|ENCOUNTER|EVENT|MONSTER|ACT|POTION)\./, "");
+  return id.replace(
+    /^(CHARACTER|CARD|RELIC|ENCOUNTER|EVENT|MONSTER|ACT|POTION)\./,
+    "",
+  );
 }
 
 function displayName(id: string): string {
-  return cleanId(id).replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  return cleanId(id)
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 // The compendium uses the in-game canonical name ("The Ironclad") on
@@ -42,7 +47,13 @@ function formatTimeShort(s: number): string {
   return `${m}m`;
 }
 
-const CHARACTERS = ["Ironclad", "Silent", "Defect", "Necrobinder", "Regent"] as const;
+const CHARACTERS = [
+  "Ironclad",
+  "Silent",
+  "Defect",
+  "Necrobinder",
+  "Regent",
+] as const;
 
 const CHARACTER_COLORS: Record<string, string> = {
   Ironclad: "var(--color-ironclad)",
@@ -100,7 +111,13 @@ function modeFromParam(value: string | null): Mode {
 }
 
 function gameModeFromParam(value: string | null): GameMode {
-  if (value === "daily" || value === "daily_today" || value === "custom" || value === "") return value;
+  if (
+    value === "daily" ||
+    value === "daily_today" ||
+    value === "custom" ||
+    value === ""
+  )
+    return value;
   if (value === "all") return "";
   return "standard";
 }
@@ -114,16 +131,24 @@ export default function LeaderboardBrowseClient() {
   // Initialize from `?tab=` so deep links from the home page (e.g. the
   // Recent Runs "View more →" pointing at `?tab=browse`) land on the
   // right tab. Defaults to fastest when no/invalid value supplied.
-  const [tab, setTab] = useState<Tab>(() => tabFromParam(searchParams.get("tab")));
+  const [tab, setTab] = useState<Tab>(() =>
+    tabFromParam(searchParams.get("tab")),
+  );
   // Single-player vs multiplayer split. Backend tags each run document
   // with `player_count`; the API exposes `?players=single|multi` on
   // /api/runs/leaderboard and /api/runs/list. Default to single since
   // most submissions today are SP.
-  const [mode, setMode] = useState<Mode>(() => modeFromParam(searchParams.get("mode")));
-  const [gameMode, setGameMode] = useState<GameMode>(() => gameModeFromParam(searchParams.get("game_mode")));
+  const [mode, setMode] = useState<Mode>(() =>
+    modeFromParam(searchParams.get("mode")),
+  );
+  const [gameMode, setGameMode] = useState<GameMode>(() =>
+    gameModeFromParam(searchParams.get("game_mode")),
+  );
 
   // --- Leaderboard state ---
-  const [lbChar, setLbChar] = useState(() => searchParams.get("character") || "");
+  const [lbChar, setLbChar] = useState(
+    () => searchParams.get("character") || "",
+  );
   const [lbPage, setLbPage] = useState(1);
   const [lbEntries, setLbEntries] = useState<LeaderboardEntry[]>([]);
   const [lbTotal, setLbTotal] = useState(0);
@@ -131,11 +156,19 @@ export default function LeaderboardBrowseClient() {
   const [lbLoading, setLbLoading] = useState(false);
 
   // --- Browse state ---
-  const [browseChar, setBrowseChar] = useState(() => searchParams.get("browse_character") || "");
-  const [browseWin, setBrowseWin] = useState(() => searchParams.get("win") || "");
-  const [browseUser, setBrowseUser] = useState(() => searchParams.get("username") || "");
+  const [browseChar, setBrowseChar] = useState(
+    () => searchParams.get("browse_character") || "",
+  );
+  const [browseWin, setBrowseWin] = useState(
+    () => searchParams.get("win") || "",
+  );
+  const [browseUser, setBrowseUser] = useState(
+    () => searchParams.get("username") || "",
+  );
   const [browseSeed, setBrowseSeed] = useState("");
-  const [browseBuildId, setBrowseBuildId] = useState(() => searchParams.get("build_id") || "");
+  const [browseBuildId, setBrowseBuildId] = useState(
+    () => searchParams.get("build_id") || "",
+  );
   // Content bracket (All / Asc 10 / win-rate skill tiers) -> ascension_min + winrate_min.
   const [browseBracket, setBrowseBracket] = useState(() =>
     normalizeBracket(searchParams.get("bracket")),
@@ -155,7 +188,9 @@ export default function LeaderboardBrowseClient() {
       .then((data) => {
         const filtered = (data.versions || [])
           .filter((v: string) => !v.toLowerCase().includes("nonreleased"))
-          .sort((a: string, b: string) => b.localeCompare(a, undefined, { numeric: true }));
+          .sort((a: string, b: string) =>
+            b.localeCompare(a, undefined, { numeric: true }),
+          );
         setVersions(filtered);
       })
       .catch(() => {});
@@ -193,15 +228,29 @@ export default function LeaderboardBrowseClient() {
     if (browseBuildId) params.set("build_id", browseBuildId);
     if (browseBracket !== "all") params.set("bracket", browseBracket);
     const qs = params.toString();
-    const url = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+    const url = qs
+      ? `${window.location.pathname}?${qs}`
+      : window.location.pathname;
     // Next patches replaceState, and every call re-triggers a prefetch of
     // all visible links -- skip the no-op call the mount run would make.
     if (url === window.location.pathname + window.location.search) return;
     window.history.replaceState(null, "", url);
-  }, [tab, mode, gameMode, lbChar, browseChar, browseWin, browseUser, browseBuildId, browseBracket]);
+  }, [
+    tab,
+    mode,
+    gameMode,
+    lbChar,
+    browseChar,
+    browseWin,
+    browseUser,
+    browseBuildId,
+    browseBracket,
+  ]);
 
   // Reset leaderboard page when filters change
-  useEffect(() => { setLbPage(1); }, [tab, lbChar, mode, gameMode, browseBracket, browseBuildId]);
+  useEffect(() => {
+    setLbPage(1);
+  }, [tab, lbChar, mode, gameMode, browseBracket, browseBuildId]);
 
   // Fetch leaderboard (only when on a leaderboard tab)
   useEffect(() => {
@@ -245,7 +294,19 @@ export default function LeaderboardBrowseClient() {
   }, [tab, lbChar, lbPage, mode, gameMode, browseBracket, browseBuildId]);
 
   // Reset browse page when filters change
-  useEffect(() => { setBrowsePage(1); }, [browseChar, browseWin, browseUser, browseSeed, browseBuildId, browseSort, browseBracket, mode, gameMode]);
+  useEffect(() => {
+    setBrowsePage(1);
+  }, [
+    browseChar,
+    browseWin,
+    browseUser,
+    browseSeed,
+    browseBuildId,
+    browseSort,
+    browseBracket,
+    mode,
+    gameMode,
+  ]);
 
   // Fetch browse runs (only when on browse tab)
   useEffect(() => {
@@ -277,11 +338,27 @@ export default function LeaderboardBrowseClient() {
         setBrowseTotalPages(data.total_pages || 0);
       })
       .catch(() => {});
-  }, [tab, browseChar, browseWin, browseUser, browseSeed, browseBuildId, browseSort, browseBracket, browsePage, mode, gameMode]);
+  }, [
+    tab,
+    browseChar,
+    browseWin,
+    browseUser,
+    browseSeed,
+    browseBuildId,
+    browseSort,
+    browseBracket,
+    browsePage,
+    mode,
+    gameMode,
+  ]);
 
   const TABS: { key: Tab; label: string; shortLabel: string }[] = [
     { key: "fastest", label: t("Fastest Wins"), shortLabel: t("Fastest") },
-    { key: "highest_ascension", label: t("Highest Ascension"), shortLabel: t("Ascension") },
+    {
+      key: "highest_ascension",
+      label: t("Highest Ascension"),
+      shortLabel: t("Ascension"),
+    },
   ];
 
   const isLeaderboard = tab !== "browse";
@@ -289,8 +366,14 @@ export default function LeaderboardBrowseClient() {
   return (
     <div className="mx-auto max-w-[1400px] px-3 sm:px-5 py-6">
       <div className="flex items-end justify-between mb-4">
-        <h1 className="text-3xl font-bold text-[var(--accent-gold)]">{t("Leaderboards")}</h1>
-        <Link prefetch={false} href={`${bp}/runs`} className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
+        <h1 className="text-3xl font-bold text-[var(--accent-gold)]">
+          {t("Leaderboards")}
+        </h1>
+        <Link
+          prefetch={false}
+          href={`${bp}/runs`}
+          className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+        >
           {t("Browse Runs")} →
         </Link>
       </div>
@@ -313,12 +396,12 @@ export default function LeaderboardBrowseClient() {
             seed pool / different rules), so we surface them as opt-in
             ladders. Empty value = no filter (show all modes). */}
         <div className="inline-flex gap-1 p-1 rounded-lg bg-[var(--bg-card)] border border-[var(--border-subtle)]">
-          {([
+          {[
             { value: "standard" as GameMode, label: t("Standard") },
             { value: "daily" as GameMode, label: t("Daily") },
             { value: "custom" as GameMode, label: t("Custom") },
             { value: "" as GameMode, label: t("All Modes") },
-          ]).map(({ value, label }) => (
+          ].map(({ value, label }) => (
             <button
               key={value || "all"}
               onClick={() => {
@@ -330,7 +413,8 @@ export default function LeaderboardBrowseClient() {
                 }
               }}
               className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
-                (gameMode === value) || (value === "daily" && gameMode === "daily_today")
+                gameMode === value ||
+                (value === "daily" && gameMode === "daily_today")
                   ? "bg-[var(--accent-gold)] text-[var(--bg-primary)]"
                   : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
               }`}
@@ -361,7 +445,9 @@ export default function LeaderboardBrowseClient() {
         {/* Today sub-filter, only visible under Daily mode */}
         {(gameMode === "daily" || gameMode === "daily_today") && (
           <button
-            onClick={() => setGameMode(gameMode === "daily_today" ? "daily" : "daily_today")}
+            onClick={() =>
+              setGameMode(gameMode === "daily_today" ? "daily" : "daily_today")
+            }
             className={`px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors ${
               gameMode === "daily_today"
                 ? "bg-[var(--accent-gold)] text-[var(--bg-primary)] border-[var(--accent-gold)]"
@@ -426,19 +512,26 @@ export default function LeaderboardBrowseClient() {
                 }`}
                 style={
                   lbChar === ch.toUpperCase()
-                    ? { backgroundColor: CHARACTER_COLORS[ch], borderColor: CHARACTER_COLORS[ch] }
+                    ? {
+                        backgroundColor: CHARACTER_COLORS[ch],
+                        borderColor: CHARACTER_COLORS[ch],
+                      }
                     : undefined
                 }
               >
                 <img
-                  src={imageUrl(`/static/images/characters/character_icon_${ch.toLowerCase()}.webp`)}
+                  src={imageUrl(
+                    `/static/images/characters/character_icon_${ch.toLowerCase()}.webp`,
+                  )}
                   alt=""
                   aria-hidden
                   className="w-6 h-6 object-contain flex-shrink-0"
                   loading="lazy"
                   crossOrigin="anonymous"
                 />
-                <span className="hidden sm:inline text-sm">{stripThe(charName(ch))}</span>
+                <span className="hidden sm:inline text-sm">
+                  {stripThe(charName(ch))}
+                </span>
               </button>
             ))}
             {/* Game version narrows the ladder to runs on that patch. Shared
@@ -452,7 +545,9 @@ export default function LeaderboardBrowseClient() {
               >
                 <option value="">{t("All Versions")}</option>
                 {versions.map((v) => (
-                  <option key={v} value={v}>{v}</option>
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
                 ))}
               </select>
             )}
@@ -460,21 +555,37 @@ export default function LeaderboardBrowseClient() {
 
           {/* Leaderboard table */}
           {lbLoading ? (
-            <p className="text-center py-8 text-[var(--text-muted)]">{t("Loading...")}</p>
+            <p className="text-center py-8 text-[var(--text-muted)]">
+              {t("Loading...")}
+            </p>
           ) : lbEntries.length === 0 ? (
-            <p className="text-center py-8 text-[var(--text-muted)]">{t("No leaderboard entries found.")}</p>
+            <p className="text-center py-8 text-[var(--text-muted)]">
+              {t("No leaderboard entries found.")}
+            </p>
           ) : (
             <>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-[var(--border-subtle)]">
-                      <th className="text-left py-2 px-2 sm:px-3 text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">{t("Rank")}</th>
-                      <th className="hidden sm:table-cell text-left py-2 px-3 text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">{t("Player")}</th>
-                      <th className="text-left py-2 px-2 sm:px-3 text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">{t("Character")}</th>
-                      <th className="text-left py-2 px-2 sm:px-3 text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">{t("Asc")}</th>
-                      <th className="text-left py-2 px-2 sm:px-3 text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">{t("Time")}</th>
-                      <th className="hidden sm:table-cell text-left py-2 px-3 text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">{t("Floors")}</th>
+                      <th className="text-left py-2 px-2 sm:px-3 text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">
+                        {t("Rank")}
+                      </th>
+                      <th className="hidden sm:table-cell text-left py-2 px-3 text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">
+                        {t("Player")}
+                      </th>
+                      <th className="text-left py-2 px-2 sm:px-3 text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">
+                        {t("Character")}
+                      </th>
+                      <th className="text-left py-2 px-2 sm:px-3 text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">
+                        {t("Asc")}
+                      </th>
+                      <th className="text-left py-2 px-2 sm:px-3 text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">
+                        {t("Time")}
+                      </th>
+                      <th className="hidden sm:table-cell text-left py-2 px-3 text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">
+                        {t("Floors")}
+                      </th>
                       <th className="py-2 px-2 sm:px-3"></th>
                     </tr>
                   </thead>
@@ -483,24 +594,46 @@ export default function LeaderboardBrowseClient() {
                       // Color lookup keys on the canonical English title-case
                       // name so the per-character accent stays consistent
                       // across locales.
-                      const englishName = displayName(`CHARACTER.${entry.character}`);
+                      const englishName = displayName(
+                        `CHARACTER.${entry.character}`,
+                      );
                       const localizedName = stripThe(charName(entry.character));
-                      const charColor = CHARACTER_COLORS[englishName] || "var(--text-primary)";
+                      const charColor =
+                        CHARACTER_COLORS[englishName] || "var(--text-primary)";
                       return (
                         <tr
                           key={entry.run_hash}
-                          onClick={() => router.push(`${bp}/runs/${entry.run_hash}`)}
+                          onClick={() =>
+                            router.push(`${bp}/runs/${entry.run_hash}`)
+                          }
                           className="border-b border-[var(--border-subtle)] hover:bg-[var(--bg-card-hover)] transition-colors cursor-pointer"
                         >
-                          <td className="py-2.5 px-2 sm:px-3 font-medium text-[var(--accent-gold)]">#{entry.rank}</td>
-                          <td className="hidden sm:table-cell py-2.5 px-3 text-[var(--text-primary)] truncate max-w-[10rem]">{entry.username || t("Anonymous")}</td>
-                          <td className="py-2.5 px-2 sm:px-3" style={{ color: charColor }}>
-                            <span className="sm:hidden">{localizedName.slice(0, 3)}</span>
-                            <span className="hidden sm:inline">{localizedName}</span>
+                          <td className="py-2.5 px-2 sm:px-3 font-medium text-[var(--accent-gold)]">
+                            #{entry.rank}
                           </td>
-                          <td className="py-2.5 px-2 sm:px-3 text-[var(--text-secondary)]">A{entry.ascension}</td>
-                          <td className="py-2.5 px-2 sm:px-3 text-[var(--text-secondary)] whitespace-nowrap">{formatTime(entry.run_time)}</td>
-                          <td className="hidden sm:table-cell py-2.5 px-3 text-[var(--text-secondary)]">{entry.floors_reached}</td>
+                          <td className="hidden sm:table-cell py-2.5 px-3 text-[var(--text-primary)] truncate max-w-[10rem]">
+                            {entry.username || t("Anonymous")}
+                          </td>
+                          <td
+                            className="py-2.5 px-2 sm:px-3"
+                            style={{ color: charColor }}
+                          >
+                            <span className="sm:hidden">
+                              {localizedName.slice(0, 3)}
+                            </span>
+                            <span className="hidden sm:inline">
+                              {localizedName}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-2 sm:px-3 text-[var(--text-secondary)]">
+                            A{entry.ascension}
+                          </td>
+                          <td className="py-2.5 px-2 sm:px-3 text-[var(--text-secondary)] whitespace-nowrap">
+                            {formatTime(entry.run_time)}
+                          </td>
+                          <td className="hidden sm:table-cell py-2.5 px-3 text-[var(--text-secondary)]">
+                            {entry.floors_reached}
+                          </td>
                           <td className="py-2.5 px-2 sm:px-3">
                             <Link
                               prefetch={false}
@@ -522,7 +655,12 @@ export default function LeaderboardBrowseClient() {
 
               {/* Leaderboard pagination */}
               {lbTotalPages > 1 && (
-                <Pagination page={lbPage} totalPages={lbTotalPages} onPageChange={setLbPage} lang={lang} />
+                <Pagination
+                  page={lbPage}
+                  totalPages={lbTotalPages}
+                  onPageChange={setLbPage}
+                  lang={lang}
+                />
               )}
             </>
           )}
@@ -541,7 +679,9 @@ export default function LeaderboardBrowseClient() {
             >
               <option value="">{t("All Characters")}</option>
               {CHARACTERS.map((ch) => (
-                <option key={ch} value={ch.toUpperCase()}>{stripThe(charName(ch))}</option>
+                <option key={ch} value={ch.toUpperCase()}>
+                  {stripThe(charName(ch))}
+                </option>
               ))}
             </select>
 
@@ -579,7 +719,9 @@ export default function LeaderboardBrowseClient() {
               >
                 <option value="">{t("All Versions")}</option>
                 {versions.map((v) => (
-                  <option key={v} value={v}>{v}</option>
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
                 ))}
               </select>
             )}
@@ -597,10 +739,14 @@ export default function LeaderboardBrowseClient() {
           </div>
 
           {/* Total count */}
-          <p className="text-xs text-[var(--text-muted)] mb-3">{browseTotal} {t("runs total")}</p>
+          <p className="text-xs text-[var(--text-muted)] mb-3">
+            {browseTotal} {t("runs total")}
+          </p>
 
           {runList.length === 0 ? (
-            <p className="text-center py-8 text-[var(--text-muted)]">{t("No runs found.")}</p>
+            <p className="text-center py-8 text-[var(--text-muted)]">
+              {t("No runs found.")}
+            </p>
           ) : (
             <>
               <div className="space-y-2">
@@ -614,7 +760,9 @@ export default function LeaderboardBrowseClient() {
                     <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                       <span
                         className={`text-sm font-medium shrink-0 ${
-                          r.win ? "text-[var(--color-silent)]" : "text-[var(--color-ironclad)]"
+                          r.win
+                            ? "text-[var(--color-silent)]"
+                            : "text-[var(--color-ironclad)]"
                         }`}
                       >
                         {r.win ? "W" : r.was_abandoned ? "A" : "L"}
@@ -622,14 +770,22 @@ export default function LeaderboardBrowseClient() {
                       <span className="text-sm text-[var(--text-primary)] truncate">
                         {stripThe(charName(r.character))}
                       </span>
-                      <span className="text-xs text-[var(--text-muted)] shrink-0">A{r.ascension}</span>
+                      <span className="text-xs text-[var(--text-muted)] shrink-0">
+                        A{r.ascension}
+                      </span>
                       {r.username && (
-                        <span className="text-xs text-[var(--accent-gold)] truncate">{r.username}</span>
+                        <span className="text-xs text-[var(--accent-gold)] truncate">
+                          {r.username}
+                        </span>
                       )}
                     </div>
                     <div className="flex items-center gap-3 sm:gap-4 text-xs text-[var(--text-muted)] shrink-0">
-                      <span className="hidden sm:inline">{t("{n} cards", { n: r.deck_size })}</span>
-                      <span className="hidden sm:inline">{t("{n} relics", { n: r.relic_count })}</span>
+                      <span className="hidden sm:inline">
+                        {t("{n} cards", { n: r.deck_size })}
+                      </span>
+                      <span className="hidden sm:inline">
+                        {t("{n} relics", { n: r.relic_count })}
+                      </span>
                       <span>{r.floors_reached}f</span>
                       <span>{formatTimeShort(r.run_time)}</span>
                     </div>
@@ -639,7 +795,12 @@ export default function LeaderboardBrowseClient() {
 
               {/* Pagination */}
               {browseTotalPages > 1 && (
-                <Pagination page={browsePage} totalPages={browseTotalPages} onPageChange={setBrowsePage} lang={lang} />
+                <Pagination
+                  page={browsePage}
+                  totalPages={browseTotalPages}
+                  onPageChange={setBrowsePage}
+                  lang={lang}
+                />
               )}
             </>
           )}
@@ -650,7 +811,17 @@ export default function LeaderboardBrowseClient() {
   );
 }
 
-function Pagination({ page, totalPages, onPageChange, lang }: { page: number; totalPages: number; onPageChange: (p: number) => void; lang: string }) {
+function Pagination({
+  page,
+  totalPages,
+  onPageChange,
+  lang,
+}: {
+  page: number;
+  totalPages: number;
+  onPageChange: (p: number) => void;
+  lang: string;
+}) {
   const t = useT();
   return (
     <div className="flex items-center justify-center gap-2 mt-4">

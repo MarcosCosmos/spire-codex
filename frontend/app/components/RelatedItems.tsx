@@ -18,12 +18,7 @@ interface RelatedItem {
 }
 
 type RouteSegment =
-  | "relics"
-  | "potions"
-  | "powers"
-  | "monsters"
-  | "events"
-  | "encounters";
+  "relics" | "potions" | "powers" | "monsters" | "events" | "encounters";
 
 interface FetchGroup {
   /** Heading shown above the grid (already localized at call site). */
@@ -62,25 +57,31 @@ export default function RelatedItems({
 }: RelatedItemsProps) {
   const t = useT();
   const bp = useBetaPrefix();
-  const [results, setResults] = useState<{ label: string; items: RelatedItem[] }[]>([]);
+  const [results, setResults] = useState<
+    { label: string; items: RelatedItem[] }[]
+  >([]);
 
   // Stringify the groups' paths into a stable dependency key, the
   // groups array is rebuilt every render at the call site, so a direct
   // array dep would loop forever. The path string fully captures what
   // the effect actually consumes (which API URLs to hit).
-  const groupsKey = groups.map((g) => `${g.label}|${g.path}|${g.limit ?? 12}`).join("\n");
+  const groupsKey = groups
+    .map((g) => `${g.label}|${g.path}|${g.limit ?? 12}`)
+    .join("\n");
   useEffect(() => {
     const upper = currentId.toUpperCase();
     Promise.all(
       groups.map(async ({ label, path, limit = 12 }) => {
-        const items = await cachedFetch<RelatedItem[]>(imageUrl(path)).catch(() => []);
+        const items = await cachedFetch<RelatedItem[]>(imageUrl(path)).catch(
+          () => [],
+        );
         return {
           label,
           items: items
             .filter((it) => it.id?.toUpperCase() !== upper)
             .slice(0, limit),
         };
-      })
+      }),
     ).then((all) => setResults(all.filter((g) => g.items.length > 0)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentId, route, groupsKey]);
@@ -112,7 +113,11 @@ export default function RelatedItems({
               <ul className="space-y-1">
                 {group.items.map((item) => (
                   <li key={item.id}>
-                    <HoverTooltip title={item.name} content={item.description} image={item.image_url}>
+                    <HoverTooltip
+                      title={item.name}
+                      content={item.description}
+                      image={item.image_url}
+                    >
                       <Link
                         href={`${bp}/${route}/${item.id.toLowerCase()}`}
                         className="text-sm text-[var(--text-secondary)] hover:text-[var(--accent-gold)] transition-colors"

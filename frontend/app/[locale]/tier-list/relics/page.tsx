@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import { Link } from "@/i18n/navigation";
-import { SITE_URL, SITE_NAME, DEFAULT_OG_IMAGE, buildLanguageAlternates } from "@/lib/seo";
+import {
+  SITE_URL,
+  SITE_NAME,
+  DEFAULT_OG_IMAGE,
+  buildLanguageAlternates,
+} from "@/lib/seo";
 import JsonLd from "@/app/components/JsonLd";
 import { buildBreadcrumbJsonLd, buildCollectionPageJsonLd } from "@/lib/jsonld";
 import TierList, { type TierEntity } from "@/app/components/TierList";
@@ -9,9 +14,18 @@ import { bracketParam, normalizeBracket } from "@/lib/content-brackets";
 import { TIER_RELIC_ANCIENTS } from "@/lib/tier-list-filters";
 import { getT } from "@/lib/i18n-server";
 import type { TFn } from "@/lib/i18n";
-import { gameNameFor, langQuery, localeOf, localePath, type Locale } from "@/lib/locale";
+import {
+  gameNameFor,
+  langQuery,
+  localeOf,
+  localePath,
+  type Locale,
+} from "@/lib/locale";
 
-const API_INTERNAL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_INTERNAL =
+  process.env.API_INTERNAL_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://localhost:8000";
 
 export const revalidate = 300;
 
@@ -28,44 +42,49 @@ interface ScoresMap {
 }
 
 const POOL_FILTERS = [
-  { value: "",            label: "All relics" },
-  { value: "shared",      label: "Shared" },
-  { value: "ironclad",    label: "Ironclad" },
-  { value: "silent",      label: "Silent" },
-  { value: "defect",      label: "Defect" },
+  { value: "", label: "All relics" },
+  { value: "shared", label: "Shared" },
+  { value: "ironclad", label: "Ironclad" },
+  { value: "silent", label: "Silent" },
+  { value: "defect", label: "Defect" },
   { value: "necrobinder", label: "Necrobinder" },
-  { value: "regent",      label: "Regent" },
+  { value: "regent", label: "Regent" },
 ];
 
 // Rarity / source — matches the relic rarity_key. "Starter" relics are the
 // Neow / character starting relics; "Ancient" covers the ancient-boss relics.
 const RARITY_FILTERS = [
-  { value: "",          label: "All rarities" },
-  { value: "starter",   label: "Starter (Neow)" },
-  { value: "common",    label: "Common" },
-  { value: "uncommon",  label: "Uncommon" },
-  { value: "rare",      label: "Rare" },
-  { value: "shop",      label: "Shop" },
-  { value: "event",     label: "Event" },
-  { value: "ancient",   label: "Ancient" },
+  { value: "", label: "All rarities" },
+  { value: "starter", label: "Starter (Neow)" },
+  { value: "common", label: "Common" },
+  { value: "uncommon", label: "Uncommon" },
+  { value: "rare", label: "Rare" },
+  { value: "shop", label: "Shop" },
+  { value: "event", label: "Event" },
+  { value: "ancient", label: "Ancient" },
 ];
 
 // Acquisition act. "3" folds in the rare later acts. Backend grades each act
 // view against a per-act baseline, so picking up a relic late (in a run that
 // already survived that far) doesn't read as the relic carrying the run.
 const ACT_FILTERS = [
-  { value: "",  label: "All acts" },
+  { value: "", label: "All acts" },
   { value: "1", label: "Act {n}" },
   { value: "2", label: "Act {n}" },
   { value: "3", label: "Act {n}" },
 ];
 
-function relicHeading(t: TFn, act: string, ancientLabel?: string, poolLabel?: string): string {
+function relicHeading(
+  t: TFn,
+  act: string,
+  ancientLabel?: string,
+  poolLabel?: string,
+): string {
   const scope = ancientLabel
     ? t("{scope} Relic Tier List", { scope: ancientLabel })
     : poolLabel
-    ? t("{scope} Relic Tier List", { scope: t(poolLabel) })
-    : t("Relic Tier List");
+      ? t("{scope} Relic Tier List", { scope: t(poolLabel) })
+      : t("Relic Tier List");
   return act ? `${t("Act {n}", { n: act })} ${scope}` : scope;
 }
 
@@ -74,7 +93,10 @@ function relicHeading(t: TFn, act: string, ancientLabel?: string, poolLabel?: st
 // a direct answer.
 const ANCIENT_FILTERS = [
   { value: "", label: "All" },
-  ...TIER_RELIC_ANCIENTS.map((a) => ({ value: a, label: a.charAt(0).toUpperCase() + a.slice(1) })),
+  ...TIER_RELIC_ANCIENTS.map((a) => ({
+    value: a,
+    label: a.charAt(0).toUpperCase() + a.slice(1),
+  })),
 ];
 
 function relicHref(
@@ -127,10 +149,19 @@ function applyRelativeTiers(entities: TierEntity[]): boolean {
 
 interface PageProps {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ pool?: string; rarity?: string; act?: string; bracket?: string; ancient?: string }>;
+  searchParams: Promise<{
+    pool?: string;
+    rarity?: string;
+    act?: string;
+    bracket?: string;
+    ancient?: string;
+  }>;
 }
 
-export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+  searchParams,
+}: PageProps): Promise<Metadata> {
   const locale = localeOf((await params).locale);
   const t = await getT(locale);
   const game = gameNameFor(locale);
@@ -142,18 +173,40 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
   const ancientLabel = ANCIENT_FILTERS.find((a) => a.value === ancient)?.label;
   const title = `${relicHeading(t, act, ancient ? ancientLabel : undefined, pool ? poolLabel : undefined)} - ${game} | ${SITE_NAME}`;
   const description = ancient
-    ? t("{ancient} relic tier list for {game}. Every relic {ancient} can offer ranked S through F by community win rate, so you know which pick wins runs.", { ancient: ancientLabel ?? "", game })
+    ? t(
+        "{ancient} relic tier list for {game}. Every relic {ancient} can offer ranked S through F by community win rate, so you know which pick wins runs.",
+        { ancient: ancientLabel ?? "", game },
+      )
     : act
-    ? t("{game} relics ranked by the win rate of runs that picked them up in Act {act}, graded against other Act {act} pickups.", { game, act })
-    : pool
-    ? t("{pool} relic tier list for {game}. Every relic in the {pool} pool ranked S through F by community win rate.", { pool: poolLabel ? t(poolLabel) : pool, game })
-    : t("Every {game} relic ranked S through F. Codex Score from community-submitted run win rates with Bayesian shrinkage.", { game });
+      ? t(
+          "{game} relics ranked by the win rate of runs that picked them up in Act {act}, graded against other Act {act} pickups.",
+          { game, act },
+        )
+      : pool
+        ? t(
+            "{pool} relic tier list for {game}. Every relic in the {pool} pool ranked S through F by community win rate.",
+            { pool: poolLabel ? t(poolLabel) : pool, game },
+          )
+        : t(
+            "Every {game} relic ranked S through F. Codex Score from community-submitted run win rates with Bayesian shrinkage.",
+            { game },
+          );
   const path = relicHref(pool, undefined, act, undefined, ancient);
   return {
     title,
     description,
-    alternates: { canonical: `${SITE_URL}${localePath(locale, path)}`, languages: buildLanguageAlternates(`${path}`) },
-    openGraph: { title, description, url: `${SITE_URL}${localePath(locale, path)}`, siteName: SITE_NAME, type: "website", images: [{ url: DEFAULT_OG_IMAGE }] },
+    alternates: {
+      canonical: `${SITE_URL}${localePath(locale, path)}`,
+      languages: buildLanguageAlternates(`${path}`),
+    },
+    openGraph: {
+      title,
+      description,
+      url: `${SITE_URL}${localePath(locale, path)}`,
+      siteName: SITE_NAME,
+      type: "website",
+      images: [{ url: DEFAULT_OG_IMAGE }],
+    },
     twitter: { card: "summary_large_image", title, description },
   };
 }
@@ -188,7 +241,10 @@ async function fetchData(
   }
 }
 
-export default async function RelicsTierListPage({ params, searchParams }: PageProps) {
+export default async function RelicsTierListPage({
+  params,
+  searchParams,
+}: PageProps) {
   const locale: Locale = localeOf((await params).locale);
   const t = await getT(locale);
   const sp = await searchParams;
@@ -218,7 +274,12 @@ export default async function RelicsTierListPage({ params, searchParams }: PageP
 
   const poolLabel = POOL_FILTERS.find((p) => p.value === pool)?.label;
   const ancientLabel = ANCIENT_FILTERS.find((a) => a.value === ancient)?.label;
-  const heading = relicHeading(t, act, ancient ? ancientLabel : undefined, pool ? poolLabel : undefined);
+  const heading = relicHeading(
+    t,
+    act,
+    ancient ? ancientLabel : undefined,
+    pool ? poolLabel : undefined,
+  );
   const path = relicHref(pool, undefined, act, undefined, ancient);
 
   // Top-30 by score for ItemList JSON-LD, gives Google a structured
@@ -240,7 +301,10 @@ export default async function RelicsTierListPage({ params, searchParams }: PageP
     ]),
     buildCollectionPageJsonLd({
       name: heading,
-      description: t("{game} {heading} ranked by Codex Score from community-submitted run win rates.", { game: gameNameFor(locale), heading }),
+      description: t(
+        "{game} {heading} ranked by Codex Score from community-submitted run win rates.",
+        { game: gameNameFor(locale), heading },
+      ),
       path: localePath(locale, path),
       items: rankedItems,
     }),
@@ -254,35 +318,63 @@ export default async function RelicsTierListPage({ params, searchParams }: PageP
         <h1 className="text-3xl font-bold">
           <span className="text-[var(--accent-gold)]">{heading}</span>
         </h1>
-        <span className="text-sm text-[var(--text-muted)]">{t("{n} relics", { n: entities.length.toLocaleString() })}</span>
+        <span className="text-sm text-[var(--text-muted)]">
+          {t("{n} relics", { n: entities.length.toLocaleString() })}
+        </span>
       </div>
       <p className="text-sm text-[var(--text-muted)] mb-6">
         {relativeTiers ? (
           <>
-            {t("Graded within {ancient}'s pool: S is the best of these offers and F the worst, relative to each other rather than the whole game. You always pick from exactly these options, so relative placement answers the actual decision. Tiles still show the absolute Codex Score. Click any relic for full stats.", { ancient: ancientLabel ?? "" })}{" "}
-            <Link href="/leaderboards/scoring" className="text-[var(--accent-gold)] hover:underline">{t("How is the score calculated?")}</Link>
+            {t(
+              "Graded within {ancient}'s pool: S is the best of these offers and F the worst, relative to each other rather than the whole game. You always pick from exactly these options, so relative placement answers the actual decision. Tiles still show the absolute Codex Score. Click any relic for full stats.",
+              { ancient: ancientLabel ?? "" },
+            )}{" "}
+            <Link
+              href="/leaderboards/scoring"
+              className="text-[var(--accent-gold)] hover:underline"
+            >
+              {t("How is the score calculated?")}
+            </Link>
           </>
         ) : act ? (
           <>
-            {t("Ranked by the win rate of runs that picked each relic up during Act {act}, Bayesian-shrunk and graded against other Act {act} pickups, so reaching a later act doesn't inflate a relic by itself. Smaller samples than the all-acts view. Click any relic for full stats.", { act })}
+            {t(
+              "Ranked by the win rate of runs that picked each relic up during Act {act}, Bayesian-shrunk and graded against other Act {act} pickups, so reaching a later act doesn't inflate a relic by itself. Smaller samples than the all-acts view. Click any relic for full stats.",
+              { act },
+            )}
           </>
         ) : (
           <>
-            {t("Ranked by Codex Score, community win-rate data with Bayesian shrinkage so a 5-pick relic doesn't outrank a 500-pick one. Click any relic for full stats.")}{" "}
-            <Link href="/leaderboards/scoring" className="text-[var(--accent-gold)] hover:underline">{t("How is the score calculated?")}</Link>
+            {t(
+              "Ranked by Codex Score, community win-rate data with Bayesian shrinkage so a 5-pick relic doesn't outrank a 500-pick one. Click any relic for full stats.",
+            )}{" "}
+            <Link
+              href="/leaderboards/scoring"
+              className="text-[var(--accent-gold)] hover:underline"
+            >
+              {t("How is the score calculated?")}
+            </Link>
           </>
         )}
       </p>
 
       {/* Pool (character) filter */}
       <div className="flex flex-wrap items-center gap-1.5 mb-2">
-        <span className="text-xs text-[var(--text-muted)] mr-1">{t("Characters")}</span>
+        <span className="text-xs text-[var(--text-muted)] mr-1">
+          {t("Characters")}
+        </span>
         {POOL_FILTERS.map((opt) => {
           const isActive = (pool ?? "") === opt.value;
           return (
             <Link
               key={opt.value || "all"}
-              href={relicHref(opt.value || undefined, rarity, act, bracket, ancient)}
+              href={relicHref(
+                opt.value || undefined,
+                rarity,
+                act,
+                bracket,
+                ancient,
+              )}
               className={`text-xs px-3 py-1.5 rounded-md border transition-colors ${
                 isActive
                   ? "bg-[var(--accent-gold)]/10 border-[var(--accent-gold)]/40 text-[var(--accent-gold)]"
@@ -296,14 +388,22 @@ export default async function RelicsTierListPage({ params, searchParams }: PageP
       </div>
       {/* Rarity / source filter (Neow/Starter, Shop, Event, Ancient, …) */}
       <div className="flex flex-wrap items-center gap-1.5 mb-2">
-        <span className="text-xs text-[var(--text-muted)] mr-1">{t("Rarity")}</span>
+        <span className="text-xs text-[var(--text-muted)] mr-1">
+          {t("Rarity")}
+        </span>
         {RARITY_FILTERS.map((opt) => {
           const isActive = (rarity ?? "") === opt.value;
           return (
             <Link
               key={opt.value || "all-rarities"}
               rel="nofollow"
-              href={relicHref(pool, opt.value || undefined, act, bracket, ancient)}
+              href={relicHref(
+                pool,
+                opt.value || undefined,
+                act,
+                bracket,
+                ancient,
+              )}
               className={`text-xs px-3 py-1.5 rounded-md border transition-colors ${
                 isActive
                   ? "bg-info/10 border-info/40 text-info"
@@ -317,13 +417,21 @@ export default async function RelicsTierListPage({ params, searchParams }: PageP
       </div>
       {/* Ancient offer pools: rank one ancient's options against each other */}
       <div className="flex flex-wrap items-center gap-1.5 mb-2">
-        <span className="text-xs text-[var(--text-muted)] mr-1">{t("Ancients")}</span>
+        <span className="text-xs text-[var(--text-muted)] mr-1">
+          {t("Ancients")}
+        </span>
         {ANCIENT_FILTERS.map((opt) => {
           const isActive = ancient === opt.value;
           return (
             <Link
               key={opt.value || "all-ancients"}
-              href={relicHref(pool, rarity, act, bracket, opt.value || undefined)}
+              href={relicHref(
+                pool,
+                rarity,
+                act,
+                bracket,
+                opt.value || undefined,
+              )}
               className={`text-xs px-3 py-1.5 rounded-md border transition-colors ${
                 isActive
                   ? "bg-special/10 border-special/40 text-special"
@@ -337,13 +445,21 @@ export default async function RelicsTierListPage({ params, searchParams }: PageP
       </div>
       {/* Acquisition act filter (when in the run the relic was picked up) */}
       <div className="flex flex-wrap items-center gap-1.5 mb-6">
-        <span className="text-xs text-[var(--text-muted)] mr-1">{t("Act")}</span>
+        <span className="text-xs text-[var(--text-muted)] mr-1">
+          {t("Act")}
+        </span>
         {ACT_FILTERS.map((opt) => {
           const isActive = act === opt.value;
           return (
             <Link
               key={opt.value || "all-acts"}
-              href={relicHref(pool, rarity, opt.value || undefined, bracket, ancient)}
+              href={relicHref(
+                pool,
+                rarity,
+                opt.value || undefined,
+                bracket,
+                ancient,
+              )}
               className={`text-xs px-3 py-1.5 rounded-md border transition-colors ${
                 isActive
                   ? "bg-success/10 border-success/40 text-success"

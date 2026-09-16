@@ -1,5 +1,11 @@
 import type { Metadata } from "next";
-import { SUPPORTED_LANGS, LANG_HREFLANG, LANG_GAME_NAME, LANG_NAMES, LANG_OG_LOCALE } from "./languages";
+import {
+  SUPPORTED_LANGS,
+  LANG_HREFLANG,
+  LANG_GAME_NAME,
+  LANG_NAMES,
+  LANG_OG_LOCALE,
+} from "./languages";
 import type { Locale } from "@/i18n/routing";
 
 export const SITE_URL =
@@ -101,11 +107,30 @@ export interface PageMetadataInput {
 }
 
 /** Next `Metadata` for any page in any locale: title, description, Open Graph, Twitter, canonical, hreflang and robots from one call. */
-export function buildPageMetadata({ locale, path, title, description, ogType, image, noIndex, canonical: canonicalOverride, hreflang, supressLanguageAlternates }: PageMetadataInput): Metadata {
-  const canonical = canonicalOverride ?? localizedPath(supressLanguageAlternates ? "eng" : locale, path);
+export function buildPageMetadata({
+  locale,
+  path,
+  title,
+  description,
+  ogType,
+  image,
+  noIndex,
+  canonical: canonicalOverride,
+  hreflang,
+  supressLanguageAlternates,
+}: PageMetadataInput): Metadata {
+  const canonical =
+    canonicalOverride ??
+    localizedPath(supressLanguageAlternates ? "eng" : locale, path);
   const fullTitle = pageTitle(locale, title);
-  const hidden = noIndex === true || (supressLanguageAlternates === true && locale !== "eng");
-  const alternates = hreflang !== false && !hidden && !supressLanguageAlternates && !canonicalOverride;
+  const hidden =
+    noIndex === true ||
+    (supressLanguageAlternates === true && locale !== "eng");
+  const alternates =
+    hreflang !== false &&
+    !hidden &&
+    !supressLanguageAlternates &&
+    !canonicalOverride;
   return {
     title: { absolute: fullTitle },
     description,
@@ -122,7 +147,12 @@ export function buildPageMetadata({ locale, path, title, description, ogType, im
       canonical,
       languages: alternates ? buildLanguageAlternates(path) : undefined,
     },
-    twitter: { card: "summary_large_image", title: fullTitle, description, ...(image ? { images: [image] } : {}) },
+    twitter: {
+      card: "summary_large_image",
+      title: fullTitle,
+      description,
+      ...(image ? { images: [image] } : {}),
+    },
     ...(hidden ? { robots: { index: false, follow: true } } : {}),
   };
 }

@@ -9,7 +9,17 @@ import type { CommunityStats } from "./HomeStatsSection";
 const POLL_MS = 20_000;
 
 const ARROW = (
-  <svg className="arw" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+  <svg
+    className="arw"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M5 12h14M13 6l6 6-6 6" />
+  </svg>
 );
 
 const ENGLISH_CHARACTER_LABELS: Record<string, string> = {
@@ -21,7 +31,11 @@ const ENGLISH_CHARACTER_LABELS: Record<string, string> = {
 };
 
 function characterLabel(c: string, names?: Record<string, string>): string {
-  return names?.[c.toLowerCase()] ?? ENGLISH_CHARACTER_LABELS[c] ?? c.charAt(0) + c.slice(1).toLowerCase();
+  return (
+    names?.[c.toLowerCase()] ??
+    ENGLISH_CHARACTER_LABELS[c] ??
+    c.charAt(0) + c.slice(1).toLowerCase()
+  );
 }
 
 function winRateColor(pct: number): string {
@@ -70,7 +84,10 @@ export default function HomeStatsLive({
     };
   }, [pollBase]);
 
-  const losses = (stats.total_runs || 0) - (stats.total_wins || 0) - (stats.total_abandoned || 0);
+  const losses =
+    (stats.total_runs || 0) -
+    (stats.total_wins || 0) -
+    (stats.total_abandoned || 0);
   const maxWinRate = Math.max(1, ...stats.characters.map((c) => c.win_rate));
   const mostPlayed = stats.characters.length
     ? stats.characters.reduce((a, b) => (b.total > a.total ? b : a))
@@ -83,7 +100,11 @@ export default function HomeStatsLive({
           <div className="s-head">
             <span className="s-kick">{t("Overview")}</span>
             <h2>{t("Stats")}</h2>
-            <Link prefetch={false} className="viewmore" href={`${runsHost}/leaderboards/stats`}>
+            <Link
+              prefetch={false}
+              className="viewmore"
+              href={`${runsHost}/leaderboards/stats`}
+            >
               {t("View all stats")} {ARROW}
             </Link>
           </div>
@@ -94,15 +115,21 @@ export default function HomeStatsLive({
               <span className="stat-k">{t("Runs")}</span>
             </div>
             <div className="stat">
-              <span className="stat-v" style={{ color: "var(--good)" }}>{stats.total_wins}</span>
+              <span className="stat-v" style={{ color: "var(--good)" }}>
+                {stats.total_wins}
+              </span>
               <span className="stat-k">{t("Wins")}</span>
             </div>
             <div className="stat">
-              <span className="stat-v" style={{ color: "var(--warn)" }}>{losses}</span>
+              <span className="stat-v" style={{ color: "var(--warn)" }}>
+                {losses}
+              </span>
               <span className="stat-k">{t("Losses")}</span>
             </div>
             <div className="stat">
-              <span className="stat-v" style={{ color: "var(--text-3)" }}>{stats.total_abandoned || 0}</span>
+              <span className="stat-v" style={{ color: "var(--text-3)" }}>
+                {stats.total_abandoned || 0}
+              </span>
               <span className="stat-k">{t("Abandoned")}</span>
             </div>
             <div className="stat">
@@ -112,10 +139,20 @@ export default function HomeStatsLive({
             <div className="stat">
               <span
                 className="stat-v"
-                style={{ color: mostPlayed ? characterHex(mostPlayed.character) || "var(--gold)" : "var(--text-3)" }}
-                title={mostPlayed ? characterLabel(mostPlayed.character, characterNames) : ""}
+                style={{
+                  color: mostPlayed
+                    ? characterHex(mostPlayed.character) || "var(--gold)"
+                    : "var(--text-3)",
+                }}
+                title={
+                  mostPlayed
+                    ? characterLabel(mostPlayed.character, characterNames)
+                    : ""
+                }
               >
-                {mostPlayed ? characterLabel(mostPlayed.character, characterNames) : "—"}
+                {mostPlayed
+                  ? characterLabel(mostPlayed.character, characterNames)
+                  : "—"}
               </span>
               <span className="stat-k">{t("Most Played")}</span>
             </div>
@@ -133,13 +170,19 @@ export default function HomeStatsLive({
                       {characterLabel(c.character, characterNames)}
                     </span>
                     <span className="wr-track">
-                      <span className="wr-fill" style={{ width: `${relPct}%`, background: charColor }} />
+                      <span
+                        className="wr-fill"
+                        style={{ width: `${relPct}%`, background: charColor }}
+                      />
                     </span>
                     <span className="wr-wl">
                       {c.wins}W / {c.total - c.wins - (c.abandoned || 0)}L
                       {c.abandoned ? ` / ${c.abandoned}A` : ""}
                     </span>
-                    <span className="wr-num" style={{ color: winRateColor(c.win_rate) }}>
+                    <span
+                      className="wr-num"
+                      style={{ color: winRateColor(c.win_rate) }}
+                    >
                       {c.win_rate}%
                     </span>
                   </div>

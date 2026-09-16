@@ -17,7 +17,8 @@ const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 const TOP = 6;
 const pct = (x: number) => `${Math.round((x ?? 0) * 100)}%`;
-const uplift = (lift: number) => `${lift >= 1 ? "+" : ""}${Math.round((lift - 1) * 100)}%`;
+const uplift = (lift: number) =>
+  `${lift >= 1 ? "+" : ""}${Math.round((lift - 1) * 100)}%`;
 
 type Rec = {
   id: string;
@@ -72,7 +73,8 @@ export default function EntityDraftRecs({
     <section id="draft-recs">
       <h2>{t("Drafted next")}</h2>
       <p className="h-note">
-        {t("Cards players take most from rewards when they already have")} {name}
+        {t("Cards players take most from rewards when they already have")}{" "}
+        {name}
         {t(", vs how often they take each card in general.")}
       </p>
       <ul className="pair-list">
@@ -80,7 +82,10 @@ export default function EntityDraftRecs({
           <li key={r.id} className="pair-row">
             <div className="pair-head">
               <CardHover cardId={r.id}>
-                <Link href={`${bp}/cards/${r.id.toLowerCase()}`} className="pair-name">
+                <Link
+                  href={`${bp}/cards/${r.id.toLowerCase()}`}
+                  className="pair-name"
+                >
                   {r.name}
                 </Link>
               </CardHover>

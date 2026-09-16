@@ -723,16 +723,14 @@ export default function CardDetail({
                   <RichDescription
                     text={descText}
                     energyIcon={energyIcon}
-                    relatedCards={spawnedCards.map(
-                      (sc): RelatedCard => ({
-                        id: sc.id,
-                        name: sc.name,
-                        image_url: sc.image_url,
-                        type: sc.type,
-                        rarity: sc.rarity,
-                        cost: sc.cost,
-                      }),
-                    )}
+                    relatedCards={spawnedCards.map((sc): RelatedCard => ({
+                      id: sc.id,
+                      name: sc.name,
+                      image_url: sc.image_url,
+                      type: sc.type,
+                      rarity: sc.rarity,
+                      cost: sc.cost,
+                    }))}
                     interactiveWords={interactiveWords}
                   />
                 </div>

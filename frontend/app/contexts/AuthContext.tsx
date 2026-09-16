@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  ReactNode,
+} from "react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -101,14 +108,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token }),
-      }).catch(() => {}).finally(() => fetchMe());
+      })
+        .catch(() => {})
+        .finally(() => fetchMe());
     } else {
       fetchMe();
     }
     // Run only once on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
 
   const logout = useCallback(async () => {
     localStorage.removeItem("spire_token");

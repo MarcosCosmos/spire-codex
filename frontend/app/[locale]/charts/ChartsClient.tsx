@@ -32,7 +32,7 @@ ChartJS.register(
   CategoryScale,
   LinearScale,
   Tooltip,
-  Legend
+  Legend,
 );
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -42,9 +42,15 @@ const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 // deploy, or an auth gate redirecting to a login page - a naive res.json()
 // throws a cryptic "unexpected character at line 1 column 1". Check the status
 // and content-type first and surface a clean, retryable message instead.
-async function fetchJson<T>(url: string, init?: RequestInit, t?: TFn): Promise<T> {
+async function fetchJson<T>(
+  url: string,
+  init?: RequestInit,
+  t?: TFn,
+): Promise<T> {
   const res = await fetch(url, init);
-  const isJson = (res.headers.get("content-type") || "").includes("application/json");
+  const isJson = (res.headers.get("content-type") || "").includes(
+    "application/json",
+  );
   if (!res.ok) {
     const detail = isJson
       ? await res
@@ -52,9 +58,19 @@ async function fetchJson<T>(url: string, init?: RequestInit, t?: TFn): Promise<T
           .then((b) => b?.detail)
           .catch(() => null)
       : null;
-    throw new Error(detail || (t ? t("Server busy (HTTP {status})", { status: res.status }) : `Server busy (HTTP ${res.status})`));
+    throw new Error(
+      detail ||
+        (t
+          ? t("Server busy (HTTP {status})", { status: res.status })
+          : `Server busy (HTTP ${res.status})`),
+    );
   }
-  if (!isJson) throw new Error(t ? t("Server returned a non-JSON response") : "Server returned a non-JSON response");
+  if (!isJson)
+    throw new Error(
+      t
+        ? t("Server returned a non-JSON response")
+        : "Server returned a non-JSON response",
+    );
   return res.json() as Promise<T>;
 }
 
@@ -83,7 +99,16 @@ const SERIES_HEX: Record<string, string> = {
   BASE: "#8a8a93",
   WINRATE: "#34d399",
 };
-const PALETTE = ["#38bdf8", "#34d399", "#fb7185", "#a78bfa", "#f59e0b", "#2dd4bf", "#e879f9", "#fbbf24"];
+const PALETTE = [
+  "#38bdf8",
+  "#34d399",
+  "#fb7185",
+  "#a78bfa",
+  "#f59e0b",
+  "#2dd4bf",
+  "#e879f9",
+  "#fbbf24",
+];
 
 function resolveColor(color: string): string {
   if (!color.startsWith("var(")) return color;
@@ -188,7 +213,10 @@ const MODE_OPTS = [
 ];
 // Content brackets (apply to frame and blob charts; only the daily chart opts
 // out). "all" sends no param.
-const BRACKET_OPTS = CONTENT_BRACKETS.map((b) => ({ value: b.key, label: b.label }));
+const BRACKET_OPTS = CONTENT_BRACKETS.map((b) => ({
+  value: b.key,
+  label: b.label,
+}));
 const SPLIT_LABELS: Record<string, string> = {
   character: "By character",
   players: "By player count",
@@ -202,14 +230,21 @@ const ETYPES = [
 ];
 
 type NamedRow = { id?: string; name?: string; title?: string };
-type NamedPayload = NamedRow[] | { options?: NamedRow[]; pages?: { options?: NamedRow[] }[] };
+type NamedPayload =
+  NamedRow[] | { options?: NamedRow[]; pages?: { options?: NamedRow[] }[] };
 
 function namedRows(payload: NamedPayload): NamedRow[] {
   if (Array.isArray(payload)) return payload;
-  return [...(payload.options ?? []), ...(payload.pages ?? []).flatMap((pg) => pg.options ?? [])];
+  return [
+    ...(payload.options ?? []),
+    ...(payload.pages ?? []).flatMap((pg) => pg.options ?? []),
+  ];
 }
 
-function nameRemap(eng: NamedPayload, loc: NamedPayload): Record<string, string> {
+function nameRemap(
+  eng: NamedPayload,
+  loc: NamedPayload,
+): Record<string, string> {
   const byId = new Map<string, string>();
   for (const r of namedRows(loc)) {
     const name = r.name || r.title;
@@ -224,7 +259,11 @@ function nameRemap(eng: NamedPayload, loc: NamedPayload): Record<string, string>
   return out;
 }
 
-function remapUrls(spec: ChartSpec, event: string, lang: string): [string, string] | null {
+function remapUrls(
+  spec: ChartSpec,
+  event: string,
+  lang: string,
+): [string, string] | null {
   const kind = spec.key.startsWith("encounter-")
     ? "encounters"
     : spec.key === "enchant-winrate"
@@ -284,7 +323,9 @@ function Pills({
   disabled?: boolean;
 }) {
   return (
-    <div className={`flex flex-wrap gap-1.5 ${disabled ? "opacity-40 pointer-events-none" : ""}`}>
+    <div
+      className={`flex flex-wrap gap-1.5 ${disabled ? "opacity-40 pointer-events-none" : ""}`}
+    >
       {options.map((o) => {
         const active = value === o.value;
         return (
@@ -315,10 +356,16 @@ function ChartsClientInner() {
   const t = useT();
 
   const [meta, setMeta] = useState<Meta | null>(null);
-  const [chart, setChart] = useState(searchParams.get("chart") || "winrate-by-floor");
+  const [chart, setChart] = useState(
+    searchParams.get("chart") || "winrate-by-floor",
+  );
   const [players, setPlayers] = useState(searchParams.get("players") || "");
-  const [ascension, setAscension] = useState(searchParams.get("ascension") || "");
-  const [bracket, setBracket] = useState(() => normalizeBracket(searchParams.get("bracket")));
+  const [ascension, setAscension] = useState(
+    searchParams.get("ascension") || "",
+  );
+  const [bracket, setBracket] = useState(() =>
+    normalizeBracket(searchParams.get("bracket")),
+  );
   // Game version: query-time on frame charts, per-version snapshot buckets
   // on blob charts — combines with every other filter either way.
   const [buildId, setBuildId] = useState(searchParams.get("version") || "");
@@ -330,19 +377,25 @@ function ChartsClientInner() {
       .catch(() => {});
   }, []);
   const [gameMode, setGameMode] = useState(searchParams.get("mode") || "");
-  const [usernameInput, setUsernameInput] = useState(searchParams.get("user") || "");
+  const [usernameInput, setUsernameInput] = useState(
+    searchParams.get("user") || "",
+  );
   const [username, setUsername] = useState(searchParams.get("user") || "");
   const [split, setSplit] = useState(searchParams.get("split") || "character");
   const [stat, setStat] = useState(searchParams.get("stat") || "deck_size");
   const [xStat, setXStat] = useState(searchParams.get("x") || "floors_reached");
   const [yStat, setYStat] = useState(searchParams.get("y") || "deck_size");
-  const [encounter, setEncounter] = useState(searchParams.get("encounter") || "");
+  const [encounter, setEncounter] = useState(
+    searchParams.get("encounter") || "",
+  );
   const [event, setEvent] = useState(searchParams.get("event") || "");
   const [etype, setEtype] = useState(searchParams.get("etype") || "cards");
   const [entity, setEntity] = useState(searchParams.get("entity") || "");
 
   const [encounters, setEncounters] = useState<NamedOpt[]>([]);
-  const [entityLists, setEntityLists] = useState<Record<string, NamedOpt[]>>({});
+  const [entityLists, setEntityLists] = useState<Record<string, NamedOpt[]>>(
+    {},
+  );
   const [eventNames, setEventNames] = useState<Record<string, string>>({});
   const [charNames, setCharNames] = useState<Record<string, string>>({});
   const [xNames, setXNames] = useState<Record<string, string>>({});
@@ -351,7 +404,10 @@ function ChartsClientInner() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const spec = useMemo(() => meta?.charts.find((c) => c.key === chart), [meta, chart]);
+  const spec = useMemo(
+    () => meta?.charts.find((c) => c.key === chart),
+    [meta, chart],
+  );
   const effEtype = spec?.etype_fixed || etype;
   const needsEntity = spec?.needs.includes("entity") ?? false;
 
@@ -372,7 +428,9 @@ function ChartsClientInner() {
   // Lazy-load selector lists the first time a chart needs them.
   useEffect(() => {
     if (spec?.needs.includes("encounter") && encounters.length === 0) {
-      fetchJson<{ id: string; name: string }[]>(`${API}/api/encounters?lang=${lang}`)
+      fetchJson<{ id: string; name: string }[]>(
+        `${API}/api/encounters?lang=${lang}`,
+      )
         .then((rows) => {
           const opts = rows
             .map((r) => ({ id: r.id, name: r.name }))
@@ -387,7 +445,9 @@ function ChartsClientInner() {
 
   useEffect(() => {
     if (needsEntity && !entityLists[effEtype]) {
-      fetchJson<{ id: string; name: string }[]>(`${API}/api/${effEtype}?lang=${lang}`)
+      fetchJson<{ id: string; name: string }[]>(
+        `${API}/api/${effEtype}?lang=${lang}`,
+      )
         .then((rows) => {
           const opts = rows
             .map((r) => ({ id: r.id, name: r.name }))
@@ -400,15 +460,21 @@ function ChartsClientInner() {
   }, [needsEntity, effEtype]);
 
   useEffect(() => {
-    cachedFetch<{ character_names?: Record<string, string> }>(`${API}/api/translations?lang=${lang}`)
+    cachedFetch<{ character_names?: Record<string, string> }>(
+      `${API}/api/translations?lang=${lang}`,
+    )
       .then((d) => setCharNames(d?.character_names ?? {}))
       .catch(() => {});
   }, [lang]);
 
   useEffect(() => {
     if (!spec?.needs.includes("event") || lang === "eng") return;
-    cachedFetch<{ id: string; name: string }[]>(`${API}/api/events?lang=${lang}`)
-      .then((rows) => setEventNames(Object.fromEntries(rows.map((r) => [r.id, r.name]))))
+    cachedFetch<{ id: string; name: string }[]>(
+      `${API}/api/events?lang=${lang}`,
+    )
+      .then((rows) =>
+        setEventNames(Object.fromEntries(rows.map((r) => [r.id, r.name]))),
+      )
       .catch(() => {});
   }, [spec, lang]);
 
@@ -451,13 +517,15 @@ function ChartsClientInner() {
     if (buildId) p.set("version", buildId);
     if (gameMode) p.set("mode", gameMode);
     if (username) p.set("user", username);
-    if (split !== "character" && spec?.splits.includes(split)) p.set("split", split);
+    if (split !== "character" && spec?.splits.includes(split))
+      p.set("split", split);
     if (spec?.needs.includes("stat") && stat) p.set("stat", stat);
     if (spec?.needs.includes("x")) {
       p.set("x", xStat);
       p.set("y", yStat);
     }
-    if (spec?.needs.includes("encounter") && encounter) p.set("encounter", encounter);
+    if (spec?.needs.includes("encounter") && encounter)
+      p.set("encounter", encounter);
     if (spec?.needs.includes("event") && event) p.set("event", event);
     if (needsEntity && entity) {
       if (!spec?.etype_fixed) p.set("etype", etype);
@@ -465,7 +533,26 @@ function ChartsClientInner() {
     }
     const qs = p.toString();
     router.replace(`/charts${qs ? `?${qs}` : ""}`, { scroll: false });
-  }, [chart, players, ascension, bracket, buildId, gameMode, username, split, stat, xStat, yStat, encounter, event, etype, entity, needsEntity, spec, router]);
+  }, [
+    chart,
+    players,
+    ascension,
+    bracket,
+    buildId,
+    gameMode,
+    username,
+    split,
+    stat,
+    xStat,
+    yStat,
+    encounter,
+    event,
+    etype,
+    entity,
+    needsEntity,
+    spec,
+    router,
+  ]);
 
   // Fetch the chart itself.
   useEffect(() => {
@@ -475,12 +562,15 @@ function ChartsClientInner() {
     if (needsEntity && !entity) return;
     const p = new URLSearchParams();
     if (players) p.set("players", players);
-    if (spec.kind === "frame" && !spec.daily && ascension) p.set("ascension", ascension);
+    if (spec.kind === "frame" && !spec.daily && ascension)
+      p.set("ascension", ascension);
     if (!spec.daily && bracket !== "all") p.set("bracket", bracket);
     if (buildId) p.set("build_id", buildId);
-    if (spec.kind === "frame" && !spec.daily && gameMode) p.set("game_mode", gameMode);
+    if (spec.kind === "frame" && !spec.daily && gameMode)
+      p.set("game_mode", gameMode);
     if (username) p.set("username", username);
-    if (spec.splits.includes(split) && split !== "character") p.set("split", split);
+    if (spec.splits.includes(split) && split !== "character")
+      p.set("split", split);
     if (spec.needs.includes("stat")) p.set("stat", stat);
     if (spec.needs.includes("x")) {
       p.set("x", xStat);
@@ -512,8 +602,10 @@ function ChartsClientInner() {
           // Fill the generic "stat" axis placeholders with the chosen labels.
           const statLabel = (k: string) =>
             meta?.stats.find((s) => s.key === k)?.label ?? k;
-          if (spec.needs.includes("stat")) d.axis = { ...d.axis, x: statLabel(stat) };
-          if (spec.needs.includes("x")) d.axis = { x: statLabel(xStat), y: statLabel(yStat) };
+          if (spec.needs.includes("stat"))
+            d.axis = { ...d.axis, x: statLabel(stat) };
+          if (spec.needs.includes("x"))
+            d.axis = { x: statLabel(xStat), y: statLabel(yStat) };
           setData(d);
           setLoading(false);
           return;
@@ -530,7 +622,26 @@ function ChartsClientInner() {
       }
     })();
     return () => ctrl.abort();
-  }, [spec, meta, players, ascension, bracket, buildId, gameMode, username, split, stat, xStat, yStat, encounter, event, effEtype, entity, needsEntity, t]);
+  }, [
+    spec,
+    meta,
+    players,
+    ascension,
+    bracket,
+    buildId,
+    gameMode,
+    username,
+    split,
+    stat,
+    xStat,
+    yStat,
+    encounter,
+    event,
+    effEtype,
+    entity,
+    needsEntity,
+    t,
+  ]);
 
   const groups = useMemo(() => {
     const g = new Map<string, ChartSpec[]>();
@@ -547,7 +658,12 @@ function ChartsClientInner() {
       {/* Controls */}
       <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 mb-6 space-y-3">
         <div className="flex flex-wrap items-center gap-3">
-          <select className={selectCls} value={chart} onChange={(e) => setChart(e.target.value)} aria-label={t("Chart")}>
+          <select
+            className={selectCls}
+            value={chart}
+            onChange={(e) => setChart(e.target.value)}
+            aria-label={t("Chart")}
+          >
             {[...groups.entries()].map(([group, charts]) => (
               <optgroup key={group} label={t(group)}>
                 {charts.map((c) => (
@@ -560,7 +676,12 @@ function ChartsClientInner() {
           </select>
 
           {spec?.needs.includes("stat") && (
-            <select className={selectCls} value={stat} onChange={(e) => setStat(e.target.value)} aria-label={t("Run stat")}>
+            <select
+              className={selectCls}
+              value={stat}
+              onChange={(e) => setStat(e.target.value)}
+              aria-label={t("Run stat")}
+            >
               {(meta?.stats ?? []).map((s) => (
                 <option key={s.key} value={s.key}>
                   {t(s.label)}
@@ -570,14 +691,24 @@ function ChartsClientInner() {
           )}
           {spec?.needs.includes("x") && (
             <>
-              <select className={selectCls} value={xStat} onChange={(e) => setXStat(e.target.value)} aria-label={t("X stat")}>
+              <select
+                className={selectCls}
+                value={xStat}
+                onChange={(e) => setXStat(e.target.value)}
+                aria-label={t("X stat")}
+              >
                 {(meta?.stats ?? []).map((s) => (
                   <option key={s.key} value={s.key}>
                     X: {t(s.label)}
                   </option>
                 ))}
               </select>
-              <select className={selectCls} value={yStat} onChange={(e) => setYStat(e.target.value)} aria-label={t("Y stat")}>
+              <select
+                className={selectCls}
+                value={yStat}
+                onChange={(e) => setYStat(e.target.value)}
+                aria-label={t("Y stat")}
+              >
                 {(meta?.stats ?? []).map((s) => (
                   <option key={s.key} value={s.key}>
                     Y: {t(s.label)}
@@ -587,7 +718,12 @@ function ChartsClientInner() {
             </>
           )}
           {spec?.needs.includes("encounter") && (
-            <select className={selectCls} value={encounter} onChange={(e) => setEncounter(e.target.value)} aria-label={t("Encounter")}>
+            <select
+              className={selectCls}
+              value={encounter}
+              onChange={(e) => setEncounter(e.target.value)}
+              aria-label={t("Encounter")}
+            >
               {encounters.map((o) => (
                 <option key={o.id} value={o.id}>
                   {o.name}
@@ -596,7 +732,12 @@ function ChartsClientInner() {
             </select>
           )}
           {spec?.needs.includes("event") && (
-            <select className={selectCls} value={event} onChange={(e) => setEvent(e.target.value)} aria-label={t("Event")}>
+            <select
+              className={selectCls}
+              value={event}
+              onChange={(e) => setEvent(e.target.value)}
+              aria-label={t("Event")}
+            >
               {(meta?.events ?? []).map((o) => (
                 <option key={o.id} value={o.id}>
                   {eventNames[o.id] ?? o.name}
@@ -623,7 +764,12 @@ function ChartsClientInner() {
                   ))}
                 </select>
               )}
-              <select className={selectCls} value={entity} onChange={(e) => setEntity(e.target.value)} aria-label={t("Entity")}>
+              <select
+                className={selectCls}
+                value={entity}
+                onChange={(e) => setEntity(e.target.value)}
+                aria-label={t("Entity")}
+              >
                 {(entityLists[effEtype] ?? []).map((o) => (
                   <option key={o.id} value={o.id}>
                     {o.name}
@@ -658,10 +804,26 @@ function ChartsClientInner() {
         </div>
 
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-          <Pills options={PLAYER_OPTS.map((o) => ({ ...o, label: t(o.label) }))} value={players} onChange={setPlayers} />
-          <Pills options={MODE_OPTS.map((o) => ({ ...o, label: t(o.label) }))} value={gameMode} onChange={setGameMode} disabled={filtersLocked} />
-          <div className={filtersLocked ? "opacity-40 pointer-events-none" : ""}>
-            <select className={selectCls} value={ascension} onChange={(e) => setAscension(e.target.value)} aria-label={t("Ascension")}>
+          <Pills
+            options={PLAYER_OPTS.map((o) => ({ ...o, label: t(o.label) }))}
+            value={players}
+            onChange={setPlayers}
+          />
+          <Pills
+            options={MODE_OPTS.map((o) => ({ ...o, label: t(o.label) }))}
+            value={gameMode}
+            onChange={setGameMode}
+            disabled={filtersLocked}
+          />
+          <div
+            className={filtersLocked ? "opacity-40 pointer-events-none" : ""}
+          >
+            <select
+              className={selectCls}
+              value={ascension}
+              onChange={(e) => setAscension(e.target.value)}
+              aria-label={t("Ascension")}
+            >
               <option value="">{t("All ascensions")}</option>
               {/* A10 is the cap; the game has nothing above it. */}
               {Array.from({ length: 11 }, (_, i) => (
@@ -690,17 +852,23 @@ function ChartsClientInner() {
             >
               <option value="">{t("All versions")}</option>
               {versions.map((v) => (
-                <option key={v} value={v}>{v}</option>
+                <option key={v} value={v}>
+                  {v}
+                </option>
               ))}
             </select>
           )}
           {spec?.kind === "blob" && (
             <span className="text-xs text-[var(--text-muted)]">
-              {t("Exact ascension and mode don't apply here; use the Bracket to slice by skill.")}
+              {t(
+                "Exact ascension and mode don't apply here; use the Bracket to slice by skill.",
+              )}
             </span>
           )}
           {spec?.daily && (
-            <span className="text-xs text-[var(--text-muted)]">{t("Daily runs only.")}</span>
+            <span className="text-xs text-[var(--text-muted)]">
+              {t("Daily runs only.")}
+            </span>
           )}
         </div>
       </div>
@@ -716,15 +884,24 @@ function ChartsClientInner() {
         ) : data.series.length === 0 ? (
           <div className="h-[420px] flex items-center justify-center text-sm text-[var(--text-muted)]">
             {data.building
-              ? t("These stats are still building after a fresh deploy. They cover every run and land within a few minutes.")
+              ? t(
+                  "These stats are still building after a fresh deploy. They cover every run and land within a few minutes.",
+                )
               : t("Not enough runs match these filters.")}
           </div>
         ) : (
-          <ExplorerChart spec={spec!} data={localizeChart(data, spec!, t, charNames, xNames)} lang={lang} />
+          <ExplorerChart
+            spec={spec!}
+            data={localizeChart(data, spec!, t, charNames, xNames)}
+            lang={lang}
+          />
         )}
         {data && !loading && !error && (
           <p className="text-xs text-[var(--text-muted)] mt-3">
-            {t(data.desc)} {t("Based on {n} runs matching the filters.", { n: data.total_runs.toLocaleString() })}{" "}
+            {t(data.desc)}{" "}
+            {t("Based on {n} runs matching the filters.", {
+              n: data.total_runs.toLocaleString(),
+            })}{" "}
             {t("Thin samples are hidden so lines don't whip around on noise.")}
           </p>
         )}
@@ -735,7 +912,15 @@ function ChartsClientInner() {
 
 // ── Rendering ────────────────────────────────────────────────────────────────
 
-function ExplorerChart({ spec, data, lang }: { spec: ChartSpec; data: ChartResponse; lang: string }) {
+function ExplorerChart({
+  spec,
+  data,
+  lang,
+}: {
+  spec: ChartSpec;
+  data: ChartResponse;
+  lang: string;
+}) {
   if (spec.scatter) return <ScatterChart data={data} lang={lang} />;
   if (spec.bars) return <BarRanking data={data} horizontal={spec.horizontal} />;
   return <LineChart data={data} lang={lang} />;
@@ -744,7 +929,12 @@ function ExplorerChart({ spec, data, lang }: { spec: ChartSpec; data: ChartRespo
 function legendOpts(count: number) {
   return {
     display: count > 1,
-    labels: { color: TEXT_SECONDARY, boxWidth: 12, boxHeight: 12, font: { size: 12 } },
+    labels: {
+      color: TEXT_SECONDARY,
+      boxWidth: 12,
+      boxHeight: 12,
+      font: { size: 12 },
+    },
   };
 }
 
@@ -761,7 +951,8 @@ function baseOptions(data: ChartResponse, t: TFn): ChartOptions<"line"> {
         callbacks: {
           label: (item: TooltipItem<"line">) => {
             const raw = item.raw as Point;
-            const n = raw?.n != null ? ` · ${raw.n.toLocaleString()} ${t("runs")}` : "";
+            const n =
+              raw?.n != null ? ` · ${raw.n.toLocaleString()} ${t("runs")}` : "";
             return `${item.dataset.label}: ${item.parsed.y}${n}`;
           },
         },
@@ -769,12 +960,22 @@ function baseOptions(data: ChartResponse, t: TFn): ChartOptions<"line"> {
     },
     scales: {
       x: {
-        title: { display: true, text: data.axis.x, color: TEXT_SECONDARY, font: { size: 12 } },
+        title: {
+          display: true,
+          text: data.axis.x,
+          color: TEXT_SECONDARY,
+          font: { size: 12 },
+        },
         ticks: { color: TEXT_SECONDARY, maxTicksLimit: 20 },
         grid: { color: GRID },
       },
       y: {
-        title: { display: true, text: data.axis.y, color: TEXT_SECONDARY, font: { size: 12 } },
+        title: {
+          display: true,
+          text: data.axis.y,
+          color: TEXT_SECONDARY,
+          font: { size: 12 },
+        },
         ticks: { color: TEXT_SECONDARY },
         grid: { color: GRID },
         beginAtZero: true,
@@ -800,7 +1001,9 @@ function lineDataset(s: Series, i: number) {
 
 function LineChart({ data, lang }: { data: ChartResponse; lang: string }) {
   const t = useT();
-  const numericX = data.series.every((s) => s.points.every((p) => typeof p.x === "number"));
+  const numericX = data.series.every((s) =>
+    s.points.every((p) => typeof p.x === "number"),
+  );
   const options = baseOptions(data, t);
 
   if (numericX) {
@@ -835,7 +1038,9 @@ function LineChart({ data, lang }: { data: ChartResponse; lang: string }) {
       ...lineDataset(s, i),
       data: labels.map((l) => {
         const p = byX.get(l);
-        return p ? { x: l, y: p.y, n: p.n } : { x: l, y: null as number | null };
+        return p
+          ? { x: l, y: p.y, n: p.n }
+          : { x: l, y: null as number | null };
       }),
     };
   });
@@ -846,8 +1051,16 @@ function LineChart({ data, lang }: { data: ChartResponse; lang: string }) {
   );
 }
 
-function BarRanking({ data, horizontal }: { data: ChartResponse; horizontal: boolean }) {
-  const barTooltip = (seriesFor: (item: TooltipItem<"bar">) => Series | undefined) => ({
+function BarRanking({
+  data,
+  horizontal,
+}: {
+  data: ChartResponse;
+  horizontal: boolean;
+}) {
+  const barTooltip = (
+    seriesFor: (item: TooltipItem<"bar">) => Series | undefined,
+  ) => ({
     ...TOOLTIP_BASE,
     callbacks: {
       label: (item: TooltipItem<"bar">) => {
@@ -869,7 +1082,12 @@ function BarRanking({ data, horizontal }: { data: ChartResponse; horizontal: boo
           data={{
             labels: s.points.map((p) => String(p.x)),
             datasets: [
-              { label: s.label, data: s.points.map((p) => p.y), backgroundColor: GOLD, borderRadius: 4 },
+              {
+                label: s.label,
+                data: s.points.map((p) => p.y),
+                backgroundColor: GOLD,
+                borderRadius: 4,
+              },
             ],
           }}
           options={{
@@ -877,15 +1095,29 @@ function BarRanking({ data, horizontal }: { data: ChartResponse; horizontal: boo
             responsive: true,
             maintainAspectRatio: false,
             animation: false,
-            plugins: { legend: { display: false }, tooltip: barTooltip(() => s) },
+            plugins: {
+              legend: { display: false },
+              tooltip: barTooltip(() => s),
+            },
             scales: {
               x: {
-                title: { display: true, text: data.axis.y, color: TEXT_SECONDARY },
+                title: {
+                  display: true,
+                  text: data.axis.y,
+                  color: TEXT_SECONDARY,
+                },
                 ticks: { color: TEXT_SECONDARY },
                 grid: { color: GRID },
                 beginAtZero: true,
               },
-              y: { ticks: { color: TEXT_SECONDARY, font: { size: 12 }, autoSkip: false }, grid: { display: false } },
+              y: {
+                ticks: {
+                  color: TEXT_SECONDARY,
+                  font: { size: 12 },
+                  autoSkip: false,
+                },
+                grid: { display: false },
+              },
             },
           }}
         />
@@ -926,9 +1158,16 @@ function BarRanking({ data, horizontal }: { data: ChartResponse; horizontal: boo
             tooltip: barTooltip((item) => data.series[item.datasetIndex]),
           },
           scales: {
-            x: { ticks: { color: TEXT_SECONDARY, maxRotation: 60 }, grid: { display: false } },
+            x: {
+              ticks: { color: TEXT_SECONDARY, maxRotation: 60 },
+              grid: { display: false },
+            },
             y: {
-              title: { display: true, text: data.axis.y, color: TEXT_SECONDARY },
+              title: {
+                display: true,
+                text: data.axis.y,
+                color: TEXT_SECONDARY,
+              },
               ticks: { color: TEXT_SECONDARY },
               grid: { color: GRID },
               beginAtZero: true,
@@ -949,7 +1188,10 @@ function ScatterChart({ data, lang }: { data: ChartResponse; lang: string }) {
     pointRadius: 2.5,
     pointHoverRadius: 4,
   }));
-  const sampled = data.series.reduce((a, s) => a + (s.sampled_from ?? s.points.length), 0);
+  const sampled = data.series.reduce(
+    (a, s) => a + (s.sampled_from ?? s.points.length),
+    0,
+  );
   return (
     <>
       <div className="h-[460px]">
@@ -971,13 +1213,21 @@ function ScatterChart({ data, lang }: { data: ChartResponse; lang: string }) {
             },
             scales: {
               x: {
-                title: { display: true, text: data.axis.x, color: TEXT_SECONDARY },
+                title: {
+                  display: true,
+                  text: data.axis.x,
+                  color: TEXT_SECONDARY,
+                },
                 ticks: { color: TEXT_SECONDARY },
                 grid: { color: GRID },
                 beginAtZero: true,
               },
               y: {
-                title: { display: true, text: data.axis.y, color: TEXT_SECONDARY },
+                title: {
+                  display: true,
+                  text: data.axis.y,
+                  color: TEXT_SECONDARY,
+                },
                 ticks: { color: TEXT_SECONDARY },
                 grid: { color: GRID },
                 beginAtZero: true,
@@ -1000,7 +1250,7 @@ function ScatterChart({ data, lang }: { data: ChartResponse; lang: string }) {
 export default function ChartsClient() {
   return (
     <Suspense fallback={null}>
-      <ChartsClientInner  />
+      <ChartsClientInner />
     </Suspense>
   );
 }

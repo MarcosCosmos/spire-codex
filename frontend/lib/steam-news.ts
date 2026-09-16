@@ -53,9 +53,15 @@ function bbcodeToHtml(input: string): string {
     '<img src="$1" alt="" loading="lazy" />',
   );
   // Quotes
-  s = s.replaceAll(/\[quote(?:=[^\]]*)?\]([\s\S]*?)\[\/quote\]/g, "<blockquote>$1</blockquote>");
+  s = s.replaceAll(
+    /\[quote(?:=[^\]]*)?\]([\s\S]*?)\[\/quote\]/g,
+    "<blockquote>$1</blockquote>",
+  );
   // Code blocks
-  s = s.replaceAll(/\[code\]([\s\S]*?)\[\/code\]/g, "<pre><code>$1</code></pre>");
+  s = s.replaceAll(
+    /\[code\]([\s\S]*?)\[\/code\]/g,
+    "<pre><code>$1</code></pre>",
+  );
   // Drop anything else that looks like a remaining BBCode tag
   s = s.replaceAll(/\[\/?[a-z][^\]]*\]/gi, "");
   return s;
@@ -118,7 +124,11 @@ function convertLists(input: string): string {
     appendText(input.slice(cursor, m.index));
     const token = m[0].toLowerCase();
     if (token === "[list]" || token === "[olist]") {
-      stack.push({ tag: token === "[list]" ? "ul" : "ol", items: [], current: "" });
+      stack.push({
+        tag: token === "[list]" ? "ul" : "ol",
+        items: [],
+        current: "",
+      });
     } else if (token === "[/list]" || token === "[/olist]") {
       flushItem();
       const frame = stack.pop();
@@ -146,17 +156,19 @@ function convertLists(input: string): string {
 
 /** Strip script/iframe/object/embed regardless of attributes, defensive. */
 function stripDangerousTags(html: string): string {
-  return html
-    .replaceAll(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
-    .replaceAll(/<iframe\b[^>]*>[\s\S]*?<\/iframe>/gi, "")
-    .replaceAll(/<object\b[^>]*>[\s\S]*?<\/object>/gi, "")
-    .replaceAll(/<embed\b[^>]*>/gi, "")
-    .replaceAll(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")
-    // Strip on* event handlers and javascript: URLs from any tag.
-    .replaceAll(/\son[a-z]+\s*=\s*"(?:[^"\\]|\\.)*"/gi, "")
-    .replaceAll(/\son[a-z]+\s*=\s*'(?:[^'\\]|\\.)*'/gi, "")
-    .replaceAll(/\son[a-z]+\s*=\s*[^\s>]+/gi, "")
-    .replaceAll(/javascript:/gi, "");
+  return (
+    html
+      .replaceAll(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
+      .replaceAll(/<iframe\b[^>]*>[\s\S]*?<\/iframe>/gi, "")
+      .replaceAll(/<object\b[^>]*>[\s\S]*?<\/object>/gi, "")
+      .replaceAll(/<embed\b[^>]*>/gi, "")
+      .replaceAll(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")
+      // Strip on* event handlers and javascript: URLs from any tag.
+      .replaceAll(/\son[a-z]+\s*=\s*"(?:[^"\\]|\\.)*"/gi, "")
+      .replaceAll(/\son[a-z]+\s*=\s*'(?:[^'\\]|\\.)*'/gi, "")
+      .replaceAll(/\son[a-z]+\s*=\s*[^\s>]+/gi, "")
+      .replaceAll(/javascript:/gi, "")
+  );
 }
 
 // Block-level HTML tags we treat as "paragraph siblings", text between
@@ -313,7 +325,10 @@ export function firstNewsImage(raw: string | undefined | null): string | null {
   if (bb) {
     const url = bb[1].trim();
     return url.startsWith("{STEAM_CLAN_IMAGE}")
-      ? url.replace("{STEAM_CLAN_IMAGE}", "https://clan.cloudflare.steamstatic.com/images")
+      ? url.replace(
+          "{STEAM_CLAN_IMAGE}",
+          "https://clan.cloudflare.steamstatic.com/images",
+        )
       : url;
   }
   // HTML form: <img src="https://...">
@@ -322,20 +337,33 @@ export function firstNewsImage(raw: string | undefined | null): string | null {
   // Bare {STEAM_CLAN_IMAGE} placeholder (rare, some posts skip the [img] wrapper)
   const bare = raw.match(/\{STEAM_CLAN_IMAGE\}\/[^\s\[]+/);
   if (bare) {
-    return bare[0].replace("{STEAM_CLAN_IMAGE}", "https://clan.cloudflare.steamstatic.com/images");
+    return bare[0].replace(
+      "{STEAM_CLAN_IMAGE}",
+      "https://clan.cloudflare.steamstatic.com/images",
+    );
   }
   return null;
 }
 
-export function formatNewsDate(unixSeconds: number, locale: string = "en"): string {
-  return fmtDatePacific(unixSeconds * 1000, { year: "numeric", month: "long", day: "numeric" }, locale);
+export function formatNewsDate(
+  unixSeconds: number,
+  locale: string = "en",
+): string {
+  return fmtDatePacific(
+    unixSeconds * 1000,
+    { year: "numeric", month: "long", day: "numeric" },
+    locale,
+  );
 }
 
 /** Steam exposes the same article under several URL patterns. We canonicalize
  * to `store.steampowered.com/news/app/{appid}/view/{gid}` because that's the
  * one Steam itself uses on the storefront and it's stable across the
  * `externalpost/{feedname}/{gid}` wrappers the API hands back. */
-export function canonicalSteamUrl(gid: string, appid: number = 2868840): string {
+export function canonicalSteamUrl(
+  gid: string,
+  appid: number = 2868840,
+): string {
   return `https://store.steampowered.com/news/app/${appid}/view/${gid}`;
 }
 
@@ -344,7 +372,10 @@ export function canonicalSteamUrl(gid: string, appid: number = 2868840): string 
  * leak the full Steam URL into our path. The catchall route still
  * accepts the older encoded-URL form and 308-redirects it here so old
  * inbound links and search results converge on this shape. */
-export function newsSlugForArticle(gid: string, basePath: string = "/news"): string {
+export function newsSlugForArticle(
+  gid: string,
+  basePath: string = "/news",
+): string {
   return `${basePath}/${gid}`;
 }
 

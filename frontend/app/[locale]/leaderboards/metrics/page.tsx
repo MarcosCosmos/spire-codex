@@ -19,7 +19,10 @@ type Props = {
   searchParams: Promise<{ bracket?: string; character?: string }>;
 };
 
-export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+  searchParams,
+}: Props): Promise<Metadata> {
   const locale = localeOf((await params).locale);
   const t = await getT(locale);
   const sp = await searchParams;
@@ -37,18 +40,18 @@ export default async function MetricsPage({ params, searchParams }: Props) {
   const locale = localeOf((await params).locale);
   const t = await getT(locale);
   const sp = await searchParams;
-  const { rows, baselineWinRate, totalRuns, bracket, character } = await loadMetrics(
-    locale,
-    sp.bracket || "all",
-    sp.character || ""
-  );
+  const { rows, baselineWinRate, totalRuns, bracket, character } =
+    await loadMetrics(locale, sp.bracket || "all", sp.character || "");
   const description = t("leaderboards_metrics_meta_description");
 
   const jsonLd = [
     buildBreadcrumbJsonLd([
       { name: t("Home"), href: localePath(locale, "/") },
       { name: t("Leaderboards"), href: localePath(locale, "/leaderboards") },
-      { name: t("Card Metrics"), href: localePath(locale, "/leaderboards/metrics") },
+      {
+        name: t("Card Metrics"),
+        href: localePath(locale, "/leaderboards/metrics"),
+      },
     ]),
     buildCollectionPageJsonLd({
       name: pageHeading(locale, t("Card Metrics")),

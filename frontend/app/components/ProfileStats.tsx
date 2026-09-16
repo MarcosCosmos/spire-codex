@@ -64,43 +64,103 @@ interface Stats {
   total_wins?: number;
   total_abandoned?: number;
   win_rate?: number;
-  characters?: { character: string; total: number; wins: number; win_rate: number }[];
-  top_cards?: { card_id: string; count: number; in_wins: number; total_runs_with: number; win_runs: number }[];
-  top_relics?: { relic_id: string; count: number; total_runs_with: number; win_runs: number }[];
-  top_potions?: { potion_id: string; offered: number; picked: number; used: number; pick_rate: number }[];
+  characters?: {
+    character: string;
+    total: number;
+    wins: number;
+    win_rate: number;
+  }[];
+  top_cards?: {
+    card_id: string;
+    count: number;
+    in_wins: number;
+    total_runs_with: number;
+    win_runs: number;
+  }[];
+  top_relics?: {
+    relic_id: string;
+    count: number;
+    total_runs_with: number;
+    win_runs: number;
+  }[];
+  top_potions?: {
+    potion_id: string;
+    offered: number;
+    picked: number;
+    used: number;
+    pick_rate: number;
+  }[];
   deadliest?: { encounter: string; count: number }[];
 }
 
 function displayName(id: string): string {
   return id
-    .replace(/^(CARD|RELIC|ENCHANTMENT|MONSTER|ENCOUNTER|CHARACTER|ACT|POTION)\./, "")
+    .replace(
+      /^(CARD|RELIC|ENCHANTMENT|MONSTER|ENCOUNTER|CHARACTER|ACT|POTION)\./,
+      "",
+    )
     .replace(/_/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function EntityRow({ name, imageSrc, stat, href }: { name: string; imageSrc: string | null; stat: string; href: string }) {
+function EntityRow({
+  name,
+  imageSrc,
+  stat,
+  href,
+}: {
+  name: string;
+  imageSrc: string | null;
+  stat: string;
+  href: string;
+}) {
   return (
-    <Link prefetch={false} href={href} className="flex items-center gap-3 py-1.5 hover:bg-[var(--bg-card-hover)] rounded px-2 -mx-2 transition-colors">
+    <Link
+      prefetch={false}
+      href={href}
+      className="flex items-center gap-3 py-1.5 hover:bg-[var(--bg-card-hover)] rounded px-2 -mx-2 transition-colors"
+    >
       <span className="flex-shrink-0 w-8 h-8 rounded bg-[var(--bg-primary)] border border-[var(--border-subtle)] overflow-hidden flex items-center justify-center">
         {imageSrc ? (
-          <img src={imageSrc} alt={name} className="w-full h-full object-contain p-0.5" crossOrigin="anonymous" />
+          <img
+            src={imageSrc}
+            alt={name}
+            className="w-full h-full object-contain p-0.5"
+            crossOrigin="anonymous"
+          />
         ) : (
           <span className="text-[9px] text-[var(--text-muted)]">—</span>
         )}
       </span>
-      <span className="flex-1 truncate text-sm text-[var(--text-primary)]">{name}</span>
-      <span className="text-xs text-[var(--text-tertiary)] tabular-nums">{stat}</span>
+      <span className="flex-1 truncate text-sm text-[var(--text-primary)]">
+        {name}
+      </span>
+      <span className="text-xs text-[var(--text-tertiary)] tabular-nums">
+        {stat}
+      </span>
     </Link>
   );
 }
 
 const STARTER_CARDS = new Set([
-  "STRIKE_IRONCLAD", "STRIKE_SILENT", "STRIKE_DEFECT", "STRIKE_NECROBINDER", "STRIKE_REGENT",
-  "DEFEND_IRONCLAD", "DEFEND_SILENT", "DEFEND_DEFECT", "DEFEND_NECROBINDER", "DEFEND_REGENT",
+  "STRIKE_IRONCLAD",
+  "STRIKE_SILENT",
+  "STRIKE_DEFECT",
+  "STRIKE_NECROBINDER",
+  "STRIKE_REGENT",
+  "DEFEND_IRONCLAD",
+  "DEFEND_SILENT",
+  "DEFEND_DEFECT",
+  "DEFEND_NECROBINDER",
+  "DEFEND_REGENT",
 ]);
 
 const STARTER_RELICS = new Set([
-  "BURNING_BLOOD", "RING_OF_THE_SNAKE", "CRACKED_CORE", "BOUND_PHYLACTERY", "DIVINE_RIGHT",
+  "BURNING_BLOOD",
+  "RING_OF_THE_SNAKE",
+  "CRACKED_CORE",
+  "BOUND_PHYLACTERY",
+  "DIVINE_RIGHT",
 ]);
 
 interface Run {
@@ -129,8 +189,16 @@ interface ProfileStatsProps {
 type Tab = "overview" | "runs" | "cards" | "relics" | "potions" | "tierlists";
 
 export default function ProfileStats({
-  runs, runsTotal, runsLoading, runsPage, runsTotalPages,
-  onPageChange, onDeleteRun, deleteConfirm, onDeleteConfirm, onDeleteRuns,
+  runs,
+  runsTotal,
+  runsLoading,
+  runsPage,
+  runsTotalPages,
+  onPageChange,
+  onDeleteRun,
+  deleteConfirm,
+  onDeleteConfirm,
+  onDeleteRuns,
 }: ProfileStatsProps) {
   const t = useT();
   const bp = useBetaPrefix();
@@ -146,10 +214,13 @@ export default function ProfileStats({
   }, [pageHashes]);
 
   const toggleSelected = (hash: string) =>
-    setSelected((prev) => (prev.includes(hash) ? prev.filter((h) => h !== hash) : [...prev, hash]));
+    setSelected((prev) =>
+      prev.includes(hash) ? prev.filter((h) => h !== hash) : [...prev, hash],
+    );
   const allSelected = runs.length > 0 && selected.length === runs.length;
   const someSelected = selected.length > 0 && !allSelected;
-  const toggleAll = () => setSelected(allSelected ? [] : runs.map((r) => r.run_hash));
+  const toggleAll = () =>
+    setSelected(allSelected ? [] : runs.map((r) => r.run_hash));
 
   async function deleteSelected() {
     if (selected.length === 0) return;
@@ -232,7 +303,10 @@ export default function ProfileStats({
     return (
       <div className="space-y-3">
         {[...Array(3)].map((_, i) => (
-          <div key={i} className="h-20 bg-[var(--bg-card)] rounded-lg animate-pulse" />
+          <div
+            key={i}
+            className="h-20 bg-[var(--bg-card)] rounded-lg animate-pulse"
+          />
         ))}
       </div>
     );
@@ -295,7 +369,10 @@ export default function ProfileStats({
           {runsLoading ? (
             <div className="space-y-2">
               {[...Array(5)].map((_, i) => (
-                <div key={i} className="h-12 bg-[var(--bg-card)] rounded animate-pulse" />
+                <div
+                  key={i}
+                  className="h-12 bg-[var(--bg-card)] rounded animate-pulse"
+                />
               ))}
             </div>
           ) : runs.length === 0 ? (
@@ -321,7 +398,9 @@ export default function ProfileStats({
                 </label>
                 {selected.length > 0 && (
                   <>
-                    <span className="text-[var(--text-tertiary)]">{t("{n} selected", { n: selected.length })}</span>
+                    <span className="text-[var(--text-tertiary)]">
+                      {t("{n} selected", { n: selected.length })}
+                    </span>
                     {confirmBulk ? (
                       <span className="inline-flex items-center gap-2">
                         <button
@@ -329,9 +408,14 @@ export default function ProfileStats({
                           disabled={bulkDeleting}
                           className="text-danger hover:text-danger disabled:opacity-50"
                         >
-                          {bulkDeleting ? t("Deleting...") : t("Delete {n} runs", { n: selected.length })}
+                          {bulkDeleting
+                            ? t("Deleting...")
+                            : t("Delete {n} runs", { n: selected.length })}
                         </button>
-                        <button onClick={() => setConfirmBulk(false)} className="text-[var(--text-tertiary)]">
+                        <button
+                          onClick={() => setConfirmBulk(false)}
+                          className="text-[var(--text-tertiary)]"
+                        >
                           {t("Cancel")}
                         </button>
                       </span>
@@ -357,22 +441,33 @@ export default function ProfileStats({
                       checked={selected.includes(run.run_hash)}
                       onChange={() => toggleSelected(run.run_hash)}
                       disabled={bulkDeleting}
-                      aria-label={t("Select the {character} run that reached floor {floor}", {
-                        character: run.character,
-                        floor: run.floors_reached,
-                      })}
+                      aria-label={t(
+                        "Select the {character} run that reached floor {floor}",
+                        {
+                          character: run.character,
+                          floor: run.floors_reached,
+                        },
+                      )}
                       className="accent-accent shrink-0"
                     />
-                    <span className="font-medium w-20 sm:w-24 truncate" style={{ color: characterHex(run.character) || "var(--text-primary)" }}>
+                    <span
+                      className="font-medium w-20 sm:w-24 truncate"
+                      style={{
+                        color:
+                          characterHex(run.character) || "var(--text-primary)",
+                      }}
+                    >
                       {run.character}
                     </span>
-                    <span className={`shrink-0 text-xs px-1.5 py-0.5 rounded ${
-                      run.win
-                        ? "bg-success/15 text-success"
-                        : run.was_abandoned
-                          ? "bg-warning/15 text-warning"
-                          : "bg-danger/15 text-danger"
-                    }`}>
+                    <span
+                      className={`shrink-0 text-xs px-1.5 py-0.5 rounded ${
+                        run.win
+                          ? "bg-success/15 text-success"
+                          : run.was_abandoned
+                            ? "bg-warning/15 text-warning"
+                            : "bg-danger/15 text-danger"
+                      }`}
+                    >
                       {run.win ? "W" : run.was_abandoned ? "A" : "L"}
                     </span>
                     <span className="text-[var(--text-tertiary)] text-xs hidden sm:inline">
@@ -419,7 +514,9 @@ export default function ProfileStats({
               {runsTotalPages > 1 && (
                 <div className="flex items-center justify-center gap-2 mt-4">
                   <button
-                    onClick={() => onPageChange((p: number) => Math.max(1, p - 1))}
+                    onClick={() =>
+                      onPageChange((p: number) => Math.max(1, p - 1))
+                    }
                     disabled={runsPage <= 1}
                     className="px-3 py-1.5 text-sm rounded border border-[var(--border-subtle)] disabled:opacity-30"
                   >
@@ -429,7 +526,11 @@ export default function ProfileStats({
                     {runsPage} / {runsTotalPages}
                   </span>
                   <button
-                    onClick={() => onPageChange((p: number) => Math.min(runsTotalPages, p + 1))}
+                    onClick={() =>
+                      onPageChange((p: number) =>
+                        Math.min(runsTotalPages, p + 1),
+                      )
+                    }
                     disabled={runsPage >= runsTotalPages}
                     className="px-3 py-1.5 text-sm rounded border border-[var(--border-subtle)] disabled:opacity-30"
                   >
@@ -444,9 +545,13 @@ export default function ProfileStats({
 
       {tab === "cards" && (
         <div className="bg-[var(--bg-card)] rounded-lg border border-[var(--border-subtle)] p-4">
-          <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">{t("Most Used Cards")}</h3>
+          <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">
+            {t("Most Used Cards")}
+          </h3>
           {topCards.length === 0 ? (
-            <p className="text-sm text-[var(--text-tertiary)]">{t("No card data yet.")}</p>
+            <p className="text-sm text-[var(--text-tertiary)]">
+              {t("No card data yet.")}
+            </p>
           ) : (
             <div className="space-y-0.5">
               {topCards.map((c) => {
@@ -468,9 +573,13 @@ export default function ProfileStats({
 
       {tab === "relics" && (
         <div className="bg-[var(--bg-card)] rounded-lg border border-[var(--border-subtle)] p-4">
-          <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">{t("Most Used Relics")}</h3>
+          <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">
+            {t("Most Used Relics")}
+          </h3>
           {topRelics.length === 0 ? (
-            <p className="text-sm text-[var(--text-tertiary)]">{t("No relic data yet.")}</p>
+            <p className="text-sm text-[var(--text-tertiary)]">
+              {t("No relic data yet.")}
+            </p>
           ) : (
             <div className="space-y-0.5">
               {topRelics.map((r) => {
@@ -492,9 +601,13 @@ export default function ProfileStats({
 
       {tab === "potions" && (
         <div className="bg-[var(--bg-card)] rounded-lg border border-[var(--border-subtle)] p-4">
-          <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">{t("Most Picked Potions")}</h3>
+          <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">
+            {t("Most Picked Potions")}
+          </h3>
           {topPotions.length === 0 ? (
-            <p className="text-sm text-[var(--text-tertiary)]">{t("No potion data yet.")}</p>
+            <p className="text-sm text-[var(--text-tertiary)]">
+              {t("No potion data yet.")}
+            </p>
           ) : (
             <div className="space-y-0.5">
               {topPotions.map((p) => {

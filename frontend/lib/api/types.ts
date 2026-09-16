@@ -35,8 +35,7 @@ export interface Card {
   block: number | null;
   hit_count: number | null;
   powers_applied:
-    | { power: string; power_key: string | null; amount: number }[]
-    | null;
+    { power: string; power_key: string | null; amount: number }[] | null;
   cards_draw: number | null;
   energy_gain: number | null;
   hp_loss: number | null;

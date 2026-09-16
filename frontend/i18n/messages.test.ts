@@ -12,7 +12,9 @@ describe("message catalogs", () => {
 
   it("escapes apostrophes for ICU so they render literally", () => {
     const eng = messagesFor("eng");
-    const withApostrophe = Object.entries(eng).find(([, value]) => value.includes("'"));
+    const withApostrophe = Object.entries(eng).find(([, value]) =>
+      value.includes("'"),
+    );
     expect(withApostrophe).toBeDefined();
     expect(withApostrophe?.[1]).not.toMatch(/(^|[^'])'([^']|$)/);
   });

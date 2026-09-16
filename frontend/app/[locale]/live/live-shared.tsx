@@ -417,7 +417,7 @@ export function useCharacterNames(): Record<string, string> {
 
 export function useLiveCatalogs(): LiveCatalogs | undefined {
   const cards = useApiEndpointIdMapped("cards");
-  const relics = useApiEndpointIdMapped("relics")
+  const relics = useApiEndpointIdMapped("relics");
   const potions = useApiEndpointIdMapped("potions");
   // todo: give these fully fledged hooks like above
   const events = useApiEndpointIdMapped("events");

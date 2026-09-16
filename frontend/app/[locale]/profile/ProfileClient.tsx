@@ -31,7 +31,6 @@ interface UploadResult {
   run_hash?: string;
 }
 
-
 export default function ProfileClient() {
   const { user, loading } = useAuth();
   const lang = useGameLocale();
@@ -42,7 +41,9 @@ export default function ProfileClient() {
   const [page, setPage] = useState(1);
   const [runsLoading, setRunsLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [uploadResults, setUploadResults] = useState<UploadResult[] | null>(null);
+  const [uploadResults, setUploadResults] = useState<UploadResult[] | null>(
+    null,
+  );
   const [uploadProgress, setUploadProgress] = useState<{
     total: number;
     done: number;
@@ -71,7 +72,7 @@ export default function ProfileClient() {
         next
           ? t("Your profile is now private.")
           : t("Your profile is now public."),
-        "success"
+        "success",
       );
     } catch {
       setProfilePrivate(prev);
@@ -79,23 +80,29 @@ export default function ProfileClient() {
     }
   };
 
-  const fetchRuns = useCallback(async (p: number) => {
-    setRunsLoading(true);
-    try {
-      const res = await fetch(`${API_BASE}/api/auth/runs?page=${p}&limit=20`, {
-        credentials: "include",
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setRuns(data.runs || []);
-        setTotal(data.total || 0);
+  const fetchRuns = useCallback(
+    async (p: number) => {
+      setRunsLoading(true);
+      try {
+        const res = await fetch(
+          `${API_BASE}/api/auth/runs?page=${p}&limit=20`,
+          {
+            credentials: "include",
+          },
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setRuns(data.runs || []);
+          setTotal(data.total || 0);
+        }
+      } catch {
+        toast(t("Failed to load runs"), "error");
+      } finally {
+        setRunsLoading(false);
       }
-    } catch {
-      toast(t("Failed to load runs"), "error");
-    } finally {
-      setRunsLoading(false);
-    }
-  }, [toast, lang]);
+    },
+    [toast, lang],
+  );
 
   useEffect(() => {
     if (user) fetchRuns(page);
@@ -155,9 +162,10 @@ export default function ProfileClient() {
         const detail =
           res?.status === 413
             ? t("Too many files or file too large")
-            : err?.detail || (res ? t("Upload failed") : t("Network error during upload"));
+            : err?.detail ||
+              (res ? t("Upload failed") : t("Network error during upload"));
         chunk.forEach((f) =>
-          results.push({ filename: f.name, status: "error", detail })
+          results.push({ filename: f.name, status: "error", detail }),
         );
         summary.errors += chunk.length;
       }
@@ -173,7 +181,7 @@ export default function ProfileClient() {
     } else {
       toast(
         `${summary.claimed} ${t("claimed")}, ${summary.duplicates} ${t("duplicates")}, ${summary.errors} ${t("errors")}`,
-        summary.errors > 0 ? "error" : "success"
+        summary.errors > 0 ? "error" : "success",
       );
       if (summary.claimed > 0) {
         fetchRuns(1);
@@ -208,7 +216,6 @@ export default function ProfileClient() {
     }
   };
 
-
   const handleDeleteMany = async (hashes: string[]) => {
     try {
       const res = await fetch(`${API_BASE}/api/auth/runs/bulk-delete`, {
@@ -221,7 +228,10 @@ export default function ProfileClient() {
         toast(t("Failed to delete run"), "error");
         return;
       }
-      const body = (await res.json()) as { deleted: string[]; failed: Record<string, string> };
+      const body = (await res.json()) as {
+        deleted: string[];
+        failed: Record<string, string>;
+      };
       const removed = new Set(body.deleted);
       if (removed.size > 0) {
         // Count what this update actually drops rather than what the server
@@ -230,15 +240,25 @@ export default function ProfileClient() {
         setRuns((prev) => {
           const next = prev.filter((r) => !removed.has(r.run_hash));
           const dropped = prev.length - next.length;
-          if (dropped > 0) setTotal((current) => Math.max(0, current - dropped));
+          if (dropped > 0)
+            setTotal((current) => Math.max(0, current - dropped));
           return next;
         });
       }
       const failedCount = Object.keys(body.failed ?? {}).length;
       if (failedCount > 0) {
-        toast(t("Removed {n} runs, {failed} could not be removed", { n: removed.size, failed: failedCount }), "error");
+        toast(
+          t("Removed {n} runs, {failed} could not be removed", {
+            n: removed.size,
+            failed: failedCount,
+          }),
+          "error",
+        );
       } else {
-        toast(t("Removed {n} runs from your profile", { n: removed.size }), "success");
+        toast(
+          t("Removed {n} runs from your profile", { n: removed.size }),
+          "success",
+        );
       }
     } catch {
       toast(t("Network error"), "error");
@@ -256,8 +276,14 @@ export default function ProfileClient() {
   if (!user) {
     return (
       <div className="max-w-5xl mx-auto px-4 py-12 text-center">
-        <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-4">{t("Sign in to view your profile")}</h1>
-        <p className="text-[var(--text-secondary)]">{t("Connect your Steam or Discord account to see your runs and stats.")}</p>
+        <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-4">
+          {t("Sign in to view your profile")}
+        </h1>
+        <p className="text-[var(--text-secondary)]">
+          {t(
+            "Connect your Steam or Discord account to see your runs and stats.",
+          )}
+        </p>
       </div>
     );
   }
@@ -267,7 +293,9 @@ export default function ProfileClient() {
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
       <h1 className="text-2xl font-bold text-[var(--text-primary)]">
-        {user.username ? `${user.username}'s ${t("Profile")}` : t("Your Profile")}
+        {user.username
+          ? `${user.username}'s ${t("Profile")}`
+          : t("Your Profile")}
       </h1>
 
       {/* Stats (includes My Runs as a tab) */}
@@ -288,8 +316,14 @@ export default function ProfileClient() {
 
       {/* Claim Runs */}
       <section>
-        <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">{t("Claim Runs")}</h2>
-        <RunDropZone onFiles={(files) => handleUpload(files)} uploading={uploading} uploadProgress={uploadProgress} />
+        <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">
+          {t("Claim Runs")}
+        </h2>
+        <RunDropZone
+          onFiles={(files) => handleUpload(files)}
+          uploading={uploading}
+          uploadProgress={uploadProgress}
+        />
 
         {uploadResults && uploadResults.length > 0 && (
           <div className="mt-3 space-y-1 max-h-40 overflow-y-auto">
@@ -305,7 +339,9 @@ export default function ProfileClient() {
                 }`}
               >
                 <span className="truncate">{r.filename}</span>
-                <span className="shrink-0 ml-2">{r.status === "error" ? r.detail : r.status}</span>
+                <span className="shrink-0 ml-2">
+                  {r.status === "error" ? r.detail : r.status}
+                </span>
               </div>
             ))}
           </div>
@@ -317,11 +353,17 @@ export default function ProfileClient() {
         <section className="bg-[var(--bg-card)] rounded-lg border border-[var(--border-subtle)] p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0">
-              <h2 className="text-sm font-semibold text-[var(--text-primary)]">{t("Public profile")}</h2>
+              <h2 className="text-sm font-semibold text-[var(--text-primary)]">
+                {t("Public profile")}
+              </h2>
               <p className="text-xs text-[var(--text-muted)] mt-0.5">
                 {profilePrivate
-                  ? t("Your profile page is private. Your runs still appear on leaderboards.")
-                  : t("Anyone can view your stats and insights at your player page.")}
+                  ? t(
+                      "Your profile page is private. Your runs still appear on leaderboards.",
+                    )
+                  : t(
+                      "Anyone can view your stats and insights at your player page.",
+                    )}
               </p>
               {!profilePrivate && (
                 <Link
@@ -339,12 +381,13 @@ export default function ProfileClient() {
                 onChange={(e) => togglePrivacy(e.target.checked)}
                 className="accent-[var(--accent-gold)] w-4 h-4"
               />
-              <span className="text-sm text-[var(--text-secondary)]">{t("Private profile")}</span>
+              <span className="text-sm text-[var(--text-secondary)]">
+                {t("Private profile")}
+              </span>
             </label>
           </div>
         </section>
       )}
-
     </div>
   );
 }
