@@ -28,7 +28,11 @@ export default function CardHover({
       {children}
       <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-40 opacity-0 group-hover/cardhover:opacity-100 transition-opacity z-50">
         <img
-          src={failed && fallbackArt ? imageUrl(fallbackArt) : fullCardUrl(cardId.toLowerCase(), false, "stable", lang)}
+          src={
+            failed && fallbackArt
+              ? imageUrl(fallbackArt)
+              : fullCardUrl(cardId.toLowerCase(), false, "stable", lang)
+          }
           alt=""
           className="w-40 h-auto drop-shadow-[0_8px_24px_rgba(0,0,0,0.7)]"
           crossOrigin="anonymous"

@@ -8,7 +8,9 @@ import type { Stats } from "@/lib/api";
  * for the FAQPage JSON-LD so the rich-result eligibility and the on-page
  * content can never drift apart. Numbers come from the live `/api/stats`
  * payload, no hardcoded counts that go stale every patch. */
-function buildFaqs(stats: Stats | null): { question: string; answer: string }[] {
+function buildFaqs(
+  stats: Stats | null,
+): { question: string; answer: string }[] {
   const cards = stats?.cards ?? "hundreds of";
   const characters = stats?.characters ?? 5;
   const relics = stats?.relics ?? "hundreds of";
@@ -81,7 +83,15 @@ export default async function HomeFAQ({
               >
                 <summary>
                   {faq.question}
-                  <svg aria-hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg
+                    aria-hidden
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
                     <path d="M6 9l6 6 6-6" />
                   </svg>
                 </summary>

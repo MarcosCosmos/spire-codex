@@ -1,8 +1,22 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { captureIsComplete, combatCounts, hasMapPositions, isCombatKind, parseReplay, parseReplayLines, routeForAct, type BuyLine, type PlayLine, type ShopLine } from "./replay";
+import {
+  captureIsComplete,
+  combatCounts,
+  hasMapPositions,
+  isCombatKind,
+  parseReplay,
+  parseReplayLines,
+  routeForAct,
+  type BuyLine,
+  type PlayLine,
+  type ShopLine,
+} from "./replay";
 
-const JOURNAL = readFileSync(new URL("../../backend/tests/fixtures/real-replay.jsonl", import.meta.url), "utf-8");
+const JOURNAL = readFileSync(
+  new URL("../../backend/tests/fixtures/real-replay.jsonl", import.meta.url),
+  "utf-8",
+);
 
 function journal(records: Record<string, unknown>[]): string {
   return records.map((r) => JSON.stringify(r)).join("\n");
@@ -32,8 +46,15 @@ describe("parseReplay on the real journal", () => {
     expect(fighting.every((f) => isCombatKind(f.kind))).toBe(true);
     const all = model.floors.flatMap((f) => f.combats);
     expect(all).toHaveLength(6);
-    expect(all.reduce((n, c) => n + c.turns.filter((tn) => tn.side !== "start").length, 0)).toBe(76);
-    expect(all.every((c) => c.turns.filter((tn) => tn.side === "start").length <= 1)).toBe(true);
+    expect(
+      all.reduce(
+        (n, c) => n + c.turns.filter((tn) => tn.side !== "start").length,
+        0,
+      ),
+    ).toBe(76);
+    expect(
+      all.every((c) => c.turns.filter((tn) => tn.side === "start").length <= 1),
+    ).toBe(true);
     const last = all[all.length - 1];
     // The run's terminal reason is the run's, not this fight's.
     expect(last.endRecorded).toBe(false);
@@ -44,7 +65,11 @@ describe("parseReplay on the real journal", () => {
     // This recorder writes no result on combat_end, so every "Victory" the
     // viewer used to show for these fights was the default, not the journal.
     expect(first.result).toBeUndefined();
-    expect(first.turns.find((tn) => tn.side === "player")?.lines.some((l) => l.t === "play")).toBe(true);
+    expect(
+      first.turns
+        .find((tn) => tn.side === "player")
+        ?.lines.some((l) => l.t === "play"),
+    ).toBe(true);
   });
 
   it("pairs decisions with picks and marks unselectable options", () => {
@@ -54,10 +79,14 @@ describe("parseReplay on the real journal", () => {
     expect(transform.selectKind).toBe("transform");
     expect(transform.options).toHaveLength(21);
     expect(transform.options.filter((o) => !o.selectable)).toHaveLength(9);
-    expect(transform.options.filter((o) => o.chosen).map((o) => o.instanceId)).toEqual([5]);
+    expect(
+      transform.options.filter((o) => o.chosen).map((o) => o.instanceId),
+    ).toEqual([5]);
     const neow = all.find((d) => d.id === 1)!;
     expect(neow.eventId).toBe("NEOW");
-    expect(neow.options.find((o) => o.chosen)?.grantsRelic).toBe("SMALL_CAPSULE");
+    expect(neow.options.find((o) => o.chosen)?.grantsRelic).toBe(
+      "SMALL_CAPSULE",
+    );
     const rewards = all.filter((d) => d.source === "reward");
     expect(rewards).toHaveLength(5);
     for (const d of rewards) {
@@ -72,7 +101,9 @@ describe("parseReplay on the real journal", () => {
     const route = routeForAct(model, 1);
     expect(route).toHaveLength(17);
     expect(route.every((e) => e.coord === undefined)).toBe(true);
-    expect(route.map((e) => e.floor.floor)).toEqual(model.floors.filter((f) => f.act === 1).map((f) => f.floor));
+    expect(route.map((e) => e.floor.floor)).toEqual(
+      model.floors.filter((f) => f.act === 1).map((f) => f.floor),
+    );
     expect(hasMapPositions(model)).toBe(false);
   });
 
@@ -84,7 +115,15 @@ describe("parseReplay on the real journal", () => {
 });
 
 describe("parseReplay on the Regent journal (deck_c, end_turn, exact identity)", () => {
-  const model = parseReplay(readFileSync(new URL("../../backend/tests/fixtures/real-replay-regent.jsonl", import.meta.url), "utf-8"));
+  const model = parseReplay(
+    readFileSync(
+      new URL(
+        "../../backend/tests/fixtures/real-replay-regent.jsonl",
+        import.meta.url,
+      ),
+      "utf-8",
+    ),
+  );
 
   it("keeps the identity fields the backend matches on", () => {
     expect(model.header?.seed).toBe("FHM18MSNRX8V");
@@ -96,8 +135,12 @@ describe("parseReplay on the Regent journal (deck_c, end_turn, exact identity)",
 
   it("keeps end_turn lines inside their turn and deck ids on plays", () => {
     const first = model.floors.find((f) => f.combats.length)!.combats[0];
-    expect(first.turns.some((tn) => tn.lines.some((l) => l.t === "end_turn"))).toBe(true);
-    const play = first.turns[0].lines.find((l): l is PlayLine => l.t === "play")!;
+    expect(
+      first.turns.some((tn) => tn.lines.some((l) => l.t === "end_turn")),
+    ).toBe(true);
+    const play = first.turns[0].lines.find(
+      (l): l is PlayLine => l.t === "play",
+    )!;
     expect(play.deckC).toBe(7);
     // The last fight was interrupted by the death, so it carries no result.
     const lastFight = model.floors[model.floors.length - 1].combats[0];
@@ -115,33 +158,152 @@ describe("parseReplay on the Regent journal (deck_c, end_turn, exact identity)",
 
 describe("parseReplay on the records added after the first draft", () => {
   const journal = [
-    { t: "header", s: 0, ms: 1, floor: 0, act: 1, seed: "SEED", start_time: 1, character: "REGENT", starting_deck: [{ c: 1, id: "STRIKE_REGENT" }] },
-    { t: "room", s: 1, ms: 10, floor: 1, act: 1, kind: "merchant", coord: "1,0" },
+    {
+      t: "header",
+      s: 0,
+      ms: 1,
+      floor: 0,
+      act: 1,
+      seed: "SEED",
+      start_time: 1,
+      character: "REGENT",
+      starting_deck: [{ c: 1, id: "STRIKE_REGENT" }],
+    },
+    {
+      t: "room",
+      s: 1,
+      ms: 10,
+      floor: 1,
+      act: 1,
+      kind: "merchant",
+      coord: "1,0",
+    },
     { t: "gold", s: 2, ms: 11, floor: 1, act: 1, gold: 140 },
     {
-      t: "shop", s: 3, ms: 12, floor: 1, act: 1, gold: 140, removal_cost: 75, removal_stocked: true,
+      t: "shop",
+      s: 3,
+      ms: 12,
+      floor: 1,
+      act: 1,
+      gold: 140,
+      removal_cost: 75,
+      removal_stocked: true,
       cards: [
-        { slot: 0, id: "FASTEN", cost: 87, stocked: true, sale: false, pool: "character" },
-        { slot: 1, id: "FASTEN", cost: 52, stocked: true, sale: true, pool: "character" },
+        {
+          slot: 0,
+          id: "FASTEN",
+          cost: 87,
+          stocked: true,
+          sale: false,
+          pool: "character",
+        },
+        {
+          slot: 1,
+          id: "FASTEN",
+          cost: 52,
+          stocked: true,
+          sale: true,
+          pool: "character",
+        },
       ],
-      relics: [{ slot: 0, id: "ANCHOR", cost: 150, stocked: true, sale: false }],
+      relics: [
+        { slot: 0, id: "ANCHOR", cost: 150, stocked: true, sale: false },
+      ],
       potions: [],
     },
-    { t: "buy", s: 4, ms: 20, floor: 1, act: 1, kind: "card", slot: 1, id: "FASTEN", cost_current: 52, cost_resource: "gold", gold_on_hand: 88 },
-    { t: "acquire", s: 5, ms: 21, floor: 1, act: 1, source: "shop", c: 40, id: "FASTEN" },
     {
-      t: "shop", s: 6, ms: 22, floor: 1, act: 1, gold: 88, removal_cost: 75, removal_stocked: true,
+      t: "buy",
+      s: 4,
+      ms: 20,
+      floor: 1,
+      act: 1,
+      kind: "card",
+      slot: 1,
+      id: "FASTEN",
+      cost_current: 52,
+      cost_resource: "gold",
+      gold_on_hand: 88,
+    },
+    {
+      t: "acquire",
+      s: 5,
+      ms: 21,
+      floor: 1,
+      act: 1,
+      source: "shop",
+      c: 40,
+      id: "FASTEN",
+    },
+    {
+      t: "shop",
+      s: 6,
+      ms: 22,
+      floor: 1,
+      act: 1,
+      gold: 88,
+      removal_cost: 75,
+      removal_stocked: true,
       cards: [
-        { slot: 0, id: "FASTEN", cost: 87, stocked: true, sale: false, pool: "character" },
-        { slot: 1, id: "FASTEN", cost: 52, stocked: false, sale: true, pool: "character" },
+        {
+          slot: 0,
+          id: "FASTEN",
+          cost: 87,
+          stocked: true,
+          sale: false,
+          pool: "character",
+        },
+        {
+          slot: 1,
+          id: "FASTEN",
+          cost: 52,
+          stocked: false,
+          sale: true,
+          pool: "character",
+        },
       ],
-      relics: [{ slot: 0, id: "ANCHOR", cost: 150, stocked: true, sale: false }],
+      relics: [
+        { slot: 0, id: "ANCHOR", cost: 150, stocked: true, sale: false },
+      ],
       potions: [],
     },
-    { t: "resume", s: 7, ms: 3, floor: 1, act: 1, reloads: 2, wall_clock: 1788671437, run_time: 4211.5, hp: 48, gold: 88, deck_size: 14 },
-    { t: "room", s: 8, ms: 500, floor: 2, act: 1, kind: "combat", id: "SLIMES_WEAK", coord: "1,1" },
+    {
+      t: "resume",
+      s: 7,
+      ms: 3,
+      floor: 1,
+      act: 1,
+      reloads: 2,
+      wall_clock: 1788671437,
+      run_time: 4211.5,
+      hp: 48,
+      gold: 88,
+      deck_size: 14,
+    },
+    {
+      t: "room",
+      s: 8,
+      ms: 500,
+      floor: 2,
+      act: 1,
+      kind: "combat",
+      id: "SLIMES_WEAK",
+      coord: "1,1",
+    },
     { t: "wibble", s: 9, ms: 501, floor: 2, act: 1, anything: true },
-    { t: "end", s: 10, ms: 900, floor: 2, act: 1, terminal_reason: "abandon", hp: 48, max_hp: 80, final_deck: [{ c: 1, id: "STRIKE_REGENT" }, { c: 40, id: "FASTEN" }] },
+    {
+      t: "end",
+      s: 10,
+      ms: 900,
+      floor: 2,
+      act: 1,
+      terminal_reason: "abandon",
+      hp: 48,
+      max_hp: 80,
+      final_deck: [
+        { c: 1, id: "STRIKE_REGENT" },
+        { c: 40, id: "FASTEN" },
+      ],
+    },
   ]
     .map((l) => JSON.stringify(l))
     .join("\n");
@@ -173,15 +335,46 @@ describe("parseReplay on the records added after the first draft", () => {
 });
 
 describe("parseReplay edge cases the reviewers named", () => {
-  const header = { t: "header", s: 0, ms: 1, floor: 0, act: 1, starting_deck: [{ c: 1, id: "STRIKE_REGENT" }, { c: 2, id: "DEFEND_REGENT" }] };
+  const header = {
+    t: "header",
+    s: 0,
+    ms: 1,
+    floor: 0,
+    act: 1,
+    starting_deck: [
+      { c: 1, id: "STRIKE_REGENT" },
+      { c: 2, id: "DEFEND_REGENT" },
+    ],
+  };
 
   it("pairs resolutions with decision id 0", () => {
     const model = parseReplay(
       journal([
         header,
         { t: "room", s: 1, floor: 1, act: 1, kind: "event", id: "NEOW" },
-        { t: "decision", s: 2, floor: 1, act: 1, decision_id: 0, decision_type: "event", source: "event", options: [{ option_index: 0, option_id: "A" }, { option_index: 1, option_id: "B" }] },
-        { t: "acquire", s: 3, floor: 1, act: 1, decision_id: 0, id: "STRIKE_REGENT", c: 9, option_index: 1 },
+        {
+          t: "decision",
+          s: 2,
+          floor: 1,
+          act: 1,
+          decision_id: 0,
+          decision_type: "event",
+          source: "event",
+          options: [
+            { option_index: 0, option_id: "A" },
+            { option_index: 1, option_id: "B" },
+          ],
+        },
+        {
+          t: "acquire",
+          s: 3,
+          floor: 1,
+          act: 1,
+          decision_id: 0,
+          id: "STRIKE_REGENT",
+          c: 9,
+          option_index: 1,
+        },
       ]),
     );
     const dec = model.floors[0].decisions[0];
@@ -194,8 +387,37 @@ describe("parseReplay edge cases the reviewers named", () => {
       journal([
         header,
         { t: "room", s: 1, floor: 1, act: 1, kind: "event", id: "X" },
-        { t: "decision", s: 2, floor: 1, act: 1, decision_id: 4, decision_type: "card_select", select_kind: "transform", source: "event", options: [{ option_index: 0, option_kind: "transform", option_id: "STRIKE_REGENT" }, { option_index: 1, option_kind: "transform", option_id: "DEFEND_REGENT" }] },
-        { t: "transform", s: 3, floor: 1, act: 1, decision_id: 4, from_id: "DEFEND_REGENT", to_id: "STRIKE_REGENT" },
+        {
+          t: "decision",
+          s: 2,
+          floor: 1,
+          act: 1,
+          decision_id: 4,
+          decision_type: "card_select",
+          select_kind: "transform",
+          source: "event",
+          options: [
+            {
+              option_index: 0,
+              option_kind: "transform",
+              option_id: "STRIKE_REGENT",
+            },
+            {
+              option_index: 1,
+              option_kind: "transform",
+              option_id: "DEFEND_REGENT",
+            },
+          ],
+        },
+        {
+          t: "transform",
+          s: 3,
+          floor: 1,
+          act: 1,
+          decision_id: 4,
+          from_id: "DEFEND_REGENT",
+          to_id: "STRIKE_REGENT",
+        },
       ]),
     );
     const dec = model.floors[0].decisions[0];
@@ -211,8 +433,40 @@ describe("parseReplay edge cases the reviewers named", () => {
       journal([
         header,
         { t: "room", s: 1, floor: 1, act: 1, kind: "event", id: "X" },
-        { t: "decision", s: 2, floor: 1, act: 1, decision_id: 4, decision_type: "card_select", select_kind: "transform", source: "event", options: [{ option_index: 0, option_kind: "transform", option_id: "STRIKE_REGENT", instance_id: 1 }, { option_index: 1, option_kind: "transform", option_id: "STRIKE_REGENT", instance_id: 2 }] },
-        { t: "transform", s: 3, floor: 1, act: 1, decision_id: 4, from_id: "STRIKE_REGENT", from_c: 2, to_id: "DEFEND_REGENT" },
+        {
+          t: "decision",
+          s: 2,
+          floor: 1,
+          act: 1,
+          decision_id: 4,
+          decision_type: "card_select",
+          select_kind: "transform",
+          source: "event",
+          options: [
+            {
+              option_index: 0,
+              option_kind: "transform",
+              option_id: "STRIKE_REGENT",
+              instance_id: 1,
+            },
+            {
+              option_index: 1,
+              option_kind: "transform",
+              option_id: "STRIKE_REGENT",
+              instance_id: 2,
+            },
+          ],
+        },
+        {
+          t: "transform",
+          s: 3,
+          floor: 1,
+          act: 1,
+          decision_id: 4,
+          from_id: "STRIKE_REGENT",
+          from_c: 2,
+          to_id: "DEFEND_REGENT",
+        },
       ]),
     );
     const dec = model.floors[0].decisions[0];
@@ -224,12 +478,46 @@ describe("parseReplay edge cases the reviewers named", () => {
     const model = parseReplay(
       journal([
         header,
-        { t: "map", s: 1, floor: 0, act: 1, boss: "B1", boss_coord: "1,3", nodes: [{ coord: "1,1", kind: "monster", children: ["1,2"] }, { coord: "1,2", kind: "elite", children: [] }] },
+        {
+          t: "map",
+          s: 1,
+          floor: 0,
+          act: 1,
+          boss: "B1",
+          boss_coord: "1,3",
+          nodes: [
+            { coord: "1,1", kind: "monster", children: ["1,2"] },
+            { coord: "1,2", kind: "elite", children: [] },
+          ],
+        },
         { t: "room", s: 2, floor: 1, act: 1, kind: "event", id: "NEOW" },
-        { t: "room", s: 3, floor: 2, act: 1, kind: "combat", id: "M", coord: "1,1" },
+        {
+          t: "room",
+          s: 3,
+          floor: 2,
+          act: 1,
+          kind: "combat",
+          id: "M",
+          coord: "1,1",
+        },
         { t: "act", s: 4, floor: 3, act: 2, name: "HIVE" },
-        { t: "map", s: 5, floor: 3, act: 2, boss: "B2", nodes: [{ coord: "0,1", kind: "event", children: [] }] },
-        { t: "room", s: 6, floor: 3, act: 2, kind: "event", id: "CURSED_TOME", coord: "0,1" },
+        {
+          t: "map",
+          s: 5,
+          floor: 3,
+          act: 2,
+          boss: "B2",
+          nodes: [{ coord: "0,1", kind: "event", children: [] }],
+        },
+        {
+          t: "room",
+          s: 6,
+          floor: 3,
+          act: 2,
+          kind: "event",
+          id: "CURSED_TOME",
+          coord: "0,1",
+        },
       ]),
     );
     // The recorder placed the boss, so it stays. Nothing else is added.
@@ -248,8 +536,22 @@ describe("parseReplay edge cases the reviewers named", () => {
     const model = parseReplay(
       journal([
         header,
-        { t: "map", s: 1, floor: 0, act: 1, nodes: [{ coord: "0,0", kind: "monster", children: [] }] },
-        { t: "room", s: 2, floor: 1, act: 1, kind: "combat", id: "SOMETHING_BOSS", coord: "0,0" },
+        {
+          t: "map",
+          s: 1,
+          floor: 0,
+          act: 1,
+          nodes: [{ coord: "0,0", kind: "monster", children: [] }],
+        },
+        {
+          t: "room",
+          s: 2,
+          floor: 1,
+          act: 1,
+          kind: "combat",
+          id: "SOMETHING_BOSS",
+          coord: "0,0",
+        },
       ]),
     );
     expect(model.maps[1].boss).toBeUndefined();
@@ -259,8 +561,25 @@ describe("parseReplay edge cases the reviewers named", () => {
     const model = parseReplay(
       journal([
         header,
-        { t: "map", s: 1, floor: 0, act: 1, nodes: [{ coord: "0,0", kind: "monster", children: ["0,1"] }, { coord: "0,1", kind: "monster", children: [] }] },
-        { t: "room", s: 2, floor: 1, act: 1, kind: "combat", id: "A", coord: "9,9" },
+        {
+          t: "map",
+          s: 1,
+          floor: 0,
+          act: 1,
+          nodes: [
+            { coord: "0,0", kind: "monster", children: ["0,1"] },
+            { coord: "0,1", kind: "monster", children: [] },
+          ],
+        },
+        {
+          t: "room",
+          s: 2,
+          floor: 1,
+          act: 1,
+          kind: "combat",
+          id: "A",
+          coord: "9,9",
+        },
       ]),
     );
     const [entry] = routeForAct(model, 1);
@@ -272,10 +591,36 @@ describe("parseReplay edge cases the reviewers named", () => {
     const model = parseReplay(
       journal([
         header,
-        { t: "map", s: 1, floor: 0, act: 1, nodes: [{ coord: "0,0", kind: "monster", children: ["0,1"] }, { coord: "0,1", kind: "monster", children: ["0,2"] }, { coord: "0,2", kind: "monster", children: [] }] },
-        { t: "room", s: 2, floor: 1, act: 1, kind: "combat", id: "A", coord: "0,0" },
+        {
+          t: "map",
+          s: 1,
+          floor: 0,
+          act: 1,
+          nodes: [
+            { coord: "0,0", kind: "monster", children: ["0,1"] },
+            { coord: "0,1", kind: "monster", children: ["0,2"] },
+            { coord: "0,2", kind: "monster", children: [] },
+          ],
+        },
+        {
+          t: "room",
+          s: 2,
+          floor: 1,
+          act: 1,
+          kind: "combat",
+          id: "A",
+          coord: "0,0",
+        },
         { t: "room", s: 3, floor: 2, act: 1, kind: "combat", id: "B" },
-        { t: "room", s: 4, floor: 3, act: 1, kind: "combat", id: "C", coord: "0,2" },
+        {
+          t: "room",
+          s: 4,
+          floor: 3,
+          act: 1,
+          kind: "combat",
+          id: "C",
+          coord: "0,2",
+        },
       ]),
     );
     const route = routeForAct(model, 1);
@@ -288,9 +633,25 @@ describe("parseReplay edge cases the reviewers named", () => {
     const model = parseReplay(
       journal([
         header,
-        { t: "map", s: 1, floor: 0, act: 1, nodes: [{ coord: "0,0", kind: "burly_monster", children: [] }, { coord: "1,0", kind: "shop", children: [] }] },
+        {
+          t: "map",
+          s: 1,
+          floor: 0,
+          act: 1,
+          nodes: [
+            { coord: "0,0", kind: "burly_monster", children: [] },
+            { coord: "1,0", kind: "shop", children: [] },
+          ],
+        },
         { t: "room", s: 2, floor: 1, act: 1, kind: "combat", id: "BIG" },
-        { t: "combat_start", s: 3, floor: 1, act: 1, encounter: "BIG", enemies: [] },
+        {
+          t: "combat_start",
+          s: 3,
+          floor: 1,
+          act: 1,
+          encounter: "BIG",
+          enemies: [],
+        },
         { t: "turn", s: 4, floor: 1, act: 1, n: 0, side: "player" },
         { t: "combat_end", s: 5, floor: 1, act: 1, turns: 1, hp: 41 },
         { t: "resume", s: 6, floor: 1, act: 1, reloads: 1, hp: 35, gold: 12 },
@@ -306,7 +667,11 @@ describe("parseReplay edge cases the reviewers named", () => {
   });
 
   it("counts malformed interior lines but tolerates a torn tail", () => {
-    const text = journal([header, { t: "room", s: 1, floor: 1, act: 1, kind: "event" }]) + "\n{not json\n" + JSON.stringify({ t: "gold", s: 2, floor: 1, act: 1, gold: 5 }) + "\n{\"t\":\"hp\",\"s\":3,\"h";
+    const text =
+      journal([header, { t: "room", s: 1, floor: 1, act: 1, kind: "event" }]) +
+      "\n{not json\n" +
+      JSON.stringify({ t: "gold", s: 2, floor: 1, act: 1, gold: 5 }) +
+      '\n{"t":"hp","s":3,"h';
     const parsed = parseReplayLines(text);
     expect(parsed.malformed).toBe(1);
     expect(parsed.lines).toHaveLength(3);
@@ -318,8 +683,32 @@ describe("parseReplay edge cases the reviewers named", () => {
       journal([
         header,
         { t: "room", s: 1, floor: 1, act: 1, kind: "merchant" },
-        { t: "decision", s: 2, floor: 1, act: 1, decision_id: 7, decision_type: "shop", source: "shop", options: [{ option_index: 0, option_kind: "card", option_id: "FASTEN" }, { option_index: 1, option_kind: "card", option_id: "FASTEN" }] },
-        { t: "buy", s: 3, floor: 1, act: 1, decision_id: 7, kind: "card", slot: 1, id: "FASTEN", cost_current: 52, cost_resource: "gold", gold_on_hand: 88 },
+        {
+          t: "decision",
+          s: 2,
+          floor: 1,
+          act: 1,
+          decision_id: 7,
+          decision_type: "shop",
+          source: "shop",
+          options: [
+            { option_index: 0, option_kind: "card", option_id: "FASTEN" },
+            { option_index: 1, option_kind: "card", option_id: "FASTEN" },
+          ],
+        },
+        {
+          t: "buy",
+          s: 3,
+          floor: 1,
+          act: 1,
+          decision_id: 7,
+          kind: "card",
+          slot: 1,
+          id: "FASTEN",
+          cost_current: 52,
+          cost_resource: "gold",
+          gold_on_hand: 88,
+        },
       ]),
     );
     const dec = model.floors[0].decisions[0];
@@ -328,7 +717,13 @@ describe("parseReplay edge cases the reviewers named", () => {
   });
 
   it("rejects partial coordinates", () => {
-    const model = parseReplay(journal([header, { t: "room", s: 1, floor: 1, act: 1, kind: "event", coord: "3" }, { t: "room", s: 2, floor: 2, act: 1, kind: "event", coord: "3,4,5" }]));
+    const model = parseReplay(
+      journal([
+        header,
+        { t: "room", s: 1, floor: 1, act: 1, kind: "event", coord: "3" },
+        { t: "room", s: 2, floor: 2, act: 1, kind: "event", coord: "3,4,5" },
+      ]),
+    );
     expect(model.floors.map((f) => f.coord)).toEqual([undefined, undefined]);
   });
 });
@@ -341,16 +736,36 @@ describe("the parser never invents a fact the journal did not record", () => {
         { t: "room", s: 1, floor: 1, kind: "monster" },
         // Two decisions, neither identified. Defaulting both to 0 used to make
         // the second overwrite the first and swallow the outcome below.
-        { t: "decision", s: 2, floor: 1, decision_type: "card_reward", options: [{ option_id: "STRIKE" }] },
-        { t: "decision", s: 3, floor: 1, decision_type: "card_reward", options: [{ option_id: "DEFEND" }] },
-        { t: "outcome", s: 4, floor: 1, outcome: "chosen", option_id: "STRIKE" },
+        {
+          t: "decision",
+          s: 2,
+          floor: 1,
+          decision_type: "card_reward",
+          options: [{ option_id: "STRIKE" }],
+        },
+        {
+          t: "decision",
+          s: 3,
+          floor: 1,
+          decision_type: "card_reward",
+          options: [{ option_id: "DEFEND" }],
+        },
+        {
+          t: "outcome",
+          s: 4,
+          floor: 1,
+          outcome: "chosen",
+          option_id: "STRIKE",
+        },
       ]),
     );
     const [floor] = model.floors;
     expect(floor.decisions).toHaveLength(2);
     expect(floor.decisions.map((d) => d.id)).toEqual([undefined, undefined]);
     // An outcome with no decision id attaches to nothing rather than the wrong one.
-    expect(floor.decisions.every((d) => d.options.every((o) => !o.chosen))).toBe(true);
+    expect(
+      floor.decisions.every((d) => d.options.every((o) => !o.chosen)),
+    ).toBe(true);
   });
 
   it("keeps a real decision id of zero", () => {
@@ -358,8 +773,22 @@ describe("the parser never invents a fact the journal did not record", () => {
       journal([
         { t: "header", s: 0 },
         { t: "room", s: 1, floor: 1, kind: "monster" },
-        { t: "decision", s: 2, floor: 1, decision_id: 0, decision_type: "card_reward", options: [{ option_id: "STRIKE" }] },
-        { t: "outcome", s: 3, floor: 1, decision_id: 0, outcome: "chosen", option_id: "STRIKE" },
+        {
+          t: "decision",
+          s: 2,
+          floor: 1,
+          decision_id: 0,
+          decision_type: "card_reward",
+          options: [{ option_id: "STRIKE" }],
+        },
+        {
+          t: "outcome",
+          s: 3,
+          floor: 1,
+          decision_id: 0,
+          outcome: "chosen",
+          option_id: "STRIKE",
+        },
       ]),
     );
     const [decision] = model.floors[0].decisions;
@@ -378,7 +807,11 @@ describe("the parser never invents a fact the journal did not record", () => {
           floor: 1,
           decision_id: 1,
           decision_type: "card_reward",
-          options: [{ option_id: "A" }, { option_id: "B" }, { option_id: "C", presented: false }],
+          options: [
+            { option_id: "A" },
+            { option_id: "B" },
+            { option_id: "C", presented: false },
+          ],
         },
       ]),
     );
@@ -393,7 +826,15 @@ describe("the parser never invents a fact the journal did not record", () => {
       journal([
         { t: "header", s: 0 },
         { t: "room", s: 1, floor: 1, kind: "monster" },
-        { t: "decision", s: 2, floor: 1, decision_id: 1, n_presented: 2, n_selectable: 1, options: [{ option_id: "A" }] },
+        {
+          t: "decision",
+          s: 2,
+          floor: 1,
+          decision_id: 1,
+          n_presented: 2,
+          n_selectable: 1,
+          options: [{ option_id: "A" }],
+        },
       ]),
     );
     expect(model.floors[0].decisions[0].nPresented).toBe(2);
@@ -405,11 +846,26 @@ describe("the parser never invents a fact the journal did not record", () => {
       journal([
         { t: "header", s: 0 },
         { t: "room", s: 1, floor: 1, kind: "monster" },
-        { t: "decision", s: 2, floor: 1, decision_id: 1.5, options: [{ option_id: "A" }] },
-        { t: "decision", s: 3, floor: 1, decision_id: "7", options: [{ option_id: "B" }] },
+        {
+          t: "decision",
+          s: 2,
+          floor: 1,
+          decision_id: 1.5,
+          options: [{ option_id: "A" }],
+        },
+        {
+          t: "decision",
+          s: 3,
+          floor: 1,
+          decision_id: "7",
+          options: [{ option_id: "B" }],
+        },
       ]),
     );
-    expect(model.floors[0].decisions.map((d) => d.id)).toEqual([undefined, undefined]);
+    expect(model.floors[0].decisions.map((d) => d.id)).toEqual([
+      undefined,
+      undefined,
+    ]);
   });
 
   it("keeps an option in its recorded position when a neighbour is malformed", () => {
@@ -417,8 +873,21 @@ describe("the parser never invents a fact the journal did not record", () => {
       journal([
         { t: "header", s: 0 },
         { t: "room", s: 1, floor: 1, kind: "monster" },
-        { t: "decision", s: 2, floor: 1, decision_id: 1, options: [null, { option_id: "B" }] },
-        { t: "outcome", s: 3, floor: 1, decision_id: 1, outcome: "chosen", option_index: 1 },
+        {
+          t: "decision",
+          s: 2,
+          floor: 1,
+          decision_id: 1,
+          options: [null, { option_id: "B" }],
+        },
+        {
+          t: "outcome",
+          s: 3,
+          floor: 1,
+          decision_id: 1,
+          outcome: "chosen",
+          option_index: 1,
+        },
       ]),
     );
     const [decision] = model.floors[0].decisions;
@@ -431,7 +900,15 @@ describe("the parser never invents a fact the journal did not record", () => {
     const model = parseReplay(
       journal([
         { t: "header", s: 0 },
-        { t: "map", s: 1, act: 1, nodes: [{ coord: "0,0", kind: "monster", children: ["0,1"] }, { coord: "0,1", kind: "monster", children: [] }] },
+        {
+          t: "map",
+          s: 1,
+          act: 1,
+          nodes: [
+            { coord: "0,0", kind: "monster", children: ["0,1"] },
+            { coord: "0,1", kind: "monster", children: [] },
+          ],
+        },
         { t: "room", s: 2, floor: 1, act: 1, kind: "constructor" },
         { t: "room", s: 3, floor: 2, act: 1, kind: "__proto__" },
       ]),
@@ -441,15 +918,47 @@ describe("the parser never invents a fact the journal did not record", () => {
 });
 
 describe("the parser only marks a pick the journal actually identified", () => {
-  const header = { t: "header", s: 0, ms: 1, floor: 0, act: 1, replay_version: 2, starting_deck: [] };
+  const header = {
+    t: "header",
+    s: 0,
+    ms: 1,
+    floor: 0,
+    act: 1,
+    replay_version: 2,
+    starting_deck: [],
+  };
   const room = { t: "room", s: 1, floor: 1, act: 1, kind: "event", id: "X" };
   const twoOfAKind = {
-    t: "decision", s: 2, floor: 1, act: 1, decision_id: 1, decision_type: "card_reward", source: "reward",
-    options: [{ option_index: 0, option_kind: "card", option_id: "STRIKE" }, { option_index: 1, option_kind: "card", option_id: "STRIKE" }],
+    t: "decision",
+    s: 2,
+    floor: 1,
+    act: 1,
+    decision_id: 1,
+    decision_type: "card_reward",
+    source: "reward",
+    options: [
+      { option_index: 0, option_kind: "card", option_id: "STRIKE" },
+      { option_index: 1, option_kind: "card", option_id: "STRIKE" },
+    ],
   };
 
   it("marks neither of two identical offers from an acquisition that only names the card", () => {
-    const model = parseReplay(journal([header, room, twoOfAKind, { t: "acquire", s: 3, floor: 1, act: 1, decision_id: 1, id: "STRIKE", c: 40 }]));
+    const model = parseReplay(
+      journal([
+        header,
+        room,
+        twoOfAKind,
+        {
+          t: "acquire",
+          s: 3,
+          floor: 1,
+          act: 1,
+          decision_id: 1,
+          id: "STRIKE",
+          c: 40,
+        },
+      ]),
+    );
     const dec = model.floors[0].decisions[0];
     expect(dec.options.map((o) => o.chosen)).toEqual([false, false]);
     expect(dec.selectionStatus).toBe("unknown");
@@ -458,7 +967,23 @@ describe("the parser only marks a pick the journal actually identified", () => {
   });
 
   it("uses an explicit option index to pick the right duplicate", () => {
-    const model = parseReplay(journal([header, room, twoOfAKind, { t: "acquire", s: 3, floor: 1, act: 1, decision_id: 1, id: "STRIKE", c: 40, option_index: 1 }]));
+    const model = parseReplay(
+      journal([
+        header,
+        room,
+        twoOfAKind,
+        {
+          t: "acquire",
+          s: 3,
+          floor: 1,
+          act: 1,
+          decision_id: 1,
+          id: "STRIKE",
+          c: 40,
+          option_index: 1,
+        },
+      ]),
+    );
     const dec = model.floors[0].decisions[0];
     expect(dec.options.map((o) => o.chosen)).toEqual([false, true]);
     expect(dec.selectionStatus).toBe("known");
@@ -467,9 +992,43 @@ describe("the parser only marks a pick the journal actually identified", () => {
   it("does not pick an option when two explicit identifiers disagree", () => {
     const model = parseReplay(
       journal([
-        header, room,
-        { t: "decision", s: 2, floor: 1, act: 1, decision_id: 1, decision_type: "card_select", select_kind: "remove", source: "shop", max_select: 1, options: [{ option_index: 0, option_kind: "remove", option_id: "STRIKE", instance_id: 10 }, { option_index: 1, option_kind: "remove", option_id: "STRIKE", instance_id: 11 }] },
-        { t: "remove", s: 3, floor: 1, act: 1, decision_id: 1, id: "STRIKE", c: 11, option_index: 0 },
+        header,
+        room,
+        {
+          t: "decision",
+          s: 2,
+          floor: 1,
+          act: 1,
+          decision_id: 1,
+          decision_type: "card_select",
+          select_kind: "remove",
+          source: "shop",
+          max_select: 1,
+          options: [
+            {
+              option_index: 0,
+              option_kind: "remove",
+              option_id: "STRIKE",
+              instance_id: 10,
+            },
+            {
+              option_index: 1,
+              option_kind: "remove",
+              option_id: "STRIKE",
+              instance_id: 11,
+            },
+          ],
+        },
+        {
+          t: "remove",
+          s: 3,
+          floor: 1,
+          act: 1,
+          decision_id: 1,
+          id: "STRIKE",
+          c: 11,
+          option_index: 0,
+        },
       ]),
     );
     const dec = model.floors[0].decisions[0];
@@ -480,9 +1039,34 @@ describe("the parser only marks a pick the journal actually identified", () => {
   it("keeps both picks of a recorded multi-select", () => {
     const model = parseReplay(
       journal([
-        header, room,
-        { t: "decision", s: 2, floor: 1, act: 1, decision_id: 1, decision_type: "deck_select", source: "event", min_select: 2, max_select: 2, options: [{ option_index: 0, option_id: "A" }, { option_index: 1, option_id: "B" }, { option_index: 2, option_id: "C" }] },
-        { t: "outcome", s: 3, floor: 1, act: 1, decision_id: 1, decision_type: "deck_select", outcome: "chosen", selected_option_indices: [0, 2] },
+        header,
+        room,
+        {
+          t: "decision",
+          s: 2,
+          floor: 1,
+          act: 1,
+          decision_id: 1,
+          decision_type: "deck_select",
+          source: "event",
+          min_select: 2,
+          max_select: 2,
+          options: [
+            { option_index: 0, option_id: "A" },
+            { option_index: 1, option_id: "B" },
+            { option_index: 2, option_id: "C" },
+          ],
+        },
+        {
+          t: "outcome",
+          s: 3,
+          floor: 1,
+          act: 1,
+          decision_id: 1,
+          decision_type: "deck_select",
+          outcome: "chosen",
+          selected_option_indices: [0, 2],
+        },
       ]),
     );
     const dec = model.floors[0].decisions[0];
@@ -493,9 +1077,30 @@ describe("the parser only marks a pick the journal actually identified", () => {
   it("reads an empty selection list as a recorded decline, not a missing record", () => {
     const model = parseReplay(
       journal([
-        header, room,
-        { t: "decision", s: 2, floor: 1, act: 1, decision_id: 1, decision_type: "deck_select", source: "event", max_select: 2, decline_available: true, options: [{ option_index: 0, option_id: "A" }] },
-        { t: "outcome", s: 3, floor: 1, act: 1, decision_id: 1, decision_type: "deck_select", outcome: "decline", selected_option_indices: [] },
+        header,
+        room,
+        {
+          t: "decision",
+          s: 2,
+          floor: 1,
+          act: 1,
+          decision_id: 1,
+          decision_type: "deck_select",
+          source: "event",
+          max_select: 2,
+          decline_available: true,
+          options: [{ option_index: 0, option_id: "A" }],
+        },
+        {
+          t: "outcome",
+          s: 3,
+          floor: 1,
+          act: 1,
+          decision_id: 1,
+          decision_type: "deck_select",
+          outcome: "decline",
+          selected_option_indices: [],
+        },
       ]),
     );
     const dec = model.floors[0].decisions[0];
@@ -504,7 +1109,21 @@ describe("the parser only marks a pick the journal actually identified", () => {
   });
 
   it("does not turn an unresolved decision into a confirmed choice", () => {
-    const model = parseReplay(journal([header, room, twoOfAKind, { t: "relic", s: 3, floor: 1, act: 1, decision_id: 1, id: "SOMETHING_ELSE" }]));
+    const model = parseReplay(
+      journal([
+        header,
+        room,
+        twoOfAKind,
+        {
+          t: "relic",
+          s: 3,
+          floor: 1,
+          act: 1,
+          decision_id: 1,
+          id: "SOMETHING_ELSE",
+        },
+      ]),
+    );
     const dec = model.floors[0].decisions[0];
     expect(dec.selectionStatus).toBe("unknown");
     expect(dec.outcome).toBeUndefined();
@@ -514,10 +1133,41 @@ describe("the parser only marks a pick the journal actually identified", () => {
   it("reports partial when one record identifies an option and another does not", () => {
     const model = parseReplay(
       journal([
-        header, room,
-        { t: "decision", s: 2, floor: 1, act: 1, decision_id: 1, decision_type: "card_reward", source: "reward", options: [{ option_index: 0, option_id: "A" }, { option_index: 1, option_id: "B" }] },
-        { t: "outcome", s: 3, floor: 1, act: 1, decision_id: 1, decision_type: "card_reward", outcome: "chosen", option_id: "B" },
-        { t: "acquire", s: 4, floor: 1, act: 1, decision_id: 1, id: "B", c: 40, option_index: 7 },
+        header,
+        room,
+        {
+          t: "decision",
+          s: 2,
+          floor: 1,
+          act: 1,
+          decision_id: 1,
+          decision_type: "card_reward",
+          source: "reward",
+          options: [
+            { option_index: 0, option_id: "A" },
+            { option_index: 1, option_id: "B" },
+          ],
+        },
+        {
+          t: "outcome",
+          s: 3,
+          floor: 1,
+          act: 1,
+          decision_id: 1,
+          decision_type: "card_reward",
+          outcome: "chosen",
+          option_id: "B",
+        },
+        {
+          t: "acquire",
+          s: 4,
+          floor: 1,
+          act: 1,
+          decision_id: 1,
+          id: "B",
+          c: 40,
+          option_index: 7,
+        },
       ]),
     );
     const dec = model.floors[0].decisions[0];
@@ -528,9 +1178,34 @@ describe("the parser only marks a pick the journal actually identified", () => {
   it("keeps a shop slot inside its own item kind", () => {
     const model = parseReplay(
       journal([
-        header, room,
-        { t: "decision", s: 2, floor: 1, act: 1, decision_id: 1, decision_type: "shop", source: "shop", max_select: 1, options: [{ option_index: 0, option_kind: "relic", option_id: "R0" }, { option_index: 1, option_kind: "card", option_id: "C0" }] },
-        { t: "buy", s: 3, floor: 1, act: 1, decision_id: 1, kind: "card", slot: 1, id: "C0", cost_current: 50, cost_resource: "gold" },
+        header,
+        room,
+        {
+          t: "decision",
+          s: 2,
+          floor: 1,
+          act: 1,
+          decision_id: 1,
+          decision_type: "shop",
+          source: "shop",
+          max_select: 1,
+          options: [
+            { option_index: 0, option_kind: "relic", option_id: "R0" },
+            { option_index: 1, option_kind: "card", option_id: "C0" },
+          ],
+        },
+        {
+          t: "buy",
+          s: 3,
+          floor: 1,
+          act: 1,
+          decision_id: 1,
+          kind: "card",
+          slot: 1,
+          id: "C0",
+          cost_current: 50,
+          cost_resource: "gold",
+        },
       ]),
     );
     const dec = model.floors[0].decisions[0];
@@ -539,11 +1214,21 @@ describe("the parser only marks a pick the journal actually identified", () => {
   });
 
   it("resolves the removed Strike by instance where the shop stocked five of them", () => {
-    const coords = readFileSync(new URL("../../backend/tests/fixtures/real-replay-coords.jsonl", import.meta.url), "utf-8");
+    const coords = readFileSync(
+      new URL(
+        "../../backend/tests/fixtures/real-replay-coords.jsonl",
+        import.meta.url,
+      ),
+      "utf-8",
+    );
     const model = parseReplay(coords);
-    const removal = model.floors.flatMap((f) => f.decisions).find((d) => d.paid?.kind === "removal_service");
+    const removal = model.floors
+      .flatMap((f) => f.decisions)
+      .find((d) => d.paid?.kind === "removal_service");
     expect(removal).toBeDefined();
-    expect(removal!.options.filter((o) => o.id === "STRIKE_IRONCLAD")).toHaveLength(5);
+    expect(
+      removal!.options.filter((o) => o.id === "STRIKE_IRONCLAD"),
+    ).toHaveLength(5);
     const picked = removal!.options.filter((o) => o.chosen);
     expect(picked).toHaveLength(1);
     expect(removal!.selectionStatus).toBe("known");
@@ -551,7 +1236,15 @@ describe("the parser only marks a pick the journal actually identified", () => {
 });
 
 describe("parseReplay on the journal that records map positions", () => {
-  const model = parseReplay(readFileSync(new URL("../../backend/tests/fixtures/real-replay-coords.jsonl", import.meta.url), "utf-8"));
+  const model = parseReplay(
+    readFileSync(
+      new URL(
+        "../../backend/tests/fixtures/real-replay-coords.jsonl",
+        import.meta.url,
+      ),
+      "utf-8",
+    ),
+  );
 
   it("places every floor from the recorder's own coordinates", () => {
     expect(hasMapPositions(model)).toBe(true);
@@ -564,9 +1257,14 @@ describe("parseReplay on the journal that records map positions", () => {
     // Each act's Ancient sits on row 0 and the recorded node grid starts at
     // row 1, so the recorder never emitted a node for it. The viewer used to
     // manufacture one, guess its column and wire it to every node on row 1.
-    const off = [1, 2].flatMap((act) => routeForAct(model, act)).filter((e) => e.offMap);
+    const off = [1, 2]
+      .flatMap((act) => routeForAct(model, act))
+      .filter((e) => e.offMap);
     expect(off.map((e) => e.floor.id)).toEqual(["NEOW", "TEZCATARA"]);
-    expect(off.map((e) => e.coord)).toEqual([[3, 0], [3, 0]]);
+    expect(off.map((e) => e.coord)).toEqual([
+      [3, 0],
+      [3, 0],
+    ]);
     expect(model.maps[1].nodes.some((n) => n[2] === "ancient")).toBe(false);
   });
 
@@ -578,20 +1276,87 @@ describe("parseReplay on the journal that records map positions", () => {
 });
 
 describe("a floor keeps every fight the journal recorded", () => {
-  const header = { t: "header", s: 0, ms: 1, floor: 0, act: 1, replay_version: 2, starting_deck: [] };
+  const header = {
+    t: "header",
+    s: 0,
+    ms: 1,
+    floor: 0,
+    act: 1,
+    replay_version: 2,
+    starting_deck: [],
+  };
   const room = { t: "room", s: 1, floor: 1, act: 1, kind: "combat", id: "A" };
 
   it("renders two complete fights on one floor instead of only the last", () => {
     const model = parseReplay(
       journal([
-        header, room,
-        { t: "combat_start", s: 2, floor: 1, act: 1, encounter: "ONE", enemies: [], combat_id: "1.1:AXEBOT" },
-        { t: "turn", s: 3, floor: 1, act: 1, n: 0, side: "player", combat_id: "1.1:AXEBOT" },
-        { t: "combat_end", s: 4, floor: 1, act: 1, turns: 1, hp: 50, result: "victory", combat_id: "1.1:AXEBOT" },
-        { t: "combat_start", s: 5, floor: 1, act: 1, encounter: "TWO", enemies: [], combat_id: "1.1:CHOMPER" },
-        { t: "turn", s: 6, floor: 1, act: 1, n: 0, side: "player", combat_id: "1.1:CHOMPER" },
-        { t: "turn", s: 7, floor: 1, act: 1, n: 1, side: "player", combat_id: "1.1:CHOMPER" },
-        { t: "combat_end", s: 8, floor: 1, act: 1, turns: 2, hp: 44, result: "victory", combat_id: "1.1:CHOMPER" },
+        header,
+        room,
+        {
+          t: "combat_start",
+          s: 2,
+          floor: 1,
+          act: 1,
+          encounter: "ONE",
+          enemies: [],
+          combat_id: "1.1:AXEBOT",
+        },
+        {
+          t: "turn",
+          s: 3,
+          floor: 1,
+          act: 1,
+          n: 0,
+          side: "player",
+          combat_id: "1.1:AXEBOT",
+        },
+        {
+          t: "combat_end",
+          s: 4,
+          floor: 1,
+          act: 1,
+          turns: 1,
+          hp: 50,
+          result: "victory",
+          combat_id: "1.1:AXEBOT",
+        },
+        {
+          t: "combat_start",
+          s: 5,
+          floor: 1,
+          act: 1,
+          encounter: "TWO",
+          enemies: [],
+          combat_id: "1.1:CHOMPER",
+        },
+        {
+          t: "turn",
+          s: 6,
+          floor: 1,
+          act: 1,
+          n: 0,
+          side: "player",
+          combat_id: "1.1:CHOMPER",
+        },
+        {
+          t: "turn",
+          s: 7,
+          floor: 1,
+          act: 1,
+          n: 1,
+          side: "player",
+          combat_id: "1.1:CHOMPER",
+        },
+        {
+          t: "combat_end",
+          s: 8,
+          floor: 1,
+          act: 1,
+          turns: 2,
+          hp: 44,
+          result: "victory",
+          combat_id: "1.1:CHOMPER",
+        },
       ]),
     );
     const [c1, c2] = model.floors[0].combats;
@@ -606,12 +1371,53 @@ describe("a floor keeps every fight the journal recorded", () => {
   it("keeps an unended fight when the next one starts, and leaks no turns between them", () => {
     const model = parseReplay(
       journal([
-        header, room,
-        { t: "combat_start", s: 2, floor: 1, act: 1, encounter: "ONE", enemies: [], combat_id: "1.1:AXEBOT" },
-        { t: "turn", s: 3, floor: 1, act: 1, n: 0, side: "player", combat_id: "1.1:AXEBOT" },
-        { t: "combat_start", s: 4, floor: 1, act: 1, encounter: "TWO", enemies: [], combat_id: "1.1:CHOMPER" },
-        { t: "turn", s: 5, floor: 1, act: 1, n: 0, side: "player", combat_id: "1.1:CHOMPER" },
-        { t: "combat_end", s: 6, floor: 1, act: 1, turns: 1, result: "victory", combat_id: "1.1:CHOMPER" },
+        header,
+        room,
+        {
+          t: "combat_start",
+          s: 2,
+          floor: 1,
+          act: 1,
+          encounter: "ONE",
+          enemies: [],
+          combat_id: "1.1:AXEBOT",
+        },
+        {
+          t: "turn",
+          s: 3,
+          floor: 1,
+          act: 1,
+          n: 0,
+          side: "player",
+          combat_id: "1.1:AXEBOT",
+        },
+        {
+          t: "combat_start",
+          s: 4,
+          floor: 1,
+          act: 1,
+          encounter: "TWO",
+          enemies: [],
+          combat_id: "1.1:CHOMPER",
+        },
+        {
+          t: "turn",
+          s: 5,
+          floor: 1,
+          act: 1,
+          n: 0,
+          side: "player",
+          combat_id: "1.1:CHOMPER",
+        },
+        {
+          t: "combat_end",
+          s: 6,
+          floor: 1,
+          act: 1,
+          turns: 1,
+          result: "victory",
+          combat_id: "1.1:CHOMPER",
+        },
       ]),
     );
     const [c1, c2] = model.floors[0].combats;
@@ -625,9 +1431,26 @@ describe("a floor keeps every fight the journal recorded", () => {
   it("does not fold a turn that names a different fight into the running one", () => {
     const model = parseReplay(
       journal([
-        header, room,
-        { t: "combat_start", s: 2, floor: 1, act: 1, encounter: "ONE", enemies: [], combat_id: "1.1:AXEBOT" },
-        { t: "turn", s: 3, floor: 1, act: 1, n: 0, side: "player", combat_id: "1.1:OTHER" },
+        header,
+        room,
+        {
+          t: "combat_start",
+          s: 2,
+          floor: 1,
+          act: 1,
+          encounter: "ONE",
+          enemies: [],
+          combat_id: "1.1:AXEBOT",
+        },
+        {
+          t: "turn",
+          s: 3,
+          floor: 1,
+          act: 1,
+          n: 0,
+          side: "player",
+          combat_id: "1.1:OTHER",
+        },
       ]),
     );
     expect(model.floors[0].combats[0].turns).toHaveLength(0);
@@ -635,7 +1458,19 @@ describe("a floor keeps every fight the journal recorded", () => {
 
   it("does not call a fight a win when the end reported no result", () => {
     const model = parseReplay(
-      journal([header, room, { t: "combat_start", s: 2, floor: 1, act: 1, encounter: "ONE", enemies: [] }, { t: "combat_end", s: 3, floor: 1, act: 1, turns: 3 }]),
+      journal([
+        header,
+        room,
+        {
+          t: "combat_start",
+          s: 2,
+          floor: 1,
+          act: 1,
+          encounter: "ONE",
+          enemies: [],
+        },
+        { t: "combat_end", s: 3, floor: 1, act: 1, turns: 3 },
+      ]),
     );
     const c = model.floors[0].combats[0];
     expect(c.endRecorded).toBe(true);
@@ -645,23 +1480,76 @@ describe("a floor keeps every fight the journal recorded", () => {
   it("does not merge two fights that share an encounter id", () => {
     const model = parseReplay(
       journal([
-        header, room,
-        { t: "combat_start", s: 2, floor: 1, act: 1, encounter: "SAME", enemies: [], combat_id: "1.1:AXEBOT" },
-        { t: "combat_end", s: 3, floor: 1, act: 1, turns: 1, combat_id: "1.1:AXEBOT" },
-        { t: "combat_start", s: 4, floor: 1, act: 1, encounter: "SAME", enemies: [], combat_id: "1.1:CHOMPER" },
-        { t: "combat_end", s: 5, floor: 1, act: 1, turns: 1, combat_id: "1.1:CHOMPER" },
+        header,
+        room,
+        {
+          t: "combat_start",
+          s: 2,
+          floor: 1,
+          act: 1,
+          encounter: "SAME",
+          enemies: [],
+          combat_id: "1.1:AXEBOT",
+        },
+        {
+          t: "combat_end",
+          s: 3,
+          floor: 1,
+          act: 1,
+          turns: 1,
+          combat_id: "1.1:AXEBOT",
+        },
+        {
+          t: "combat_start",
+          s: 4,
+          floor: 1,
+          act: 1,
+          encounter: "SAME",
+          enemies: [],
+          combat_id: "1.1:CHOMPER",
+        },
+        {
+          t: "combat_end",
+          s: 5,
+          floor: 1,
+          act: 1,
+          turns: 1,
+          combat_id: "1.1:CHOMPER",
+        },
       ]),
     );
     expect(model.floors[0].combats).toHaveLength(2);
-    expect(model.floors[0].combats.map((c) => c.combatId)).toEqual(["1.1:AXEBOT", "1.1:CHOMPER"]);
+    expect(model.floors[0].combats.map((c) => c.combatId)).toEqual([
+      "1.1:AXEBOT",
+      "1.1:CHOMPER",
+    ]);
   });
 
   it("keeps a reload attempt distinguishable from the fight it restarted", () => {
     const model = parseReplay(
       journal([
-        header, room,
-        { t: "combat_start", s: 2, floor: 1, act: 1, encounter: "ONE", enemies: [], combat_id: "1.1:AXEBOT", attempt_id: 0 },
-        { t: "combat_start", s: 3, floor: 1, act: 1, encounter: "ONE", enemies: [], combat_id: "1.1:AXEBOT", attempt_id: 1 },
+        header,
+        room,
+        {
+          t: "combat_start",
+          s: 2,
+          floor: 1,
+          act: 1,
+          encounter: "ONE",
+          enemies: [],
+          combat_id: "1.1:AXEBOT",
+          attempt_id: 0,
+        },
+        {
+          t: "combat_start",
+          s: 3,
+          floor: 1,
+          act: 1,
+          encounter: "ONE",
+          enemies: [],
+          combat_id: "1.1:AXEBOT",
+          attempt_id: 1,
+        },
       ]),
     );
     const [a, b] = model.floors[0].combats;
@@ -673,13 +1561,23 @@ describe("a floor keeps every fight the journal recorded", () => {
 describe("HP lost is reported only where the journal supports a total", () => {
   const v1 = { t: "header", s: 0, ms: 1, floor: 0, act: 1, starting_deck: [] };
   const v2 = { ...v1, replay_version: 2 };
-  const fight = (lines: Record<string, unknown>[], header: Record<string, unknown> = v1) =>
+  const fight = (
+    lines: Record<string, unknown>[],
+    header: Record<string, unknown> = v1,
+  ) =>
     parseReplay(
       journal([
         header,
         { t: "room", s: 1, floor: 1, act: 1, kind: "combat", id: "A" },
         { t: "hp", s: 2, floor: 1, act: 1, hp: 60, d: 0 },
-        { t: "combat_start", s: 3, floor: 1, act: 1, encounter: "E", enemies: [] },
+        {
+          t: "combat_start",
+          s: 3,
+          floor: 1,
+          act: 1,
+          encounter: "E",
+          enemies: [],
+        },
         ...lines,
       ]),
     ).floors[0].combats[0];
@@ -706,14 +1604,18 @@ describe("HP lost is reported only where the journal supports a total", () => {
   });
 
   it("records zero for a fight whose start and end HP agree with no changes", () => {
-    const c = fight([{ t: "combat_end", s: 4, floor: 1, act: 1, turns: 1, hp: 60 }]);
+    const c = fight([
+      { t: "combat_end", s: 4, floor: 1, act: 1, turns: 1, hp: 60 },
+    ]);
     expect(c.hpLossRecorded).toBe(0);
   });
 
   it("does not claim zero when the fight ended on different HP than it started", () => {
     // The old code reported 0 here: no in-combat hp line contradicted anything,
     // so a ten HP discrepancy passed as a measured zero.
-    const c = fight([{ t: "combat_end", s: 4, floor: 1, act: 1, turns: 1, hp: 50 }]);
+    const c = fight([
+      { t: "combat_end", s: 4, floor: 1, act: 1, turns: 1, hp: 50 },
+    ]);
     expect(c.hpLossRecorded).toBeUndefined();
     expect(c.hpLost).toBeUndefined();
   });
@@ -745,10 +1647,21 @@ describe("HP lost is reported only where the journal supports a total", () => {
   });
 
   it("takes the recorder's own total and does not derive one alongside it", () => {
-    const c = fight([
-      { t: "hp", s: 4, floor: 1, act: 1, hp: 53, d: -7 },
-      { t: "combat_end", s: 5, floor: 1, act: 1, turns: 1, hp: 53, hp_lost_total: 19 },
-    ], v2);
+    const c = fight(
+      [
+        { t: "hp", s: 4, floor: 1, act: 1, hp: 53, d: -7 },
+        {
+          t: "combat_end",
+          s: 5,
+          floor: 1,
+          act: 1,
+          turns: 1,
+          hp: 53,
+          hp_lost_total: 19,
+        },
+      ],
+      v2,
+    );
     expect(c.hpLost).toBe(19);
     expect(c.hpLossRecorded).toBeUndefined();
   });
@@ -756,10 +1669,13 @@ describe("HP lost is reported only where the journal supports a total", () => {
   it("leaves a version 2 fight unknown when the recorder sent no total", () => {
     // Below version 2 there is no total to miss. From version 2 its absence is
     // the recorder saying it could not supply one, so nothing stands in for it.
-    const c = fight([
-      { t: "hp", s: 4, floor: 1, act: 1, hp: 53, d: -7 },
-      { t: "combat_end", s: 5, floor: 1, act: 1, turns: 1, hp: 53 },
-    ], v2);
+    const c = fight(
+      [
+        { t: "hp", s: 4, floor: 1, act: 1, hp: 53, d: -7 },
+        { t: "combat_end", s: 5, floor: 1, act: 1, turns: 1, hp: 53 },
+      ],
+      v2,
+    );
     expect(c.hpLost).toBeUndefined();
     expect(c.hpLossRecorded).toBeUndefined();
   });
@@ -769,7 +1685,14 @@ describe("HP lost is reported only where the journal supports a total", () => {
       journal([
         v1,
         { t: "room", s: 1, floor: 1, act: 1, kind: "combat", id: "A" },
-        { t: "combat_start", s: 2, floor: 1, act: 1, encounter: "E", enemies: [] },
+        {
+          t: "combat_start",
+          s: 2,
+          floor: 1,
+          act: 1,
+          encounter: "E",
+          enemies: [],
+        },
         { t: "hp", s: 3, floor: 1, act: 1, hp: 53, d: -7 },
         { t: "combat_end", s: 4, floor: 1, act: 1, turns: 1, hp: 53 },
       ]),
@@ -786,15 +1709,60 @@ describe("HP lost is reported only where the journal supports a total", () => {
 });
 
 describe("selection records have to agree, not merely coexist", () => {
-  const header = { t: "header", s: 0, ms: 1, floor: 0, act: 1, replay_version: 2, starting_deck: [] };
+  const header = {
+    t: "header",
+    s: 0,
+    ms: 1,
+    floor: 0,
+    act: 1,
+    replay_version: 2,
+    starting_deck: [],
+  };
   const room = { t: "room", s: 1, floor: 1, act: 1, kind: "event", id: "X" };
   const twoInstances = {
-    t: "decision", s: 2, floor: 1, act: 1, decision_id: 1, decision_type: "deck_select", select_kind: "remove", source: "event", max_select: 2,
-    options: [{ option_index: 0, option_kind: "remove", option_id: "STRIKE", instance_id: 10 }, { option_index: 1, option_kind: "remove", option_id: "STRIKE", instance_id: 11 }],
+    t: "decision",
+    s: 2,
+    floor: 1,
+    act: 1,
+    decision_id: 1,
+    decision_type: "deck_select",
+    select_kind: "remove",
+    source: "event",
+    max_select: 2,
+    options: [
+      {
+        option_index: 0,
+        option_kind: "remove",
+        option_id: "STRIKE",
+        instance_id: 10,
+      },
+      {
+        option_index: 1,
+        option_kind: "remove",
+        option_id: "STRIKE",
+        instance_id: 11,
+      },
+    ],
   };
 
   it("calls one record naming two different options a conflict, even in a multi-select", () => {
-    const model = parseReplay(journal([header, room, twoInstances, { t: "remove", s: 3, floor: 1, act: 1, decision_id: 1, id: "STRIKE", c: 11, option_index: 0 }]));
+    const model = parseReplay(
+      journal([
+        header,
+        room,
+        twoInstances,
+        {
+          t: "remove",
+          s: 3,
+          floor: 1,
+          act: 1,
+          decision_id: 1,
+          id: "STRIKE",
+          c: 11,
+          option_index: 0,
+        },
+      ]),
+    );
     const dec = model.floors[0].decisions[0];
     expect(dec.selectionStatus).toBe("conflict");
     expect(dec.options.every((o) => !o.chosen)).toBe(true);
@@ -803,9 +1771,28 @@ describe("selection records have to agree, not merely coexist", () => {
   it("treats a recorded selection list as complete, so a pick outside it conflicts", () => {
     const model = parseReplay(
       journal([
-        header, room, twoInstances,
-        { t: "outcome", s: 3, floor: 1, act: 1, decision_id: 1, decision_type: "deck_select", outcome: "chosen", selected_option_indices: [0] },
-        { t: "remove", s: 4, floor: 1, act: 1, decision_id: 1, id: "STRIKE", c: 11 },
+        header,
+        room,
+        twoInstances,
+        {
+          t: "outcome",
+          s: 3,
+          floor: 1,
+          act: 1,
+          decision_id: 1,
+          decision_type: "deck_select",
+          outcome: "chosen",
+          selected_option_indices: [0],
+        },
+        {
+          t: "remove",
+          s: 4,
+          floor: 1,
+          act: 1,
+          decision_id: 1,
+          id: "STRIKE",
+          c: 11,
+        },
       ]),
     );
     const dec = model.floors[0].decisions[0];
@@ -816,10 +1803,38 @@ describe("selection records have to agree, not merely coexist", () => {
   it("conflicts when an explicit decline sits alongside an identified pick", () => {
     const model = parseReplay(
       journal([
-        header, room,
-        { t: "decision", s: 2, floor: 1, act: 1, decision_id: 1, decision_type: "card_reward", source: "reward", options: [{ option_index: 0, option_kind: "card", option_id: "A" }] },
-        { t: "outcome", s: 3, floor: 1, act: 1, decision_id: 1, decision_type: "card_reward", outcome: "skip", selected_option_indices: [] },
-        { t: "acquire", s: 4, floor: 1, act: 1, decision_id: 1, id: "A", c: 40, option_index: 0 },
+        header,
+        room,
+        {
+          t: "decision",
+          s: 2,
+          floor: 1,
+          act: 1,
+          decision_id: 1,
+          decision_type: "card_reward",
+          source: "reward",
+          options: [{ option_index: 0, option_kind: "card", option_id: "A" }],
+        },
+        {
+          t: "outcome",
+          s: 3,
+          floor: 1,
+          act: 1,
+          decision_id: 1,
+          decision_type: "card_reward",
+          outcome: "skip",
+          selected_option_indices: [],
+        },
+        {
+          t: "acquire",
+          s: 4,
+          floor: 1,
+          act: 1,
+          decision_id: 1,
+          id: "A",
+          c: 40,
+          option_index: 0,
+        },
       ]),
     );
     const dec = model.floors[0].decisions[0];
@@ -831,11 +1846,53 @@ describe("selection records have to agree, not merely coexist", () => {
   it("conflicts when more options are identified than the decision allowed", () => {
     const model = parseReplay(
       journal([
-        header, room,
-        { t: "decision", s: 2, floor: 1, act: 1, decision_id: 1, decision_type: "card_reward", source: "reward", max_select: 2, options: [{ option_index: 0, option_kind: "card", option_id: "A" }, { option_index: 1, option_kind: "card", option_id: "B" }, { option_index: 2, option_kind: "card", option_id: "C" }] },
-        { t: "acquire", s: 3, floor: 1, act: 1, decision_id: 1, id: "A", c: 40, option_index: 0 },
-        { t: "acquire", s: 4, floor: 1, act: 1, decision_id: 1, id: "B", c: 41, option_index: 1 },
-        { t: "acquire", s: 5, floor: 1, act: 1, decision_id: 1, id: "C", c: 42, option_index: 2 },
+        header,
+        room,
+        {
+          t: "decision",
+          s: 2,
+          floor: 1,
+          act: 1,
+          decision_id: 1,
+          decision_type: "card_reward",
+          source: "reward",
+          max_select: 2,
+          options: [
+            { option_index: 0, option_kind: "card", option_id: "A" },
+            { option_index: 1, option_kind: "card", option_id: "B" },
+            { option_index: 2, option_kind: "card", option_id: "C" },
+          ],
+        },
+        {
+          t: "acquire",
+          s: 3,
+          floor: 1,
+          act: 1,
+          decision_id: 1,
+          id: "A",
+          c: 40,
+          option_index: 0,
+        },
+        {
+          t: "acquire",
+          s: 4,
+          floor: 1,
+          act: 1,
+          decision_id: 1,
+          id: "B",
+          c: 41,
+          option_index: 1,
+        },
+        {
+          t: "acquire",
+          s: 5,
+          floor: 1,
+          act: 1,
+          decision_id: 1,
+          id: "C",
+          c: 42,
+          option_index: 2,
+        },
       ]),
     );
     expect(model.floors[0].decisions[0].selectionStatus).toBe("conflict");
@@ -844,12 +1901,43 @@ describe("selection records have to agree, not merely coexist", () => {
   it("does not call a multi-select settled while one acquisition stays unidentified", () => {
     const model = parseReplay(
       journal([
-        header, room,
-        { t: "decision", s: 2, floor: 1, act: 1, decision_id: 1, decision_type: "card_reward", source: "reward", max_select: 2, options: [{ option_index: 0, option_kind: "card", option_id: "A" }, { option_index: 1, option_kind: "card", option_id: "A" }] },
-        { t: "acquire", s: 3, floor: 1, act: 1, decision_id: 1, id: "A", c: 40, option_index: 0 },
+        header,
+        room,
+        {
+          t: "decision",
+          s: 2,
+          floor: 1,
+          act: 1,
+          decision_id: 1,
+          decision_type: "card_reward",
+          source: "reward",
+          max_select: 2,
+          options: [
+            { option_index: 0, option_kind: "card", option_id: "A" },
+            { option_index: 1, option_kind: "card", option_id: "A" },
+          ],
+        },
+        {
+          t: "acquire",
+          s: 3,
+          floor: 1,
+          act: 1,
+          decision_id: 1,
+          id: "A",
+          c: 40,
+          option_index: 0,
+        },
         // The recorder refuses to guess between duplicate offers, so this one
         // carries no index. It is still a pick that happened.
-        { t: "acquire", s: 4, floor: 1, act: 1, decision_id: 1, id: "A", c: 41 },
+        {
+          t: "acquire",
+          s: 4,
+          floor: 1,
+          act: 1,
+          decision_id: 1,
+          id: "A",
+          c: 41,
+        },
       ]),
     );
     const dec = model.floors[0].decisions[0];
@@ -860,9 +1948,28 @@ describe("selection records have to agree, not merely coexist", () => {
   it("reads an invalid selection list as unresolved rather than as a decline", () => {
     const model = parseReplay(
       journal([
-        header, room,
-        { t: "decision", s: 2, floor: 1, act: 1, decision_id: 1, decision_type: "card_reward", source: "reward", options: [{ option_index: 0, option_kind: "card", option_id: "A" }] },
-        { t: "outcome", s: 3, floor: 1, act: 1, decision_id: 1, decision_type: "card_reward", outcome: "chosen", selected_option_indices: [null] },
+        header,
+        room,
+        {
+          t: "decision",
+          s: 2,
+          floor: 1,
+          act: 1,
+          decision_id: 1,
+          decision_type: "card_reward",
+          source: "reward",
+          options: [{ option_index: 0, option_kind: "card", option_id: "A" }],
+        },
+        {
+          t: "outcome",
+          s: 3,
+          floor: 1,
+          act: 1,
+          decision_id: 1,
+          decision_type: "card_reward",
+          outcome: "chosen",
+          selected_option_indices: [null],
+        },
       ]),
     );
     const dec = model.floors[0].decisions[0];
@@ -873,10 +1980,49 @@ describe("selection records have to agree, not merely coexist", () => {
   it("keeps an event's card consequence from counting as a second choice", () => {
     const model = parseReplay(
       journal([
-        header, room,
-        { t: "decision", s: 2, floor: 1, act: 1, decision_id: 1, decision_type: "event", source: "event", event_id: "SAPPHIRE_SEED", options: [{ option_index: 0, option_kind: "event_option", option_id: "SEED.EAT" }, { option_index: 1, option_kind: "event_option", option_id: "SEED.PLANT" }] },
-        { t: "outcome", s: 3, floor: 1, act: 1, decision_id: 1, decision_type: "event", outcome: "chosen", option_id: "SEED.EAT" },
-        { t: "upgrade", s: 4, floor: 1, act: 1, decision_id: 1, id: "TAUNT", c: 26 },
+        header,
+        room,
+        {
+          t: "decision",
+          s: 2,
+          floor: 1,
+          act: 1,
+          decision_id: 1,
+          decision_type: "event",
+          source: "event",
+          event_id: "SAPPHIRE_SEED",
+          options: [
+            {
+              option_index: 0,
+              option_kind: "event_option",
+              option_id: "SEED.EAT",
+            },
+            {
+              option_index: 1,
+              option_kind: "event_option",
+              option_id: "SEED.PLANT",
+            },
+          ],
+        },
+        {
+          t: "outcome",
+          s: 3,
+          floor: 1,
+          act: 1,
+          decision_id: 1,
+          decision_type: "event",
+          outcome: "chosen",
+          option_id: "SEED.EAT",
+        },
+        {
+          t: "upgrade",
+          s: 4,
+          floor: 1,
+          act: 1,
+          decision_id: 1,
+          id: "TAUNT",
+          c: 26,
+        },
       ]),
     );
     const dec = model.floors[0].decisions[0];
@@ -886,15 +2032,42 @@ describe("selection records have to agree, not merely coexist", () => {
 });
 
 describe("a fight's identity decides what belongs to it", () => {
-  const header = { t: "header", s: 0, ms: 1, floor: 0, act: 1, replay_version: 2, starting_deck: [] };
+  const header = {
+    t: "header",
+    s: 0,
+    ms: 1,
+    floor: 0,
+    act: 1,
+    replay_version: 2,
+    starting_deck: [],
+  };
   const room = { t: "room", s: 1, floor: 1, act: 1, kind: "combat", id: "A" };
 
   it("does not let one attempt's end close another attempt of the same fight", () => {
     const model = parseReplay(
       journal([
-        header, room,
-        { t: "combat_start", s: 2, floor: 1, act: 1, encounter: "E", enemies: [], combat_id: "1.1:AXEBOT", attempt_id: 1 },
-        { t: "combat_end", s: 3, floor: 1, act: 1, turns: 4, result: "victory", combat_id: "1.1:AXEBOT", attempt_id: 0 },
+        header,
+        room,
+        {
+          t: "combat_start",
+          s: 2,
+          floor: 1,
+          act: 1,
+          encounter: "E",
+          enemies: [],
+          combat_id: "1.1:AXEBOT",
+          attempt_id: 1,
+        },
+        {
+          t: "combat_end",
+          s: 3,
+          floor: 1,
+          act: 1,
+          turns: 4,
+          result: "victory",
+          combat_id: "1.1:AXEBOT",
+          attempt_id: 0,
+        },
       ]),
     );
     const c = model.floors[0].combats[0];
@@ -905,10 +2078,35 @@ describe("a fight's identity decides what belongs to it", () => {
   it("detaches later untagged actions when a turn names a different fight", () => {
     const model = parseReplay(
       journal([
-        header, room,
-        { t: "combat_start", s: 2, floor: 1, act: 1, encounter: "E", enemies: [], combat_id: "1.1:AXEBOT" },
-        { t: "turn", s: 3, floor: 1, act: 1, n: 0, side: "player", combat_id: "1.1:AXEBOT" },
-        { t: "turn", s: 4, floor: 1, act: 1, n: 0, side: "player", combat_id: "1.1:OTHER" },
+        header,
+        room,
+        {
+          t: "combat_start",
+          s: 2,
+          floor: 1,
+          act: 1,
+          encounter: "E",
+          enemies: [],
+          combat_id: "1.1:AXEBOT",
+        },
+        {
+          t: "turn",
+          s: 3,
+          floor: 1,
+          act: 1,
+          n: 0,
+          side: "player",
+          combat_id: "1.1:AXEBOT",
+        },
+        {
+          t: "turn",
+          s: 4,
+          floor: 1,
+          act: 1,
+          n: 0,
+          side: "player",
+          combat_id: "1.1:OTHER",
+        },
         { t: "play", s: 5, floor: 1, act: 1, id: "STRIKE" },
         { t: "hp", s: 6, floor: 1, act: 1, hp: 30, d: -10 },
       ]),
@@ -927,8 +2125,25 @@ describe("the map places a coordinate the recorder named on its own", () => {
     const model = parseReplay(
       journal([
         { t: "header", s: 0, replay_version: 2 },
-        { t: "map", s: 1, act: 1, boss: "B", boss_coord: "3,16", ancient: "NEOW", ancient_coord: "3,0", nodes: [{ coord: "3,1", kind: "monster", children: [] }] },
-        { t: "room", s: 2, floor: 1, act: 1, kind: "event", id: "NEOW", coord: "3,0" },
+        {
+          t: "map",
+          s: 1,
+          act: 1,
+          boss: "B",
+          boss_coord: "3,16",
+          ancient: "NEOW",
+          ancient_coord: "3,0",
+          nodes: [{ coord: "3,1", kind: "monster", children: [] }],
+        },
+        {
+          t: "room",
+          s: 2,
+          floor: 1,
+          act: 1,
+          kind: "event",
+          id: "NEOW",
+          coord: "3,0",
+        },
       ]),
     );
     const map = model.maps[1];
@@ -945,16 +2160,36 @@ describe("the map places a coordinate the recorder named on its own", () => {
     const model = parseReplay(
       journal([
         { t: "header", s: 0, replay_version: 2 },
-        { t: "map", s: 1, act: 1, ancient: "NEOW", ancient_coord: "3,0", nodes: [{ coord: "3,0", kind: "ancient", children: ["2,1", "3,1"] }] },
+        {
+          t: "map",
+          s: 1,
+          act: 1,
+          ancient: "NEOW",
+          ancient_coord: "3,0",
+          nodes: [{ coord: "3,0", kind: "ancient", children: ["2,1", "3,1"] }],
+        },
       ]),
     );
-    expect(model.maps[1].nodes.filter((n) => n[0] === 3 && n[1] === 0)).toHaveLength(1);
-    expect(model.maps[1].edges).toEqual([[3, 0, 2, 1], [3, 0, 3, 1]]);
+    expect(
+      model.maps[1].nodes.filter((n) => n[0] === 3 && n[1] === 0),
+    ).toHaveLength(1);
+    expect(model.maps[1].edges).toEqual([
+      [3, 0, 2, 1],
+      [3, 0, 3, 1],
+    ]);
   });
 });
 
 describe("a reload restarts a fight, so only the last attempt happened", () => {
-  const header = { t: "header", s: 0, ms: 1, floor: 0, act: 1, replay_version: 2, starting_deck: [] };
+  const header = {
+    t: "header",
+    s: 0,
+    ms: 1,
+    floor: 0,
+    act: 1,
+    replay_version: 2,
+    starting_deck: [],
+  };
 
   // The shape the recorder produces for a mid-fight reload: two starts sharing
   // a combat id, the abandoned one with no end at all.
@@ -962,11 +2197,57 @@ describe("a reload restarts a fight, so only the last attempt happened", () => {
     header,
     { t: "room", s: 1, floor: 21, act: 2, kind: "combat", id: "AXEBOT" },
     { t: "hp", s: 2, floor: 21, act: 2, hp: 70, d: 0 },
-    { t: "combat_start", s: 3, floor: 21, act: 2, encounter: "AXEBOT", enemies: [], combat_id: "2.21:AXEBOT", attempt_id: 0 },
-    { t: "turn", s: 4, floor: 21, act: 2, n: 0, side: "player", combat_id: "2.21:AXEBOT", attempt_id: 0 },
-    { t: "combat_start", s: 5, floor: 21, act: 2, encounter: "AXEBOT", enemies: [], combat_id: "2.21:AXEBOT", attempt_id: 1 },
-    { t: "turn", s: 6, floor: 21, act: 2, n: 0, side: "player", combat_id: "2.21:AXEBOT", attempt_id: 1 },
-    { t: "combat_end", s: 7, floor: 21, act: 2, turns: 1, result: "victory", combat_id: "2.21:AXEBOT", attempt_id: 1, hp_lost_total: 12 },
+    {
+      t: "combat_start",
+      s: 3,
+      floor: 21,
+      act: 2,
+      encounter: "AXEBOT",
+      enemies: [],
+      combat_id: "2.21:AXEBOT",
+      attempt_id: 0,
+    },
+    {
+      t: "turn",
+      s: 4,
+      floor: 21,
+      act: 2,
+      n: 0,
+      side: "player",
+      combat_id: "2.21:AXEBOT",
+      attempt_id: 0,
+    },
+    {
+      t: "combat_start",
+      s: 5,
+      floor: 21,
+      act: 2,
+      encounter: "AXEBOT",
+      enemies: [],
+      combat_id: "2.21:AXEBOT",
+      attempt_id: 1,
+    },
+    {
+      t: "turn",
+      s: 6,
+      floor: 21,
+      act: 2,
+      n: 0,
+      side: "player",
+      combat_id: "2.21:AXEBOT",
+      attempt_id: 1,
+    },
+    {
+      t: "combat_end",
+      s: 7,
+      floor: 21,
+      act: 2,
+      turns: 1,
+      result: "victory",
+      combat_id: "2.21:AXEBOT",
+      attempt_id: 1,
+      hp_lost_total: 12,
+    },
   ]);
 
   it("keeps both attempts but marks the abandoned one as thrown away", () => {
@@ -978,7 +2259,9 @@ describe("a reload restarts a fight, so only the last attempt happened", () => {
   });
 
   it("counts the floor's HP loss once, from the attempt that stuck", () => {
-    const kept = parseReplay(reloaded).floors[0].combats.filter((c) => !c.supersededByRetry);
+    const kept = parseReplay(reloaded).floors[0].combats.filter(
+      (c) => !c.supersededByRetry,
+    );
     // Both attempts are real records. Adding them would charge the player for
     // damage the reload rolled back.
     expect(kept).toHaveLength(1);
@@ -990,10 +2273,48 @@ describe("a reload restarts a fight, so only the last attempt happened", () => {
       journal([
         header,
         { t: "room", s: 1, floor: 21, act: 2, kind: "combat", id: "AXEBOT" },
-        { t: "combat_start", s: 2, floor: 21, act: 2, encounter: "AXEBOT", enemies: [], combat_id: "2.21:AXEBOT", attempt_id: 0 },
-        { t: "combat_end", s: 3, floor: 21, act: 2, turns: 1, result: "victory", combat_id: "2.21:AXEBOT", attempt_id: 0, hp_lost_total: 5 },
-        { t: "combat_start", s: 4, floor: 21, act: 2, encounter: "CHOMPER", enemies: [], combat_id: "2.21:CHOMPER", attempt_id: 0 },
-        { t: "combat_end", s: 5, floor: 21, act: 2, turns: 1, result: "victory", combat_id: "2.21:CHOMPER", attempt_id: 0, hp_lost_total: 8 },
+        {
+          t: "combat_start",
+          s: 2,
+          floor: 21,
+          act: 2,
+          encounter: "AXEBOT",
+          enemies: [],
+          combat_id: "2.21:AXEBOT",
+          attempt_id: 0,
+        },
+        {
+          t: "combat_end",
+          s: 3,
+          floor: 21,
+          act: 2,
+          turns: 1,
+          result: "victory",
+          combat_id: "2.21:AXEBOT",
+          attempt_id: 0,
+          hp_lost_total: 5,
+        },
+        {
+          t: "combat_start",
+          s: 4,
+          floor: 21,
+          act: 2,
+          encounter: "CHOMPER",
+          enemies: [],
+          combat_id: "2.21:CHOMPER",
+          attempt_id: 0,
+        },
+        {
+          t: "combat_end",
+          s: 5,
+          floor: 21,
+          act: 2,
+          turns: 1,
+          result: "victory",
+          combat_id: "2.21:CHOMPER",
+          attempt_id: 0,
+          hp_lost_total: 8,
+        },
       ]),
     );
     const cs = model.floors[0].combats;
@@ -1003,13 +2324,39 @@ describe("a reload restarts a fight, so only the last attempt happened", () => {
 });
 
 describe("a reload either restarts a fight or carries on inside it", () => {
-  const header = { t: "header", s: 0, ms: 1, floor: 0, act: 1, replay_version: 2, starting_deck: [] };
+  const header = {
+    t: "header",
+    s: 0,
+    ms: 1,
+    floor: 0,
+    act: 1,
+    replay_version: 2,
+    starting_deck: [],
+  };
   const opening = [
     header,
     { t: "room", s: 1, floor: 21, act: 2, kind: "combat", id: "AXEBOT" },
     { t: "hp", s: 2, floor: 21, act: 2, hp: 70, d: 0 },
-    { t: "combat_start", s: 3, floor: 21, act: 2, encounter: "AXEBOT", enemies: [], combat_id: "2.21:AXEBOT", attempt_id: 0 },
-    { t: "turn", s: 4, floor: 21, act: 2, n: 1, side: "player", combat_id: "2.21:AXEBOT", attempt_id: 0 },
+    {
+      t: "combat_start",
+      s: 3,
+      floor: 21,
+      act: 2,
+      encounter: "AXEBOT",
+      enemies: [],
+      combat_id: "2.21:AXEBOT",
+      attempt_id: 0,
+    },
+    {
+      t: "turn",
+      s: 4,
+      floor: 21,
+      act: 2,
+      n: 1,
+      side: "player",
+      combat_id: "2.21:AXEBOT",
+      attempt_id: 0,
+    },
   ];
 
   it("undoes the earlier attempt when a fresh start follows the resume", () => {
@@ -1017,8 +2364,27 @@ describe("a reload either restarts a fight or carries on inside it", () => {
       journal([
         ...opening,
         { t: "resume", s: 5, floor: 21, act: 2, reloads: 1, hp: 70, gold: 100 },
-        { t: "combat_start", s: 6, floor: 21, act: 2, encounter: "AXEBOT", enemies: [], combat_id: "2.21:AXEBOT", attempt_id: 1 },
-        { t: "combat_end", s: 7, floor: 21, act: 2, turns: 2, result: "victory", combat_id: "2.21:AXEBOT", attempt_id: 1, hp_lost_total: 9 },
+        {
+          t: "combat_start",
+          s: 6,
+          floor: 21,
+          act: 2,
+          encounter: "AXEBOT",
+          enemies: [],
+          combat_id: "2.21:AXEBOT",
+          attempt_id: 1,
+        },
+        {
+          t: "combat_end",
+          s: 7,
+          floor: 21,
+          act: 2,
+          turns: 2,
+          result: "victory",
+          combat_id: "2.21:AXEBOT",
+          attempt_id: 1,
+          hp_lost_total: 9,
+        },
       ]),
     );
     const [first, second] = model.floors[0].combats;
@@ -1033,7 +2399,16 @@ describe("a reload either restarts a fight or carries on inside it", () => {
     const model = parseReplay(
       journal([
         ...opening,
-        { t: "turn", s: 5, floor: 21, act: 2, n: 7, side: "enemy", combat_id: "2.21:AXEBOT", attempt_id: 0 },
+        {
+          t: "turn",
+          s: 5,
+          floor: 21,
+          act: 2,
+          n: 7,
+          side: "enemy",
+          combat_id: "2.21:AXEBOT",
+          attempt_id: 0,
+        },
         { t: "resume", s: 6, floor: 21, act: 2, reloads: 1, hp: 26, gold: 100 },
         { t: "turn", s: 7, floor: 21, act: 2, n: 8, side: "player" },
         { t: "turn", s: 8, floor: 21, act: 2, n: 8, side: "enemy" },
@@ -1052,9 +2427,36 @@ describe("a reload either restarts a fight or carries on inside it", () => {
     const model = parseReplay(
       journal([
         ...opening,
-        { t: "resume", s: 5, floor: 21, act: 2, reloads: 1, hp: 26, gold: 100, combat_id: "2.21:AXEBOT" },
-        { t: "turn", s: 6, floor: 21, act: 2, n: 2, side: "player", combat_id: "2.21:AXEBOT", attempt_id: 1 },
-        { t: "combat_end", s: 7, floor: 21, act: 2, turns: 2, result: "victory", combat_id: "2.21:AXEBOT", attempt_id: 1 },
+        {
+          t: "resume",
+          s: 5,
+          floor: 21,
+          act: 2,
+          reloads: 1,
+          hp: 26,
+          gold: 100,
+          combat_id: "2.21:AXEBOT",
+        },
+        {
+          t: "turn",
+          s: 6,
+          floor: 21,
+          act: 2,
+          n: 2,
+          side: "player",
+          combat_id: "2.21:AXEBOT",
+          attempt_id: 1,
+        },
+        {
+          t: "combat_end",
+          s: 7,
+          floor: 21,
+          act: 2,
+          turns: 2,
+          result: "victory",
+          combat_id: "2.21:AXEBOT",
+          attempt_id: 1,
+        },
       ]),
     );
     const [c] = model.floors[0].combats;
@@ -1074,10 +2476,37 @@ describe("a reload either restarts a fight or carries on inside it", () => {
     const model = parseReplay(
       journal([
         ...opening,
-        { t: "resume", s: 5, floor: 21, act: 2, reloads: 1, hp: 70, gold: 100, combat_id: "2.21:AXEBOT" },
+        {
+          t: "resume",
+          s: 5,
+          floor: 21,
+          act: 2,
+          reloads: 1,
+          hp: 70,
+          gold: 100,
+          combat_id: "2.21:AXEBOT",
+        },
         { t: "room", s: 6, floor: 21, act: 2, kind: "combat", id: "AXEBOT" },
-        { t: "combat_start", s: 7, floor: 21, act: 2, encounter: "AXEBOT", enemies: [], combat_id: "2.21:AXEBOT", attempt_id: 1 },
-        { t: "turn", s: 8, floor: 21, act: 2, n: 1, side: "player", combat_id: "2.21:AXEBOT", attempt_id: 1 },
+        {
+          t: "combat_start",
+          s: 7,
+          floor: 21,
+          act: 2,
+          encounter: "AXEBOT",
+          enemies: [],
+          combat_id: "2.21:AXEBOT",
+          attempt_id: 1,
+        },
+        {
+          t: "turn",
+          s: 8,
+          floor: 21,
+          act: 2,
+          n: 1,
+          side: "player",
+          combat_id: "2.21:AXEBOT",
+          attempt_id: 1,
+        },
       ]),
     );
     const [first, second] = model.floors[0].combats;
@@ -1089,7 +2518,12 @@ describe("a reload either restarts a fight or carries on inside it", () => {
   });
 
   it("leaves a fight the resume neither restarted nor continued as unfinished, not undone", () => {
-    const model = parseReplay(journal([...opening, { t: "resume", s: 5, floor: 21, act: 2, reloads: 1, hp: 70, gold: 100 }]));
+    const model = parseReplay(
+      journal([
+        ...opening,
+        { t: "resume", s: 5, floor: 21, act: 2, reloads: 1, hp: 70, gold: 100 },
+      ]),
+    );
     const [c] = model.floors[0].combats;
     expect(c.rolledBackByReload).toBe(false);
     expect(c.endRecorded).toBe(false);
@@ -1098,16 +2532,38 @@ describe("a reload either restarts a fight or carries on inside it", () => {
   it("does not read a different fight starting later on the floor as a restart", () => {
     // Version 1 shape, no fight ids anywhere: A is interrupted, the reload
     // lands inside it, A ends, then B starts on the same floor.
-    const v1 = { t: "header", s: 0, ms: 1, floor: 0, act: 1, replay_version: 1, starting_deck: [] };
+    const v1 = {
+      t: "header",
+      s: 0,
+      ms: 1,
+      floor: 0,
+      act: 1,
+      replay_version: 1,
+      starting_deck: [],
+    };
     const model = parseReplay(
       journal([
         v1,
         { t: "room", s: 1, floor: 21, act: 2, kind: "combat", id: "AXEBOT" },
-        { t: "combat_start", s: 2, floor: 21, act: 2, encounter: "AXEBOT", enemies: [] },
+        {
+          t: "combat_start",
+          s: 2,
+          floor: 21,
+          act: 2,
+          encounter: "AXEBOT",
+          enemies: [],
+        },
         { t: "turn", s: 3, floor: 21, act: 2, n: 1, side: "player" },
         { t: "resume", s: 4, floor: 21, act: 2, reloads: 1, hp: 40, gold: 100 },
         { t: "combat_end", s: 5, floor: 21, act: 2, turns: 2 },
-        { t: "combat_start", s: 6, floor: 21, act: 2, encounter: "CHOMPER", enemies: [] },
+        {
+          t: "combat_start",
+          s: 6,
+          floor: 21,
+          act: 2,
+          encounter: "CHOMPER",
+          enemies: [],
+        },
         { t: "combat_end", s: 7, floor: 21, act: 2, turns: 1 },
       ]),
     );
@@ -1119,15 +2575,37 @@ describe("a reload either restarts a fight or carries on inside it", () => {
   });
 
   it("reads a fresh start of the same encounter as the restart, even without fight ids", () => {
-    const v1 = { t: "header", s: 0, ms: 1, floor: 0, act: 1, replay_version: 1, starting_deck: [] };
+    const v1 = {
+      t: "header",
+      s: 0,
+      ms: 1,
+      floor: 0,
+      act: 1,
+      replay_version: 1,
+      starting_deck: [],
+    };
     const model = parseReplay(
       journal([
         v1,
         { t: "room", s: 1, floor: 21, act: 2, kind: "combat", id: "AXEBOT" },
-        { t: "combat_start", s: 2, floor: 21, act: 2, encounter: "AXEBOT", enemies: [] },
+        {
+          t: "combat_start",
+          s: 2,
+          floor: 21,
+          act: 2,
+          encounter: "AXEBOT",
+          enemies: [],
+        },
         { t: "resume", s: 3, floor: 21, act: 2, reloads: 1, hp: 40, gold: 100 },
         { t: "room", s: 4, floor: 21, act: 2, kind: "combat", id: "AXEBOT" },
-        { t: "combat_start", s: 5, floor: 21, act: 2, encounter: "AXEBOT", enemies: [] },
+        {
+          t: "combat_start",
+          s: 5,
+          floor: 21,
+          act: 2,
+          encounter: "AXEBOT",
+          enemies: [],
+        },
         { t: "combat_end", s: 6, floor: 21, act: 2, turns: 3 },
       ]),
     );
@@ -1141,10 +2619,26 @@ describe("a reload either restarts a fight or carries on inside it", () => {
       journal([
         header,
         { t: "room", s: 1, floor: 20, act: 2, kind: "combat", id: "CHOMPER" },
-        { t: "combat_start", s: 2, floor: 20, act: 2, encounter: "CHOMPER", enemies: [], combat_id: "2.20:CHOMPER" },
+        {
+          t: "combat_start",
+          s: 2,
+          floor: 20,
+          act: 2,
+          encounter: "CHOMPER",
+          enemies: [],
+          combat_id: "2.20:CHOMPER",
+        },
         { t: "room", s: 3, floor: 21, act: 2, kind: "combat", id: "AXEBOT" },
         { t: "resume", s: 4, floor: 21, act: 2, reloads: 1, hp: 70, gold: 100 },
-        { t: "combat_start", s: 5, floor: 21, act: 2, encounter: "AXEBOT", enemies: [], combat_id: "2.21:AXEBOT" },
+        {
+          t: "combat_start",
+          s: 5,
+          floor: 21,
+          act: 2,
+          encounter: "AXEBOT",
+          enemies: [],
+          combat_id: "2.21:AXEBOT",
+        },
       ]),
     );
     expect(model.floors[0].combats[0].rolledBackByReload).toBe(false);
@@ -1152,34 +2646,91 @@ describe("a reload either restarts a fight or carries on inside it", () => {
 });
 
 describe("the end line's hp is a latch or a sample, never a measurement", () => {
-  const header = { t: "header", s: 0, ms: 1, floor: 0, act: 1, replay_version: 2, starting_deck: [] };
+  const header = {
+    t: "header",
+    s: 0,
+    ms: 1,
+    floor: 0,
+    act: 1,
+    replay_version: 2,
+    starting_deck: [],
+  };
   const room = { t: "room", s: 1, floor: 17, act: 1, kind: "combat", id: "A" };
 
   it("keeps the last recorded hp when the run did not end in a death", () => {
-    const model = parseReplay(journal([header, room, { t: "hp", s: 2, floor: 17, act: 1, hp: 0, d: -5 }, { t: "end", s: 3, terminal_reason: "left_run", is_game_over: false, hp: 14 }]));
+    const model = parseReplay(
+      journal([
+        header,
+        room,
+        { t: "hp", s: 2, floor: 17, act: 1, hp: 0, d: -5 },
+        {
+          t: "end",
+          s: 3,
+          terminal_reason: "left_run",
+          is_game_over: false,
+          hp: 14,
+        },
+      ]),
+    );
     expect(model.floors[0].hpAfter).toBe(0);
   });
 
   it("takes the death latch over a sample that missed the killing blow", () => {
-    const model = parseReplay(journal([header, room, { t: "hp", s: 2, floor: 17, act: 1, hp: 5, d: -3 }, { t: "end", s: 3, terminal_reason: "death", is_game_over: true, hp: 0 }]));
+    const model = parseReplay(
+      journal([
+        header,
+        room,
+        { t: "hp", s: 2, floor: 17, act: 1, hp: 5, d: -3 },
+        { t: "end", s: 3, terminal_reason: "death", is_game_over: true, hp: 0 },
+      ]),
+    );
     expect(model.floors[0].hpAfter).toBe(0);
   });
 });
 
 describe("the journal saying its own capture was incomplete", () => {
   const base = [
-    { t: "header", s: 0, ms: 1, floor: 0, act: 1, replay_version: 2, starting_deck: [] },
+    {
+      t: "header",
+      s: 0,
+      ms: 1,
+      floor: 0,
+      act: 1,
+      replay_version: 2,
+      starting_deck: [],
+    },
     { t: "room", s: 1, floor: 1, act: 1, kind: "combat", id: "A" },
   ];
 
   it("reads a complete capture as complete", () => {
-    const model = parseReplay(journal([...base, { t: "end", s: 2, terminal_reason: "death", capture_status: "complete" }]));
+    const model = parseReplay(
+      journal([
+        ...base,
+        {
+          t: "end",
+          s: 2,
+          terminal_reason: "death",
+          capture_status: "complete",
+        },
+      ]),
+    );
     expect(captureIsComplete(model)).toBe(true);
   });
 
   it("carries a gapped capture and what it lost", () => {
     const model = parseReplay(
-      journal([...base, { t: "end", s: 2, terminal_reason: "death", capture_status: "gapped", stop_reason: "queue_full", lost_from_seq: 44, lost_count: 17 }]),
+      journal([
+        ...base,
+        {
+          t: "end",
+          s: 2,
+          terminal_reason: "death",
+          capture_status: "gapped",
+          stop_reason: "queue_full",
+          lost_from_seq: 44,
+          lost_count: 17,
+        },
+      ]),
     );
     expect(captureIsComplete(model)).toBe(false);
     expect(model.end?.stopReason).toBe("queue_full");
@@ -1188,19 +2739,41 @@ describe("the journal saying its own capture was incomplete", () => {
   });
 
   it("carries a truncated capture", () => {
-    const model = parseReplay(journal([...base, { t: "end", s: 2, terminal_reason: "death", capture_status: "truncated" }]));
+    const model = parseReplay(
+      journal([
+        ...base,
+        {
+          t: "end",
+          s: 2,
+          terminal_reason: "death",
+          capture_status: "truncated",
+        },
+      ]),
+    );
     expect(captureIsComplete(model)).toBe(false);
     expect(model.end?.captureStatus).toBe("truncated");
   });
 
   it("says unknown rather than complete when the journal never stated it", () => {
-    const model = parseReplay(journal([...base, { t: "end", s: 2, terminal_reason: "death" }]));
+    const model = parseReplay(
+      journal([...base, { t: "end", s: 2, terminal_reason: "death" }]),
+    );
     expect(captureIsComplete(model)).toBeUndefined();
   });
 
   it("reads the status the repository journals actually carry", () => {
-    for (const f of ["real-replay-coords.jsonl", "real-replay.jsonl", "real-replay-regent.jsonl", "sample-replay.jsonl"]) {
-      const model = parseReplay(readFileSync(new URL(`../../backend/tests/fixtures/${f}`, import.meta.url), "utf-8"));
+    for (const f of [
+      "real-replay-coords.jsonl",
+      "real-replay.jsonl",
+      "real-replay-regent.jsonl",
+      "sample-replay.jsonl",
+    ]) {
+      const model = parseReplay(
+        readFileSync(
+          new URL(`../../backend/tests/fixtures/${f}`, import.meta.url),
+          "utf-8",
+        ),
+      );
       expect(captureIsComplete(model)).toBe(true);
     }
   });
@@ -1208,8 +2781,18 @@ describe("the journal saying its own capture was incomplete", () => {
 
 describe("a jump in the sequence locates exactly what the journal lost", () => {
   it("finds nothing in a contiguous journal", () => {
-    for (const f of ["real-replay-coords.jsonl", "real-replay.jsonl", "real-replay-regent.jsonl", "sample-replay.jsonl"]) {
-      const model = parseReplay(readFileSync(new URL(`../../backend/tests/fixtures/${f}`, import.meta.url), "utf-8"));
+    for (const f of [
+      "real-replay-coords.jsonl",
+      "real-replay.jsonl",
+      "real-replay-regent.jsonl",
+      "sample-replay.jsonl",
+    ]) {
+      const model = parseReplay(
+        readFileSync(
+          new URL(`../../backend/tests/fixtures/${f}`, import.meta.url),
+          "utf-8",
+        ),
+      );
       expect(model.gaps).toEqual([]);
       expect(model.floors.every((fl) => fl.linesLost === 0)).toBe(true);
     }
@@ -1223,7 +2806,15 @@ describe("a jump in the sequence locates exactly what the journal lost", () => {
         { t: "play", s: 2, floor: 1, act: 1, id: "STRIKE" },
         // s 3 through 6 were assigned to lines that never made it out.
         { t: "play", s: 7, floor: 1, act: 1, id: "DEFEND" },
-        { t: "end", s: 8, terminal_reason: "death", capture_status: "gapped", stop_reason: "queue_full", lost_from_seq: 3, lost_count: 4 },
+        {
+          t: "end",
+          s: 8,
+          terminal_reason: "death",
+          capture_status: "gapped",
+          stop_reason: "queue_full",
+          lost_from_seq: 3,
+          lost_count: 4,
+        },
       ]),
     );
     expect(model.gaps).toEqual([{ afterSeq: 2, count: 4, floor: 1 }]);
@@ -1239,12 +2830,22 @@ describe("a jump in the sequence locates exactly what the journal lost", () => {
         { t: "play", s: 4, floor: 8, act: 1, id: "STRIKE" },
         { t: "room", s: 5, floor: 30, act: 3, kind: "combat", id: "B" },
         { t: "play", s: 9, floor: 30, act: 3, id: "DEFEND" },
-        { t: "end", s: 10, terminal_reason: "death", capture_status: "gapped", lost_from_seq: 2, lost_count: 5 },
+        {
+          t: "end",
+          s: 10,
+          terminal_reason: "death",
+          capture_status: "gapped",
+          lost_from_seq: 2,
+          lost_count: 5,
+        },
       ]),
     );
     // lost_from_seq names only the first drop, so a viewer built on it alone
     // would have marked floor 8 and missed floor 30 entirely.
-    expect(model.gaps.map((g) => [g.afterSeq, g.count, g.floor])).toEqual([[1, 2, 8], [5, 3, 30]]);
+    expect(model.gaps.map((g) => [g.afterSeq, g.count, g.floor])).toEqual([
+      [1, 2, 8],
+      [5, 3, 30],
+    ]);
     expect(model.floors.map((f) => f.linesLost)).toEqual([2, 3]);
     expect(model.lostCountAgrees).toBe(true);
   });
@@ -1255,7 +2856,13 @@ describe("a jump in the sequence locates exactly what the journal lost", () => {
         { t: "header", s: 0, replay_version: 2 },
         { t: "room", s: 1, floor: 1, act: 1, kind: "combat", id: "A" },
         { t: "play", s: 4, floor: 1, act: 1, id: "STRIKE" },
-        { t: "end", s: 5, terminal_reason: "death", capture_status: "gapped", lost_count: 99 },
+        {
+          t: "end",
+          s: 5,
+          terminal_reason: "death",
+          capture_status: "gapped",
+          lost_count: 99,
+        },
       ]),
     );
     expect(model.lostCountAgrees).toBe(false);
@@ -1266,7 +2873,13 @@ describe("a jump in the sequence locates exactly what the journal lost", () => {
       journal([
         { t: "header", s: 0, replay_version: 2 },
         { t: "room", s: 1, floor: 1, act: 1, kind: "combat", id: "A" },
-        { t: "end", s: 2, terminal_reason: "quit", capture_status: "truncated", stop_reason: "writer_error" },
+        {
+          t: "end",
+          s: 2,
+          terminal_reason: "quit",
+          capture_status: "truncated",
+          stop_reason: "writer_error",
+        },
       ]),
     );
     expect(model.gaps).toEqual([]);
@@ -1277,15 +2890,39 @@ describe("a jump in the sequence locates exactly what the journal lost", () => {
 });
 
 describe("a resumed journal is one run, not several", () => {
-  const v1 = { t: "header", s: 0, ms: 1, floor: 0, act: 1, replay_version: 1, seed: "SEED1", starting_deck: [] };
-  const v2 = { t: "header", s: 244, ms: 1, floor: 5, act: 1, replay_version: 2, seed: "SEED1", starting_deck: [] };
+  const v1 = {
+    t: "header",
+    s: 0,
+    ms: 1,
+    floor: 0,
+    act: 1,
+    replay_version: 1,
+    seed: "SEED1",
+    starting_deck: [],
+  };
+  const v2 = {
+    t: "header",
+    s: 244,
+    ms: 1,
+    floor: 5,
+    act: 1,
+    replay_version: 2,
+    seed: "SEED1",
+    starting_deck: [],
+  };
 
   it("keeps the first header's identity and the last header's declared version", () => {
     const model = parseReplay(
       journal([
         v1,
         { t: "room", s: 1, floor: 1, act: 1, kind: "combat", id: "A" },
-        { t: "end", s: 243, terminal_reason: "left_run", is_game_over: false, hp: 75 },
+        {
+          t: "end",
+          s: 243,
+          terminal_reason: "left_run",
+          is_game_over: false,
+          hp: 75,
+        },
         v2,
         { t: "resume", s: 245, floor: 1, act: 1, reloads: 1, hp: 75, gold: 10 },
       ]),
@@ -1298,17 +2935,90 @@ describe("a resumed journal is one run, not several", () => {
     const model = parseReplay(
       journal([
         v1,
-        { t: "room", s: 1, floor: 5, act: 1, kind: "combat", id: "SLIMES_WEAK", coord: "0,4" },
+        {
+          t: "room",
+          s: 1,
+          floor: 5,
+          act: 1,
+          kind: "combat",
+          id: "SLIMES_WEAK",
+          coord: "0,4",
+        },
         { t: "hp", s: 2, floor: 5, act: 1, hp: 79, d: 0 },
-        { t: "combat_start", s: 3, floor: 5, act: 1, encounter: "SLIMES_WEAK", enemies: [], combat_id: "1.5:SLIMES_WEAK", attempt_id: 0 },
-        { t: "turn", s: 4, floor: 5, act: 1, n: 0, side: "player", combat_id: "1.5:SLIMES_WEAK", attempt_id: 0 },
-        { t: "end", s: 243, terminal_reason: "left_run", is_game_over: false, hp: 75 },
+        {
+          t: "combat_start",
+          s: 3,
+          floor: 5,
+          act: 1,
+          encounter: "SLIMES_WEAK",
+          enemies: [],
+          combat_id: "1.5:SLIMES_WEAK",
+          attempt_id: 0,
+        },
+        {
+          t: "turn",
+          s: 4,
+          floor: 5,
+          act: 1,
+          n: 0,
+          side: "player",
+          combat_id: "1.5:SLIMES_WEAK",
+          attempt_id: 0,
+        },
+        {
+          t: "end",
+          s: 243,
+          terminal_reason: "left_run",
+          is_game_over: false,
+          hp: 75,
+        },
         v2,
-        { t: "resume", s: 245, floor: 5, act: 1, reloads: 1, hp: 79, gold: 124 },
-        { t: "room", s: 246, floor: 5, act: 1, kind: "combat", id: "SLIMES_WEAK", coord: "0,4" },
-        { t: "combat_start", s: 247, floor: 5, act: 1, encounter: "SLIMES_WEAK", enemies: [], combat_id: "1.5:SLIMES_WEAK", attempt_id: 1 },
-        { t: "combat_end", s: 332, floor: 5, act: 1, turns: 3, result: "victory", combat_id: "1.5:SLIMES_WEAK", attempt_id: 1, hp_lost_total: 4 },
-        { t: "end", s: 400, terminal_reason: "left_run", is_game_over: false, hp: 75 },
+        {
+          t: "resume",
+          s: 245,
+          floor: 5,
+          act: 1,
+          reloads: 1,
+          hp: 79,
+          gold: 124,
+        },
+        {
+          t: "room",
+          s: 246,
+          floor: 5,
+          act: 1,
+          kind: "combat",
+          id: "SLIMES_WEAK",
+          coord: "0,4",
+        },
+        {
+          t: "combat_start",
+          s: 247,
+          floor: 5,
+          act: 1,
+          encounter: "SLIMES_WEAK",
+          enemies: [],
+          combat_id: "1.5:SLIMES_WEAK",
+          attempt_id: 1,
+        },
+        {
+          t: "combat_end",
+          s: 332,
+          floor: 5,
+          act: 1,
+          turns: 3,
+          result: "victory",
+          combat_id: "1.5:SLIMES_WEAK",
+          attempt_id: 1,
+          hp_lost_total: 4,
+        },
+        {
+          t: "end",
+          s: 400,
+          terminal_reason: "left_run",
+          is_game_over: false,
+          hp: 75,
+        },
       ]),
     );
     expect(model.floors.map((f) => f.floor)).toEqual([5]);
@@ -1323,16 +3033,31 @@ describe("a resumed journal is one run, not several", () => {
 });
 
 describe("parseReplay on the version 2 journals", () => {
-  const load = (f: string) => parseReplay(readFileSync(new URL(`../../backend/tests/fixtures/${f}`, import.meta.url), "utf-8"));
-  const files = ["v2-full-run.jsonl", "v2-reload-and-death.jsonl", "v2-act3-map.jsonl"];
+  const load = (f: string) =>
+    parseReplay(
+      readFileSync(
+        new URL(`../../backend/tests/fixtures/${f}`, import.meta.url),
+        "utf-8",
+      ),
+    );
+  const files = [
+    "v2-full-run.jsonl",
+    "v2-reload-and-death.jsonl",
+    "v2-act3-map.jsonl",
+  ];
 
   it("lists every floor once, with a recorded position, all the way through", () => {
     for (const f of files) {
       const m = load(f);
       const keys = m.floors.map((x) => `${x.act}-${x.floor}`);
       expect(new Set(keys).size, f).toBe(keys.length);
-      const route = [...new Set(m.floors.map((x) => x.act))].flatMap((a) => routeForAct(m, a));
-      expect(route.every((e) => e.coord !== undefined && !e.offMap), f).toBe(true);
+      const route = [...new Set(m.floors.map((x) => x.act))].flatMap((a) =>
+        routeForAct(m, a),
+      );
+      expect(
+        route.every((e) => e.coord !== undefined && !e.offMap),
+        f,
+      ).toBe(true);
       expect(captureIsComplete(m), f).toBe(true);
       expect(m.gaps, f).toEqual([]);
     }
@@ -1341,9 +3066,14 @@ describe("parseReplay on the version 2 journals", () => {
   it("reads the recorder's own results and totals on every finished fight", () => {
     for (const f of files) {
       const m = load(f);
-      const ended = m.floors.flatMap((x) => x.combats).filter((c) => c.endRecorded);
+      const ended = m.floors
+        .flatMap((x) => x.combats)
+        .filter((c) => c.endRecorded);
       expect(ended.length, f).toBeGreaterThan(0);
-      expect(ended.every((c) => c.result === "victory" && c.hpLost !== undefined), f).toBe(true);
+      expect(
+        ended.every((c) => c.result === "victory" && c.hpLost !== undefined),
+        f,
+      ).toBe(true);
     }
   });
 
@@ -1354,7 +3084,10 @@ describe("parseReplay on the version 2 journals", () => {
     for (const f of files) {
       const m = load(f);
       for (const map of Object.values(m.maps)) {
-        expect(map.nodes.some((n) => n[2] === "ancient"), `${f} act ${map.act}`).toBe(true);
+        expect(
+          map.nodes.some((n) => n[2] === "ancient"),
+          `${f} act ${map.act}`,
+        ).toBe(true);
       }
     }
   });
@@ -1366,7 +3099,9 @@ describe("parseReplay on the version 2 journals", () => {
     expect(m.end?.isGameOver).toBe(false);
     // Floor 5 restarted after its reload, so that attempt is undone. Floor 17
     // resumed inside the boss fight and ran on to turn 11, so it stands.
-    const undone = m.floors.flatMap((x) => x.combats).filter((c) => !combatCounts(c));
+    const undone = m.floors
+      .flatMap((x) => x.combats)
+      .filter((c) => !combatCounts(c));
     expect(undone.map((c) => c.encounter)).toEqual(["SLIMES_WEAK"]);
     const boss = m.floors.find((f) => f.floor === 17)!.combats[0];
     expect(boss.encounter).toBe("VANTOM_BOSS");
@@ -1379,15 +3114,27 @@ describe("parseReplay on the version 2 journals", () => {
 });
 
 describe("parseReplay on the version 2 shop journal", () => {
-  const model = parseReplay(readFileSync(new URL("../../backend/tests/fixtures/v2-shop.jsonl", import.meta.url), "utf-8"));
-  const shops = model.floors.flatMap((f) => f.lines).filter((l): l is ShopLine => l.t === "shop");
-  const buys = model.floors.flatMap((f) => f.lines).filter((l): l is BuyLine => l.t === "buy");
-  const stocked = (s: ShopLine) => [...s.cards, ...s.relics, ...s.potions].filter((i) => i.stocked).length;
+  const model = parseReplay(
+    readFileSync(
+      new URL("../../backend/tests/fixtures/v2-shop.jsonl", import.meta.url),
+      "utf-8",
+    ),
+  );
+  const shops = model.floors
+    .flatMap((f) => f.lines)
+    .filter((l): l is ShopLine => l.t === "shop");
+  const buys = model.floors
+    .flatMap((f) => f.lines)
+    .filter((l): l is BuyLine => l.t === "buy");
+  const stocked = (s: ShopLine) =>
+    [...s.cards, ...s.relics, ...s.potions].filter((i) => i.stocked).length;
 
   it("reads one shop line on entry and one after every purchase", () => {
     expect(shops).toHaveLength(12);
     expect(buys).toHaveLength(11);
-    expect(shops.map(stocked)).toEqual([13, 12, 11, 10, 9, 8, 7, 6, 5, 5, 4, 3]);
+    expect(shops.map(stocked)).toEqual([
+      13, 12, 11, 10, 9, 8, 7, 6, 5, 5, 4, 3,
+    ]);
   });
 
   it("joins each purchase to a shelf slot of its kind, except the removal service", () => {
@@ -1396,13 +3143,23 @@ describe("parseReplay on the version 2 shop journal", () => {
         expect(b.slot).toBeUndefined();
         continue;
       }
-      const shelf = b.kind === "card" ? shops[0].cards : b.kind === "relic" ? shops[0].relics : shops[0].potions;
-      expect(shelf.some((i) => i.slot === b.slot && i.id === b.id), `${b.kind} slot ${b.slot}`).toBe(true);
+      const shelf =
+        b.kind === "card"
+          ? shops[0].cards
+          : b.kind === "relic"
+            ? shops[0].relics
+            : shops[0].potions;
+      expect(
+        shelf.some((i) => i.slot === b.slot && i.id === b.id),
+        `${b.kind} slot ${b.slot}`,
+      ).toBe(true);
     }
   });
 
   it("moves the removal flag rather than the shelves when the removal is bought", () => {
-    const flips = shops.filter((s, i) => i > 0 && s.removalStocked !== shops[i - 1].removalStocked);
+    const flips = shops.filter(
+      (s, i) => i > 0 && s.removalStocked !== shops[i - 1].removalStocked,
+    );
     expect(flips).toHaveLength(1);
     expect(shops[shops.length - 1].removalStocked).toBe(false);
   });
@@ -1412,13 +3169,23 @@ describe("parseReplay on the version 2 shop journal", () => {
     // a recorder bug fixed after this file was captured, so nothing here
     // asserts which floor the entry line sits on.
     for (let i = 1; i < shops.length; i += 1) {
-      expect((shops[i - 1].gold ?? 0) - (shops[i].gold ?? 0)).toBe(buys[i - 1].costCurrent);
+      expect((shops[i - 1].gold ?? 0) - (shops[i].gold ?? 0)).toBe(
+        buys[i - 1].costCurrent,
+      );
     }
   });
 });
 
 describe("parseReplay on the quit-and-continue journal", () => {
-  const model = parseReplay(readFileSync(new URL("../../backend/tests/fixtures/v2-quit-continue.jsonl", import.meta.url), "utf-8"));
+  const model = parseReplay(
+    readFileSync(
+      new URL(
+        "../../backend/tests/fixtures/v2-quit-continue.jsonl",
+        import.meta.url,
+      ),
+      "utf-8",
+    ),
+  );
 
   it("reads the journal reopening in the same process as a resume", () => {
     // The first recorder build dropped every line after an in-process quit
@@ -1451,16 +3218,42 @@ describe("parseReplay on the quit-and-continue journal", () => {
 });
 
 describe("an end line with journal behind it is a boundary, not the outcome", () => {
-  const header = { t: "header", s: 0, ms: 1, floor: 0, act: 1, replay_version: 2, starting_deck: [] };
+  const header = {
+    t: "header",
+    s: 0,
+    ms: 1,
+    floor: 0,
+    act: 1,
+    replay_version: 2,
+    starting_deck: [],
+  };
   const room = { t: "room", s: 1, floor: 1, act: 1, kind: "combat", id: "A" };
 
   it("takes the last end line when nothing follows it", () => {
-    const model = parseReplay(journal([header, room, { t: "end", s: 2, terminal_reason: "left_run" }, header, { t: "resume", s: 4, floor: 1, act: 1, reloads: 1 }, { t: "end", s: 5, terminal_reason: "death", is_game_over: true, hp: 0 }]));
+    const model = parseReplay(
+      journal([
+        header,
+        room,
+        { t: "end", s: 2, terminal_reason: "left_run" },
+        header,
+        { t: "resume", s: 4, floor: 1, act: 1, reloads: 1 },
+        { t: "end", s: 5, terminal_reason: "death", is_game_over: true, hp: 0 },
+      ]),
+    );
     expect(model.end?.terminalReason).toBe("death");
   });
 
   it("reports no outcome when the journal goes on past its last end line", () => {
-    const model = parseReplay(journal([header, room, { t: "end", s: 2, terminal_reason: "left_run" }, header, { t: "resume", s: 4, floor: 1, act: 1, reloads: 1 }, { t: "play", s: 5, floor: 1, act: 1, id: "STRIKE" }]));
+    const model = parseReplay(
+      journal([
+        header,
+        room,
+        { t: "end", s: 2, terminal_reason: "left_run" },
+        header,
+        { t: "resume", s: 4, floor: 1, act: 1, reloads: 1 },
+        { t: "play", s: 5, floor: 1, act: 1, id: "STRIKE" },
+      ]),
+    );
     expect(model.end).toBeUndefined();
   });
 });
@@ -1471,23 +3264,56 @@ describe("a line stamped with a floor not seen yet belongs to that floor", () =>
       journal([
         { t: "header", s: 0, replay_version: 2 },
         { t: "room", s: 1, floor: 2, act: 1, kind: "combat", id: "A" },
-        { t: "shop", s: 2, floor: 3, act: 1, gold: 99, removal_stocked: true, cards: [{ slot: 0, id: "HEADBUTT", cost: 52, stocked: true }], relics: [], potions: [] },
+        {
+          t: "shop",
+          s: 2,
+          floor: 3,
+          act: 1,
+          gold: 99,
+          removal_stocked: true,
+          cards: [{ slot: 0, id: "HEADBUTT", cost: 52, stocked: true }],
+          relics: [],
+          potions: [],
+        },
         { t: "room", s: 3, floor: 3, act: 1, kind: "merchant" },
-        { t: "buy", s: 4, floor: 3, act: 1, kind: "card", slot: 0, id: "HEADBUTT", cost_current: 52, cost_resource: "gold", gold_on_hand: 47 },
+        {
+          t: "buy",
+          s: 4,
+          floor: 3,
+          act: 1,
+          kind: "card",
+          slot: 0,
+          id: "HEADBUTT",
+          cost_current: 52,
+          cost_resource: "gold",
+          gold_on_hand: 47,
+        },
       ]),
     );
-    expect(model.floors.map((f) => [f.floor, f.kind])).toEqual([[2, "combat"], [3, "merchant"]]);
+    expect(model.floors.map((f) => [f.floor, f.kind])).toEqual([
+      [2, "combat"],
+      [3, "merchant"],
+    ]);
     const merchant = model.floors[1];
     expect(merchant.shop?.gold).toBe(99);
     expect(model.floors[0].lines.some((l) => l.t === "shop")).toBe(false);
   });
 
   it("reads the recorder's fixed entry line on the real journal", () => {
-    const model = parseReplay(readFileSync(new URL("../../backend/tests/fixtures/v2-shop-entry-floor.jsonl", import.meta.url), "utf-8"));
+    const model = parseReplay(
+      readFileSync(
+        new URL(
+          "../../backend/tests/fixtures/v2-shop-entry-floor.jsonl",
+          import.meta.url,
+        ),
+        "utf-8",
+      ),
+    );
     expect(model.floors.map((f) => f.floor)).toEqual([1, 2, 3]);
     const merchant = model.floors[2];
     expect(merchant.kind).toBe("merchant");
-    const stocked = (s: ShopLine) => [...s.cards, ...s.relics, ...s.potions].filter((i) => i.stocked).length;
+    const stocked = (s: ShopLine) =>
+      [...s.cards, ...s.relics, ...s.potions].filter((i) => i.stocked).length;
     expect(merchant.shop && stocked(merchant.shop)).toBe(13);
     expect(merchant.shop?.gold).toBe(99);
     const shops = merchant.lines.filter((l): l is ShopLine => l.t === "shop");
@@ -1498,16 +3324,78 @@ describe("a line stamped with a floor not seen yet belongs to that floor", () =>
 
 describe("version 3 lines", () => {
   const text = journal([
-    { t: "header", s: 0, ms: 1, floor: 0, act: 1, replay_version: 3, seed: "SEED", start_time: 1, character: "REGENT", starting_deck: [] },
-    { t: "room", s: 1, ms: 2, floor: 2, act: 1, kind: "combat", id: "SLIMES_WEAK" },
-    { t: "combat_start", s: 2, ms: 3, floor: 2, act: 1, encounter: "SLIMES_WEAK", enemies: [{ i: 0, id: "LEAF_SLIME_S", hp: 12, max_hp: 12 }] },
+    {
+      t: "header",
+      s: 0,
+      ms: 1,
+      floor: 0,
+      act: 1,
+      replay_version: 3,
+      seed: "SEED",
+      start_time: 1,
+      character: "REGENT",
+      starting_deck: [],
+    },
+    {
+      t: "room",
+      s: 1,
+      ms: 2,
+      floor: 2,
+      act: 1,
+      kind: "combat",
+      id: "SLIMES_WEAK",
+    },
+    {
+      t: "combat_start",
+      s: 2,
+      ms: 3,
+      floor: 2,
+      act: 1,
+      encounter: "SLIMES_WEAK",
+      enemies: [{ i: 0, id: "LEAF_SLIME_S", hp: 12, max_hp: 12 }],
+    },
     { t: "turn", s: 3, ms: 4, floor: 2, act: 1, n: 1, side: "enemy" },
-    { t: "move", s: 4, ms: 5, floor: 2, act: 1, src: "LEAF_SLIME_S", id: "INHALE", intents: ["buff"] },
-    { t: "power", s: 5, ms: 6, floor: 2, act: 1, id: "STRENGTH_POWER", n: 2, tgt: "LEAF_SLIME_S", src: "LEAF_SLIME_S" },
+    {
+      t: "move",
+      s: 4,
+      ms: 5,
+      floor: 2,
+      act: 1,
+      src: "LEAF_SLIME_S",
+      id: "INHALE",
+      intents: ["buff"],
+    },
+    {
+      t: "power",
+      s: 5,
+      ms: 6,
+      floor: 2,
+      act: 1,
+      id: "STRENGTH_POWER",
+      n: 2,
+      tgt: "LEAF_SLIME_S",
+      src: "LEAF_SLIME_S",
+    },
     { t: "block", s: 6, ms: 7, floor: 2, act: 1, n: 5, src: "LEAF_SLIME_S" },
-    { t: "move", s: 7, ms: 8, floor: 2, act: 1, id: "NO_OWNER", intents: ["attack"] },
+    {
+      t: "move",
+      s: 7,
+      ms: 8,
+      floor: 2,
+      act: 1,
+      id: "NO_OWNER",
+      intents: ["attack"],
+    },
     { t: "end_turn", s: 8, ms: 9, floor: 2, act: 1, n: 1, side: "enemy" },
-    { t: "combat_end", s: 9, ms: 10, floor: 2, act: 1, result: "victory", turns: 1 },
+    {
+      t: "combat_end",
+      s: 9,
+      ms: 10,
+      floor: 2,
+      act: 1,
+      result: "victory",
+      turns: 1,
+    },
     { t: "room", s: 10, ms: 11, floor: 3, act: 1, kind: "restsite" },
     { t: "hp", s: 11, ms: 12, floor: 3, act: 1, d: 25, hp: 41, src: "heal" },
     { t: "rest", s: 12, ms: 13, floor: 3, act: 1, option: "heal" },
@@ -1516,27 +3404,51 @@ describe("version 3 lines", () => {
   it("keeps the move, its intents, and the source on power and block", () => {
     const { lines } = parseReplayLines(text);
     const move = lines.find((l) => l.t === "move");
-    expect(move).toMatchObject({ t: "move", src: "LEAF_SLIME_S", id: "INHALE", intents: ["buff"] });
-    expect(lines.find((l) => l.t === "power")).toMatchObject({ src: "LEAF_SLIME_S", tgt: "LEAF_SLIME_S", n: 2 });
-    expect(lines.find((l) => l.t === "block")).toMatchObject({ n: 5, src: "LEAF_SLIME_S" });
+    expect(move).toMatchObject({
+      t: "move",
+      src: "LEAF_SLIME_S",
+      id: "INHALE",
+      intents: ["buff"],
+    });
+    expect(lines.find((l) => l.t === "power")).toMatchObject({
+      src: "LEAF_SLIME_S",
+      tgt: "LEAF_SLIME_S",
+      n: 2,
+    });
+    expect(lines.find((l) => l.t === "block")).toMatchObject({
+      n: 5,
+      src: "LEAF_SLIME_S",
+    });
   });
 
   it("does not invent an owner for a move line without one", () => {
     const { lines } = parseReplayLines(text);
     expect(lines.filter((l) => l.t === "move")).toHaveLength(1);
-    expect(lines.some((l) => l.t === "unknown" && l.kind === "move")).toBe(true);
+    expect(lines.some((l) => l.t === "unknown" && l.kind === "move")).toBe(
+      true,
+    );
   });
 
   it("records the heal amount on the rest floor with its source", () => {
     const model = parseReplay(text);
     const rest = model.floors.find((f) => f.floor === 3);
-    expect(rest?.lines.find((l) => l.t === "hp")).toMatchObject({ d: 25, hp: 41, src: "heal" });
+    expect(rest?.lines.find((l) => l.t === "hp")).toMatchObject({
+      d: 25,
+      hp: 41,
+      src: "heal",
+    });
     expect(model.header?.replayVersion).toBe(3);
   });
 });
 
 describe("the real version 3 journal", () => {
-  const text = readFileSync(new URL("../../backend/tests/fixtures/v3-moves-and-heals.jsonl", import.meta.url), "utf-8");
+  const text = readFileSync(
+    new URL(
+      "../../backend/tests/fixtures/v3-moves-and-heals.jsonl",
+      import.meta.url,
+    ),
+    "utf-8",
+  );
   const { lines, malformed } = parseReplayLines(text);
   const model = parseReplay(text);
 
@@ -1547,7 +3459,9 @@ describe("the real version 3 journal", () => {
   });
 
   it("does not turn the run-start heal stamped floor 0 into a floor", () => {
-    expect(lines.some((l) => l.t === "hp" && l.floor === 0 && l.src === "heal")).toBe(true);
+    expect(
+      lines.some((l) => l.t === "hp" && l.floor === 0 && l.src === "heal"),
+    ).toBe(true);
     expect(model.floors[0].floor).toBe(1);
     expect(model.floors.some((f) => f.floor === 0)).toBe(false);
   });
@@ -1557,13 +3471,19 @@ describe("the real version 3 journal", () => {
     expect(moves).toHaveLength(28);
     expect(new Set(moves.map((l) => l.id)).size).toBe(15);
     expect(moves.every((l) => l.src && l.intents.length > 0)).toBe(true);
-    expect(lines.filter((l) => l.t === "power").every((l) => !!l.src)).toBe(true);
-    expect(lines.filter((l) => l.t === "block").every((l) => !!l.src)).toBe(true);
+    expect(lines.filter((l) => l.t === "power").every((l) => !!l.src)).toBe(
+      true,
+    );
+    expect(lines.filter((l) => l.t === "block").every((l) => !!l.src)).toBe(
+      true,
+    );
   });
 
   it("places a move before the hit it causes inside the enemy turn", () => {
     const floor2 = model.floors.find((f) => f.floor === 2);
-    const enemyTurn = floor2?.combats[0]?.turns.find((tn) => tn.side === "enemy");
+    const enemyTurn = floor2?.combats[0]?.turns.find(
+      (tn) => tn.side === "enemy",
+    );
     const kinds = enemyTurn?.lines.map((l) => l.t) ?? [];
     expect(kinds.indexOf("move")).toBeGreaterThanOrEqual(0);
     expect(kinds.indexOf("move")).toBeLessThan(kinds.indexOf("hit"));
@@ -1580,13 +3500,23 @@ describe("the real version 3 journal", () => {
 });
 
 describe("the real version 3 monster-block journal", () => {
-  const text = readFileSync(new URL("../../backend/tests/fixtures/v3-monster-block.jsonl", import.meta.url), "utf-8");
+  const text = readFileSync(
+    new URL(
+      "../../backend/tests/fixtures/v3-monster-block.jsonl",
+      import.meta.url,
+    ),
+    "utf-8",
+  );
   const model = parseReplay(text);
   const fight = model.floors.find((f) => f.floor === 6)?.combats[0];
 
   it("ends on the crash scan's recovery marker, which is not a run outcome", () => {
     expect(model.header?.replayVersion).toBe(3);
-    expect(model.end).toMatchObject({ terminalReason: "interrupted", captureStatus: "truncated", recovered: true });
+    expect(model.end).toMatchObject({
+      terminalReason: "interrupted",
+      captureStatus: "truncated",
+      recovered: true,
+    });
     expect(model.end?.isGameOver).toBeUndefined();
     expect(model.end?.hp).toBeUndefined();
     expect(model.gaps).toHaveLength(0);
@@ -1597,7 +3527,12 @@ describe("the real version 3 monster-block journal", () => {
     expect(fight?.encounter).toBe("SEWER_CLAM_NORMAL");
     const start = fight?.turns[0];
     expect(start?.side).toBe("start");
-    expect(start?.lines.map((l) => [l.t, l.t === "power" || l.t === "block" ? l.src : undefined])).toEqual([
+    expect(
+      start?.lines.map((l) => [
+        l.t,
+        l.t === "power" || l.t === "block" ? l.src : undefined,
+      ]),
+    ).toEqual([
       ["power", "SEWER_CLAM"],
       ["block", "SEWER_CLAM"],
     ]);
@@ -1606,7 +3541,9 @@ describe("the real version 3 monster-block journal", () => {
 
   it("attributes block gained during the enemy turn to the monster, with no defend intent needed", () => {
     const enemy1 = fight?.turns.find((tn) => tn.side === "enemy" && tn.n === 1);
-    const kinds = enemy1?.lines.map((l) => l.t).filter((k) => k !== "hp" && k !== "end_turn");
+    const kinds = enemy1?.lines
+      .map((l) => l.t)
+      .filter((k) => k !== "hp" && k !== "end_turn");
     expect(kinds).toEqual(["move", "hit", "block"]);
     const block = enemy1?.lines.find((l) => l.t === "block");
     expect(block).toMatchObject({ src: "SEWER_CLAM", n: 9 });
@@ -1616,17 +3553,33 @@ describe("the real version 3 monster-block journal", () => {
 
   it("keeps power expiry written after end_turn on the turn that just ended", () => {
     const enemy2 = fight?.turns.find((tn) => tn.side === "enemy" && tn.n === 2);
-    const expired = enemy2?.lines.filter((l) => l.t === "power" && l.src === "effect" && l.n === -1).map((l) => (l.t === "power" ? l.id : ""));
-    expect(expired).toEqual(["PLATING_POWER", "WEAK_POWER", "VULNERABLE_POWER"]);
+    const expired = enemy2?.lines
+      .filter((l) => l.t === "power" && l.src === "effect" && l.n === -1)
+      .map((l) => (l.t === "power" ? l.id : ""));
+    expect(expired).toEqual([
+      "PLATING_POWER",
+      "WEAK_POWER",
+      "VULNERABLE_POWER",
+    ]);
   });
 });
 
 describe("the recovery marker has no sequence number of its own", () => {
-  const text = readFileSync(new URL("../../backend/tests/fixtures/v3-monster-block.jsonl", import.meta.url), "utf-8");
+  const text = readFileSync(
+    new URL(
+      "../../backend/tests/fixtures/v3-monster-block.jsonl",
+      import.meta.url,
+    ),
+    "utf-8",
+  );
 
   it("is the last line, sequenced after the last real line rather than read as a gap", () => {
     const rawLast = JSON.parse(text.trimEnd().split("\n").pop() as string);
-    expect(rawLast).toEqual({ t: "end", terminal_reason: "interrupted", capture_status: "truncated" });
+    expect(rawLast).toEqual({
+      t: "end",
+      terminal_reason: "interrupted",
+      capture_status: "truncated",
+    });
     const { lines, malformed } = parseReplayLines(text);
     const last = lines[lines.length - 1];
     expect(malformed).toBe(0);
@@ -1635,7 +3588,22 @@ describe("the recovery marker has no sequence number of its own", () => {
   });
 
   it("only a sequence-less end that says interrupted is taken as the marker", () => {
-    const { lines } = parseReplayLines(journal([{ t: "header", s: 0, ms: 1, floor: 0, act: 1, seed: "SEED", start_time: 1, character: "REGENT", starting_deck: [] }, { t: "end", terminal_reason: "left_run", hp: 10 }]));
+    const { lines } = parseReplayLines(
+      journal([
+        {
+          t: "header",
+          s: 0,
+          ms: 1,
+          floor: 0,
+          act: 1,
+          seed: "SEED",
+          start_time: 1,
+          character: "REGENT",
+          starting_deck: [],
+        },
+        { t: "end", terminal_reason: "left_run", hp: 10 },
+      ]),
+    );
     expect(lines.map((l) => l.t)).toEqual(["header"]);
   });
 
@@ -1649,20 +3617,73 @@ describe("the recovery marker has no sequence number of its own", () => {
 describe("an empty enemy turn is only a gap when the sequence jumped", () => {
   const fight = (enemyEnd: number) =>
     journal([
-      { t: "header", s: 0, ms: 1, floor: 0, act: 1, replay_version: 3, seed: "SEED", start_time: 1, character: "REGENT", starting_deck: [] },
-      { t: "room", s: 1, ms: 2, floor: 2, act: 1, kind: "combat", id: "SLIMES_WEAK" },
-      { t: "combat_start", s: 2, ms: 3, floor: 2, act: 1, encounter: "SLIMES_WEAK", enemies: [{ i: 0, id: "LEAF_SLIME_S", hp: 12, max_hp: 12 }] },
+      {
+        t: "header",
+        s: 0,
+        ms: 1,
+        floor: 0,
+        act: 1,
+        replay_version: 3,
+        seed: "SEED",
+        start_time: 1,
+        character: "REGENT",
+        starting_deck: [],
+      },
+      {
+        t: "room",
+        s: 1,
+        ms: 2,
+        floor: 2,
+        act: 1,
+        kind: "combat",
+        id: "SLIMES_WEAK",
+      },
+      {
+        t: "combat_start",
+        s: 2,
+        ms: 3,
+        floor: 2,
+        act: 1,
+        encounter: "SLIMES_WEAK",
+        enemies: [{ i: 0, id: "LEAF_SLIME_S", hp: 12, max_hp: 12 }],
+      },
       { t: "turn", s: 3, ms: 4, floor: 2, act: 1, n: 1, side: "player" },
       { t: "end_turn", s: 4, ms: 5, floor: 2, act: 1, n: 1, side: "player" },
       { t: "turn", s: 5, ms: 6, floor: 2, act: 1, n: 1, side: "enemy" },
-      { t: "end_turn", s: enemyEnd, ms: 7, floor: 2, act: 1, n: 1, side: "enemy" },
-      { t: "turn", s: enemyEnd + 1, ms: 8, floor: 2, act: 1, n: 2, side: "player" },
-      { t: "combat_end", s: enemyEnd + 2, ms: 9, floor: 2, act: 1, result: "victory", turns: 2 },
+      {
+        t: "end_turn",
+        s: enemyEnd,
+        ms: 7,
+        floor: 2,
+        act: 1,
+        n: 1,
+        side: "enemy",
+      },
+      {
+        t: "turn",
+        s: enemyEnd + 1,
+        ms: 8,
+        floor: 2,
+        act: 1,
+        n: 2,
+        side: "player",
+      },
+      {
+        t: "combat_end",
+        s: enemyEnd + 2,
+        ms: 9,
+        floor: 2,
+        act: 1,
+        result: "victory",
+        turns: 2,
+      },
     ]);
 
   it("a contiguous empty turn is a turn where nothing happened", () => {
     const model = parseReplay(fight(6));
-    const enemy = model.floors[0].combats[0].turns.find((tn) => tn.side === "enemy");
+    const enemy = model.floors[0].combats[0].turns.find(
+      (tn) => tn.side === "enemy",
+    );
     expect(enemy?.lines).toHaveLength(1);
     expect(enemy?.linesLost).toBeUndefined();
     expect(model.gaps).toHaveLength(0);
@@ -1670,9 +3691,13 @@ describe("an empty enemy turn is only a gap when the sequence jumped", () => {
 
   it("a jump inside the turn is counted on that turn", () => {
     const model = parseReplay(fight(9));
-    const enemy = model.floors[0].combats[0].turns.find((tn) => tn.side === "enemy");
+    const enemy = model.floors[0].combats[0].turns.find(
+      (tn) => tn.side === "enemy",
+    );
     expect(enemy?.linesLost).toBe(3);
-    const player2 = model.floors[0].combats[0].turns.find((tn) => tn.side === "player" && tn.n === 2);
+    const player2 = model.floors[0].combats[0].turns.find(
+      (tn) => tn.side === "player" && tn.n === 2,
+    );
     expect(player2?.linesLost).toBeUndefined();
     expect(model.floors[0].linesLost).toBe(3);
   });
@@ -1682,7 +3707,19 @@ describe("version 4 header", () => {
   it("keeps the starting max HP and nothing that claims to be a starting HP", () => {
     const model = parseReplay(
       journal([
-        { t: "header", s: 0, ms: 1, floor: 0, act: 1, replay_version: 4, seed: "SEED", start_time: 1, character: "IRONCLAD", starting_max_hp: 80, starting_deck: [] },
+        {
+          t: "header",
+          s: 0,
+          ms: 1,
+          floor: 0,
+          act: 1,
+          replay_version: 4,
+          seed: "SEED",
+          start_time: 1,
+          character: "IRONCLAD",
+          starting_max_hp: 80,
+          starting_deck: [],
+        },
         { t: "hp", s: 1, ms: 2, floor: 0, act: 1, d: 64, hp: 64, src: "heal" },
         { t: "room", s: 2, ms: 3, floor: 1, act: 1, kind: "event", id: "NEOW" },
       ]),

@@ -2,7 +2,17 @@ import { getT } from "@/lib/i18n-server";
 import { Link } from "@/i18n/navigation";
 
 const ARROW = (
-  <svg className="arw" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+  <svg
+    className="arw"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M5 12h14M13 6l6 6-6 6" />
+  </svg>
 );
 
 /** Card-color to an inline hex/token, mirroring `colorTextClass`. Inline so
@@ -89,7 +99,9 @@ export default async function HomeMetricsSection({
 }) {
   const t = await getT();
   const [metrics, cards] = await Promise.all([
-    fetchJson<{ rows: ApiMetricRow[] }>(`${API}/api/runs/metrics/cards?bracket=a10`),
+    fetchJson<{ rows: ApiMetricRow[] }>(
+      `${API}/api/runs/metrics/cards?bracket=a10`,
+    ),
     fetchJson<ApiCard[]>(`${API}/api/cards?lang=${lang}`),
   ]);
   if (!metrics?.rows || !cards) return null;
@@ -118,32 +130,42 @@ export default async function HomeMetricsSection({
             </Link>
           </div>
 
-          <div className="overflow-x-auto"><table className="dtable">
-            <thead>
-              <tr>
-                <th className="rk">#</th>
-                <th>{t("Card")}</th>
-                <th className="num">{t("Codex Elo")}</th>
-                <th className="num">{t("Win%")}</th>
-                <th className="num">{t("Pick%")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {top.map(({ r, c }, i) => (
-                <tr key={c.id}>
-                  <td className="rk">{i + 1}</td>
-                  <td className="ent">
-                    <Link prefetch={false} href={`/cards/${c.id.toLowerCase()}`} style={{ color: cardHex(c.color) }}>
-                      {c.name}
-                    </Link>
-                  </td>
-                  <td className="num mono">{r.elo === null ? "·" : Math.round(r.elo)}</td>
-                  <td className={`num ${winClass(r.win_rate)}`}>{pct(r.win_rate)}</td>
-                  <td className="num dim">{pct(r.pick_rate)}</td>
+          <div className="overflow-x-auto">
+            <table className="dtable">
+              <thead>
+                <tr>
+                  <th className="rk">#</th>
+                  <th>{t("Card")}</th>
+                  <th className="num">{t("Codex Elo")}</th>
+                  <th className="num">{t("Win%")}</th>
+                  <th className="num">{t("Pick%")}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table></div>
+              </thead>
+              <tbody>
+                {top.map(({ r, c }, i) => (
+                  <tr key={c.id}>
+                    <td className="rk">{i + 1}</td>
+                    <td className="ent">
+                      <Link
+                        prefetch={false}
+                        href={`/cards/${c.id.toLowerCase()}`}
+                        style={{ color: cardHex(c.color) }}
+                      >
+                        {c.name}
+                      </Link>
+                    </td>
+                    <td className="num mono">
+                      {r.elo === null ? "·" : Math.round(r.elo)}
+                    </td>
+                    <td className={`num ${winClass(r.win_rate)}`}>
+                      {pct(r.win_rate)}
+                    </td>
+                    <td className="num dim">{pct(r.pick_rate)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
       </section>
     </div>

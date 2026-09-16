@@ -47,7 +47,12 @@ export const CHARACTER_BRACKETS: ContentBracket[] = [
 
 // Both axes are valid ?bracket= values, so normalizeBracket must recognize them.
 const _BY_KEY = new Map(
-  [...CONTENT_BRACKETS, ...PLAYER_BRACKETS, ...MODE_BRACKETS, ...CHARACTER_BRACKETS].map((b) => [b.key, b]),
+  [
+    ...CONTENT_BRACKETS,
+    ...PLAYER_BRACKETS,
+    ...MODE_BRACKETS,
+    ...CHARACTER_BRACKETS,
+  ].map((b) => [b.key, b]),
 );
 const _CHARACTER_KEYS = new Set(CHARACTER_BRACKETS.map((b) => b.key));
 
@@ -159,7 +164,8 @@ export function normalizeBracket(raw: string | undefined | null): string {
   if (isCompositeBracket(raw)) return raw;
   if (isVersionBracket(raw)) return raw;
   const { base, version } = splitVersion(raw);
-  if (version && base && (_BY_KEY.has(base) || isCompositeBracket(base))) return raw;
+  if (version && base && (_BY_KEY.has(base) || isCompositeBracket(base)))
+    return raw;
   return "all";
 }
 

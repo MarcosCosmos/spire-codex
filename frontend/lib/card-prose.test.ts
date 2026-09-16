@@ -61,7 +61,10 @@ describe("upgrade toggle across the whole catalog", () => {
       const desc = c.description || "";
       // Damage-adjacent multiplicity only: "twice as effective" or a
       // conditional "hits twice" elsewhere in the text is not a damage claim.
-      const multi = /damage(?: to [a-z ]+?)? (?:twice|\d+ times|X(?:\+\d+)? times)\b/i.test(desc);
+      const multi =
+        /damage(?: to [a-z ]+?)? (?:twice|\d+ times|X(?:\+\d+)? times)\b/i.test(
+          desc,
+        );
       const covered = (f.hitCount && f.hitCount > 1) || f.xTimes;
       if (multi && !covered) hidden.push(c.id);
     }

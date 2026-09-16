@@ -389,7 +389,14 @@ export type ReplayLine =
   | EndLine
   | UnknownLine;
 
-export type ResolutionLine = AcquireLine | RemoveLine | UpgradeLine | TransformLine | RelicLine | ResolveLine | BuyLine;
+export type ResolutionLine =
+  | AcquireLine
+  | RemoveLine
+  | UpgradeLine
+  | TransformLine
+  | RelicLine
+  | ResolveLine
+  | BuyLine;
 
 export interface ReplayOption {
   index: number;
@@ -572,7 +579,13 @@ export interface ReplayModel {
   lostCountAgrees?: boolean;
 }
 
-const COMBAT_KINDS = new Set(["combat", "monster", "burly_monster", "elite", "boss"]);
+const COMBAT_KINDS = new Set([
+  "combat",
+  "monster",
+  "burly_monster",
+  "elite",
+  "boss",
+]);
 function num(v: unknown): number | undefined {
   return typeof v === "number" && Number.isFinite(v) ? v : undefined;
 }
@@ -600,17 +613,26 @@ function bool(v: unknown): boolean | undefined {
  * whole list unusable rather than shorter: an empty list means "declined
  * explicitly", so silently filtering `[null]` down to `[]` would turn a
  * malformed record into a recorded decision. */
-function indices(v: unknown): { values: number[]; invalid: boolean } | undefined {
+function indices(
+  v: unknown,
+): { values: number[]; invalid: boolean } | undefined {
   if (!Array.isArray(v)) return undefined;
   const parsed = v.map(count);
-  return { values: parsed.filter((n): n is number => n !== undefined), invalid: parsed.some((n) => n === undefined) };
+  return {
+    values: parsed.filter((n): n is number => n !== undefined),
+    invalid: parsed.some((n) => n === undefined),
+  };
 }
 
 function objects(v: unknown): Raw[] {
   if (!Array.isArray(v)) return [];
   // Position is identity when a record omits its own index, so an invalid
   // element becomes an empty record instead of shifting everything after it.
-  return v.map((x) => (!!x && typeof x === "object" && !Array.isArray(x) ? (x as Raw) : ({} as Raw)));
+  return v.map((x) =>
+    !!x && typeof x === "object" && !Array.isArray(x)
+      ? (x as Raw)
+      : ({} as Raw),
+  );
 }
 
 const COORD = /^\s*(-?\d+)\s*,\s*(-?\d+)\s*$/;
@@ -643,7 +665,12 @@ function narrow(raw: Raw): ReplayLine | undefined {
   const t = str(raw.t);
   const s = num(raw.s);
   if (t === undefined || s === undefined) return undefined;
-  const base: LineBase = { s, ms: num(raw.ms), floor: num(raw.floor), act: num(raw.act) };
+  const base: LineBase = {
+    s,
+    ms: num(raw.ms),
+    floor: num(raw.floor),
+    act: num(raw.act),
+  };
   const id = str(raw.id) ?? "";
   switch (t) {
     case "header":
@@ -676,12 +703,22 @@ function narrow(raw: Raw): ReplayLine | undefined {
         nodes: objects(raw.nodes).flatMap((n) => {
           const coord = parseCoord(n.coord);
           if (!coord) return [];
-          const children = (Array.isArray(n.children) ? n.children : []).map(parseCoord).filter((c): c is Coord => !!c);
-          return [{ coord, kind: (str(n.kind) ?? "node").toLowerCase(), children }];
+          const children = (Array.isArray(n.children) ? n.children : [])
+            .map(parseCoord)
+            .filter((c): c is Coord => !!c);
+          return [
+            { coord, kind: (str(n.kind) ?? "node").toLowerCase(), children },
+          ];
         }),
       };
     case "room":
-      return { ...base, t, kind: (str(raw.kind) ?? "unknown").toLowerCase(), id: str(raw.id), coord: parseCoord(raw.coord) };
+      return {
+        ...base,
+        t,
+        kind: (str(raw.kind) ?? "unknown").toLowerCase(),
+        id: str(raw.id),
+        coord: parseCoord(raw.coord),
+      };
     case "decision": {
       const options = objects(raw.options).map((o, i) => ({
         optionIndex: num(o.option_index) ?? i,
@@ -723,17 +760,47 @@ function narrow(raw: Raw): ReplayLine | undefined {
         optionIndex: count(raw.option_index),
         optionId: str(raw.option_id),
         selectedOptionIndices: indices(raw.selected_option_indices)?.values,
-        selectedOptionIndicesInvalid: indices(raw.selected_option_indices)?.invalid,
+        selectedOptionIndicesInvalid: indices(raw.selected_option_indices)
+          ?.invalid,
         label: str(raw.label),
       };
     case "resolve":
-      return { ...base, t, decisionId: int(raw.decision_id), rewardKind: str(raw.reward_kind), gold: num(raw.gold), id: str(raw.id) };
+      return {
+        ...base,
+        t,
+        decisionId: int(raw.decision_id),
+        rewardKind: str(raw.reward_kind),
+        gold: num(raw.gold),
+        id: str(raw.id),
+      };
     case "acquire":
-      return { ...base, t, id, c: int(raw.c), source: str(raw.source), decisionId: int(raw.decision_id), optionIndex: count(raw.option_index) };
+      return {
+        ...base,
+        t,
+        id,
+        c: int(raw.c),
+        source: str(raw.source),
+        decisionId: int(raw.decision_id),
+        optionIndex: count(raw.option_index),
+      };
     case "remove":
-      return { ...base, t, id, c: int(raw.c), decisionId: int(raw.decision_id), optionIndex: count(raw.option_index) };
+      return {
+        ...base,
+        t,
+        id,
+        c: int(raw.c),
+        decisionId: int(raw.decision_id),
+        optionIndex: count(raw.option_index),
+      };
     case "upgrade":
-      return { ...base, t, id, c: int(raw.c), decisionId: int(raw.decision_id), optionIndex: count(raw.option_index) };
+      return {
+        ...base,
+        t,
+        id,
+        c: int(raw.c),
+        decisionId: int(raw.decision_id),
+        optionIndex: count(raw.option_index),
+      };
     case "transform":
       return {
         ...base,
@@ -776,14 +843,23 @@ function narrow(raw: Raw): ReplayLine | undefined {
       };
     case "gold": {
       const gold = num(raw.gold);
-      return gold === undefined ? { ...base, t: "unknown", kind: t, raw } : { ...base, t, gold };
+      return gold === undefined
+        ? { ...base, t: "unknown", kind: t, raw }
+        : { ...base, t, gold };
     }
     case "hp": {
       const hp = num(raw.hp);
-      return hp === undefined ? { ...base, t: "unknown", kind: t, raw } : { ...base, t, d: num(raw.d), hp, src: str(raw.src) };
+      return hp === undefined
+        ? { ...base, t: "unknown", kind: t, raw }
+        : { ...base, t, d: num(raw.d), hp, src: str(raw.src) };
     }
     case "hp_loss":
-      return { ...base, t, dmg: num(raw.dmg) ?? num(raw.d), blocked: num(raw.blocked) };
+      return {
+        ...base,
+        t,
+        dmg: num(raw.dmg) ?? num(raw.d),
+        blocked: num(raw.blocked),
+      };
     case "rest":
       return { ...base, t, option: str(raw.option) };
     case "combat_start":
@@ -849,13 +925,28 @@ function narrow(raw: Raw): ReplayLine | undefined {
         card: str(raw.card),
       };
     case "block":
-      return { ...base, t, n: num(raw.n), card: str(raw.card), src: str(raw.src) };
+      return {
+        ...base,
+        t,
+        n: num(raw.n),
+        card: str(raw.card),
+        src: str(raw.src),
+      };
     case "power":
-      return { ...base, t, id, n: num(raw.n), tgt: str(raw.tgt), src: str(raw.src) };
+      return {
+        ...base,
+        t,
+        id,
+        n: num(raw.n),
+        tgt: str(raw.tgt),
+        src: str(raw.src),
+      };
     case "move": {
       const src = str(raw.src);
       if (!src) return { ...base, t: "unknown", kind: t, raw };
-      const intents = Array.isArray(raw.intents) ? raw.intents.filter((v): v is string => typeof v === "string") : [];
+      const intents = Array.isArray(raw.intents)
+        ? raw.intents.filter((v): v is string => typeof v === "string")
+        : [];
       return { ...base, t, src, id, intents };
     }
     case "exhaust":
@@ -905,20 +996,35 @@ function narrow(raw: Raw): ReplayLine | undefined {
 /** The crash scan's marker is appended from outside the writer, so it is the
  * one line with no sequence number. A real terminal line always has one. */
 function isRecoveryMarker(raw: Raw): boolean {
-  return raw.t === "end" && raw.s === undefined && raw.terminal_reason === "interrupted";
+  return (
+    raw.t === "end" &&
+    raw.s === undefined &&
+    raw.terminal_reason === "interrupted"
+  );
 }
 
-export function parseReplayLines(text: string): { lines: ReplayLine[]; malformed: number } {
+export function parseReplayLines(text: string): {
+  lines: ReplayLine[];
+  malformed: number;
+} {
   const out: ReplayLine[] = [];
-  const raws = text.split("\n").map((l) => l.trim()).filter(Boolean);
+  const raws = text
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
   let malformed = 0;
   raws.forEach((line, i) => {
     try {
       const obj: unknown = JSON.parse(line);
-      if (!obj || typeof obj !== "object" || Array.isArray(obj)) throw new Error("not a record");
+      if (!obj || typeof obj !== "object" || Array.isArray(obj))
+        throw new Error("not a record");
       let typed = narrow(obj as Raw);
       if (!typed && isRecoveryMarker(obj as Raw)) {
-        const after = narrow({ ...(obj as Raw), s: (out[out.length - 1]?.s ?? -1) + 1, ms: 0 });
+        const after = narrow({
+          ...(obj as Raw),
+          s: (out[out.length - 1]?.s ?? -1) + 1,
+          ms: 0,
+        });
         if (after?.t === "end") typed = { ...after, recovered: true };
       }
       if (typed) out.push(typed);
@@ -934,7 +1040,8 @@ function buildMap(line: MapLine): ReplayMap {
   const edges: MapEdge[] = [];
   for (const n of line.nodes) {
     nodes.push([n.coord[0], n.coord[1], n.kind]);
-    for (const child of n.children) edges.push([n.coord[0], n.coord[1], child[0], child[1]]);
+    for (const child of n.children)
+      edges.push([n.coord[0], n.coord[1], child[0], child[1]]);
   }
   // A coordinate the recorder named separately still gets a node when its node
   // list does not already carry one. This places a recorded room, and adds no
@@ -944,9 +1051,16 @@ function buildMap(line: MapLine): ReplayMap {
     [line.boss2Coord, "boss"],
     [line.ancientCoord, "ancient"],
   ] as const) {
-    if (coord && !nodes.some((n) => n[0] === coord[0] && n[1] === coord[1])) nodes.push([coord[0], coord[1], kind]);
+    if (coord && !nodes.some((n) => n[0] === coord[0] && n[1] === coord[1]))
+      nodes.push([coord[0], coord[1], kind]);
   }
-  return { act: line.act ?? 1, nodes, edges, boss: line.boss, ancient: line.ancient };
+  return {
+    act: line.act ?? 1,
+    nodes,
+    edges,
+    boss: line.boss,
+    ancient: line.ancient,
+  };
 }
 
 function buildDecision(line: DecisionLine): ReplayDecision {
@@ -1000,13 +1114,16 @@ function evidenceFor(line: OutcomeLine | ResolutionLine): ChoiceEvidence[] {
   const out: ChoiceEvidence[] = [];
   switch (line.t) {
     case "outcome":
-      if (line.optionIndex !== undefined) out.push({ kind: "index", index: line.optionIndex });
-      for (const i of line.selectedOptionIndices ?? []) out.push({ kind: "index", index: i });
+      if (line.optionIndex !== undefined)
+        out.push({ kind: "index", index: line.optionIndex });
+      for (const i of line.selectedOptionIndices ?? [])
+        out.push({ kind: "index", index: i });
       if (line.optionId) out.push({ kind: "optionId", id: line.optionId });
       break;
     case "acquire":
       // line.c is the instance this acquisition created, not one that was offered.
-      if (line.optionIndex !== undefined) out.push({ kind: "index", index: line.optionIndex });
+      if (line.optionIndex !== undefined)
+        out.push({ kind: "index", index: line.optionIndex });
       break;
     case "remove":
     case "upgrade":
@@ -1014,17 +1131,22 @@ function evidenceFor(line: OutcomeLine | ResolutionLine): ChoiceEvidence[] {
       // on is an offered identity. Both identifiers are collected so a recorder
       // that disagrees with itself reads as a conflict instead of silently
       // preferring one.
-      if (line.optionIndex !== undefined) out.push({ kind: "index", index: line.optionIndex });
-      if (line.c !== undefined) out.push({ kind: "instance", instance: line.c });
+      if (line.optionIndex !== undefined)
+        out.push({ kind: "index", index: line.optionIndex });
+      if (line.c !== undefined)
+        out.push({ kind: "instance", instance: line.c });
       break;
     case "transform":
-      if (line.optionIndex !== undefined) out.push({ kind: "index", index: line.optionIndex });
-      if (line.fromC !== undefined) out.push({ kind: "instance", instance: line.fromC });
+      if (line.optionIndex !== undefined)
+        out.push({ kind: "index", index: line.optionIndex });
+      if (line.fromC !== undefined)
+        out.push({ kind: "instance", instance: line.fromC });
       break;
     case "buy":
       // Shop slots are numbered within their item kind, so the kind is part of
       // the identity and a bare slot number is not.
-      if (line.slot !== undefined) out.push({ kind: "slot", slot: line.slot, itemKind: line.kind });
+      if (line.slot !== undefined)
+        out.push({ kind: "slot", slot: line.slot, itemKind: line.kind });
       break;
   }
   return out;
@@ -1051,7 +1173,9 @@ function matchEvidence(dec: ReplayDecision, ev: ChoiceEvidence): Match {
       hits = dec.options.filter((o) => o.instanceId === ev.instance);
       break;
     case "slot":
-      hits = dec.options.filter((o) => o.index === ev.slot && o.kind === ev.itemKind);
+      hits = dec.options.filter(
+        (o) => o.index === ev.slot && o.kind === ev.itemKind,
+      );
       break;
   }
   if (hits.length === 1) return { index: hits[0].index };
@@ -1099,26 +1223,41 @@ type RecordClaim =
  * even where the decision allowed more than one pick. */
 function fromOneRecord(dec: ReplayDecision, ev: ChoiceEvidence[]): RecordClaim {
   const matches = ev.map((e) => matchEvidence(dec, e));
-  if (matches.some((m) => m === "ambiguous" || m === "unmatched")) return { kind: "unresolved" };
+  if (matches.some((m) => m === "ambiguous" || m === "unmatched"))
+    return { kind: "unresolved" };
   const idx = matches.map((m) => (m as { index: number }).index);
   if (!idx.length) return { kind: "unresolved" };
-  return idx.every((i) => i === idx[0]) ? { kind: "picked", index: idx[0] } : { kind: "contradiction" };
+  return idx.every((i) => i === idx[0])
+    ? { kind: "picked", index: idx[0] }
+    : { kind: "contradiction" };
 }
 
 const DECLINED = new Set(["skip", "decline", "declined", "reroll"]);
 
-function claimFor(dec: ReplayDecision, line: OutcomeLine | ResolutionLine): RecordClaim {
+function claimFor(
+  dec: ReplayDecision,
+  line: OutcomeLine | ResolutionLine,
+): RecordClaim {
   if (line.t === "outcome") {
     if (line.selectedOptionIndicesInvalid) return { kind: "unresolved" };
     const set = line.selectedOptionIndices;
     if (set !== undefined) {
       if (!set.length) return { kind: "declined" };
-      const matches = set.map((i) => matchEvidence(dec, { kind: "index", index: i }));
-      if (matches.some((m) => m === "ambiguous" || m === "unmatched")) return { kind: "unresolved" };
-      return { kind: "exhaustive", indices: matches.map((m) => (m as { index: number }).index) };
+      const matches = set.map((i) =>
+        matchEvidence(dec, { kind: "index", index: i }),
+      );
+      if (matches.some((m) => m === "ambiguous" || m === "unmatched"))
+        return { kind: "unresolved" };
+      return {
+        kind: "exhaustive",
+        indices: matches.map((m) => (m as { index: number }).index),
+      };
     }
     const ev = evidenceFor(line);
-    if (!ev.length) return line.outcome && DECLINED.has(line.outcome) ? { kind: "declined" } : { kind: "unresolved" };
+    if (!ev.length)
+      return line.outcome && DECLINED.has(line.outcome)
+        ? { kind: "declined" }
+        : { kind: "unresolved" };
     return fromOneRecord(dec, ev);
   }
   if (!selectionBearing(dec, line)) return { kind: "silent" };
@@ -1132,7 +1271,9 @@ function claimFor(dec: ReplayDecision, line: OutcomeLine | ResolutionLine): Reco
  * against each other rather than poured into one bag. Nothing is marked when
  * they disagree. */
 function reconcileSelection(dec: ReplayDecision): void {
-  const claims = [...dec.outcomes, ...dec.resolutions].map((l) => claimFor(dec, l));
+  const claims = [...dec.outcomes, ...dec.resolutions].map((l) =>
+    claimFor(dec, l),
+  );
   const mark = (indexes: number[]) => {
     for (const o of dec.options) if (indexes.includes(o.index)) o.chosen = true;
   };
@@ -1140,7 +1281,9 @@ function reconcileSelection(dec: ReplayDecision): void {
     dec.selectionStatus = "conflict";
     return;
   }
-  const exhaustive = claims.flatMap((c) => (c.kind === "exhaustive" ? [c.indices] : []));
+  const exhaustive = claims.flatMap((c) =>
+    c.kind === "exhaustive" ? [c.indices] : [],
+  );
   const picks = claims.flatMap((c) => (c.kind === "picked" ? [c.index] : []));
   const declined = claims.some((c) => c.kind === "declined");
   const unresolved = claims.filter((c) => c.kind === "unresolved").length;
@@ -1149,7 +1292,9 @@ function reconcileSelection(dec: ReplayDecision): void {
   // outside it, or saying nothing was taken, contradicts it.
   if (exhaustive.length) {
     const first = exhaustive[0];
-    const agree = exhaustive.every((e) => e.length === first.length && e.every((i) => first.includes(i)));
+    const agree = exhaustive.every(
+      (e) => e.length === first.length && e.every((i) => first.includes(i)),
+    );
     if (!agree || declined || picks.some((p) => !first.includes(p))) {
       dec.selectionStatus = "conflict";
       return;
@@ -1220,7 +1365,11 @@ export function parseReplay(text: string): ReplayModel {
   // written in, which is the one the version gates have to read.
   const headers = lines.filter((l): l is HeaderLine => l.t === "header");
   const header: HeaderLine | undefined = headers.length
-    ? { ...headers[0], replayVersion: headers[headers.length - 1].replayVersion ?? headers[0].replayVersion }
+    ? {
+        ...headers[0],
+        replayVersion:
+          headers[headers.length - 1].replayVersion ?? headers[0].replayVersion,
+      }
     : undefined;
   const maps: Record<number, ReplayMap> = {};
   const actNames: Record<number, string> = {};
@@ -1255,7 +1404,12 @@ export function parseReplay(text: string): ReplayModel {
     for (let j = i - 1; j >= 0; j -= 1) {
       const prev = lines[j];
       if (prev.t === "room" || prev.t === "resume") break;
-      if (prev.floor !== undefined && line.floor !== undefined && prev.floor !== line.floor) break;
+      if (
+        prev.floor !== undefined &&
+        line.floor !== undefined &&
+        prev.floor !== line.floor
+      )
+        break;
       if (prev.t === "combat_end") break;
       if (prev.t === "combat_start") {
         interrupted = prev.encounter;
@@ -1266,10 +1420,16 @@ export function parseReplay(text: string): ReplayModel {
     for (let j = i + 1; j < lines.length; j += 1) {
       const next = lines[j];
       if (next.t === "end" || next.t === "resume") break;
-      if (next.floor !== undefined && line.floor !== undefined && next.floor !== line.floor) break;
+      if (
+        next.floor !== undefined &&
+        line.floor !== undefined &&
+        next.floor !== line.floor
+      )
+        break;
       if (next.t === "room") continue;
       if (next.t === "combat_start") {
-        if (interrupted !== undefined && next.encounter === interrupted) verdict = "restarted";
+        if (interrupted !== undefined && next.encounter === interrupted)
+          verdict = "restarted";
         break;
       }
       if (next.t === "turn" || next.t === "combat_end") {
@@ -1279,7 +1439,14 @@ export function parseReplay(text: string): ReplayModel {
     }
     resumeOutcome.set(line, verdict);
   });
-  const newFloor = (floorNo: number, act: number, s: number, kind = "unknown", id?: string, coord?: Coord): ReplayFloor => {
+  const newFloor = (
+    floorNo: number,
+    act: number,
+    s: number,
+    kind = "unknown",
+    id?: string,
+    coord?: Coord,
+  ): ReplayFloor => {
     const f: ReplayFloor = {
       floor: floorNo,
       act,
@@ -1304,13 +1471,19 @@ export function parseReplay(text: string): ReplayModel {
   // The room line then fills in what the placeholder does not know.
   const floorFor = (line: ReplayLine): ReplayFloor | undefined => {
     if (line.floor === undefined || line.floor === 0) return current;
-    const sameAct = (f: ReplayFloor) => line.act === undefined || f.act === line.act;
-    if (current && current.floor === line.floor && sameAct(current)) return current;
+    const sameAct = (f: ReplayFloor) =>
+      line.act === undefined || f.act === line.act;
+    if (current && current.floor === line.floor && sameAct(current))
+      return current;
     const known = floors.find((x) => x.floor === line.floor && sameAct(x));
     if (known) return known;
     return newFloor(line.floor, line.act ?? current?.act ?? 1, line.s);
   };
-  const snapshot = (floor: ReplayFloor | undefined, nextHp?: number, nextGold?: number) => {
+  const snapshot = (
+    floor: ReplayFloor | undefined,
+    nextHp?: number,
+    nextGold?: number,
+  ) => {
     if (nextHp !== undefined) {
       hp = nextHp;
       if (floor) floor.hpAfter = nextHp;
@@ -1350,7 +1523,14 @@ export function parseReplay(text: string): ReplayModel {
           }
           if (!current.coord && line.coord) current.coord = line.coord;
         } else {
-          current = newFloor(floorNo, act, line.s, line.kind, line.id, line.coord);
+          current = newFloor(
+            floorNo,
+            act,
+            line.s,
+            line.kind,
+            line.id,
+            line.coord,
+          );
         }
         combat = undefined;
         hpLoss = undefined;
@@ -1373,7 +1553,8 @@ export function parseReplay(text: string): ReplayModel {
         snapshot(floor, undefined, line.gold);
         break;
       case "buy":
-        if (line.costResource === "gold") snapshot(floor, undefined, line.goldOnHand);
+        if (line.costResource === "gold")
+          snapshot(floor, undefined, line.goldOnHand);
         break;
       case "shop":
         if (floor && !floor.shop) floor.shop = line;
@@ -1393,8 +1574,9 @@ export function parseReplay(text: string): ReplayModel {
             // Carry on inside the fight the reload landed in. Its start was
             // seen, its total was not, so no HP figure is derived for it.
             combat =
-              (line.combatId !== undefined ? open.find((c) => c.combatId === line.combatId) : undefined) ??
-              open[open.length - 1];
+              (line.combatId !== undefined
+                ? open.find((c) => c.combatId === line.combatId)
+                : undefined) ?? open[open.length - 1];
             if (combat) combat.resumedAcrossReload = true;
           }
         }
@@ -1425,7 +1607,12 @@ export function parseReplay(text: string): ReplayModel {
         const setup: ReplayLine[] = [];
         for (let k = floor.lines.length - 2; k >= 0; k -= 1) {
           const prev = floor.lines[k];
-          if ((prev.t === "power" || prev.t === "block") && prev.src !== undefined && enemyIds.has(prev.src)) setup.unshift(prev);
+          if (
+            (prev.t === "power" || prev.t === "block") &&
+            prev.src !== undefined &&
+            enemyIds.has(prev.src)
+          )
+            setup.unshift(prev);
           else break;
         }
         if (setup.length) {
@@ -1443,7 +1630,9 @@ export function parseReplay(text: string): ReplayModel {
       const tagged = line.t === "turn" || line.t === "combat_end";
       const foreign =
         tagged &&
-        ((line.combatId !== undefined && combat.combatId !== undefined && line.combatId !== combat.combatId) ||
+        ((line.combatId !== undefined &&
+          combat.combatId !== undefined &&
+          line.combatId !== combat.combatId) ||
           (!combat.resumedAcrossReload &&
             line.attemptId !== undefined &&
             combat.attemptId !== undefined &&
@@ -1470,7 +1659,14 @@ export function parseReplay(text: string): ReplayModel {
         continue;
       }
       if (line.t === "end_turn") turnEnded = true;
-      if (!turn && (line.t === "power" || line.t === "block" || line.t === "hit" || line.t === "move" || line.t === "generate")) {
+      if (
+        !turn &&
+        (line.t === "power" ||
+          line.t === "block" ||
+          line.t === "hit" ||
+          line.t === "move" ||
+          line.t === "generate")
+      ) {
         turn = { n: 0, side: "start", lines: [] };
         combat.turns.push(turn);
       }
@@ -1483,12 +1679,14 @@ export function parseReplay(text: string): ReplayModel {
         combat.hpLost = line.hpLostTotal;
         // The HP the fight ended on has to agree with the changes recorded
         // during it, or the recorded changes did not cover the whole fight.
-        if (hpLoss && line.hp !== undefined && hpLoss.last !== line.hp) hpLoss.consistent = false;
+        if (hpLoss && line.hp !== undefined && hpLoss.last !== line.hp)
+          hpLoss.consistent = false;
         // From the version that totals HP loss, a missing total means the
         // recorder could not supply one, so nothing is substituted for it.
         // Below that version there is no total to miss, and the recorded losses
         // are offered as the lower bound they are.
-        if (hpLoss?.consistent && (header?.replayVersion ?? 1) < 2) combat.hpLossRecorded = hpLoss.lost;
+        if (hpLoss?.consistent && (header?.replayVersion ?? 1) < 2)
+          combat.hpLossRecorded = hpLoss.lost;
         if (line.hp !== undefined) {
           combat.hpEnd = line.hp;
           snapshot(floor, line.hp);
@@ -1500,7 +1698,12 @@ export function parseReplay(text: string): ReplayModel {
       }
       if (line.t === "hp") {
         if (hpLoss) {
-          if (line.d === undefined || hpLoss.last === undefined || hpLoss.last + line.d !== line.hp) hpLoss.consistent = false;
+          if (
+            line.d === undefined ||
+            hpLoss.last === undefined ||
+            hpLoss.last + line.d !== line.hp
+          )
+            hpLoss.consistent = false;
           else if (line.d < 0) hpLoss.lost -= line.d;
           hpLoss.last = line.hp;
         }
@@ -1517,7 +1720,10 @@ export function parseReplay(text: string): ReplayModel {
       continue;
     }
     if (line.t === "outcome") {
-      const dec = line.decisionId !== undefined ? decisions.get(line.decisionId) : undefined;
+      const dec =
+        line.decisionId !== undefined
+          ? decisions.get(line.decisionId)
+          : undefined;
       if (dec) {
         dec.outcome = line.outcome;
         dec.outcomes.push(line);
@@ -1525,11 +1731,19 @@ export function parseReplay(text: string): ReplayModel {
       continue;
     }
     if (isResolution(line)) {
-      const dec = line.decisionId !== undefined ? decisions.get(line.decisionId) : undefined;
+      const dec =
+        line.decisionId !== undefined
+          ? decisions.get(line.decisionId)
+          : undefined;
       if (dec) {
         dec.resolutions.push(line);
         if (line.t === "buy") {
-          dec.paid = { kind: line.kind, id: line.id, cost: line.costCurrent, resource: line.costResource };
+          dec.paid = {
+            kind: line.kind,
+            id: line.id,
+            cost: line.costCurrent,
+            resource: line.costResource,
+          };
         }
       }
     }
@@ -1538,7 +1752,8 @@ export function parseReplay(text: string): ReplayModel {
   // On a death the end line's hp is the latch and beats any sample. Otherwise
   // it is a 10 Hz sample that can trail the last recorded hp line, so the
   // recorded line wins.
-  if (end?.hp !== undefined && (end.isGameOver || hp === undefined)) snapshot(floors[floors.length - 1], end.hp);
+  if (end?.hp !== undefined && (end.isGameOver || hp === undefined))
+    snapshot(floors[floors.length - 1], end.hp);
   // A resumed journal carries an end line at every quit-to-menu boundary. Only
   // an end line with nothing after it is the run's outcome; one with more
   // journal behind it is a boundary the run went on past. A journal whose
@@ -1548,16 +1763,28 @@ export function parseReplay(text: string): ReplayModel {
   const gaps: ReplayGap[] = [];
   for (let i = 1; i < lines.length; i += 1) {
     const missing = lines[i].s - lines[i - 1].s - 1;
-    if (missing > 0) gaps.push({ afterSeq: lines[i - 1].s, count: missing, floor: lines[i - 1].floor ?? lines[i].floor });
+    if (missing > 0)
+      gaps.push({
+        afterSeq: lines[i - 1].s,
+        count: missing,
+        floor: lines[i - 1].floor ?? lines[i].floor,
+      });
   }
   for (const gap of gaps) {
-    const floor = gap.floor === undefined ? undefined : floors.find((f) => f.floor === gap.floor);
+    const floor =
+      gap.floor === undefined
+        ? undefined
+        : floors.find((f) => f.floor === gap.floor);
     if (floor) floor.linesLost += gap.count;
     for (const combat of floor?.combats ?? []) {
       combat.turns.forEach((turn, i) => {
         const start = turn.s ?? turn.lines[0]?.s;
-        const next = combat.turns[i + 1]?.s ?? combat.turns[i + 1]?.lines[0]?.s ?? Number.POSITIVE_INFINITY;
-        if (start !== undefined && gap.afterSeq >= start && gap.afterSeq < next) turn.linesLost = (turn.linesLost ?? 0) + gap.count;
+        const next =
+          combat.turns[i + 1]?.s ??
+          combat.turns[i + 1]?.lines[0]?.s ??
+          Number.POSITIVE_INFINITY;
+        if (start !== undefined && gap.afterSeq >= start && gap.afterSeq < next)
+          turn.linesLost = (turn.linesLost ?? 0) + gap.count;
       });
     }
   }
@@ -1567,7 +1794,9 @@ export function parseReplay(text: string): ReplayModel {
   for (const floor of floors) {
     for (const c of floor.combats) {
       if (c.combatId === undefined) continue;
-      c.supersededByRetry = floor.combats.lastIndexOf(c) < floor.combats.map((x) => x.combatId).lastIndexOf(c.combatId);
+      c.supersededByRetry =
+        floor.combats.lastIndexOf(c) <
+        floor.combats.map((x) => x.combatId).lastIndexOf(c.combatId);
     }
   }
 
@@ -1585,7 +1814,9 @@ export function parseReplay(text: string): ReplayModel {
     malformedLines: malformed,
     gaps,
     lostCountAgrees:
-      end?.lostCount === undefined ? undefined : end.lostCount === gaps.reduce((n, g) => n + g.count, 0),
+      end?.lostCount === undefined
+        ? undefined
+        : end.lostCount === gaps.reduce((n, g) => n + g.count, 0),
   };
 }
 
@@ -1602,7 +1833,13 @@ export function routeForAct(model: ReplayModel, act: number): RouteEntry[] {
   return model.floors
     .filter((f) => f.act === act)
     .map((f) =>
-      f.coord ? { floor: f, coord: f.coord, offMap: !onMap.has(`${f.coord[0]},${f.coord[1]}`) } : { floor: f },
+      f.coord
+        ? {
+            floor: f,
+            coord: f.coord,
+            offMap: !onMap.has(`${f.coord[0]},${f.coord[1]}`),
+          }
+        : { floor: f },
     );
 }
 
@@ -1615,7 +1852,10 @@ export function routeForAct(model: ReplayModel, act: number): RouteEntry[] {
  * answers it, because the recorder shipped working coordinates one build
  * before it bumped the version. */
 export function hasMapPositions(model: ReplayModel): boolean {
-  return (model.header?.replayVersion ?? 1) >= 2 || model.floors.some((f) => f.coord !== undefined);
+  return (
+    (model.header?.replayVersion ?? 1) >= 2 ||
+    model.floors.some((f) => f.coord !== undefined)
+  );
 }
 
 /** Whether this fight is part of what happened on its floor. A fight a reload

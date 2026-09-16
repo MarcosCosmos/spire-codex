@@ -60,7 +60,8 @@ export interface Card {
   damage: number | null;
   block: number | null;
   hit_count: number | null;
-  powers_applied: { power: string; power_key: string | null; amount: number }[] | null;
+  powers_applied:
+    { power: string; power_key: string | null; amount: number }[] | null;
   cards_draw: number | null;
   energy_gain: number | null;
   hp_loss: number | null;
@@ -220,7 +221,10 @@ export interface Monster {
   min_hp_ascension: number | null;
   max_hp_ascension: number | null;
   moves: MonsterMove[] | null;
-  damage_values: Record<string, { normal: number; ascension?: number; hit_count?: number }> | null;
+  damage_values: Record<
+    string,
+    { normal: number; ascension?: number; hit_count?: number }
+  > | null;
   block_values: Record<string, number> | null;
   encounters: MonsterEncounter[] | null;
   innate_powers: MonsterInnatePower[] | null;
@@ -500,23 +504,32 @@ export const api = {
   // and fall through to a hardcoded baseline.
   getStatsBounded: (timeoutMs?: number) =>
     fetchApiBounded<Stats>("/api/stats", timeoutMs),
-  getCards: (params?: string) => fetchApi<Card[]>(`/api/cards${params ? `?${params}` : ""}`),
+  getCards: (params?: string) =>
+    fetchApi<Card[]>(`/api/cards${params ? `?${params}` : ""}`),
   getCard: (id: string) => fetchApi<Card>(`/api/cards/${id}`),
   getCharacters: () => fetchApi<Character[]>("/api/characters"),
   getCharacter: (id: string) => fetchApi<Character>(`/api/characters/${id}`),
-  getRelics: (params?: string) => fetchApi<Relic[]>(`/api/relics${params ? `?${params}` : ""}`),
+  getRelics: (params?: string) =>
+    fetchApi<Relic[]>(`/api/relics${params ? `?${params}` : ""}`),
   getRelic: (id: string) => fetchApi<Relic>(`/api/relics/${id}`),
-  getMonsters: (params?: string) => fetchApi<Monster[]>(`/api/monsters${params ? `?${params}` : ""}`),
+  getMonsters: (params?: string) =>
+    fetchApi<Monster[]>(`/api/monsters${params ? `?${params}` : ""}`),
   getMonster: (id: string) => fetchApi<Monster>(`/api/monsters/${id}`),
-  getPotions: (params?: string) => fetchApi<Potion[]>(`/api/potions${params ? `?${params}` : ""}`),
+  getPotions: (params?: string) =>
+    fetchApi<Potion[]>(`/api/potions${params ? `?${params}` : ""}`),
   getPotion: (id: string) => fetchApi<Potion>(`/api/potions/${id}`),
-  getEnchantments: (params?: string) => fetchApi<Enchantment[]>(`/api/enchantments${params ? `?${params}` : ""}`),
-  getEnchantment: (id: string) => fetchApi<Enchantment>(`/api/enchantments/${id}`),
-  getEncounters: (params?: string) => fetchApi<Encounter[]>(`/api/encounters${params ? `?${params}` : ""}`),
+  getEnchantments: (params?: string) =>
+    fetchApi<Enchantment[]>(`/api/enchantments${params ? `?${params}` : ""}`),
+  getEnchantment: (id: string) =>
+    fetchApi<Enchantment>(`/api/enchantments/${id}`),
+  getEncounters: (params?: string) =>
+    fetchApi<Encounter[]>(`/api/encounters${params ? `?${params}` : ""}`),
   getEncounter: (id: string) => fetchApi<Encounter>(`/api/encounters/${id}`),
-  getEvents: (params?: string) => fetchApi<GameEvent[]>(`/api/events${params ? `?${params}` : ""}`),
+  getEvents: (params?: string) =>
+    fetchApi<GameEvent[]>(`/api/events${params ? `?${params}` : ""}`),
   getEvent: (id: string) => fetchApi<GameEvent>(`/api/events/${id}`),
-  getPowers: (params?: string) => fetchApi<Power[]>(`/api/powers${params ? `?${params}` : ""}`),
+  getPowers: (params?: string) =>
+    fetchApi<Power[]>(`/api/powers${params ? `?${params}` : ""}`),
   getPower: (id: string) => fetchApi<Power>(`/api/powers/${id}`),
   getKeywords: () => fetchApi<Keyword[]>("/api/keywords"),
   getIntents: () => fetchApi<Intent[]>("/api/intents"),
@@ -524,7 +537,8 @@ export const api = {
   getAfflictions: () => fetchApi<Affliction[]>("/api/afflictions"),
   getModifiers: () => fetchApi<Modifier[]>("/api/modifiers"),
   getAchievements: () => fetchApi<Achievement[]>("/api/achievements"),
-  getEpochs: (params?: string) => fetchApi<Epoch[]>(`/api/epochs${params ? `?${params}` : ""}`),
+  getEpochs: (params?: string) =>
+    fetchApi<Epoch[]>(`/api/epochs${params ? `?${params}` : ""}`),
   getEpoch: (id: string) => fetchApi<Epoch>(`/api/epochs/${id}`),
   getStories: () => fetchApi<Story[]>("/api/stories"),
   getStory: (id: string) => fetchApi<Story>(`/api/stories/${id}`),

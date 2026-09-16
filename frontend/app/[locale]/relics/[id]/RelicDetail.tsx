@@ -1,7 +1,12 @@
 "use client";
 
 import { useT, useGameLocale } from "@/lib/i18n";
-import { useState, useEffect, type MouseEvent as ReactMouseEvent, type CSSProperties } from "react";
+import {
+  useState,
+  useEffect,
+  type MouseEvent as ReactMouseEvent,
+  type CSSProperties,
+} from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import type { Relic } from "@/lib/api";
@@ -13,7 +18,9 @@ import RelatedItems from "@/app/components/RelatedItems";
 import EntityProse from "@/app/components/EntityProse";
 import EntityPairings from "@/app/components/EntityPairings";
 import EntityDraftRecs from "@/app/components/EntityDraftRecs";
-import EntityRunStats, { type EntityStats } from "@/app/components/EntityRunStats";
+import EntityRunStats, {
+  type EntityStats,
+} from "@/app/components/EntityRunStats";
 import EntityVersionSelect from "@/app/components/EntityVersionSelect";
 import { imageUrl } from "@/lib/image-url";
 import { useBetaPrefix } from "@/lib/use-lang-prefix";
@@ -125,7 +132,10 @@ export default function RelicDetail({
     return (
       <div className="max-w-2xl mx-auto px-4 py-12 text-center">
         <p className="text-[var(--text-muted)] mb-4">{t("Relic not found.")}</p>
-        <Link href={`${bp}/relics`} className="text-[var(--accent-gold)] hover:underline">
+        <Link
+          href={`${bp}/relics`}
+          className="text-[var(--accent-gold)] hover:underline"
+        >
           &larr; {t("Back to")} {t("Relics")}
         </Link>
       </div>
@@ -160,10 +170,14 @@ export default function RelicDetail({
   return (
     <div
       className="card-rvmp"
-      style={{
-        "--spine": "var(--accent-gold)",
-        ...(renderSrc ? { "--entity-bg": `url("${imageUrl(renderSrc)}?bg")` } : {}),
-      } as CSSProperties}
+      style={
+        {
+          "--spine": "var(--accent-gold)",
+          ...(renderSrc
+            ? { "--entity-bg": `url("${imageUrl(renderSrc)}?bg")` }
+            : {}),
+        } as CSSProperties
+      }
     >
       <div className="cd-top">
         <button onClick={() => router.back()} className="cd-back">
@@ -211,7 +225,8 @@ export default function RelicDetail({
             <h2>{t("Community performance")}</h2>
             <p className="h-note">
               {t(
-                "Live aggregate across community-submitted runs. Filter by bracket to see how it holds up at higher levels of play.")}
+                "Live aggregate across community-submitted runs. Filter by bracket to see how it holds up at higher levels of play.",
+              )}
             </p>
             <EntityRunStats
               entityType="relics"
@@ -243,12 +258,14 @@ export default function RelicDetail({
               <>
                 <h3 className="subh">{t("Known as")}</h3>
                 <div className="chips">
-                  {Object.entries(relic.name_variants!).map(([char, variantName]) => (
-                    <span key={char} className="chip">
-                      <span>{variantName}</span>
-                      <span className="rp-alias">{char}</span>
-                    </span>
-                  ))}
+                  {Object.entries(relic.name_variants!).map(
+                    ([char, variantName]) => (
+                      <span key={char} className="chip">
+                        <span>{variantName}</span>
+                        <span className="rp-alias">{char}</span>
+                      </span>
+                    ),
+                  )}
                 </div>
               </>
             )}
@@ -285,16 +302,30 @@ export default function RelicDetail({
                   path: `/api/relics?pool=${encodeURIComponent(relic.pool)}&lang=${lang}`,
                 },
                 {
-                  label: relic.rarity.endsWith("Relic") ? `${relic.rarity}s` : t("{rarity} Relics", { rarity: relic.rarity }),
+                  label: relic.rarity.endsWith("Relic")
+                    ? `${relic.rarity}s`
+                    : t("{rarity} Relics", { rarity: relic.rarity }),
                   path: `/api/relics?rarity=${encodeURIComponent(relic.rarity)}&lang=${lang}`,
                 },
               ]}
             />
           </section>
 
-          <EntityPairings kind="relics" id={id} name={relic.name} lang={lang} bp={bp} />
+          <EntityPairings
+            kind="relics"
+            id={id}
+            name={relic.name}
+            lang={lang}
+            bp={bp}
+          />
 
-          <EntityDraftRecs kind="relics" id={id} name={relic.name} lang={lang} bp={bp} />
+          <EntityDraftRecs
+            kind="relics"
+            id={id}
+            name={relic.name}
+            lang={lang}
+            bp={bp}
+          />
 
           {/* Version history + localized names */}
           <LocalizedNames entityType="relics" entityId={id} />
@@ -315,31 +346,47 @@ export default function RelicDetail({
 
             {/* Per-character / per-save art switcher. Single layout for both
                 variant types: buttons row, then a single italic hint below. */}
-            {hasImageVariants && (() => {
-              const CHARACTER_KEYS = new Set(["Ironclad", "Silent", "Defect", "Necrobinder", "Regent"]);
-              const variantKeys = Object.keys(relic.image_variants!);
-              const isCharacterVariants = variantKeys.every((k) => CHARACTER_KEYS.has(k));
-              const hint = isCharacterVariants
-                ? t("This relic has different art for each character. Use buttons above.")
-                : t("Multiple in-game art variants, toggle above");
-              return (
-                <div>
-                  <div className="rp-variants">
-                    {Object.entries(relic.image_variants!).map(([variantKey, url]) => (
-                      <button
-                        key={variantKey}
-                        onClick={() => { setSelectedVariant(url); setSelectedChar(variantKey); }}
-                        title={`${t("Show")} ${variantKey} ${t("variant")}`}
-                        className={`rp-vbtn${selectedVariant === url ? " on" : ""}`}
-                      >
-                        {variantKey}
-                      </button>
-                    ))}
+            {hasImageVariants &&
+              (() => {
+                const CHARACTER_KEYS = new Set([
+                  "Ironclad",
+                  "Silent",
+                  "Defect",
+                  "Necrobinder",
+                  "Regent",
+                ]);
+                const variantKeys = Object.keys(relic.image_variants!);
+                const isCharacterVariants = variantKeys.every((k) =>
+                  CHARACTER_KEYS.has(k),
+                );
+                const hint = isCharacterVariants
+                  ? t(
+                      "This relic has different art for each character. Use buttons above.",
+                    )
+                  : t("Multiple in-game art variants, toggle above");
+                return (
+                  <div>
+                    <div className="rp-variants">
+                      {Object.entries(relic.image_variants!).map(
+                        ([variantKey, url]) => (
+                          <button
+                            key={variantKey}
+                            onClick={() => {
+                              setSelectedVariant(url);
+                              setSelectedChar(variantKey);
+                            }}
+                            title={`${t("Show")} ${variantKey} ${t("variant")}`}
+                            className={`rp-vbtn${selectedVariant === url ? " on" : ""}`}
+                          >
+                            {variantKey}
+                          </button>
+                        ),
+                      )}
+                    </div>
+                    <p className="rp-hint">{hint}</p>
                   </div>
-                  <p className="rp-hint">{hint}</p>
-                </div>
-              );
-            })()}
+                );
+              })()}
 
             <div className="mb-2 text-center">
               <EntityVersionSelect
@@ -371,12 +418,15 @@ export default function RelicDetail({
                     {relic.merchant_price ? (
                       <>
                         <img
-                          src={imageUrl("/static/images/ui/rewards/reward_icon_money.webp")}
+                          src={imageUrl(
+                            "/static/images/ui/rewards/reward_icon_money.webp",
+                          )}
                           alt={t("Gold")}
                           style={{ width: 15, height: 15 }}
                           crossOrigin="anonymous"
                         />
-                        {relic.merchant_price.min}&ndash;{relic.merchant_price.max}
+                        {relic.merchant_price.min}&ndash;
+                        {relic.merchant_price.max}
                       </>
                     ) : (
                       t("Not sold")
@@ -398,7 +448,10 @@ export default function RelicDetail({
                     <div>
                       <div
                         className="mv"
-                        style={{ color: mini.win_rate >= 50 ? "var(--good)" : "var(--warn)" }}
+                        style={{
+                          color:
+                            mini.win_rate >= 50 ? "var(--good)" : "var(--warn)",
+                        }}
                       >
                         {mini.win_rate}%
                       </div>

@@ -159,14 +159,17 @@ export function buildWebSiteJsonLd() {
   };
 }
 
-const STEAM_STORE_URL = "https://store.steampowered.com/app/2868840/Slay_the_Spire_2/";
+const STEAM_STORE_URL =
+  "https://store.steampowered.com/app/2868840/Slay_the_Spire_2/";
 
-export function buildVideoGameJsonLd(steam?: {
-  ratingValue: number;
-  ratingCount: number;
-  price?: string;
-  priceCurrency?: string;
-} | null) {
+export function buildVideoGameJsonLd(
+  steam?: {
+    ratingValue: number;
+    ratingCount: number;
+    price?: string;
+    priceCurrency?: string;
+  } | null,
+) {
   // VideoGame is a SoftwareApplication subtype, so validators hold it to
   // app rules: applicationCategory, offers, and aggregateRating. The
   // rating and price come from Steam's public APIs (see lib/steam-meta),
@@ -233,7 +236,7 @@ export function buildSoftwareApplicationJsonLd() {
 }
 
 export function buildFAQPageJsonLd(
-  questions: { question: string; answer: string }[]
+  questions: { question: string; answer: string }[],
 ) {
   return {
     "@context": "https://schema.org",

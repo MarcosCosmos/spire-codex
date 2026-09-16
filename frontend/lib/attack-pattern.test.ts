@@ -4,7 +4,14 @@ import { randomPatternSentences, randomPatternSummary } from "./attack-pattern";
 
 const t = (key: string, values?: Record<string, string | number>) =>
   key.replace(/\{(\w+)\}/g, (_, k) => String(values?.[k] ?? `{${k}}`));
-const names: Record<string, string> = { CLAW: "Claw", RIP_AND_TEAR: "Rip and Tear", ROAR: "Roar", HEADBUTT: "Headbutt", SWIPE_RANDOM: "Swipe Random", ILLUSORY_SPORES: "Illusory Spores" };
+const names: Record<string, string> = {
+  CLAW: "Claw",
+  RIP_AND_TEAR: "Rip and Tear",
+  ROAR: "Roar",
+  HEADBUTT: "Headbutt",
+  SWIPE_RANDOM: "Swipe Random",
+  ILLUSORY_SPORES: "Illusory Spores",
+};
 const nameOf = (id: string) => names[id] ?? id;
 
 const mawler: AttackPattern = {
@@ -12,7 +19,12 @@ const mawler: AttackPattern = {
   initial_move: "CLAW",
   description: "",
   states: [
-    { id: "RIP_AND_TEAR_MOVE", type: "move", move_id: "RIP_AND_TEAR", next: "RAND" },
+    {
+      id: "RIP_AND_TEAR_MOVE",
+      type: "move",
+      move_id: "RIP_AND_TEAR",
+      next: "RAND",
+    },
     { id: "ROAR_MOVE", type: "move", move_id: "ROAR", next: "RAND" },
     { id: "CLAW_MOVE", type: "move", move_id: "CLAW", next: "RAND" },
     { id: "RAND", type: "random", branches: [] },
@@ -48,7 +60,14 @@ describe("random attack pattern copy", () => {
       initial_move: "ILLUSORY_SPORES",
       description: "",
       states: [
-        { id: "R", type: "random", branches: [{ move_id: "SWIPE_RANDOM", weight: 2, repeat: "CannotRepeat" }, { move_id: "HEADBUTT", weight: 3, repeat: "CannotRepeat" }] },
+        {
+          id: "R",
+          type: "random",
+          branches: [
+            { move_id: "SWIPE_RANDOM", weight: 2, repeat: "CannotRepeat" },
+            { move_id: "HEADBUTT", weight: 3, repeat: "CannotRepeat" },
+          ],
+        },
       ],
     };
     const s = randomPatternSummary(fogmog)!;
@@ -62,7 +81,22 @@ describe("random attack pattern copy", () => {
   });
 
   it("leaves cycles and conditionals alone", () => {
-    expect(randomPatternSummary({ type: "cycle", initial_move: "A", description: "", states: [{ id: "A_MOVE", type: "move", move_id: "A", next: "B_MOVE" }] })).toBeNull();
-    expect(randomPatternSummary({ ...mawler, states: [...mawler.states, { id: "C", type: "conditional", branches: [] }] })).toBeNull();
+    expect(
+      randomPatternSummary({
+        type: "cycle",
+        initial_move: "A",
+        description: "",
+        states: [{ id: "A_MOVE", type: "move", move_id: "A", next: "B_MOVE" }],
+      }),
+    ).toBeNull();
+    expect(
+      randomPatternSummary({
+        ...mawler,
+        states: [
+          ...mawler.states,
+          { id: "C", type: "conditional", branches: [] },
+        ],
+      }),
+    ).toBeNull();
   });
 });

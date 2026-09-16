@@ -11,15 +11,26 @@ export const revalidate = 300;
 
 // Base English route. Localized copies live at /[lang]/community-stats and
 // render the same CommunityStatsBody with the URL language.
-type Props = { params: Promise<{ locale: string }>; searchParams: Promise<{ bracket?: string }> };
+type Props = {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<{ bracket?: string }>;
+};
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const locale = localeOf((await params).locale);
   const t = await getT(locale);
-  return buildPageMetadata({ locale, path: "/community-stats", title: t("Community Stats"), description: t("community-stats_meta_description") });
+  return buildPageMetadata({
+    locale,
+    path: "/community-stats",
+    title: t("Community Stats"),
+    description: t("community-stats_meta_description"),
+  });
 }
 
-export default async function CommunityStatsPage({ params, searchParams }: Props) {
+export default async function CommunityStatsPage({
+  params,
+  searchParams,
+}: Props) {
   const locale = localeOf((await params).locale);
   const sp = await searchParams;
   const bracket = normalizeBracket(sp.bracket);

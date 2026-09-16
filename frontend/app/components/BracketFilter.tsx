@@ -75,7 +75,13 @@ export default async function BracketFilter({
         prefetch={false}
         rel="nofollow"
         key={b.key}
-        href={hrefFor(b.key === "all" ? version || "all" : version ? `${b.key}:${version}` : b.key)}
+        href={hrefFor(
+          b.key === "all"
+            ? version || "all"
+            : version
+              ? `${b.key}:${version}`
+              : b.key,
+        )}
         className={pillCls(base === b.key || (b.key === "all" && !base))}
       >
         {t(b.label)}
@@ -84,41 +90,47 @@ export default async function BracketFilter({
     return (
       <div className="mb-5 space-y-1.5">
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-xs text-[var(--text-muted)] mr-1">{t("Bracket")}</span>
+          <span className="text-xs text-[var(--text-muted)] mr-1">
+            {t("Bracket")}
+          </span>
           {CONTENT_BRACKETS.map(renderPill)}
           {/* Player count shares the ?bracket= slot, so picking one clears the
               content bracket and vice versa. */}
-          <span className="text-xs text-[var(--text-muted)] mx-1">{t("Players")}</span>
+          <span className="text-xs text-[var(--text-muted)] mx-1">
+            {t("Players")}
+          </span>
           {PLAYER_BRACKETS.map(renderPill)}
         </div>
-      <div className="flex flex-wrap items-center gap-1.5">
-        <span className="w-14 text-xs text-[var(--text-muted)]">{t("Mode")}</span>
-        <Link
-          prefetch={false}
-          rel="nofollow"
-          href={hrefFor(
-            base && !MODE_BRACKETS.some((m) => m.key === base)
-              ? version
-                ? `${base}:${version}`
-                : base
-              : version || "all",
-          )}
-          className={pillCls(!MODE_BRACKETS.some((m) => m.key === base))}
-        >
-          {t("All")}
-        </Link>
-        {MODE_BRACKETS.map((m) => (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="w-14 text-xs text-[var(--text-muted)]">
+            {t("Mode")}
+          </span>
           <Link
             prefetch={false}
             rel="nofollow"
-            key={m.key}
-            href={hrefFor(version ? `${m.key}:${version}` : m.key)}
-            className={pillCls(base === m.key)}
+            href={hrefFor(
+              base && !MODE_BRACKETS.some((m) => m.key === base)
+                ? version
+                  ? `${base}:${version}`
+                  : base
+                : version || "all",
+            )}
+            className={pillCls(!MODE_BRACKETS.some((m) => m.key === base))}
           >
-            {t(m.label)}
+            {t("All")}
           </Link>
-        ))}
-      </div>
+          {MODE_BRACKETS.map((m) => (
+            <Link
+              prefetch={false}
+              rel="nofollow"
+              key={m.key}
+              href={hrefFor(version ? `${m.key}:${version}` : m.key)}
+              className={pillCls(base === m.key)}
+            >
+              {t(m.label)}
+            </Link>
+          ))}
+        </div>
         <VersionSelectNav
           basePath={basePath}
           current={active}
@@ -137,7 +149,9 @@ export default async function BracketFilter({
   return (
     <div className="mb-5 space-y-1.5">
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className="w-14 text-xs text-[var(--text-muted)]">{t("Bracket")}</span>
+        <span className="w-14 text-xs text-[var(--text-muted)]">
+          {t("Bracket")}
+        </span>
         {CONTENT_BRACKETS.map((b) => {
           const targetSkill = b.key === "all" ? "" : b.key;
           return (
@@ -145,7 +159,15 @@ export default async function BracketFilter({
               prefetch={false}
               rel="nofollow"
               key={b.key}
-              href={hrefFor(combineBracket(player, targetSkill, version, modeComposes ? mode : "", modeComposes ? character : ""))}
+              href={hrefFor(
+                combineBracket(
+                  player,
+                  targetSkill,
+                  version,
+                  modeComposes ? mode : "",
+                  modeComposes ? character : "",
+                ),
+              )}
               className={pillCls(skill === targetSkill)}
             >
               {t(b.label)}
@@ -154,13 +176,23 @@ export default async function BracketFilter({
         })}
       </div>
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className="w-14 text-xs text-[var(--text-muted)]">{t("Players")}</span>
+        <span className="w-14 text-xs text-[var(--text-muted)]">
+          {t("Players")}
+        </span>
         {playerOpts.map((b) => (
           <Link
             prefetch={false}
             rel="nofollow"
             key={b.key || "all"}
-            href={hrefFor(combineBracket(b.key, skill, version, modeComposes ? mode : "", modeComposes ? character : ""))}
+            href={hrefFor(
+              combineBracket(
+                b.key,
+                skill,
+                version,
+                modeComposes ? mode : "",
+                modeComposes ? character : "",
+              ),
+            )}
             className={pillCls(player === b.key)}
           >
             {t(b.label)}
@@ -168,7 +200,9 @@ export default async function BracketFilter({
         ))}
       </div>
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className="w-14 text-xs text-[var(--text-muted)]">{t("Mode")}</span>
+        <span className="w-14 text-xs text-[var(--text-muted)]">
+          {t("Mode")}
+        </span>
         {modeComposes ? (
           <>
             {/* Cube-backed page: mode is a real axis, so every mode pill
@@ -176,7 +210,9 @@ export default async function BracketFilter({
             <Link
               prefetch={false}
               rel="nofollow"
-              href={hrefFor(combineBracket(player, skill, version, "", character))}
+              href={hrefFor(
+                combineBracket(player, skill, version, "", character),
+              )}
               className={pillCls(!mode)}
             >
               {t("All")}
@@ -186,7 +222,9 @@ export default async function BracketFilter({
                 prefetch={false}
                 rel="nofollow"
                 key={m.key}
-                href={hrefFor(combineBracket(player, skill, version, m.key, character))}
+                href={hrefFor(
+                  combineBracket(player, skill, version, m.key, character),
+                )}
                 className={pillCls(mode === m.key)}
               >
                 {t(m.label)}
@@ -225,7 +263,9 @@ export default async function BracketFilter({
       </div>
       {modeComposes && (
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="w-14 text-xs text-[var(--text-muted)]">{t("Character")}</span>
+          <span className="w-14 text-xs text-[var(--text-muted)]">
+            {t("Character")}
+          </span>
           <Link
             prefetch={false}
             rel="nofollow"
@@ -239,11 +279,15 @@ export default async function BracketFilter({
               prefetch={false}
               rel="nofollow"
               key={c.key}
-              href={hrefFor(combineBracket(player, skill, version, mode, c.key))}
+              href={hrefFor(
+                combineBracket(player, skill, version, mode, c.key),
+              )}
               className={`${pillCls(character === c.key)} inline-flex items-center gap-1.5`}
             >
               <img
-                src={imageUrl(`/static/images/characters/character_icon_${c.key}.webp`)}
+                src={imageUrl(
+                  `/static/images/characters/character_icon_${c.key}.webp`,
+                )}
                 alt=""
                 width={16}
                 height={16}

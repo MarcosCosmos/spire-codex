@@ -97,7 +97,13 @@ export function CardPill({
           <img
             src={
               enchantment
-                ? enchantedCardUrl(cardId.toLowerCase(), enchantment, upgraded, "stable", lang)
+                ? enchantedCardUrl(
+                    cardId.toLowerCase(),
+                    enchantment,
+                    upgraded,
+                    "stable",
+                    lang,
+                  )
                 : fullCardUrl(cardId.toLowerCase(), upgraded, "stable", lang)
             }
             alt=""
@@ -158,8 +164,12 @@ export function RelicPill({
               />
             )}
             <div className="min-w-0">
-              <div className="font-semibold text-xs text-[var(--text-primary)] truncate">{info.name}</div>
-              <div className="text-[10px] text-[var(--text-muted)]">{info.rarity}</div>
+              <div className="font-semibold text-xs text-[var(--text-primary)] truncate">
+                {info.name}
+              </div>
+              <div className="text-[10px] text-[var(--text-muted)]">
+                {info.rarity}
+              </div>
             </div>
           </div>
           <div className="text-[10px] text-[var(--text-secondary)] leading-relaxed">
@@ -207,8 +217,12 @@ export function PotionPill({
               />
             )}
             <div className="min-w-0">
-              <div className="font-semibold text-xs text-[var(--text-primary)] truncate">{info.name}</div>
-              <div className="text-[10px] text-[var(--text-muted)]">{info.rarity}</div>
+              <div className="font-semibold text-xs text-[var(--text-primary)] truncate">
+                {info.name}
+              </div>
+              <div className="text-[10px] text-[var(--text-muted)]">
+                {info.rarity}
+              </div>
             </div>
           </div>
           <div className="text-[10px] text-[var(--text-secondary)] leading-relaxed">

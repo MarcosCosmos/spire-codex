@@ -80,7 +80,8 @@ export default function SimilarRuns({ hash }: { hash: string }) {
             {data.archetype.name}
           </Link>
           <span className="text-[var(--text-muted)]">
-            {" "}· {data.archetype.win_rate}% {t("win rate")} ·{" "}
+            {" "}
+            · {data.archetype.win_rate}% {t("win rate")} ·{" "}
             {data.archetype.share}% {t("of runs")}
           </span>
         </p>
@@ -101,7 +102,9 @@ export default function SimilarRuns({ hash }: { hash: string }) {
             <span className="text-[var(--text-muted)] truncate">
               {it.username ?? "anon"}
             </span>
-            <span className="text-[var(--text-muted)] ml-auto flex-shrink-0">{it.date}</span>
+            <span className="text-[var(--text-muted)] ml-auto flex-shrink-0">
+              {it.date}
+            </span>
           </Link>
         ))}
       </div>

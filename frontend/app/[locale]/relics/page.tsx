@@ -10,14 +10,22 @@ import RecentlyAdded from "@/app/components/RecentlyAdded";
 import HighestRated from "@/app/components/HighestRated";
 import RelicsClient from "./RelicsClient";
 
-const API = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API =
+  process.env.API_INTERNAL_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://localhost:8000";
 
 type Props = { params: Promise<{ locale: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const locale = localeOf((await params).locale);
   const t = await getT(locale);
-  return buildPageMetadata({ locale, path: "/relics", title: t("Relics"), description: t("relics_meta_description") });
+  return buildPageMetadata({
+    locale,
+    path: "/relics",
+    title: t("Relics"),
+    description: t("relics_meta_description"),
+  });
 }
 
 export default async function RelicsPage({ params }: Props) {
@@ -27,7 +35,9 @@ export default async function RelicsPage({ params }: Props) {
   const tagline = t("relics_tagline");
   let relics: Relic[] = [];
   try {
-    const res = await fetch(`${API}/api/relics?lang=${locale}`, { next: { revalidate: 300 } });
+    const res = await fetch(`${API}/api/relics?lang=${locale}`, {
+      next: { revalidate: 300 },
+    });
     if (res.ok) relics = await res.json();
   } catch {}
 
@@ -41,7 +51,10 @@ export default async function RelicsPage({ params }: Props) {
       description: t("relics_meta_description"),
       path: localePath(locale, "/relics"),
       inLanguage: inLanguageOf(locale),
-      items: relics.map((r) => ({ name: r.name, path: localePath(locale, `/relics/${r.id.toLowerCase()}`) })),
+      items: relics.map((r) => ({
+        name: r.name,
+        path: localePath(locale, `/relics/${r.id.toLowerCase()}`),
+      })),
     }),
   ];
 

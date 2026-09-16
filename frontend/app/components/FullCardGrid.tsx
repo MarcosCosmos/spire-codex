@@ -49,7 +49,9 @@ function FullCardItem({ card, stat }: { card: Card; stat?: CardStat }) {
       <Link prefetch={false} href={href} className="block">
         <img
           src={src}
-          alt={t("{name} - Slay the Spire 2", { name: `${card.name}${showUpgraded ? "+" : ""}` })}
+          alt={t("{name} - Slay the Spire 2", {
+            name: `${card.name}${showUpgraded ? "+" : ""}`,
+          })}
           className="w-full h-auto aspect-[400/520] transition-transform duration-150 group-hover:scale-[1.04] drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]"
           loading="lazy"
           crossOrigin="anonymous"
@@ -58,7 +60,11 @@ function FullCardItem({ card, stat }: { card: Card; stat?: CardStat }) {
       </Link>
       {stat && (
         // Win rate + pick count in place of a name (score-sorted view).
-        <Link prefetch={false} href={href} className="mt-1 flex items-center justify-center gap-2 text-[11px] leading-none">
+        <Link
+          prefetch={false}
+          href={href}
+          className="mt-1 flex items-center justify-center gap-2 text-[11px] leading-none"
+        >
           {stat.win_rate != null && (
             <span className="font-semibold text-[var(--accent-gold)]">
               {Math.round(stat.win_rate)}% WR
@@ -111,7 +117,11 @@ export default function FullCardGrid({
       }
     >
       {cards.map((card) => (
-        <FullCardItem key={card.id} card={card} stat={stats?.[card.id.toUpperCase()]} />
+        <FullCardItem
+          key={card.id}
+          card={card}
+          stat={stats?.[card.id.toUpperCase()]}
+        />
       ))}
     </div>
   );

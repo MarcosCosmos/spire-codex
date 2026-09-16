@@ -42,7 +42,11 @@ export function buildApiUrl(url: string): string {
   }
   // On a /beta page every API read should come from the beta channel; doing
   // it here makes every cachedFetch caller channel-aware without edits.
-  if (pathChannel() === "beta" && out.includes("/api/") && !/[?&]channel=/.test(out)) {
+  if (
+    pathChannel() === "beta" &&
+    out.includes("/api/") &&
+    !/[?&]channel=/.test(out)
+  ) {
     const sep = out.includes("?") ? "&" : "?";
     out = `${out}${sep}channel=beta`;
   }

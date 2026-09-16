@@ -63,7 +63,7 @@ export default function LocalizedNames({
   // "Crawled - currently not indexed" bucket.
   useEffect(() => {
     cachedFetch<Record<string, string>>(
-      `${API}/api/names/${entityType}/${entityId}`
+      `${API}/api/names/${entityType}/${entityId}`,
     ).then(setNames);
   }, [entityType, entityId]);
 
@@ -85,7 +85,11 @@ export default function LocalizedNames({
           const isEnglish = apiName === "English";
           const linkLocale = isEnglish ? "eng" : code;
           const href = linkLocale ? `/${route}/${idSlug}` : null;
-          const hrefLang = isEnglish ? "en" : code ? LANG_HREFLANG[code] : undefined;
+          const hrefLang = isEnglish
+            ? "en"
+            : code
+              ? LANG_HREFLANG[code]
+              : undefined;
           return { apiName, name, href, hrefLang, linkLocale };
         })
     : [];
@@ -108,14 +112,18 @@ export default function LocalizedNames({
                   hrefLang={hrefLang}
                   className="flex justify-between gap-3 rounded px-1.5 -mx-1.5 py-1 hover:bg-[var(--bg-card)] transition-colors"
                 >
-                  <span className="text-[var(--text-secondary)]">{apiName}</span>
+                  <span className="text-[var(--text-secondary)]">
+                    {apiName}
+                  </span>
                   <span className="text-[var(--text-primary)] text-right">
                     {name}
                   </span>
                 </Link>
               ) : (
                 <div className="flex justify-between gap-3 px-1.5 py-1">
-                  <span className="text-[var(--text-secondary)]">{apiName}</span>
+                  <span className="text-[var(--text-secondary)]">
+                    {apiName}
+                  </span>
                   <span className="text-[var(--text-primary)] text-right">
                     {name}
                   </span>

@@ -53,7 +53,9 @@ describe("getCardDisplayModel", () => {
 
     const display = getCardDisplayModel(card, true);
 
-    expect(display.descriptionText).toBe("Whenever you play a card, gain 1 Block.");
+    expect(display.descriptionText).toBe(
+      "Whenever you play a card, gain 1 Block.",
+    );
     expect(display.keywordText).toBe("[green]Innate[/green].");
     expect(display.addedKeywords).toEqual(["Innate"]);
   });
@@ -69,7 +71,9 @@ describe("getCardDisplayModel", () => {
 
     const display = getCardDisplayModel(card, true);
 
-    expect(display.descriptionText).toBe("Deal [green]4[/green] damage. Gain [green]4[/green] Block.");
+    expect(display.descriptionText).toBe(
+      "Deal [green]4[/green] damage. Gain [green]4[/green] Block.",
+    );
     expect(display.keywordText).toBe("");
   });
 
@@ -91,20 +95,19 @@ describe("getCardDisplayModel", () => {
     expect(display.keywordText).toBe("[green]Innate[/green].");
   });
 
-it("highlights values inside upgrade_description without replacing from the base description", () => {
-  const card = createCard({
-    description: "Draw 1 card.",
-    damage: null,
-    block: null,
-    vars: { Draw: 1 },
-    upgrade: { draw: "+1" },
-    upgrade_description: "Draw 2 cards.",
-  });
+  it("highlights values inside upgrade_description without replacing from the base description", () => {
+    const card = createCard({
+      description: "Draw 1 card.",
+      damage: null,
+      block: null,
+      vars: { Draw: 1 },
+      upgrade: { draw: "+1" },
+      upgrade_description: "Draw 2 cards.",
+    });
 
-  const display = getCardDisplayModel(card, true);
+    const display = getCardDisplayModel(card, true);
 
-  expect(display.descriptionText).toBe("Draw [green]2[/green] cards.");
-  expect(display.keywordText).toBe("");
+    expect(display.descriptionText).toBe("Draw [green]2[/green] cards.");
+    expect(display.keywordText).toBe("");
   });
-  
 });

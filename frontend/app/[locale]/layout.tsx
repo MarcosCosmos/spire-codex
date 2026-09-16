@@ -45,7 +45,8 @@ import { SITE_NAME, SITE_URL, DEFAULT_OG_IMAGE } from "@/lib/seo";
 // `localhost:3000` are rejected before they land in the stats.
 const UMAMI_SRC = "https://analytics.spire-codex.com/script.js";
 const UMAMI_WEBSITE_ID =
-  process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID || "715a2b92-5064-4369-9d33-cdd1c0ea8f93";
+  process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID ||
+  "715a2b92-5064-4369-9d33-cdd1c0ea8f93";
 
 // Google Analytics 4 + Google Tag Manager, running alongside Umami. Both ids
 // are public-by-design like the Umami website id. GTM could load the GA tag
@@ -73,7 +74,10 @@ const kreon = Kreon({
   weight: ["300", "400", "500", "600", "700"],
 });
 
-type LayoutProps = Readonly<{ children: React.ReactNode; params: Promise<{ locale: string }> }>;
+type LayoutProps = Readonly<{
+  children: React.ReactNode;
+  params: Promise<{ locale: string }>;
+}>;
 
 const ENGLISH_TITLE = `Database - Slay the Spire 2 (sts2) | ${SITE_NAME}`;
 const ENGLISH_DESCRIPTION =
@@ -82,11 +86,21 @@ const ENGLISH_DESCRIPTION =
 // No `alternates` here on purpose: a layout's canonical is inherited by every
 // child page that doesn't set its own, which would point list pages at the
 // locale home. Pages set their own canonical and hreflang.
-export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
   const { locale } = await params;
   const loc = (hasLocale(routing.locales, locale) ? locale : "eng") as Locale;
-  const title = loc === "eng" ? ENGLISH_TITLE : `${LANG_GAME_NAME[loc]} ${LANG_DATABASE[loc]} - Spire Codex (${LANG_NAMES[loc]})`;
-  const description = loc === "eng" ? ENGLISH_DESCRIPTION : `Spire Codex, ${LANG_GAME_NAME[loc]} ${LANG_DATABASE[loc]}. ${LANG_NAMES[loc]}.`;
+  const title =
+    loc === "eng"
+      ? ENGLISH_TITLE
+      : `${LANG_GAME_NAME[loc]} ${LANG_DATABASE[loc]} - Spire Codex (${LANG_NAMES[loc]})`;
+  const description =
+    loc === "eng"
+      ? ENGLISH_DESCRIPTION
+      : `Spire Codex, ${LANG_GAME_NAME[loc]} ${LANG_DATABASE[loc]}. ${LANG_NAMES[loc]}.`;
   return {
     metadataBase: new URL(SITE_URL),
     title,
@@ -128,7 +142,11 @@ export default async function RootLayout({ children, params }: LayoutProps) {
       {/* React hoists these into <head>. Preconnecting to the CDN saves a
           DNS + TLS round trip before the first image request — on mobile
           RTTs that's a few hundred ms off every art-heavy page. */}
-      <link rel="preconnect" href="https://cdn.spire-codex.com" crossOrigin="anonymous" />
+      <link
+        rel="preconnect"
+        href="https://cdn.spire-codex.com"
+        crossOrigin="anonymous"
+      />
       <link rel="dns-prefetch" href="https://cdn.spire-codex.com" />
       {/* NitroPay: the queue stub must exist before any createAd call, so it
           stays beforeInteractive (it's one statement). The loader itself is
@@ -140,7 +158,11 @@ export default async function RootLayout({ children, params }: LayoutProps) {
           spire-codex.com, so dev would just log errors. */}
       {process.env.NODE_ENV === "production" && (
         <>
-          <link rel="preconnect" href="https://s.nitropay.com" crossOrigin="anonymous" />
+          <link
+            rel="preconnect"
+            href="https://s.nitropay.com"
+            crossOrigin="anonymous"
+          />
           <link rel="dns-prefetch" href="https://consent.nitrocnct.com" />
           <link rel="dns-prefetch" href="https://p.cpx.to" />
           <link rel="dns-prefetch" href="https://prebid.cwi.re" />
@@ -177,32 +199,37 @@ export default async function RootLayout({ children, params }: LayoutProps) {
             so non-JS crawlers saw pages with no h1 and no text. The only
             component that needed it (BetaVersionProvider's useSearchParams)
             reads window.location instead now. */}
-        <IntlProvider locale={locale} messages={messages as Record<string, string>}>
-            <BetaVersionProvider>
-              <AuthProvider>
+        <IntlProvider
+          locale={locale}
+          messages={messages as Record<string, string>}
+        >
+          <BetaVersionProvider>
+            <AuthProvider>
               <ToastProvider>
-              <AuthNotice />
-              <Navbar />
-              <LocaleSuggestToast />
-              <div className="pt-16">
-                <AlertTicker />
-                {/* tabIndex=-1 lets Navbar's main.focus() (PR #142) clear
+                <AuthNotice />
+                <Navbar />
+                <LocaleSuggestToast />
+                <div className="pt-16">
+                  <AlertTicker />
+                  {/* tabIndex=-1 lets Navbar's main.focus() (PR #142) clear
                     focus-within from the dropdown after route changes. The
                     outline-none is required because the programmatic focus
                     would otherwise paint a visible browser focus ring around
                     the entire content area, which read as a stray "tab" line
                     underneath the donation banner on every navigation. */}
-                <BetaChrome />
-                <main tabIndex={-1} className="outline-none">{children}</main>
-              </div>
-              <Footer />
-              <GlobalSearch />
-              <FloatingFeedback />
-              {process.env.NODE_ENV === "production" && <NitroAnchor />}
-              <HighlightFeedback />
+                  <BetaChrome />
+                  <main tabIndex={-1} className="outline-none">
+                    {children}
+                  </main>
+                </div>
+                <Footer />
+                <GlobalSearch />
+                <FloatingFeedback />
+                {process.env.NODE_ENV === "production" && <NitroAnchor />}
+                <HighlightFeedback />
               </ToastProvider>
-              </AuthProvider>
-            </BetaVersionProvider>
+            </AuthProvider>
+          </BetaVersionProvider>
         </IntlProvider>
         {UMAMI_SRC && UMAMI_WEBSITE_ID && (
           <Script

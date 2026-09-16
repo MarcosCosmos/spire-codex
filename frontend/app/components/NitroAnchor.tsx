@@ -6,7 +6,10 @@ import { usePathname } from "next/navigation";
 declare global {
   interface Window {
     nitroAds?: {
-      createAd: (id: string, config: Record<string, unknown>) => Promise<unknown>;
+      createAd: (
+        id: string,
+        config: Record<string, unknown>,
+      ) => Promise<unknown>;
     };
   }
 }

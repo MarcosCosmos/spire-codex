@@ -52,7 +52,6 @@ const COLOR_FILTERS = [
   { value: "colorless", label: "Colorless" },
 ];
 
-
 // The run-bracket filter has four combinable axes (player count x skill tier
 // x game mode x version), served as a colon-joined composite (solo:a10:standard)
 // the lake entity cube folds server-side. Keep keys in sync with the lake's
@@ -104,7 +103,12 @@ function parseBracket(b: string): {
 
 // Every axis composes: player, skill, mode, and version join freely — the
 // lake entity cube folds any combination server-side.
-function combineBracket(player: string, skill: string, mode: string, version = ""): string {
+function combineBracket(
+  player: string,
+  skill: string,
+  mode: string,
+  version = "",
+): string {
   const base = [player, skill, mode, version].filter(Boolean).join(":");
   return base || "all";
 }
@@ -123,13 +127,7 @@ function bracketLabel(b: string, t: TFn): string {
 }
 
 type SortKey =
-  | "elo"
-  | "score"
-  | "winRate"
-  | "pickRate"
-  | "picks"
-  | "offered"
-  | "name";
+  "elo" | "score" | "winRate" | "pickRate" | "picks" | "offered" | "name";
 
 interface Column {
   key: SortKey;
@@ -141,23 +139,71 @@ interface Column {
 }
 
 const COLUMNS: Column[] = [
-  { key: "name", label: "Card", title: "Card name", align: "left", descFirst: false },
-  { key: "score", label: "Score", title: "Codex Score (0-100, Bayesian win rate)", align: "right", descFirst: true },
-  { key: "elo", label: "Elo", title: "Codex Elo (revealed preference). Base rows: card-reward picks. + rows: rest-site Smith upgrade choices.", align: "right", descFirst: true },
-  { key: "winRate", label: "Win%", title: "Win rate of runs containing this card", align: "right", descFirst: true },
-  { key: "pickRate", label: "Pick%", title: "How often this card is taken when offered", align: "right", descFirst: true },
-  { key: "offered", label: "Seen", title: "Times offered in a card reward", align: "right", descFirst: true },
-  { key: "picks", label: "Runs", title: "Runs that included this card", align: "right", descFirst: true },
+  {
+    key: "name",
+    label: "Card",
+    title: "Card name",
+    align: "left",
+    descFirst: false,
+  },
+  {
+    key: "score",
+    label: "Score",
+    title: "Codex Score (0-100, Bayesian win rate)",
+    align: "right",
+    descFirst: true,
+  },
+  {
+    key: "elo",
+    label: "Elo",
+    title:
+      "Codex Elo (revealed preference). Base rows: card-reward picks. + rows: rest-site Smith upgrade choices.",
+    align: "right",
+    descFirst: true,
+  },
+  {
+    key: "winRate",
+    label: "Win%",
+    title: "Win rate of runs containing this card",
+    align: "right",
+    descFirst: true,
+  },
+  {
+    key: "pickRate",
+    label: "Pick%",
+    title: "How often this card is taken when offered",
+    align: "right",
+    descFirst: true,
+  },
+  {
+    key: "offered",
+    label: "Seen",
+    title: "Times offered in a card reward",
+    align: "right",
+    descFirst: true,
+  },
+  {
+    key: "picks",
+    label: "Runs",
+    title: "Runs that included this card",
+    align: "right",
+    descFirst: true,
+  },
 ];
 
 // nulls always sort to the bottom regardless of direction.
-function cmp(a: number | string | null, b: number | string | null, dir: 1 | -1): number {
+function cmp(
+  a: number | string | null,
+  b: number | string | null,
+  dir: 1 | -1,
+): number {
   const an = a === null || a === undefined;
   const bn = b === null || b === undefined;
   if (an && bn) return 0;
   if (an) return 1;
   if (bn) return -1;
-  if (typeof a === "string" && typeof b === "string") return a.localeCompare(b) * dir;
+  if (typeof a === "string" && typeof b === "string")
+    return a.localeCompare(b) * dir;
   return ((a as number) - (b as number)) * dir;
 }
 
@@ -221,9 +267,12 @@ export default function MetricsClient({
   };
   // Player and skill combine; picking either clears the exclusive mode axis.
   // Every pill keeps the version selection.
-  const pickPlayer = (p: string) => nav(combineBracket(p, sel.skill, sel.mode, sel.version));
-  const pickSkill = (s: string) => nav(combineBracket(sel.player, s, sel.mode, sel.version));
-  const pickMode = (m: string) => nav(combineBracket(sel.player, sel.skill, m, sel.version));
+  const pickPlayer = (p: string) =>
+    nav(combineBracket(p, sel.skill, sel.mode, sel.version));
+  const pickSkill = (s: string) =>
+    nav(combineBracket(sel.player, s, sel.mode, sel.version));
+  const pickMode = (m: string) =>
+    nav(combineBracket(sel.player, sel.skill, m, sel.version));
   const pickVersion = (v: string) =>
     nav(combineBracket(sel.player, sel.skill, sel.mode, v));
   // "Played by": server-side character re-scope (that character's runs), on top
@@ -241,7 +290,7 @@ export default function MetricsClient({
     e: React.MouseEvent<HTMLElement>,
     id: string,
     upgraded: boolean,
-    art: string | null
+    art: string | null,
   ) => {
     const r = e.currentTarget.getBoundingClientRect();
     const W = 180;
@@ -253,7 +302,7 @@ export default function MetricsClient({
       r.right + 12 + W <= window.innerWidth ? r.right + 12 : r.left - W - 12;
     const top = Math.min(
       Math.max(8, r.top + r.height / 2 - H / 2),
-      window.innerHeight - H - 8
+      window.innerHeight - H - 8,
     );
     setPreview({ id, upgraded, art, top, left });
   };
@@ -295,21 +344,28 @@ export default function MetricsClient({
         </h1>
         <p className="mt-2 max-w-3xl text-sm text-[var(--text-secondary)]">
           {t("Every card scored two ways.")}{" "}
-          <Link href={`${bp}/leaderboards/scoring`} className="text-[var(--accent-gold)] hover:underline">
+          <Link
+            href={`${bp}/leaderboards/scoring`}
+            className="text-[var(--accent-gold)] hover:underline"
+          >
             Codex Score
           </Link>{" "}
-          {t("grades win rate (does the card win games).")} <strong>Codex Elo</strong>{" "}
-          {t("is a revealed-preference rating built from card-reward decisions. Every reward screen is a head-to-head where the card you take beats the cards you skip, fit with a Bradley-Terry model. Elo is largely skill-agnostic: it measures what players actually want when offered, not who happened to play the card.")}
+          {t("grades win rate (does the card win games).")}{" "}
+          <strong>Codex Elo</strong>{" "}
+          {t(
+            "is a revealed-preference rating built from card-reward decisions. Every reward screen is a head-to-head where the card you take beats the cards you skip, fit with a Bradley-Terry model. Elo is largely skill-agnostic: it measures what players actually want when offered, not who happened to play the card.",
+          )}
         </p>
         <p className="mt-2 text-xs text-[var(--text-muted)]">
-          {bracketLabel(bracket, t)} ·{" "}
-          {totalRuns.toLocaleString()} {t("runs")} · {t("baseline win rate")} {baselineWinRate}% ·{" "}
-          {visible.length} {t("cards shown")}
+          {bracketLabel(bracket, t)} · {totalRuns.toLocaleString()} {t("runs")}{" "}
+          · {t("baseline win rate")} {baselineWinRate}% · {visible.length}{" "}
+          {t("cards shown")}
         </p>
         {!sel.player && !sel.mode && (
           <p className="mt-1 text-xs text-[var(--text-muted)]">
             {t(
-              "Elo here is the average across player counts. Pick a player count to see its own.")}
+              "Elo here is the average across player counts. Pick a player count to see its own.",
+            )}
           </p>
         )}
       </header>
@@ -319,7 +375,9 @@ export default function MetricsClient({
           cached server refetch. Pick a player count AND a skill tier to see,
           e.g., solo runs from >50%-win-rate players. */}
       <div className="mb-2 flex flex-wrap items-center gap-1.5">
-        <span className="mr-1 w-12 text-xs text-[var(--text-muted)]">{t("Players")}</span>
+        <span className="mr-1 w-12 text-xs text-[var(--text-muted)]">
+          {t("Players")}
+        </span>
         {PLAYER_AXIS.map((c) => (
           <button
             key={c.key || "all"}
@@ -331,7 +389,9 @@ export default function MetricsClient({
         ))}
       </div>
       <div className="mb-2 flex flex-wrap items-center gap-1.5">
-        <span className="mr-1 w-12 text-xs text-[var(--text-muted)]">{t("Skill")}</span>
+        <span className="mr-1 w-12 text-xs text-[var(--text-muted)]">
+          {t("Skill")}
+        </span>
         {SKILL_AXIS.map((c) => (
           <button
             key={c.key || "all"}
@@ -343,7 +403,9 @@ export default function MetricsClient({
         ))}
       </div>
       <div className="mb-2 flex flex-wrap items-center gap-1.5">
-        <span className="mr-1 w-12 text-xs text-[var(--text-muted)]">{t("Mode")}</span>
+        <span className="mr-1 w-12 text-xs text-[var(--text-muted)]">
+          {t("Mode")}
+        </span>
         {MODE_AXIS.map((c) => (
           <button
             key={c.key || "all"}
@@ -356,7 +418,9 @@ export default function MetricsClient({
       </div>
       {statVersions.length > 0 && (
         <div className="mb-2 flex flex-wrap items-center gap-1.5">
-          <span className="mr-1 w-12 text-xs text-[var(--text-muted)]">{t("Version")}</span>
+          <span className="mr-1 w-12 text-xs text-[var(--text-muted)]">
+            {t("Version")}
+          </span>
           <select
             value={selVersion}
             onChange={(e) => pickVersion(e.target.value)}
@@ -364,7 +428,9 @@ export default function MetricsClient({
           >
             <option value="">{t("All versions")}</option>
             {statVersions.map((v) => (
-              <option key={v} value={v}>{v}</option>
+              <option key={v} value={v}>
+                {v}
+              </option>
             ))}
           </select>
         </div>
@@ -372,7 +438,9 @@ export default function MetricsClient({
       {/* Server-side re-scope to one character's runs (any bracket combines).
           Not the card-color filter: this changes whose runs are counted. */}
       <div className="mb-3 flex flex-wrap items-center gap-1.5">
-        <span className="mr-1 w-12 text-xs text-[var(--text-muted)]">{t("Played by")}</span>
+        <span className="mr-1 w-12 text-xs text-[var(--text-muted)]">
+          {t("Played by")}
+        </span>
         {[
           { key: "", label: "All" },
           { key: "IRONCLAD", label: "Ironclad" },
@@ -393,7 +461,8 @@ export default function MetricsClient({
       {character && (
         <p className="mb-3 text-xs text-[var(--text-muted)]">
           {t(
-            "Character rows carry Codex Score and Win% only. Elo and Pick% aren't tracked per character.")}
+            "Character rows carry Codex Score and Win% only. Elo and Pick% aren't tracked per character.",
+          )}
         </p>
       )}
 
@@ -426,7 +495,9 @@ export default function MetricsClient({
         <table className="w-full min-w-[820px] border-collapse text-sm">
           <thead className="sticky top-0 z-10 bg-[var(--bg-card)] text-[var(--text-secondary)]">
             <tr className="border-b border-[var(--border-subtle)]">
-              <th className="px-2 py-2 text-right font-medium tabular-nums w-10">#</th>
+              <th className="px-2 py-2 text-right font-medium tabular-nums w-10">
+                #
+              </th>
               {COLUMNS.map((col) => (
                 <th
                   key={col.key}
@@ -440,16 +511,28 @@ export default function MetricsClient({
                   {arrow(col)}
                 </th>
               ))}
-              <th className="px-2 py-2 text-center font-medium" title={t("Pick rate by act")}>
+              <th
+                className="px-2 py-2 text-center font-medium"
+                title={t("Pick rate by act")}
+              >
                 A1
               </th>
-              <th className="px-2 py-2 text-center font-medium" title={t("Pick rate by act")}>
+              <th
+                className="px-2 py-2 text-center font-medium"
+                title={t("Pick rate by act")}
+              >
                 A2
               </th>
-              <th className="px-2 py-2 text-center font-medium" title={t("Pick rate by act")}>
+              <th
+                className="px-2 py-2 text-center font-medium"
+                title={t("Pick rate by act")}
+              >
                 A3
               </th>
-              <th className="px-2 py-2 text-right font-medium" title={t("Wins / Losses (runs)")}>
+              <th
+                className="px-2 py-2 text-right font-medium"
+                title={t("Wins / Losses (runs)")}
+              >
                 W-L
               </th>
             </tr>
@@ -465,7 +548,9 @@ export default function MetricsClient({
                 </td>
                 <td
                   className="px-3 py-1.5"
-                  onMouseEnter={(e) => showPreview(e, r.id, r.upgraded, r.imageUrl)}
+                  onMouseEnter={(e) =>
+                    showPreview(e, r.id, r.upgraded, r.imageUrl)
+                  }
                   onMouseLeave={() => setPreview(null)}
                 >
                   <Link
@@ -482,8 +567,12 @@ export default function MetricsClient({
                 <td className="px-3 py-1.5 text-right tabular-nums font-semibold text-[var(--accent-gold)]">
                   {r.elo === null ? "·" : Math.round(r.elo)}
                 </td>
-                <td className="px-3 py-1.5 text-right tabular-nums">{pct(r.winRate)}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums">{pct(r.pickRate)}</td>
+                <td className="px-3 py-1.5 text-right tabular-nums">
+                  {pct(r.winRate)}
+                </td>
+                <td className="px-3 py-1.5 text-right tabular-nums">
+                  {pct(r.pickRate)}
+                </td>
                 <td className="px-3 py-1.5 text-right tabular-nums text-[var(--text-muted)]">
                   {num(r.offered)}
                 </td>
@@ -523,14 +612,22 @@ export default function MetricsClient({
             {tier}
           </span>
         ))}
-        . {t('Elo and Pick% come from card-reward picks, so starter cards and non-offered cards show "·" there.')}
+        .{" "}
+        {t(
+          'Elo and Pick% come from card-reward picks, so starter cards and non-offered cards show "·" there.',
+        )}
       </p>
 
       {/* Card render preview, position:fixed so the table's horizontal
           scroll container can't clip it. */}
       {preview && (
         <img
-          src={fullCardUrl(preview.id.toLowerCase(), preview.upgraded, "stable", lang)}
+          src={fullCardUrl(
+            preview.id.toLowerCase(),
+            preview.upgraded,
+            "stable",
+            lang,
+          )}
           alt=""
           width={180}
           className="pointer-events-none fixed z-50 h-auto w-[180px] drop-shadow-[0_8px_24px_rgba(0,0,0,0.7)]"

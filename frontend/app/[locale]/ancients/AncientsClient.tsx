@@ -41,35 +41,52 @@ interface NoteTemplate {
 }
 
 const NOTES: Record<string, NoteTemplate> = {
-  "Offers one relic from each of three pools. Pool 1 includes a chance for Prismatic Gem or Sea Glass.": {
-    key: "Offers one relic from each of three pools. Pool 1 includes a chance for {relic} or {relic2}.",
-    vars: { relic: "relic:PRISMATIC_GEM", relic2: "relic:SEA_GLASS" },
-  },
-  "Has a large pool of powerful relics. 50% chance to get 3 options from the pool, 50% chance to get 2 options plus Dusty Tome.": {
-    key: "Has a large pool of powerful relics. 50% chance to get 3 options from the pool, 50% chance to get 2 options plus {relic}.",
-    vars: { relic: "relic:DUSTY_TOME" },
-  },
-  "Offers one relic from each of three pools. Pool 2 has conditional additions and Pael's Growth has a reduced chance.": {
-    key: "Offers one relic from each of three pools. Pool 2 has conditional additions and {relic} has a reduced chance.",
-    vars: { relic: "relic:PAELS_GROWTH" },
-  },
+  "Offers one relic from each of three pools. Pool 1 includes a chance for Prismatic Gem or Sea Glass.":
+    {
+      key: "Offers one relic from each of three pools. Pool 1 includes a chance for {relic} or {relic2}.",
+      vars: { relic: "relic:PRISMATIC_GEM", relic2: "relic:SEA_GLASS" },
+    },
+  "Has a large pool of powerful relics. 50% chance to get 3 options from the pool, 50% chance to get 2 options plus Dusty Tome.":
+    {
+      key: "Has a large pool of powerful relics. 50% chance to get 3 options from the pool, 50% chance to get 2 options plus {relic}.",
+      vars: { relic: "relic:DUSTY_TOME" },
+    },
+  "Offers one relic from each of three pools. Pool 2 has conditional additions and Pael's Growth has a reduced chance.":
+    {
+      key: "Offers one relic from each of three pools. Pool 2 has conditional additions and {relic} has a reduced chance.",
+      vars: { relic: "relic:PAELS_GROWTH" },
+    },
   "50% chance: 3 from pool OR 2 from pool + Dusty Tome": {
     key: "50% chance: 3 from pool OR 2 from pool + {relic}",
     vars: { relic: "relic:DUSTY_TOME" },
   },
   "Dusty Tome": { key: "", vars: { relic: "relic:DUSTY_TOME" } },
-  "The pool is doubled before adding Pael's Growth, giving Growth a reduced chance.": {
-    key: "The pool is doubled before adding {relic}, giving it a reduced chance.",
-    vars: { relic: "relic:PAELS_GROWTH" },
+  "The pool is doubled before adding Pael's Growth, giving Growth a reduced chance.":
+    {
+      key: "The pool is doubled before adding {relic}, giving it a reduced chance.",
+      vars: { relic: "relic:PAELS_GROWTH" },
+    },
+  "Includes either Prismatic Gem (33% chance) or Sea Glass (67% chance). Sea Glass picks from a random unlocked character other than the current one.":
+    {
+      key: "Includes either {relic} (33% chance) or {relic2} (67% chance). {relic2} picks from a random unlocked character other than the current one.",
+      vars: { relic: "relic:PRISMATIC_GEM", relic2: "relic:SEA_GLASS" },
+    },
+  "50% chance (vs Neow's Talisman)": {
+    key: "50% chance (vs {relic})",
+    vars: { relic: "relic:NEOWS_TALISMAN" },
   },
-  "Includes either Prismatic Gem (33% chance) or Sea Glass (67% chance). Sea Glass picks from a random unlocked character other than the current one.": {
-    key: "Includes either {relic} (33% chance) or {relic2} (67% chance). {relic2} picks from a random unlocked character other than the current one.",
-    vars: { relic: "relic:PRISMATIC_GEM", relic2: "relic:SEA_GLASS" },
+  "50% chance (vs Stone Humidifier)": {
+    key: "50% chance (vs {relic})",
+    vars: { relic: "relic:STONE_HUMIDIFIER" },
   },
-  "50% chance (vs Neow's Talisman)": { key: "50% chance (vs {relic})", vars: { relic: "relic:NEOWS_TALISMAN" } },
-  "50% chance (vs Stone Humidifier)": { key: "50% chance (vs {relic})", vars: { relic: "relic:STONE_HUMIDIFIER" } },
-  "50% chance (vs Pomander)": { key: "50% chance (vs {relic})", vars: { relic: "relic:POMANDER" } },
-  "50% chance (vs Nutritious Oyster)": { key: "50% chance (vs {relic})", vars: { relic: "relic:NUTRITIOUS_OYSTER" } },
+  "50% chance (vs Pomander)": {
+    key: "50% chance (vs {relic})",
+    vars: { relic: "relic:POMANDER" },
+  },
+  "50% chance (vs Nutritious Oyster)": {
+    key: "50% chance (vs {relic})",
+    vars: { relic: "relic:NUTRITIOUS_OYSTER" },
+  },
   "Deck has 4+ cards that can be enchanted with Swift": {
     key: "Deck has 4+ cards that can be enchanted with {enchant}",
     vars: { enchant: "enchant:SWIFT" },
@@ -78,31 +95,63 @@ const NOTES: Record<string, NoteTemplate> = {
     key: "Deck has 3+ cards that can be enchanted with {enchant}",
     vars: { enchant: "enchant:GOOPY" },
   },
-  "Excluded if Precarious Shears is the curse option": { key: "Excluded if {relic} is the curse option", vars: { relic: "relic:PRECARIOUS_SHEARS" } },
-  "Excluded if Leafy Poultice is the curse option": { key: "Excluded if {relic} is the curse option", vars: { relic: "relic:LEAFY_POULTICE" } },
-  "Excluded if Cursed Pearl is the curse option": { key: "Excluded if {relic} is the curse option", vars: { relic: "relic:CURSED_PEARL" } },
-  "Excluded if Hefty Tablet is the curse option": { key: "Excluded if {relic} is the curse option", vars: { relic: "relic:HEFTY_TABLET" } },
-  "Act 3 only; 50% chance (vs Velvet Choker)": { key: "Act 3 only; 50% chance (vs {relic})", vars: { relic: "relic:VELVET_CHOKER" } },
-  "Act 3 only; 50% chance (vs Philosopher's Stone)": { key: "Act 3 only; 50% chance (vs {relic})", vars: { relic: "relic:PHILOSOPHERS_STONE" } },
-  "Act 2 only; 50% chance (vs Ectoplasm)": { key: "Act 2 only; 50% chance (vs {relic})", vars: { relic: "relic:ECTOPLASM" } },
-  "Act 2 only; 50% chance (vs Sozu)": { key: "Act 2 only; 50% chance (vs {relic})", vars: { relic: "relic:SOZU" } },
+  "Excluded if Precarious Shears is the curse option": {
+    key: "Excluded if {relic} is the curse option",
+    vars: { relic: "relic:PRECARIOUS_SHEARS" },
+  },
+  "Excluded if Leafy Poultice is the curse option": {
+    key: "Excluded if {relic} is the curse option",
+    vars: { relic: "relic:LEAFY_POULTICE" },
+  },
+  "Excluded if Cursed Pearl is the curse option": {
+    key: "Excluded if {relic} is the curse option",
+    vars: { relic: "relic:CURSED_PEARL" },
+  },
+  "Excluded if Hefty Tablet is the curse option": {
+    key: "Excluded if {relic} is the curse option",
+    vars: { relic: "relic:HEFTY_TABLET" },
+  },
+  "Act 3 only; 50% chance (vs Velvet Choker)": {
+    key: "Act 3 only; 50% chance (vs {relic})",
+    vars: { relic: "relic:VELVET_CHOKER" },
+  },
+  "Act 3 only; 50% chance (vs Philosopher's Stone)": {
+    key: "Act 3 only; 50% chance (vs {relic})",
+    vars: { relic: "relic:PHILOSOPHERS_STONE" },
+  },
+  "Act 2 only; 50% chance (vs Ectoplasm)": {
+    key: "Act 2 only; 50% chance (vs {relic})",
+    vars: { relic: "relic:ECTOPLASM" },
+  },
+  "Act 2 only; 50% chance (vs Sozu)": {
+    key: "Act 2 only; 50% chance (vs {relic})",
+    vars: { relic: "relic:SOZU" },
+  },
   "Excluded with Draft, Sealed Deck, or Insanity modifiers": {
     key: "Excluded with the {a}, {b}, or {c} modifiers",
-    vars: { a: "modifier:DRAFT", b: "modifier:SEALED_DECK", c: "modifier:INSANITY" },
+    vars: {
+      a: "modifier:DRAFT",
+      b: "modifier:SEALED_DECK",
+      c: "modifier:INSANITY",
+    },
   },
   "50% chance (vs Lava Rock); excluded if Large Capsule is the curse option": {
     key: "50% chance (vs {relic}); excluded if {relic2} is the curse option",
     vars: { relic: "relic:LAVA_ROCK", relic2: "relic:LARGE_CAPSULE" },
   },
-  "50% chance (vs Small Capsule); excluded if Large Capsule is the curse option": {
-    key: "50% chance (vs {relic}); excluded if {relic2} is the curse option",
-    vars: { relic: "relic:SMALL_CAPSULE", relic2: "relic:LARGE_CAPSULE" },
-  },
+  "50% chance (vs Small Capsule); excluded if Large Capsule is the curse option":
+    {
+      key: "50% chance (vs {relic}); excluded if {relic2} is the curse option",
+      vars: { relic: "relic:SMALL_CAPSULE", relic2: "relic:LARGE_CAPSULE" },
+    },
   "67% chance (vs Prismatic Gem); character is random unlocked non-current": {
     key: "67% chance (vs {relic}); character is random unlocked non-current",
     vars: { relic: "relic:PRISMATIC_GEM" },
   },
-  "33% chance (vs Sea Glass)": { key: "33% chance (vs {relic})", vars: { relic: "relic:SEA_GLASS" } },
+  "33% chance (vs Sea Glass)": {
+    key: "33% chance (vs {relic})",
+    vars: { relic: "relic:SEA_GLASS" },
+  },
   "Player does not have an event pet (Byrdpip relic or Byrdonis Egg card)": {
     key: "Player does not have an event pet ({relic} relic or {card} card)",
     vars: { relic: "relic:BYRDPIP", card: "card:BYRDONIS_EGG" },
@@ -121,7 +170,10 @@ interface GameNames {
 }
 
 function fallbackName(id: string): string {
-  return id.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+  return id
+    .replace(/_/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 // Returns null when the catalog has not answered for this id: the caller
@@ -135,7 +187,11 @@ function resolveName(ref: string, names: GameNames): string | null {
   return null;
 }
 
-function noteText(text: string, t: (key: string, values?: Record<string, string | number>) => string, names: GameNames): string {
+function noteText(
+  text: string,
+  t: (key: string, values?: Record<string, string | number>) => string,
+  names: GameNames,
+): string {
   const note = NOTES[text];
   if (!note) return t(text);
   const values: Record<string, string> = {};
@@ -174,7 +230,12 @@ function RelicPill({
   const t = useT();
   const relicData = names.relics;
   const info = relicData[relic.id];
-  const name = info?.name || relic.id.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+  const name =
+    info?.name ||
+    relic.id
+      .replace(/_/g, " ")
+      .toLowerCase()
+      .replace(/\b\w/g, (c) => c.toUpperCase());
   // Order matches how the game iterates ModelDb.AllCharacters.
   const charOrder = ["Ironclad", "Silent", "Defect", "Necrobinder", "Regent"];
   const variants = info?.name_variants
@@ -185,14 +246,26 @@ function RelicPill({
 
   return (
     <div className="anc-relic">
-      <Link prefetch={false} href={`${bp}/relics/${relic.id.toLowerCase()}`} className="anc-relic-link">
+      <Link
+        prefetch={false}
+        href={`${bp}/relics/${relic.id.toLowerCase()}`}
+        className="anc-relic-link"
+      >
         {info?.image_url && (
-          <img src={imageUrl(info.image_url)} alt={name} crossOrigin="anonymous" />
+          <img
+            src={imageUrl(info.image_url)}
+            alt={name}
+            crossOrigin="anonymous"
+          />
         )}
         <span className="anc-relic-name">{name}</span>
       </Link>
       <div className="anc-relic-meta">
-        {relic.condition && <span className="anc-cond">{noteText(relic.condition, t, names)}</span>}
+        {relic.condition && (
+          <span className="anc-cond">
+            {noteText(relic.condition, t, names)}
+          </span>
+        )}
         {isPerCharacter && variants.length > 0 && (
           <span className="anc-variants">
             <span className="lbl">{t("Shows as 5 separate options:")}</span>{" "}
@@ -242,10 +315,15 @@ function AncientSection({
               <div className="anc-pool-h">
                 <span>{noteText(pool.name, t, names)}</span>
                 <span className="cnt">
-                  {pool.relics.length} {pool.relics.length === 1 ? t("relic") : t("relics")}
+                  {pool.relics.length}{" "}
+                  {pool.relics.length === 1 ? t("relic") : t("relics")}
                 </span>
               </div>
-              {pool.description && <p className="anc-pool-desc">{noteText(pool.description, t, names)}</p>}
+              {pool.description && (
+                <p className="anc-pool-desc">
+                  {noteText(pool.description, t, names)}
+                </p>
+              )}
               <div className="anc-relics">
                 {pool.relics.map((relic) => (
                   <RelicPill
@@ -253,7 +331,9 @@ function AncientSection({
                     relic={relic}
                     names={names}
                     bp={bp}
-                    isPerCharacter={!!ancient.per_character_relics?.includes(relic.id)}
+                    isPerCharacter={
+                      !!ancient.per_character_relics?.includes(relic.id)
+                    }
                   />
                 ))}
               </div>
@@ -270,7 +350,12 @@ export default function AncientsClient() {
   const lang = useGameLocale();
   const bp = useBetaPrefix();
   const [ancients, setAncients] = useState<AncientPool[]>([]);
-  const [names, setNames] = useState<GameNames>({ relics: {}, enchants: {}, modifiers: {}, cards: {} });
+  const [names, setNames] = useState<GameNames>({
+    relics: {},
+    enchants: {},
+    modifiers: {},
+    cards: {},
+  });
   const [ancientNames, setAncientNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const ancientName = (a: AncientPool) => ancientNames[a.id] ?? a.name;
@@ -280,14 +365,35 @@ export default function AncientsClient() {
   const [activeSection, setActiveSection] = useState("");
 
   useEffect(() => {
-    const optional = <T,>(p: Promise<T>, fallback: T) => p.catch(() => fallback);
+    const optional = <T,>(p: Promise<T>, fallback: T) =>
+      p.catch(() => fallback);
     Promise.all([
       cachedFetch<AncientPool[]>(`${API}/api/ancient-pools`),
       cachedFetch<RelicInfo[]>(`${API}/api/relics?lang=${lang}`),
-      optional(cachedFetch<{ id: string; name: string }[]>(`${API}/api/events?type=Ancient&lang=${lang}`), []),
-      optional(cachedFetch<{ id: string; name: string }[]>(`${API}/api/enchantments?lang=${lang}`), []),
-      optional(cachedFetch<{ id: string; name: string }[]>(`${API}/api/modifiers?lang=${lang}`), []),
-      optional(cachedFetch<{ id: string; name: string }>(`${API}/api/cards/byrdonis_egg?lang=${lang}`), null),
+      optional(
+        cachedFetch<{ id: string; name: string }[]>(
+          `${API}/api/events?type=Ancient&lang=${lang}`,
+        ),
+        [],
+      ),
+      optional(
+        cachedFetch<{ id: string; name: string }[]>(
+          `${API}/api/enchantments?lang=${lang}`,
+        ),
+        [],
+      ),
+      optional(
+        cachedFetch<{ id: string; name: string }[]>(
+          `${API}/api/modifiers?lang=${lang}`,
+        ),
+        [],
+      ),
+      optional(
+        cachedFetch<{ id: string; name: string }>(
+          `${API}/api/cards/byrdonis_egg?lang=${lang}`,
+        ),
+        null,
+      ),
     ])
       .then(([pools, relics, ancientEvents, enchants, modifiers, egg]) => {
         setAncients(pools);
@@ -316,7 +422,9 @@ export default function AncientsClient() {
   useEffect(() => {
     if (!ancients.length) return;
     const els = Array.from(
-      document.querySelectorAll<HTMLElement>('.card-rvmp section[id^="ancient-"]'),
+      document.querySelectorAll<HTMLElement>(
+        '.card-rvmp section[id^="ancient-"]',
+      ),
     );
     if (!els.length) return;
     const obs = new IntersectionObserver(
@@ -350,7 +458,8 @@ export default function AncientsClient() {
   // Infobox art. ids are uppercase (NEOW, DARV, …); the portrait files are
   // lowercase webp. Falls back to Neow if a portrait is missing.
   const NEOW_IMG = imageUrl("/static/images/misc/ancients/neow.webp");
-  const imgSel = ancients.find((a) => `ancient-${a.id}` === activeSection) ?? ancients[0];
+  const imgSel =
+    ancients.find((a) => `ancient-${a.id}` === activeSection) ?? ancients[0];
   const portrait = imgSel
     ? imageUrl(`/static/images/misc/ancients/${imgSel.id.toLowerCase()}.webp`)
     : NEOW_IMG;
@@ -362,10 +471,12 @@ export default function AncientsClient() {
   return (
     <div
       className="card-rvmp"
-      style={{
-        "--spine": "var(--accent-gold)",
-        "--entity-bg": `url("${portrait}?bg")`,
-      } as CSSProperties}
+      style={
+        {
+          "--spine": "var(--accent-gold)",
+          "--entity-bg": `url("${portrait}?bg")`,
+        } as CSSProperties
+      }
     >
       <div className="wrap">
         {/* ===== MAIN column: hero + submenu + every Ancient ===== */}
@@ -379,7 +490,9 @@ export default function AncientsClient() {
             </p>
             <h1>{t("Ancient Relic Pools")}</h1>
             <p className="lede">
-              {t("Every Ancient in Slay the Spire 2 offers relics from specific pools with conditions. Here's exactly what each one can offer.")}
+              {t(
+                "Every Ancient in Slay the Spire 2 offers relics from specific pools with conditions. Here's exactly what each one can offer.",
+              )}
             </p>
           </div>
 
@@ -406,7 +519,12 @@ export default function AncientsClient() {
           <div className="anc-list">
             {ancients.map((a) => (
               <section key={a.id} id={`ancient-${a.id}`} className="anc-sec">
-                <AncientSection ancient={a} names={names} ancientName={ancientName(a)} bp={bp} />
+                <AncientSection
+                  ancient={a}
+                  names={names}
+                  ancientName={ancientName(a)}
+                  bp={bp}
+                />
               </section>
             ))}
           </div>
@@ -421,7 +539,8 @@ export default function AncientsClient() {
               alt={imgSel ? ancientName(imgSel) : t("Ancients")}
               crossOrigin="anonymous"
               onError={(e) => {
-                if (e.currentTarget.src !== NEOW_IMG) e.currentTarget.src = NEOW_IMG;
+                if (e.currentTarget.src !== NEOW_IMG)
+                  e.currentTarget.src = NEOW_IMG;
               }}
             />
 

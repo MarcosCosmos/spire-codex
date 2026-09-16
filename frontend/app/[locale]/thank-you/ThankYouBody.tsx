@@ -12,7 +12,9 @@ export default async function ThankYouBody({ lang }: { lang: Locale }) {
 
       <div className="text-[var(--text-secondary)] leading-relaxed space-y-4">
         <p>
-          {t("Just wanted to say thank you to everyone that has supported the project. Thanks to those who've been using the site, reporting bugs, and helping make it better. This project wouldn't be where it is without the community. If you've been enjoying the project, please make sure to share it on social media!")}
+          {t(
+            "Just wanted to say thank you to everyone that has supported the project. Thanks to those who've been using the site, reporting bugs, and helping make it better. This project wouldn't be where it is without the community. If you've been enjoying the project, please make sure to share it on social media!",
+          )}
         </p>
 
         {/* Ko-fi supporters, gold-accented featured block. Donations
