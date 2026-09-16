@@ -3,7 +3,7 @@
 import { useGameLocale, useT } from "@/lib/i18n";
 import { useState, useEffect, useRef } from "react";
 import { Link } from "@/i18n/navigation";
-import type { Power } from "@/lib/api";
+import type { Power } from "@/lib/api/types";
 import { cachedFetch } from "@/lib/fetch-cache";
 import SearchFilter from "@/app/components/SearchFilter";
 import RichDescription from "@/app/components/RichDescription";
@@ -30,7 +30,11 @@ const stackOptions = [
   { label: "Single", value: "Single" },
 ];
 
-export default function PowersClient({ initialPowers }: { initialPowers: Power[] }) {
+export default function PowersClient({
+  initialPowers,
+}: {
+  initialPowers: Power[];
+}) {
   const bp = useBetaPrefix();
   const [powers, setPowers] = useState<Power[]>(initialPowers);
   const [search, setSearch] = useState("");
@@ -48,7 +52,14 @@ export default function PowersClient({ initialPowers }: { initialPowers: Power[]
     // stable catalog, and cachedFetch appends channel=beta on /beta paths.
     if (initialRender.current) {
       initialRender.current = false;
-      if (channel !== "beta" && lang === "eng" && !type && !stackType && !search && initialPowers.length > 0) {
+      if (
+        channel !== "beta" &&
+        lang === "eng" &&
+        !type &&
+        !stackType &&
+        !search &&
+        initialPowers.length > 0
+      ) {
         return;
       }
     }
@@ -57,8 +68,7 @@ export default function PowersClient({ initialPowers }: { initialPowers: Power[]
     if (stackType) params.set("stack_type", stackType);
     if (search) params.set("search", search);
     params.set("lang", lang);
-    cachedFetch<Power[]>(`${API}/api/powers?${params}`)
-      .then(setPowers);
+    cachedFetch<Power[]>(`${API}/api/powers?${params}`).then(setPowers);
   }, [type, search, stackType, lang, channel]);
 
   // Beta-only powers join the stable list (the regular filters run

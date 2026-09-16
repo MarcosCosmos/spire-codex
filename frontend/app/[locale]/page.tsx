@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import type { Stats } from "@/lib/api";
+import type { Stats } from "@/lib/api/types";
 import HomeClient from "@/app/HomeClient";
 import HomeNewsSection from "@/app/components/HomeNewsSection";
 import HomeGuidesSection from "@/app/components/HomeGuidesSection";
@@ -17,8 +17,10 @@ import { localeOf } from "@/lib/locale";
 import { HOME_OG_IMAGE, buildPageMetadata } from "@/lib/seo";
 import "@/app/home-revamp.css";
 
-const API = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-
+const API =
+  process.env.API_INTERNAL_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://localhost:8000";
 
 // ISR with 60s revalidation. The HTML caches at CF edge for 60s so
 // most visits return without hitting Next.js at all. After 60s the
@@ -38,7 +40,13 @@ type Props = { params: Promise<{ locale: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const locale = localeOf((await params).locale);
   const t = await getT(locale);
-  return buildPageMetadata({ locale, path: "/", title: t("Database, Wiki & Guide"), description: t("home_meta_description"), image: HOME_OG_IMAGE });
+  return buildPageMetadata({
+    locale,
+    path: "/",
+    title: t("Database, Wiki & Guide"),
+    description: t("home_meta_description"),
+    image: HOME_OG_IMAGE,
+  });
 }
 
 interface Translations {
@@ -70,7 +78,12 @@ export default async function Home({ params }: Props) {
 
   return (
     <div className="min-h-screen">
-      <JsonLd data={[buildWebSiteJsonLd(), buildVideoGameJsonLd(await fetchSteamMeta())]} />
+      <JsonLd
+        data={[
+          buildWebSiteJsonLd(),
+          buildVideoGameJsonLd(await fetchSteamMeta()),
+        ]}
+      />
       <div className="rvmp">
         <main className="home">
           <section className="hero">
@@ -83,7 +96,10 @@ export default async function Home({ params }: Props) {
             </div>
           </section>
 
-          <HomeClient initialStats={stats} initialTranslations={translations ?? {}} />
+          <HomeClient
+            initialStats={stats}
+            initialTranslations={translations ?? {}}
+          />
         </main>
       </div>
 
@@ -91,8 +107,14 @@ export default async function Home({ params }: Props) {
           mirroring the grid above. Server-rendered so search snippets
           and OG previews can pick up the headlines. */}
       <HomeNewsSection lang={locale} />
-      <HomeLeaderboardSection lang={locale} characterNames={translations?.character_names} />
-      <HomeStatsSection lang={locale} characterNames={translations?.character_names} />
+      <HomeLeaderboardSection
+        lang={locale}
+        characterNames={translations?.character_names}
+      />
+      <HomeStatsSection
+        lang={locale}
+        characterNames={translations?.character_names}
+      />
       <HomeMetricsSection lang={locale} />
       <HomeGuidesSection lang={locale} />
       <HomeShowcaseSection lang={locale} />

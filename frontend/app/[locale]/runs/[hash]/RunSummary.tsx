@@ -18,9 +18,6 @@ import TinyCard from "@/app/components/TinyCard";
 import { CardPill, RelicPill, PotionPill } from "./RunPills";
 import { imageUrl } from "@/lib/image-url";
 import { fmtDateTime, fmtDateTimePacific } from "@/lib/pacific";
-import CardsContext from "@/app/contexts/api/Cards";
-import RelicsContext from "@/app/contexts/api/Relics";
-import PotionsContext from "@/app/contexts/api/Potions";
 import {
   Run,
   DeckCard,
@@ -29,10 +26,14 @@ import {
   RawRoom,
   Room,
   PlayerStats,
-} from "../../../contexts/api/run/types";
-import SharedRunContext from "@/app/contexts/api/run/Run.client.";
+} from "../../../../lib/api/run/types";
 import { useBetaPrefix } from "@/lib/use-lang-prefix";
 import { ApiConfigContext } from "@/app/contexts/ApiConfigContext";
+import SharedRunContext, {
+  CardsContext,
+  RelicsContext,
+  PotionsContext,
+} from "@/app/contexts/api";
 const ICON_BASE = imageUrl("/static/images/ui/run_history");
 
 const RARITY_ORDER = [

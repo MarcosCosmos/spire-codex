@@ -12,13 +12,13 @@ import RunSummary from "./RunSummary";
 import SimilarRuns from "./SimilarRuns";
 import { CardPill, RelicPill } from "./RunPills";
 import { ApiConfigContext } from "@/app/contexts/ApiConfigContext";
-import CardsContext, { useCards } from "@/app/contexts/api/Cards";
-import PotionsContext, { usePotions } from "@/app/contexts/api/Potions";
-import RelicsContext, { useRelics } from "@/app/contexts/api/Relics";
-import SharedRunContext from "@/app/contexts/api/run/Run.client.";
-import EnchantmentsContext, {
-  useEnchantments,
-} from "@/app/contexts/api/Enchantments";
+import { useApiEndpointIdMapped } from "@/lib/api/endpoint.client";
+import SharedRunContext, {
+  CardsContext,
+  RelicsContext,
+  PotionsContext,
+  EnchantmentsContext,
+} from "@/app/contexts/api";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -58,10 +58,11 @@ export default function SharedRunClient() {
     () => ({ beta: run?.is_beta ?? false }),
     [run?.is_beta],
   );
-  const cards = useCards(apiConfig);
-  const relics = useRelics(apiConfig);
-  const potions = usePotions(apiConfig);
-  const enchantments = useEnchantments(apiConfig);
+  // const cards = useCards(apiConfig);
+  const cards = useApiEndpointIdMapped("cards", apiConfig);
+  const relics = useApiEndpointIdMapped("relics", apiConfig);
+  const potions = useApiEndpointIdMapped("potions", apiConfig);
+  const enchantments = useApiEndpointIdMapped("enchantments", apiConfig);
 
   function copyLink() {
     navigator.clipboard.writeText(window.location.href).then(() => {

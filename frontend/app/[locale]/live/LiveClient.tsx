@@ -33,10 +33,10 @@ import {
   withOrdinalKeys,
   type LivePlayer,
 } from "./live-shared";
-import CardsContext, { useCards } from "@/app/contexts/api/Cards";
-import RelicsContext, { useRelics } from "@/app/contexts/api/Relics";
 import { cleanId, displayName } from "@/lib/display-name";
-import { Monster } from "@/lib/api";
+import { Monster } from "@/lib/api/types";
+import { CardsContext, RelicsContext } from "@/app/contexts/api";
+import { useApiEndpointIdMapped } from "@/lib/api/endpoint.client";
 
 // The roster carries no ticker events, so the contract's 10-15s roster
 // guidance applies here rather than the hot 3-5s per-player cadence.
@@ -227,8 +227,8 @@ export default function LiveClient() {
   const t = useT();
   const [players, setPlayers] = useState<LivePlayer[] | null>(null);
   const [stale, setStale] = useState(false);
-  const cards = useCards();
-  const relics = useRelics();
+  const cards = useApiEndpointIdMapped("cards");
+  const relics = useApiEndpointIdMapped("relics");
   const characterNames = useCharacterNames();
   const monsters = useMonsterMap(
     (players ?? []).some(

@@ -36,7 +36,7 @@ import {
   type Reveal,
   Coord,
 } from "./live-shared";
-import { Encounter, Monster } from "@/lib/api";
+import { Encounter, Monster } from "@/lib/api/types";
 
 // Per-node-type styling. Types arrive lowercase; an unrecognized type falls
 // back to the neutral "node" entry so a new map symbol never breaks rendering.

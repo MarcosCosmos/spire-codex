@@ -1,10 +1,15 @@
 "use client";
 
 import { useT, useGameLocale } from "@/lib/i18n";
-import { useState, useEffect, type MouseEvent as ReactMouseEvent, type CSSProperties } from "react";
+import {
+  useState,
+  useEffect,
+  type MouseEvent as ReactMouseEvent,
+  type CSSProperties,
+} from "react";
 import { useParams } from "next/navigation";
 import { Link } from "@/i18n/navigation";
-import type { Card } from "@/lib/api";
+import type { Card } from "@/lib/api/types";
 import RichDescription from "@/app/components/RichDescription";
 import type { RelatedCard } from "@/app/components/RichDescription";
 import { getCardDisplayModel } from "@/lib/card-display";
@@ -16,7 +21,9 @@ import EntityProse from "@/app/components/EntityProse";
 import EntityPairings from "@/app/components/EntityPairings";
 import EntityDraftRecs from "@/app/components/EntityDraftRecs";
 import { imageUrl, fullCardUrl, enchantedCardUrl } from "@/lib/image-url";
-import EntityRunStats, { type EntityStats } from "@/app/components/EntityRunStats";
+import EntityRunStats, {
+  type EntityStats,
+} from "@/app/components/EntityRunStats";
 import EntityVersionSelect from "@/app/components/EntityVersionSelect";
 import HoverTooltip from "@/app/components/HoverTooltip";
 import { useChannel, useBetaPrefix } from "@/lib/use-lang-prefix";
@@ -71,9 +78,24 @@ const keywordTooltips: Record<string, string> = {
 
 function buildInteractiveWords(
   keywords: string[],
-  powerData: Record<string, { id: string; name: string; description: string; type: string; image_url: string | null }>,
-  keywordData: Record<string, { id: string; name: string; description: string }>,
-  glossaryData: Record<string, { id: string; name: string; description: string }>,
+  powerData: Record<
+    string,
+    {
+      id: string;
+      name: string;
+      description: string;
+      type: string;
+      image_url: string | null;
+    }
+  >,
+  keywordData: Record<
+    string,
+    { id: string; name: string; description: string }
+  >,
+  glossaryData: Record<
+    string,
+    { id: string; name: string; description: string }
+  >,
   orbData: Record<string, { id: string; name: string; description: string }>,
   bp: string,
 ): Record<string, { tooltip: string; href: string }> {
@@ -86,25 +108,44 @@ function buildInteractiveWords(
   }
   // Add power names from [gold] tagged text (Dexterity, Thorns, Block, Strength, etc.)
   for (const [name, data] of Object.entries(powerData)) {
-    words[data.name] = { tooltip: data.description, href: `${bp}/powers/${data.id.toLowerCase()}` };
+    words[data.name] = {
+      tooltip: data.description,
+      href: `${bp}/powers/${data.id.toLowerCase()}`,
+    };
   }
   // Add glossary terms (Block, Discard Pile, Draw Pile, Fatal, Forge, etc.)
   for (const [name, data] of Object.entries(glossaryData)) {
     if (!words[data.name]) {
-      words[data.name] = { tooltip: data.description.replace(/\n/g, " "), href: `${bp}/keywords/${data.id.toLowerCase()}` };
+      words[data.name] = {
+        tooltip: data.description.replace(/\n/g, " "),
+        href: `${bp}/keywords/${data.id.toLowerCase()}`,
+      };
     }
   }
   // Add orb names (Lightning, Frost, Dark, Glass, Plasma)
   for (const [name, data] of Object.entries(orbData)) {
     if (!words[data.name]) {
-      words[data.name] = { tooltip: data.description.replace(/\n/g, " "), href: `${bp}/orbs/${data.id.toLowerCase()}` };
+      words[data.name] = {
+        tooltip: data.description.replace(/\n/g, " "),
+        href: `${bp}/orbs/${data.id.toLowerCase()}`,
+      };
     }
   }
   return words;
 }
 
-function InlineTooltip({ label, tooltip, href, color, image }: {
-  label: string; tooltip: string; href?: string; color: string; image?: string;
+function InlineTooltip({
+  label,
+  tooltip,
+  href,
+  color,
+  image,
+}: {
+  label: string;
+  tooltip: string;
+  href?: string;
+  color: string;
+  image?: string;
 }) {
   const [show, setShow] = useState(false);
   const inner = (
@@ -116,12 +157,26 @@ function InlineTooltip({ label, tooltip, href, color, image }: {
     >
       <span className="font-medium">{label}</span>
       {tooltip && (
-        <span className="text-[var(--text-muted)] ml-1">{tooltip.replace(/\[.*?\]/g, "").replace(/\n/g, " ").slice(0, 80)}</span>
+        <span className="text-[var(--text-muted)] ml-1">
+          {tooltip
+            .replace(/\[.*?\]/g, "")
+            .replace(/\n/g, " ")
+            .slice(0, 80)}
+        </span>
       )}
       {show && tooltip && (
         <span className="absolute z-[100] bottom-full left-0 mb-2 w-56 p-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card)] shadow-xl pointer-events-none text-left">
-          {image && <img src={image} alt="" className="w-6 h-6 object-contain mb-1" crossOrigin="anonymous" />}
-          <span className="font-semibold text-xs text-[var(--text-primary)] block">{label}</span>
+          {image && (
+            <img
+              src={image}
+              alt=""
+              className="w-6 h-6 object-contain mb-1"
+              crossOrigin="anonymous"
+            />
+          )}
+          <span className="font-semibold text-xs text-[var(--text-primary)] block">
+            {label}
+          </span>
           <span className="text-[10px] text-[var(--text-secondary)] leading-relaxed block mt-1">
             <RichDescription text={tooltip} />
           </span>
@@ -129,7 +184,12 @@ function InlineTooltip({ label, tooltip, href, color, image }: {
       )}
     </span>
   );
-  if (href) return <Link href={href} className="block">{inner}</Link>;
+  if (href)
+    return (
+      <Link href={href} className="block">
+        {inner}
+      </Link>
+    );
   return <div>{inner}</div>;
 }
 
@@ -143,20 +203,38 @@ const energyIconMap: Record<string, string> = {
 };
 
 // Merchant price ranges
-function getMerchantPriceRange(rarity: string, color: string): { min: number; max: number } | null {
+function getMerchantPriceRange(
+  rarity: string,
+  color: string,
+): { min: number; max: number } | null {
   const isColorless = color === "colorless";
   let base: number;
   switch (rarity) {
-    case "Common": base = 50; break;
-    case "Uncommon": base = 75; break;
-    case "Rare": base = 150; break;
-    default: return null;
+    case "Common":
+      base = 50;
+      break;
+    case "Uncommon":
+      base = 75;
+      break;
+    case "Rare":
+      base = 150;
+      break;
+    default:
+      return null;
   }
   if (isColorless) base = Math.round(base * 1.15);
   return { min: Math.floor(base * 0.95), max: Math.ceil(base * 1.05) };
 }
 
-export default function CardDetail({ initialCard, initialEnchantments, initialStats }: { initialCard?: Card | null; initialEnchantments?: string[]; initialStats?: EntityStats | null } = {}) {
+export default function CardDetail({
+  initialCard,
+  initialEnchantments,
+  initialStats,
+}: {
+  initialCard?: Card | null;
+  initialEnchantments?: string[];
+  initialStats?: EntityStats | null;
+} = {}) {
   const params = useParams();
   const id = params.id as string;
   const lang = useGameLocale();
@@ -180,14 +258,41 @@ export default function CardDetail({ initialCard, initialEnchantments, initialSt
   // Bracket shared with EntityRunStats so the infobox mini-stats track the
   // pill the user picked in the Community section.
   const [statsBracket, setStatsBracket] = useState("all");
-  const [powerData, setPowerData] = useState<Record<string, { id: string; name: string; description: string; type: string; image_url: string | null }>>({});
-  const [keywordData, setKeywordData] = useState<Record<string, { id: string; name: string; description: string }>>({});
-  const [glossaryData, setGlossaryData] = useState<Record<string, { id: string; name: string; description: string }>>({});
-  const [orbData, setOrbData] = useState<Record<string, { id: string; name: string; description: string }>>({});
+  const [powerData, setPowerData] = useState<
+    Record<
+      string,
+      {
+        id: string;
+        name: string;
+        description: string;
+        type: string;
+        image_url: string | null;
+      }
+    >
+  >({});
+  const [keywordData, setKeywordData] = useState<
+    Record<string, { id: string; name: string; description: string }>
+  >({});
+  const [glossaryData, setGlossaryData] = useState<
+    Record<string, { id: string; name: string; description: string }>
+  >({});
+  const [orbData, setOrbData] = useState<
+    Record<string, { id: string; name: string; description: string }>
+  >({});
   // Enchantments this card can take (server-passed, from the render manifest)
   // + their localized name/description for the Enchantments section + switcher.
   const cardEnchantments = initialEnchantments ?? [];
-  const [enchMeta, setEnchMeta] = useState<Record<string, { id: string; name: string; description: string; image_url: string | null }>>({});
+  const [enchMeta, setEnchMeta] = useState<
+    Record<
+      string,
+      {
+        id: string;
+        name: string;
+        description: string;
+        image_url: string | null;
+      }
+    >
+  >({});
 
   useEffect(() => {
     if (!id) return;
@@ -198,10 +303,12 @@ export default function CardDetail({ initialCard, initialEnchantments, initialSt
           Promise.all(
             data.spawns_cards.map((sid: string) =>
               cachedFetch<Card>(`${API}/api/cards/${sid}?lang=${lang}`).catch(
-                () => null
-              )
-            )
-          ).then((results) => setSpawnedCards(results.filter(Boolean) as Card[]));
+                () => null,
+              ),
+            ),
+          ).then((results) =>
+            setSpawnedCards(results.filter(Boolean) as Card[]),
+          );
         }
       })
       .catch(() => {
@@ -212,37 +319,53 @@ export default function CardDetail({ initialCard, initialEnchantments, initialSt
 
   // Load powers, keywords, and glossary for inline tooltips
   useEffect(() => {
-    cachedFetch<{ id: string; name: string; description: string; type: string; image_url: string | null }[]>(`${API}/api/powers?lang=${lang}`)
-      .then((powers) => {
-        const m: Record<string, typeof powers[0]> = {};
-        for (const p of powers) m[p.name.toLowerCase()] = p;
-        setPowerData(m);
-      });
-    cachedFetch<{ id: string; name: string; description: string }[]>(`${API}/api/keywords?lang=${lang}`)
-      .then((kws) => {
-        const m: Record<string, typeof kws[0]> = {};
-        for (const k of kws) m[k.name.toLowerCase()] = k;
-        setKeywordData(m);
-      });
-    cachedFetch<{ id: string; name: string; description: string }[]>(`${API}/api/glossary?lang=${lang}`)
-      .then((terms) => {
-        const m: Record<string, typeof terms[0]> = {};
-        for (const t of terms) m[t.name.toLowerCase()] = t;
-        setGlossaryData(m);
-      });
-    cachedFetch<{ id: string; name: string; description: string }[]>(`${API}/api/orbs?lang=${lang}`)
-      .then((orbs) => {
-        const m: Record<string, typeof orbs[0]> = {};
-        for (const o of orbs) m[o.name.toLowerCase()] = o;
-        setOrbData(m);
-      });
+    cachedFetch<
+      {
+        id: string;
+        name: string;
+        description: string;
+        type: string;
+        image_url: string | null;
+      }[]
+    >(`${API}/api/powers?lang=${lang}`).then((powers) => {
+      const m: Record<string, (typeof powers)[0]> = {};
+      for (const p of powers) m[p.name.toLowerCase()] = p;
+      setPowerData(m);
+    });
+    cachedFetch<{ id: string; name: string; description: string }[]>(
+      `${API}/api/keywords?lang=${lang}`,
+    ).then((kws) => {
+      const m: Record<string, (typeof kws)[0]> = {};
+      for (const k of kws) m[k.name.toLowerCase()] = k;
+      setKeywordData(m);
+    });
+    cachedFetch<{ id: string; name: string; description: string }[]>(
+      `${API}/api/glossary?lang=${lang}`,
+    ).then((terms) => {
+      const m: Record<string, (typeof terms)[0]> = {};
+      for (const t of terms) m[t.name.toLowerCase()] = t;
+      setGlossaryData(m);
+    });
+    cachedFetch<{ id: string; name: string; description: string }[]>(
+      `${API}/api/orbs?lang=${lang}`,
+    ).then((orbs) => {
+      const m: Record<string, (typeof orbs)[0]> = {};
+      for (const o of orbs) m[o.name.toLowerCase()] = o;
+      setOrbData(m);
+    });
     if (cardEnchantments.length > 0)
-      cachedFetch<{ id: string; name: string; description: string; image_url: string | null }[]>(`${API}/api/enchantments?lang=${lang}`)
-        .then((enchs) => {
-          const m: Record<string, typeof enchs[0]> = {};
-          for (const e of enchs) m[e.id.toLowerCase()] = e;
-          setEnchMeta(m);
-        });
+      cachedFetch<
+        {
+          id: string;
+          name: string;
+          description: string;
+          image_url: string | null;
+        }[]
+      >(`${API}/api/enchantments?lang=${lang}`).then((enchs) => {
+        const m: Record<string, (typeof enchs)[0]> = {};
+        for (const e of enchs) m[e.id.toLowerCase()] = e;
+        setEnchMeta(m);
+      });
   }, [lang]);
 
   // Headline community numbers for the infobox mini block. Hits the same URL
@@ -314,7 +437,10 @@ export default function CardDetail({ initialCard, initialEnchantments, initialSt
   }
 
   const display = getCardDisplayModel(card, upgraded);
-  const activeVariant = selectedVariant && card.type_variants ? card.type_variants[selectedVariant] : null;
+  const activeVariant =
+    selectedVariant && card.type_variants
+      ? card.type_variants[selectedVariant]
+      : null;
   const dmg = activeVariant ? activeVariant.damage : display.damage;
   const blk = activeVariant ? activeVariant.block : display.block;
   const hitCount = activeVariant ? card.hit_count : display.hitCount;
@@ -332,11 +458,19 @@ export default function CardDetail({ initialCard, initialEnchantments, initialSt
       ? card.beta_image_url
       : card.image_url || card.beta_image_url;
 
-  const descText = activeVariant ? activeVariant.description : display.descriptionText;
+  const descText = activeVariant
+    ? activeVariant.description
+    : display.descriptionText;
   const keywordText = activeVariant ? "" : display.keywordText;
   const energyIcon = energyIconMap[card.color] || "colorless";
-  const priceRange = getMerchantPriceRange(card.rarity_key || card.rarity, card.color);
-  const displayKeywords = [...display.visibleKeywords, ...display.addedKeywords];
+  const priceRange = getMerchantPriceRange(
+    card.rarity_key || card.rarity,
+    card.color,
+  );
+  const displayKeywords = [
+    ...display.visibleKeywords,
+    ...display.addedKeywords,
+  ];
 
   const interactiveWords = buildInteractiveWords(
     displayKeywords,
@@ -351,17 +485,28 @@ export default function CardDetail({ initialCard, initialEnchantments, initialSt
   const characterLabel = card.color
     ? card.color.charAt(0).toUpperCase() + card.color.slice(1)
     : "—";
-  const costLabel = card.is_x_cost ? "X" : cost != null && cost < 0 ? "U" : String(cost);
+  const costLabel = card.is_x_cost
+    ? "X"
+    : cost != null && cost < 0
+      ? "U"
+      : String(cost);
   const targetLabel =
     card.target && card.target !== "None" && card.target !== "Self"
       ? card.target.replace(/([A-Z])/g, " $1").trim()
       : null;
-  const enchActive = selectedEnch !== "none" && cardEnchantments.includes(selectedEnch);
+  const enchActive =
+    selectedEnch !== "none" && cardEnchantments.includes(selectedEnch);
   // Infobox render: enchanted render > raw artwork (detail / beta / variant /
   // failed full render) > full engine render. Mirrors the old image logic while
   // driving off the new variant switcher.
   const renderSrc = enchActive
-    ? enchantedCardUrl(card.id.toLowerCase(), selectedEnch, isUpgraded, channel, lang)
+    ? enchantedCardUrl(
+        card.id.toLowerCase(),
+        selectedEnch,
+        isUpgraded,
+        channel,
+        lang,
+      )
     : betaArt || variantImg || cardImgFailed
       ? imageUrl(imgUrl)
       : fullCardUrl(card.id.toLowerCase(), isUpgraded, channel, lang);
@@ -377,10 +522,12 @@ export default function CardDetail({ initialCard, initialEnchantments, initialSt
   return (
     <div
       className="card-rvmp"
-      style={{
-        "--spine": spineColor,
-        ...(imgUrl ? { "--entity-bg": `url("${imageUrl(imgUrl)}?bg")` } : {}),
-      } as CSSProperties}
+      style={
+        {
+          "--spine": spineColor,
+          ...(imgUrl ? { "--entity-bg": `url("${imageUrl(imgUrl)}?bg")` } : {}),
+        } as CSSProperties
+      }
     >
       <div className="cd-top">
         <Link href={`${bp}/cards`} className="cd-back">
@@ -406,11 +553,15 @@ export default function CardDetail({ initialCard, initialEnchantments, initialSt
                 {typeIcons[displayType] || ""} {displayType}
               </span>
               <span>&middot;</span>
-              <span>{costLabel} {t("Energy")}</span>
+              <span>
+                {costLabel} {t("Energy")}
+              </span>
               {(card.star_cost != null || card.is_x_star_cost) && (
                 <>
                   <span>&middot;</span>
-                  <span>{card.is_x_star_cost ? "X" : card.star_cost} &#9733;</span>
+                  <span>
+                    {card.is_x_star_cost ? "X" : card.star_cost} &#9733;
+                  </span>
                 </>
               )}
             </p>
@@ -420,7 +571,11 @@ export default function CardDetail({ initialCard, initialEnchantments, initialSt
                 {isUpgraded && <span className="up">+</span>}
               </h1>
               {hasUpgrade && (
-                <div className="seg hero-seg" role="group" aria-label={t("Card version")}>
+                <div
+                  className="seg hero-seg"
+                  role="group"
+                  aria-label={t("Card version")}
+                >
                   <button
                     type="button"
                     className={`segbtn${!upgraded ? " on" : ""}`}
@@ -463,7 +618,8 @@ export default function CardDetail({ initialCard, initialEnchantments, initialSt
             <h2>{t("Community performance")}</h2>
             <p className="h-note">
               {t(
-                "Live aggregate across community-submitted runs. Filter by bracket to see how it holds up at higher levels of play.")}
+                "Live aggregate across community-submitted runs. Filter by bracket to see how it holds up at higher levels of play.",
+              )}
             </p>
             <EntityRunStats
               entityType="cards"
@@ -520,7 +676,9 @@ export default function CardDetail({ initialCard, initialEnchantments, initialSt
                     >
                       <div
                         className={`px-3 py-2 ${
-                          isActive ? "bg-[var(--accent-gold)]/5" : "bg-[var(--bg-primary)]/50"
+                          isActive
+                            ? "bg-[var(--accent-gold)]/5"
+                            : "bg-[var(--bg-primary)]/50"
                         }`}
                       >
                         <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] mr-2">
@@ -528,19 +686,28 @@ export default function CardDetail({ initialCard, initialEnchantments, initialSt
                         </span>
                         {v.description ? (
                           <span className="text-[var(--text-secondary)]">
-                            <RichDescription text={v.description} energyIcon={energyIcon} />
+                            <RichDescription
+                              text={v.description}
+                              energyIcon={energyIcon}
+                            />
                           </span>
                         ) : null}
                       </div>
                       {v.riders && v.riders.length > 0 && (
                         <div className="border-t border-[var(--border-subtle)] px-3 py-2 space-y-1.5">
                           {v.riders.map((r) => (
-                            <div key={r.id} className="flex items-start gap-2 text-xs">
+                            <div
+                              key={r.id}
+                              className="flex items-start gap-2 text-xs"
+                            >
                               <span className="font-medium text-[var(--accent-gold)] whitespace-nowrap flex-shrink-0">
                                 + {r.name}
                               </span>
                               <span className="text-[var(--text-secondary)]">
-                                <RichDescription text={r.description} energyIcon={energyIcon} />
+                                <RichDescription
+                                  text={r.description}
+                                  energyIcon={energyIcon}
+                                />
                               </span>
                             </div>
                           ))}
@@ -556,14 +723,16 @@ export default function CardDetail({ initialCard, initialEnchantments, initialSt
                   <RichDescription
                     text={descText}
                     energyIcon={energyIcon}
-                    relatedCards={spawnedCards.map((sc): RelatedCard => ({
-                      id: sc.id,
-                      name: sc.name,
-                      image_url: sc.image_url,
-                      type: sc.type,
-                      rarity: sc.rarity,
-                      cost: sc.cost,
-                    }))}
+                    relatedCards={spawnedCards.map(
+                      (sc): RelatedCard => ({
+                        id: sc.id,
+                        name: sc.name,
+                        image_url: sc.image_url,
+                        type: sc.type,
+                        rarity: sc.rarity,
+                        cost: sc.cost,
+                      }),
+                    )}
                     interactiveWords={interactiveWords}
                   />
                 </div>
@@ -587,7 +756,11 @@ export default function CardDetail({ initialCard, initialEnchantments, initialSt
                   const data = keywordData[kw.toLowerCase()];
                   const tip = data?.description || keywordTooltips[kw] || "";
                   return (
-                    <HoverTooltip key={kw} title={data?.name || kw} content={tip}>
+                    <HoverTooltip
+                      key={kw}
+                      title={data?.name || kw}
+                      content={tip}
+                    >
                       <Link
                         href={`${bp}/keywords/${(data?.id || kw).toLowerCase()}`}
                         className="kw"
@@ -605,7 +778,9 @@ export default function CardDetail({ initialCard, initialEnchantments, initialSt
             {card.sources && card.sources.length > 0 && (
               <>
                 <h3 className="subh">{t("Sources")}</h3>
-                <p className="h-note">{t("Added to your deck in combat by:")}</p>
+                <p className="h-note">
+                  {t("Added to your deck in combat by:")}
+                </p>
                 <div className="kw-row">
                   {card.sources.map((s) => (
                     <Link
@@ -631,10 +806,16 @@ export default function CardDetail({ initialCard, initialEnchantments, initialSt
                       .replace(/([A-Z])/g, "_$1")
                       .replace(/^_/, "")
                       .toUpperCase();
-                    const prettyName = pa.power.replace(/([A-Z])/g, " $1").trim();
+                    const prettyName = pa.power
+                      .replace(/([A-Z])/g, " $1")
+                      .trim();
                     const data = powerData[pa.power.toLowerCase()];
                     return (
-                      <HoverTooltip key={pa.power} title={prettyName} content={data?.description}>
+                      <HoverTooltip
+                        key={pa.power}
+                        title={prettyName}
+                        content={data?.description}
+                      >
                         <Link href={`${bp}/powers/${powerId}`}>
                           {prettyName}
                           {pa.amount ? ` ${pa.amount}` : ""}
@@ -645,7 +826,6 @@ export default function CardDetail({ initialCard, initialEnchantments, initialSt
                 </div>
               </>
             )}
-
           </section>
 
           {/* Relations */}
@@ -691,9 +871,21 @@ export default function CardDetail({ initialCard, initialEnchantments, initialSt
             </div>
           </section>
 
-          <EntityPairings kind="cards" id={id} name={card.name} lang={lang} bp={bp} />
+          <EntityPairings
+            kind="cards"
+            id={id}
+            name={card.name}
+            lang={lang}
+            bp={bp}
+          />
 
-          <EntityDraftRecs kind="cards" id={id} name={card.name} lang={lang} bp={bp} />
+          <EntityDraftRecs
+            kind="cards"
+            id={id}
+            name={card.name}
+            lang={lang}
+            bp={bp}
+          />
 
           {/* Version history + localized names */}
           <LocalizedNames entityType="cards" entityId={id} />
@@ -707,14 +899,22 @@ export default function CardDetail({ initialCard, initialEnchantments, initialSt
               key={renderSrc}
               className="cardimg render cardframe"
               src={renderSrc}
-              alt={t("{name} - Slay the Spire 2", { name: `${card.name}${isUpgraded ? "+" : ""}` })}
+              alt={t("{name} - Slay the Spire 2", {
+                name: `${card.name}${isUpgraded ? "+" : ""}`,
+              })}
               crossOrigin="anonymous"
               onError={(e) => {
                 const el = e.currentTarget;
                 if (enchActive) {
                   if (!el.dataset.fb) {
                     el.dataset.fb = "1";
-                    el.src = enchantedCardUrl(card.id.toLowerCase(), selectedEnch, false, channel, lang);
+                    el.src = enchantedCardUrl(
+                      card.id.toLowerCase(),
+                      selectedEnch,
+                      false,
+                      channel,
+                      lang,
+                    );
                   }
                 } else if (!betaArt && !variantImg) {
                   setCardImgFailed(true);
@@ -803,7 +1003,9 @@ export default function CardDetail({ initialCard, initialEnchantments, initialSt
                       {spawnedCards.map((sc, i) => (
                         <span key={sc.id}>
                           {i > 0 ? ", " : ""}
-                          <Link href={`${bp}/cards/${sc.id.toLowerCase()}`}>{sc.name}</Link>
+                          <Link href={`${bp}/cards/${sc.id.toLowerCase()}`}>
+                            {sc.name}
+                          </Link>
                         </span>
                       ))}
                     </dd>
@@ -814,7 +1016,9 @@ export default function CardDetail({ initialCard, initialEnchantments, initialSt
                     <dt>{t("Merchant Price")}</dt>
                     <dd>
                       <img
-                        src={imageUrl("/static/images/ui/rewards/reward_icon_money.webp")}
+                        src={imageUrl(
+                          "/static/images/ui/rewards/reward_icon_money.webp",
+                        )}
                         alt={t("Gold")}
                         style={{ width: 15, height: 15 }}
                         crossOrigin="anonymous"
@@ -838,7 +1042,10 @@ export default function CardDetail({ initialCard, initialEnchantments, initialSt
                     <div>
                       <div
                         className="mv"
-                        style={{ color: mini.win_rate >= 50 ? "var(--good)" : "var(--warn)" }}
+                        style={{
+                          color:
+                            mini.win_rate >= 50 ? "var(--good)" : "var(--warn)",
+                        }}
                       >
                         {mini.win_rate}%
                       </div>

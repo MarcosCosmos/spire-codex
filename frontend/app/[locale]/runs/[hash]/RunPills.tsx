@@ -5,11 +5,13 @@ import { Ref, useContext, useRef, useState, type ReactNode } from "react";
 import { Link } from "@/i18n/navigation";
 import RichDescription from "@/app/components/RichDescription";
 import { imageUrl, fullCardUrl, enchantedCardUrl } from "@/lib/image-url";
-import RelicsContext from "@/app/contexts/api/Relics";
-import CardsContext from "@/app/contexts/api/Cards";
-import PotionsContext from "@/app/contexts/api/Potions";
 import { useBetaPrefix, useChannel } from "@/lib/use-lang-prefix";
-import EnchantmentsContext from "@/app/contexts/api/Enchantments";
+import {
+  CardsContext,
+  EnchantmentsContext,
+  RelicsContext,
+  PotionsContext,
+} from "@/app/contexts/api";
 
 export function CardPill({
   cardId,

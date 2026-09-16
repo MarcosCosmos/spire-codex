@@ -12,10 +12,7 @@ import { cachedFetch } from "@/lib/fetch-cache";
 import { imageUrl, fullCardUrl } from "@/lib/image-url";
 import { cleanId, displayName } from "@/lib/display-name";
 import TwitchIcon from "@/app/components/TwitchIcon";
-import { useApiEndpointIdMapped } from "@/app/contexts/api/endpoint.client";
-import { useCards } from "@/app/contexts/api/Cards";
-import { useRelics } from "@/app/contexts/api/Relics";
-import { usePotions } from "@/app/contexts/api/Potions";
+import { useApiEndpointIdMapped } from "@/lib/api/endpoint.client";
 import {
   Act,
   Card,
@@ -27,7 +24,7 @@ import {
   Potion,
   Power,
   Relic,
-} from "@/lib/api";
+} from "@/lib/api/types";
 
 export const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -396,7 +393,7 @@ export function powerName(id: string, powers: Record<string, Power>): string {
 
 export function namedOr(
   id: string | null | undefined,
-  map: Record<string,  NamedInfo>,
+  map: Record<string, NamedInfo>,
   fallback?: string,
 ): string {
   const bare = cleanId(id ?? "");
@@ -419,15 +416,15 @@ export function useCharacterNames(): Record<string, string> {
 }
 
 export function useLiveCatalogs(): LiveCatalogs | undefined {
-  const cards = useCards();
-  const relics = useRelics();
-  const potions = usePotions();
+  const cards = useApiEndpointIdMapped("cards");
+  const relics = useApiEndpointIdMapped("relics")
+  const potions = useApiEndpointIdMapped("potions");
   // todo: give these fully fledged hooks like above
-  const events = useApiEndpointIdMapped<GameEvent>("events");
-  const powers = useApiEndpointIdMapped<Power>("powers");
-  const orbs = useApiEndpointIdMapped<Orb>("orbs");
-  const acts = useApiEndpointIdMapped<Act>("acts");
-  const modifiers = useApiEndpointIdMapped<Modifier>("modifiers");
+  const events = useApiEndpointIdMapped("events");
+  const powers = useApiEndpointIdMapped("powers");
+  const orbs = useApiEndpointIdMapped("orbs");
+  const acts = useApiEndpointIdMapped("acts");
+  const modifiers = useApiEndpointIdMapped("modifiers");
   const characterNames = useCharacterNames(); // todo: convert to new localisation method
   return useMemo(
     () =>
@@ -657,12 +654,12 @@ export function usePoll(fn: () => void, ms: number) {
 /** Lazy monster id -> {name, image_url} map; only fetches once enabled
  * (i.e. once somebody is actually in a fight). */
 export const useMonsterMap = (enabled: boolean) =>
-  useApiEndpointIdMapped<Monster>("monsters", undefined, enabled);
+  useApiEndpointIdMapped("monsters", undefined, enabled);
 
 /** Lazy encounter id -> {name, monsters} map, for resolving a map reveal's
  * encounter id to a representative monster portrait. Fetches once enabled. */
 export const useEncounterMap = (enabled: boolean) =>
-  useApiEndpointIdMapped<Encounter>("encounters", undefined, enabled);
+  useApiEndpointIdMapped("encounters", undefined, enabled);
 
 /** The catalog monster for an id, also matching encounter-style ids
  * (FROG_KNIGHT_NORMAL, BATTLEWORN_DUMMY_EVENT_V2_ENCOUNTER) by dropping

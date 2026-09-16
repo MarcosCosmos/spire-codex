@@ -6,28 +6,13 @@ import { gameNameFor, inLanguageOf, localeOf, localePath } from "@/lib/locale";
 import { buildPageMetadata } from "@/lib/seo";
 import SharedRunClient from "./SharedRunClient";
 import { TFn } from "@/lib/i18n";
-import { RawRun, Run } from "../../../contexts/api/run/types";
-import { cleanRun } from "@/app/contexts/api/run/util";
-import SharedRunContext from "@/app/contexts/api/run/Run.client.";
+import { Run } from "@/lib/api/run/types";
+import { getRun } from "@/lib/api/run/Run.server";
+import SharedRunContext from "@/app/contexts/api";
 
 export const dynamic = "force-dynamic";
 
-const API_INTERNAL =
-  process.env.API_INTERNAL_URL ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  "http://localhost:8000";
-
 type Props = { params: Promise<{ locale: string; hash: string }> };
-
-async function fetchRun(hash: string): Promise<Run | undefined> {
-  try {
-    const res = await fetch(`${API_INTERNAL}/api/runs/shared/${hash}`);
-    if (!res.ok) return;
-    return cleanRun((await res.json()) as RawRun);
-  } catch {
-    return;
-  }
-}
 
 function describeRun(
   run: Run,
@@ -59,7 +44,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     namespace: "characters",
     locale,
   });
-  const run = await fetchRun(hash);
+  const run = await getRun(hash);
   if (!run) {
     return buildPageMetadata({
       locale,
@@ -108,7 +93,7 @@ export default async function SharedRunPage({ params }: Props) {
     namespace: "characters",
     locale,
   });
-  const run = await fetchRun(hash);
+  const run = await getRun(hash);
   let jsonLd: ReturnType<typeof buildDetailPageJsonLd> | null = null;
   if (run) {
     const { char, resultLabel, username, ascension } = describeRun(

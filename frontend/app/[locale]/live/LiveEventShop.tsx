@@ -24,10 +24,12 @@ import {
 } from "./live-shared";
 import { cleanId, displayName } from "@/lib/display-name";
 import { useContext } from "react";
-import CardsContext from "@/app/contexts/api/Cards";
-import RelicsContext from "@/app/contexts/api/Relics";
-import PotionsContext from "@/app/contexts/api/Potions";
-import { Card, Potion, Relic } from "@/lib/api";
+import { Card, Potion, Relic } from "@/lib/api/types";
+import {
+  CardsContext,
+  RelicsContext,
+  PotionsContext,
+} from "@/app/contexts/api";
 
 function Gold({ cost }: { cost?: number }) {
   if (cost == null) return null;
@@ -242,17 +244,11 @@ function ShopSection({
                   {thumb}
                 </CardPill>
               ) : kind === "relic" ? (
-                <RelicPill
-                  relicId={id}
-                  className="block shrink-0"
-                >
+                <RelicPill relicId={id} className="block shrink-0">
                   {thumb}
                 </RelicPill>
               ) : (
-                <PotionPill
-                  potionId={id}
-                  className="block shrink-0"
-                >
+                <PotionPill potionId={id} className="block shrink-0">
                   {thumb}
                 </PotionPill>
               );

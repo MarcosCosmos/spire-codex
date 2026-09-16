@@ -45,7 +45,7 @@ import {
   type LiveSeat,
 } from "../live-shared";
 import { displayName, cleanId } from "@/lib/display-name";
-import { Encounter, Monster } from "@/lib/api";
+import { Encounter, Monster } from "@/lib/api/types";
 
 const POLL_MS = 4_000;
 
@@ -1033,12 +1033,7 @@ export default function LivePlayerClient() {
       {p.screen === "combat" && !p.loot && (
         <LiveCombatPanel p={p} cat={cat} bp={bp} />
       )}
-      {p.event && (
-        <LiveEventPanel
-          ev={p.event}
-          bp={bp}
-        />
-      )}
+      {p.event && <LiveEventPanel ev={p.event} bp={bp} />}
       {p.shop && (
         <LiveShopPanel
           shop={p.shop}
@@ -1146,11 +1141,7 @@ export default function LivePlayerClient() {
                 ? imageUrl(info.image_url)
                 : imageUrl(`/static/images/relics/${rid.toLowerCase()}.png`);
               return (
-                <RelicPill
-                  key={raw}
-                  relicId={rid}
-                  className="block shrink-0"
-                >
+                <RelicPill key={raw} relicId={rid} className="block shrink-0">
                   <img
                     src={src}
                     alt={info?.name || displayName(`RELIC.${raw}`)}
@@ -1178,11 +1169,7 @@ export default function LivePlayerClient() {
               const pid = cleanId(raw);
               const info = cat.potions[pid];
               return (
-                <PotionPill
-                  key={key}
-                  potionId={pid}
-                  className="block shrink-0"
-                >
+                <PotionPill key={key} potionId={pid} className="block shrink-0">
                   {info?.image_url ? (
                     <img
                       src={imageUrl(info.image_url)}

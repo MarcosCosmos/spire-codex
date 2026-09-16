@@ -38,7 +38,7 @@ import {
 } from "../live-shared";
 import { LiveEventPanel, LiveLootPanel, LiveShopPanel } from "../LiveEventShop";
 import { cleanId, displayName } from "@/lib/display-name";
-import { Encounter, Monster, Power } from "@/lib/api";
+import { Encounter, Monster, Power } from "@/lib/api/types";
 
 // Map an intent category to its icon file (a few names differ from the type).
 const INTENT_FILE: Record<string, string> = {

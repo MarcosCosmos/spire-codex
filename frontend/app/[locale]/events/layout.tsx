@@ -1,16 +1,22 @@
 import type { Metadata } from "next";
-import { buildLanguageAlternates, DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
-import { api } from "@/lib/api";
+import {
+  buildLanguageAlternates,
+  DEFAULT_OG_IMAGE,
+  SITE_NAME,
+  SITE_URL,
+} from "@/lib/seo";
+import { getApiEndpoint } from "@/lib/api/endpoint.server";
 
 export async function generateMetadata(): Promise<Metadata> {
   let count = "66";
   try {
-    const stats = await api.getStatsBounded();
-    count = String(stats.events);
+    const stats = await getApiEndpoint("stats");
+    count = String(stats?.events ?? 0);
   } catch {
     // Fall back to the baseline count if the API is unreachable at build time.
   }
-  const title = "Events - All In-Game Events - Slay the Spire 2 (sts2) | Spire Codex";
+  const title =
+    "Events - All In-Game Events - Slay the Spire 2 (sts2) | Spire Codex";
   const ogDesc = `Slay the Spire 2 (sts2) events, browse all ${count} shrine events, Ancient encounters, and story events with choices, dialogue, and outcomes.`;
   return {
     title,
@@ -24,7 +30,10 @@ export async function generateMetadata(): Promise<Metadata> {
       images: [{ url: DEFAULT_OG_IMAGE }],
     },
     twitter: { card: "summary_large_image", title, description: ogDesc },
-    alternates: { canonical: "/events", languages: buildLanguageAlternates("/events") },
+    alternates: {
+      canonical: "/events",
+      languages: buildLanguageAlternates("/events"),
+    },
   };
 }
 

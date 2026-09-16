@@ -9,7 +9,7 @@ import {
 } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Link } from "@/i18n/navigation";
-import type { GameEvent, EventPage } from "@/lib/api";
+import type { GameEvent, EventPage } from "@/lib/api/types";
 import type { EventVotes } from "@/lib/event-votes";
 import RichDescription from "@/app/components/RichDescription";
 import { cachedFetch } from "@/lib/fetch-cache";
@@ -41,7 +41,13 @@ function PageBlock({ page }: { page: EventPage }) {
       <p className="pl">{isInitial ? t("Start") : pageName}</p>
       {page.description && (
         <div className="pdesc">
-          <RichDescription text={siteAuthored(page.description) ? t(page.description) : page.description} />
+          <RichDescription
+            text={
+              siteAuthored(page.description)
+                ? t(page.description)
+                : page.description
+            }
+          />
         </div>
       )}
       {page.options && page.options.length > 0 && (
@@ -64,7 +70,6 @@ function PageBlock({ page }: { page: EventPage }) {
   );
 }
 
-
 // The event parser writes one English description into every language for
 // FAKE_MERCHANT (backend/app/parsers/event_parser.py::_fix_fake_merchant), so
 // that single string is translated here. Every other description is already
@@ -85,7 +90,15 @@ export default function EventDetail({
   const [loading, setLoading] = useState(!initialEvent);
   const [notFound, setNotFound] = useState(false);
   const [relicMap, setRelicMap] = useState<
-    Record<string, { id: string; name: string; description: string; image_url: string | null }>
+    Record<
+      string,
+      {
+        id: string;
+        name: string;
+        description: string;
+        image_url: string | null;
+      }
+    >
   >({});
   const [expandedDialogue, setExpandedDialogue] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<string>("description");
@@ -101,12 +114,18 @@ export default function EventDetail({
   }, [id, lang]);
 
   useEffect(() => {
-    cachedFetch<{ id: string; name: string; description: string; image_url: string | null }[]>(`${API}/api/relics?lang=${lang}`)
-      .then((relics) => {
-        const map: Record<string, (typeof relics)[number]> = {};
-        for (const r of relics) map[r.id] = r;
-        setRelicMap(map);
-      });
+    cachedFetch<
+      {
+        id: string;
+        name: string;
+        description: string;
+        image_url: string | null;
+      }[]
+    >(`${API}/api/relics?lang=${lang}`).then((relics) => {
+      const map: Record<string, (typeof relics)[number]> = {};
+      for (const r of relics) map[r.id] = r;
+      setRelicMap(map);
+    });
   }, [lang]);
 
   // ToC scroll-spy: highlight the section currently in view.
@@ -149,7 +168,10 @@ export default function EventDetail({
     return (
       <div className="max-w-2xl mx-auto px-4 py-12 text-center">
         <p className="text-[var(--text-muted)] mb-4">{t("Event not found.")}</p>
-        <Link href="/events" className="text-[var(--accent-gold)] hover:underline">
+        <Link
+          href="/events"
+          className="text-[var(--accent-gold)] hover:underline"
+        >
           &larr; {t("Back to")} {t("Events")}
         </Link>
       </div>
@@ -174,10 +196,14 @@ export default function EventDetail({
   return (
     <div
       className="card-rvmp"
-      style={{
-        "--spine": spineColor,
-        ...(event.image_url ? { "--entity-bg": `url("${imageUrl(event.image_url)}?bg")` } : {}),
-      } as CSSProperties}
+      style={
+        {
+          "--spine": spineColor,
+          ...(event.image_url
+            ? { "--entity-bg": `url("${imageUrl(event.image_url)}?bg")` }
+            : {}),
+        } as CSSProperties
+      }
     >
       <div className="cd-top">
         <button className="cd-back" onClick={() => router.back()}>
@@ -236,7 +262,10 @@ export default function EventDetail({
               </div>
             )}
             {event.description && (
-              <div className="desc-body" style={{ whiteSpace: "pre-line", maxWidth: "70ch" }}>
+              <div
+                className="desc-body"
+                style={{ whiteSpace: "pre-line", maxWidth: "70ch" }}
+              >
                 <RichDescription text={event.description} />
               </div>
             )}
@@ -271,7 +300,10 @@ export default function EventDetail({
                 <div className="event-votes">
                   <h3 className="subh">{t("How the community votes")}</h3>
                   <p className="h-note">
-                    {t("Across {n} community-submitted runs at {name}, players chose:", { n: voteStats.total.toLocaleString(), name: event.name })}
+                    {t(
+                      "Across {n} community-submitted runs at {name}, players chose:",
+                      { n: voteStats.total.toLocaleString(), name: event.name },
+                    )}
                   </p>
                   <div className="bars">
                     {voteStats.options.map((o) => (
@@ -280,7 +312,10 @@ export default function EventDetail({
                         <span className="bar-track">
                           <span
                             className="bar-fill"
-                            style={{ width: `${o.pct}%`, background: "var(--gold)" }}
+                            style={{
+                              width: `${o.pct}%`,
+                              background: "var(--gold)",
+                            }}
                           />
                         </span>
                         <span className="num">
@@ -294,7 +329,9 @@ export default function EventDetail({
 
               {event.pages && event.pages.length > 1 && (
                 <>
-                  <h3 className="subh">{t("All pages")} ({event.pages.length})</h3>
+                  <h3 className="subh">
+                    {t("All pages")} ({event.pages.length})
+                  </h3>
                   <div>
                     {event.pages.map((page) => (
                       <PageBlock key={page.id} page={page} />
@@ -325,7 +362,9 @@ export default function EventDetail({
                             <img
                               className="cardimg xs"
                               src={imageUrl(relic.image_url)}
-                              alt={t("{name} - Slay the Spire 2 Relic", { name: relic.name })}
+                              alt={t("{name} - Slay the Spire 2 Relic", {
+                                name: relic.name,
+                              })}
                               crossOrigin="anonymous"
                             />
                           )}
@@ -355,13 +394,17 @@ export default function EventDetail({
           {hasDialogue && (
             <section id="dialogue">
               <h2>{t("Dialogue")}</h2>
-              <p className="h-note">{t("Voice and story lines tied to this event.")}</p>
+              <p className="h-note">
+                {t("Voice and story lines tied to this event.")}
+              </p>
               <div className="dgroups">
                 {Object.keys(event.dialogue!).map((group) => (
                   <button
                     key={group}
                     onClick={() =>
-                      setExpandedDialogue(expandedDialogue === group ? null : group)
+                      setExpandedDialogue(
+                        expandedDialogue === group ? null : group,
+                      )
                     }
                     className={`dchip${expandedDialogue === group ? " on" : ""}`}
                   >
@@ -395,7 +438,9 @@ export default function EventDetail({
                 <img
                   className="cardimg"
                   src={imageUrl(event.image_url)}
-                  alt={t("{name} - Slay the Spire 2 Event", { name: event.name })}
+                  alt={t("{name} - Slay the Spire 2 Event", {
+                    name: event.name,
+                  })}
                   crossOrigin="anonymous"
                 />
               </div>
