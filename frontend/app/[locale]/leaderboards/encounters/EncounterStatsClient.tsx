@@ -42,7 +42,11 @@ interface EncounterMeta {
 }
 
 const ROOM_TYPES = ["monster", "elite", "boss"] as const;
-const ROOM_LABELS: Record<string, string> = { monster: "Monster", elite: "Elite", boss: "Boss" };
+const ROOM_LABELS: Record<string, string> = {
+  monster: "Monster",
+  elite: "Elite",
+  boss: "Boss",
+};
 const ACTS = [1, 2, 3] as const;
 
 function toggle<T>(set: Set<T>, value: T): Set<T> {
@@ -78,7 +82,9 @@ export default function EncounterStatsClient() {
 
   const [acts, setActs] = useState<Set<number>>(new Set());
   const [roomTypes, setRoomTypes] = useState<Set<string>>(new Set());
-  const [multiplayer, setMultiplayer] = useState<"any" | "only" | "exclude">("any");
+  const [multiplayer, setMultiplayer] = useState<"any" | "only" | "exclude">(
+    "any",
+  );
   const [bracket, setBracket] = useState("all");
   // Game versions the snapshot keeps encounter slices for; filters via the
   // endpoint's build_id param. Combines with the bracket (v20 snapshots
@@ -117,7 +123,8 @@ export default function EncounterStatsClient() {
     setLoading(true);
     const params = new URLSearchParams();
     if (acts.size) params.set("act", Array.from(acts).join(","));
-    if (roomTypes.size) params.set("room_type", Array.from(roomTypes).join(","));
+    if (roomTypes.size)
+      params.set("room_type", Array.from(roomTypes).join(","));
     if (multiplayer !== "any") params.set("multiplayer", multiplayer);
     if (bracket !== "all") params.set("bracket", bracket);
     if (version) params.set("build_id", version);
@@ -126,7 +133,9 @@ export default function EncounterStatsClient() {
     fetch(`${API}/api/runs/encounter-stats?${params}`)
       .then((r) => r.json())
       .then((d: EncounterResponse) => setData(d))
-      .catch(() => setData({ encounters: [], page, limit: 50, total: 0, has_next: false }))
+      .catch(() =>
+        setData({ encounters: [], page, limit: 50, total: 0, has_next: false }),
+      )
       .finally(() => setLoading(false));
   }, [acts, roomTypes, multiplayer, bracket, version, page]);
 
@@ -152,13 +161,17 @@ export default function EncounterStatsClient() {
         <span className="text-[var(--text-primary)]">{t("Stats")}</span>
       </h1>
       <p className="text-sm text-[var(--text-muted)] mb-6">
-        {t("Fatal counts, average damage taken, and average turns for every Slay the Spire 2 encounter across submitted community runs. Click any row to expand the per-character breakdown.")}
+        {t(
+          "Fatal counts, average damage taken, and average turns for every Slay the Spire 2 encounter across submitted community runs. Click any row to expand the per-character breakdown.",
+        )}
       </p>
 
       {/* Filters */}
       <div className="bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-lg p-4 mb-6 space-y-4">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm text-[var(--text-muted)] w-20">{t("Act:")}</span>
+          <span className="text-sm text-[var(--text-muted)] w-20">
+            {t("Act:")}
+          </span>
           {ACTS.map((a) => {
             const active = acts.has(a);
             return (
@@ -186,7 +199,9 @@ export default function EncounterStatsClient() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm text-[var(--text-muted)] w-20">{t("Type:")}</span>
+          <span className="text-sm text-[var(--text-muted)] w-20">
+            {t("Type:")}
+          </span>
           {ROOM_TYPES.map((rt) => {
             const active = roomTypes.has(rt);
             return (
@@ -214,9 +229,15 @@ export default function EncounterStatsClient() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm text-[var(--text-muted)] w-20">{t("Players:")}</span>
+          <span className="text-sm text-[var(--text-muted)] w-20">
+            {t("Players:")}
+          </span>
           {(["any", "exclude", "only"] as const).map((m) => {
-            const labels = { any: "All", exclude: "Solo only", only: "Multiplayer only" };
+            const labels = {
+              any: "All",
+              exclude: "Solo only",
+              only: "Multiplayer only",
+            };
             const active = multiplayer === m;
             return (
               <button
@@ -235,7 +256,9 @@ export default function EncounterStatsClient() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm text-[var(--text-muted)] w-20">{t("Bracket:")}</span>
+          <span className="text-sm text-[var(--text-muted)] w-20">
+            {t("Bracket:")}
+          </span>
           {CONTENT_BRACKETS.map((b) => {
             const active = bracket === b.key;
             return (
@@ -255,7 +278,9 @@ export default function EncounterStatsClient() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm text-[var(--text-muted)] w-20">{t("Players:")}</span>
+          <span className="text-sm text-[var(--text-muted)] w-20">
+            {t("Players:")}
+          </span>
           {PLAYER_BRACKETS.map((b) => {
             const active = bracket === b.key;
             return (
@@ -281,16 +306,22 @@ export default function EncounterStatsClient() {
 
         {statVersions.length > 0 && (
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm text-[var(--text-muted)] w-20">{t("Version:")}</span>
+            <span className="text-sm text-[var(--text-muted)] w-20">
+              {t("Version:")}
+            </span>
             <select
               value={version}
-              onChange={(e) => { setVersion(e.target.value); }}
+              onChange={(e) => {
+                setVersion(e.target.value);
+              }}
               className="rounded-md border border-[var(--border-subtle)] bg-[var(--bg-card)] px-2 py-1 text-sm text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent-gold)]"
               aria-label={t("Game version")}
             >
               <option value="">{t("All versions")}</option>
               {statVersions.map((v) => (
-                <option key={v} value={v}>{v}</option>
+                <option key={v} value={v}>
+                  {v}
+                </option>
               ))}
             </select>
           </div>
@@ -298,7 +329,9 @@ export default function EncounterStatsClient() {
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-[var(--text-muted)]">{t("Loading…")}</div>
+        <div className="text-center py-12 text-[var(--text-muted)]">
+          {t("Loading…")}
+        </div>
       ) : !data || data.encounters.length === 0 ? (
         <div className="text-center py-12 text-[var(--text-muted)]">
           {t("No encounters match the current filters.")}
@@ -318,7 +351,9 @@ export default function EncounterStatsClient() {
               const m = meta[row.encounter_id];
               const name = m?.name || displayName(row.encounter_id);
               const isOpen = expanded.has(row.encounter_id);
-              const fatalPct = row.total ? ((row.fatal / row.total) * 100).toFixed(1) : "0";
+              const fatalPct = row.total
+                ? ((row.fatal / row.total) * 100).toFixed(1)
+                : "0";
               return (
                 <div
                   key={`${row.encounter_id}-${row.act}-${row.room_type}`}
@@ -342,16 +377,27 @@ export default function EncounterStatsClient() {
                         {name}
                       </Link>
                       <span className="text-xs text-[var(--text-muted)] capitalize">
-                        · {t("Act {n}", { n: row.act })} · {ROOM_LABELS[row.room_type] ? t(ROOM_LABELS[row.room_type]) : row.room_type}
+                        · {t("Act {n}", { n: row.act })} ·{" "}
+                        {ROOM_LABELS[row.room_type]
+                          ? t(ROOM_LABELS[row.room_type])
+                          : row.room_type}
                       </span>
                     </div>
-                    <div className="col-span-2 text-right tabular-nums">{row.total.toLocaleString()}</div>
+                    <div className="col-span-2 text-right tabular-nums">
+                      {row.total.toLocaleString()}
+                    </div>
                     <div className="col-span-2 text-right tabular-nums">
                       {row.fatal.toLocaleString()}
-                      <span className="text-xs text-[var(--text-muted)] ml-1">({fatalPct}%)</span>
+                      <span className="text-xs text-[var(--text-muted)] ml-1">
+                        ({fatalPct}%)
+                      </span>
                     </div>
-                    <div className="col-span-2 text-right tabular-nums">{row.avg_damage.toFixed(1)}</div>
-                    <div className="col-span-1 text-right tabular-nums">{row.avg_turns.toFixed(2)}</div>
+                    <div className="col-span-2 text-right tabular-nums">
+                      {row.avg_damage.toFixed(1)}
+                    </div>
+                    <div className="col-span-1 text-right tabular-nums">
+                      {row.avg_turns.toFixed(2)}
+                    </div>
                   </button>
 
                   {isOpen && (
@@ -388,7 +434,11 @@ export default function EncounterStatsClient() {
                               <div className="col-span-2 pt-2 text-right tabular-nums">
                                 {c.fatal}
                                 <span className="text-[var(--text-muted)] ml-1">
-                                  ({c.total ? ((c.fatal / c.total) * 100).toFixed(1) : "0"}%)
+                                  (
+                                  {c.total
+                                    ? ((c.fatal / c.total) * 100).toFixed(1)
+                                    : "0"}
+                                  %)
                                 </span>
                               </div>
                               <div className="col-span-2 pt-2 text-right tabular-nums">
@@ -418,7 +468,11 @@ export default function EncounterStatsClient() {
                 ← {t("Prev")}
               </button>
               <span className="text-sm text-[var(--text-muted)] tabular-nums">
-                {t("Page {page} of {total} ({n} encounters)", { page, total: totalPages, n: data.total.toLocaleString() })}
+                {t("Page {page} of {total} ({n} encounters)", {
+                  page,
+                  total: totalPages,
+                  n: data.total.toLocaleString(),
+                })}
               </span>
               <button
                 onClick={() => setPage(page + 1)}

@@ -652,7 +652,9 @@ export default function GlobalSearch() {
         {totalResults > 0 && (
           <div className="px-4 py-2 border-t border-[var(--border-subtle)] text-xs text-[var(--text-muted)] flex items-center gap-4">
             <span>
-              {totalResults === 1 ? t("{n} result", { n: 1 }) : t("{n} results", { n: totalResults })}
+              {totalResults === 1
+                ? t("{n} result", { n: 1 })
+                : t("{n} results", { n: totalResults })}
             </span>
             <span className="ml-auto flex items-center gap-1">
               <kbd className="border border-[var(--border-subtle)] rounded px-1 py-0.5">

@@ -10,14 +10,22 @@ import RecentlyAdded from "@/app/components/RecentlyAdded";
 import HighestRated from "@/app/components/HighestRated";
 import PotionsClient from "./PotionsClient";
 
-const API = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API =
+  process.env.API_INTERNAL_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://localhost:8000";
 
 type Props = { params: Promise<{ locale: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const locale = localeOf((await params).locale);
   const t = await getT(locale);
-  return buildPageMetadata({ locale, path: "/potions", title: t("Potions"), description: t("potions_meta_description") });
+  return buildPageMetadata({
+    locale,
+    path: "/potions",
+    title: t("Potions"),
+    description: t("potions_meta_description"),
+  });
 }
 
 export default async function PotionsPage({ params }: Props) {
@@ -27,7 +35,9 @@ export default async function PotionsPage({ params }: Props) {
   const tagline = t("potions_tagline");
   let potions: Potion[] = [];
   try {
-    const res = await fetch(`${API}/api/potions?lang=${locale}`, { next: { revalidate: 300 } });
+    const res = await fetch(`${API}/api/potions?lang=${locale}`, {
+      next: { revalidate: 300 },
+    });
     if (res.ok) potions = await res.json();
   } catch {}
 
@@ -41,7 +51,10 @@ export default async function PotionsPage({ params }: Props) {
       description: "Browse every potion across all character pools.",
       path: localePath(locale, "/potions"),
       inLanguage: inLanguageOf(locale),
-      items: potions.map((p) => ({ name: p.name, path: `/potions/${p.id.toLowerCase()}` })),
+      items: potions.map((p) => ({
+        name: p.name,
+        path: `/potions/${p.id.toLowerCase()}`,
+      })),
     }),
   ];
 
@@ -62,7 +75,11 @@ export default async function PotionsPage({ params }: Props) {
         tierHref="/tier-list/potions"
       />
 
-      <RecentlyAdded entityType="potions" label="Potion" pathPrefix="/potions" />
+      <RecentlyAdded
+        entityType="potions"
+        label="Potion"
+        pathPrefix="/potions"
+      />
 
       <Suspense>
         <PotionsClient initialPotions={potions} />

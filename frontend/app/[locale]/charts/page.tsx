@@ -12,7 +12,12 @@ type Props = { params: Promise<{ locale: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const locale = localeOf((await params).locale);
   const t = await getT(locale);
-  return buildPageMetadata({ locale, path: "/charts", title: t("Run Charts"), description: t("charts_meta_description") });
+  return buildPageMetadata({
+    locale,
+    path: "/charts",
+    title: t("Run Charts"),
+    description: t("charts_meta_description"),
+  });
 }
 
 export default async function ChartsPage({ params }: Props) {
@@ -33,7 +38,13 @@ export default async function ChartsPage({ params }: Props) {
         <span className="text-[var(--accent-gold)]">{heading}</span>
       </h1>
       <p className="text-sm text-[var(--text-muted)] mb-6">{tagline}</p>
-      <Suspense fallback={<div className="text-sm text-[var(--text-muted)]">{t("Loading…")}</div>}>
+      <Suspense
+        fallback={
+          <div className="text-sm text-[var(--text-muted)]">
+            {t("Loading…")}
+          </div>
+        }
+      >
         <ChartsClient />
       </Suspense>
     </div>

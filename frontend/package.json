@@ -12,6 +12,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "format:check": "prettier . --check",
+    "format": "prettier . --write",
     "test": "vitest run"
   },
   "dependencies": {
@@ -39,6 +41,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
     "eslint-plugin-react-hooks": "^7.1.1",
+    "prettier": "3.9.6",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^3.2.4"

@@ -1,7 +1,12 @@
 "use client";
 
 import { useT, useGameLocale } from "@/lib/i18n";
-import { useState, useEffect, type MouseEvent as ReactMouseEvent, type CSSProperties } from "react";
+import {
+  useState,
+  useEffect,
+  type MouseEvent as ReactMouseEvent,
+  type CSSProperties,
+} from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import type { Potion } from "@/lib/api";
@@ -12,7 +17,9 @@ import EntityUpdateHistory from "@/app/components/EntityUpdateHistory";
 import RelatedItems from "@/app/components/RelatedItems";
 import EntityProse from "@/app/components/EntityProse";
 import EntityPairings from "@/app/components/EntityPairings";
-import EntityRunStats, { type EntityStats } from "@/app/components/EntityRunStats";
+import EntityRunStats, {
+  type EntityStats,
+} from "@/app/components/EntityRunStats";
 import EntityVersionSelect from "@/app/components/EntityVersionSelect";
 import { imageUrl } from "@/lib/image-url";
 import { useBetaPrefix } from "@/lib/use-lang-prefix";
@@ -25,12 +32,18 @@ const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 // Common: base 50, range x0.95-1.05 = 48-53
 // Uncommon: base 75, range = 71-79
 // Rare: base 100, range = 95-105
-function getPotionMerchantPriceRange(rarity: string): { min: number; max: number } | null {
+function getPotionMerchantPriceRange(
+  rarity: string,
+): { min: number; max: number } | null {
   switch (rarity) {
-    case "Common": return { min: 48, max: 53 };
-    case "Uncommon": return { min: 71, max: 79 };
-    case "Rare": return { min: 95, max: 105 };
-    default: return null;
+    case "Common":
+      return { min: 48, max: 53 };
+    case "Uncommon":
+      return { min: 71, max: 79 };
+    case "Rare":
+      return { min: 95, max: 105 };
+    default:
+      return null;
   }
 }
 
@@ -124,15 +137,22 @@ export default function PotionDetail({
   if (notFound || !potion) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-12 text-center">
-        <p className="text-[var(--text-muted)] mb-4">{t("Potion not found.")}</p>
-        <Link href={`${bp}/potions`} className="text-[var(--accent-gold)] hover:underline">
+        <p className="text-[var(--text-muted)] mb-4">
+          {t("Potion not found.")}
+        </p>
+        <Link
+          href={`${bp}/potions`}
+          className="text-[var(--accent-gold)] hover:underline"
+        >
           &larr; {t("Back to")} {t("Potions")}
         </Link>
       </div>
     );
   }
 
-  const priceRange = getPotionMerchantPriceRange(potion.rarity_key || potion.rarity);
+  const priceRange = getPotionMerchantPriceRange(
+    potion.rarity_key || potion.rarity,
+  );
   // Plain-text lede from the potion effect (rich tags + newlines stripped).
   const ledeText = potion.description
     ? potion.description
@@ -154,10 +174,14 @@ export default function PotionDetail({
   return (
     <div
       className="card-rvmp"
-      style={{
-        "--spine": "var(--accent-gold)",
-        ...(potion.image_url ? { "--entity-bg": `url("${imageUrl(potion.image_url)}?bg")` } : {}),
-      } as CSSProperties}
+      style={
+        {
+          "--spine": "var(--accent-gold)",
+          ...(potion.image_url
+            ? { "--entity-bg": `url("${imageUrl(potion.image_url)}?bg")` }
+            : {}),
+        } as CSSProperties
+      }
     >
       <div className="cd-top">
         <button onClick={() => router.back()} className="cd-back">
@@ -206,7 +230,8 @@ export default function PotionDetail({
             <h2>{t("Community performance")}</h2>
             <p className="h-note">
               {t(
-                "Live aggregate across community-submitted runs. Filter by bracket to see how it holds up at higher levels of play.")}
+                "Live aggregate across community-submitted runs. Filter by bracket to see how it holds up at higher levels of play.",
+              )}
             </p>
             <EntityRunStats
               entityType="potions"
@@ -248,16 +273,24 @@ export default function PotionDetail({
                   path: `/api/potions?rarity=${encodeURIComponent(potion.rarity)}&lang=${lang}`,
                 },
                 ...(potion.pool
-                  ? [{
-                      label: t("{pool} pool", { pool: potion.pool }),
-                      path: `/api/potions?pool=${encodeURIComponent(potion.pool)}&lang=${lang}`,
-                    }]
+                  ? [
+                      {
+                        label: t("{pool} pool", { pool: potion.pool }),
+                        path: `/api/potions?pool=${encodeURIComponent(potion.pool)}&lang=${lang}`,
+                      },
+                    ]
                   : []),
               ]}
             />
           </section>
 
-          <EntityPairings kind="potions" id={id} name={potion.name} lang={lang} bp={bp} />
+          <EntityPairings
+            kind="potions"
+            id={id}
+            name={potion.name}
+            lang={lang}
+            bp={bp}
+          />
 
           {/* Version history + localized names */}
           <LocalizedNames entityType="potions" entityId={id} />
@@ -271,7 +304,9 @@ export default function PotionDetail({
               <img
                 className="cardimg render relimg"
                 src={imageUrl(potion.image_url)}
-                alt={t("{name} - Slay the Spire 2 Potion", { name: potion.name })}
+                alt={t("{name} - Slay the Spire 2 Potion", {
+                  name: potion.name,
+                })}
                 crossOrigin="anonymous"
               />
             )}
@@ -299,7 +334,9 @@ export default function PotionDetail({
                 {potion.pool && (
                   <div className="frow">
                     <dt>{t("Pool")}</dt>
-                    <dd style={{ textTransform: "capitalize" }}>{potion.pool}</dd>
+                    <dd style={{ textTransform: "capitalize" }}>
+                      {potion.pool}
+                    </dd>
                   </div>
                 )}
                 <div className="frow">
@@ -308,7 +345,9 @@ export default function PotionDetail({
                     {priceRange ? (
                       <>
                         <img
-                          src={imageUrl("/static/images/ui/rewards/reward_icon_money.webp")}
+                          src={imageUrl(
+                            "/static/images/ui/rewards/reward_icon_money.webp",
+                          )}
                           alt={t("Gold")}
                           style={{ width: 15, height: 15 }}
                           crossOrigin="anonymous"
@@ -335,7 +374,10 @@ export default function PotionDetail({
                     <div>
                       <div
                         className="mv"
-                        style={{ color: mini.win_rate >= 50 ? "var(--good)" : "var(--warn)" }}
+                        style={{
+                          color:
+                            mini.win_rate >= 50 ? "var(--good)" : "var(--warn)",
+                        }}
                       >
                         {mini.win_rate}%
                       </div>

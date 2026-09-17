@@ -5,7 +5,9 @@ import { LANG_PREFIXES } from "./languages";
 
 function inBeta(pathname: string): boolean {
   const parts = pathname.split("/");
-  return parts[1] === "beta" || (LANG_PREFIXES.has(parts[1]) && parts[2] === "beta");
+  return (
+    parts[1] === "beta" || (LANG_PREFIXES.has(parts[1]) && parts[2] === "beta")
+  );
 }
 
 /** "beta" when the current path sits in the beta section

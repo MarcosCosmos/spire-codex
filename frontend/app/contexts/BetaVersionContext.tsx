@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useState, type ReactNode } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { setBetaVersion, clearCache } from "@/lib/fetch-cache";
 
@@ -40,7 +35,9 @@ export function BetaVersionProvider({ children }: { children: ReactNode }) {
   // stream their entire body after the shell, invisible to non-JS
   // crawlers (no h1, no text in the raw HTML).
   const currentParams = () =>
-    new URLSearchParams(typeof window === "undefined" ? "" : window.location.search);
+    new URLSearchParams(
+      typeof window === "undefined" ? "" : window.location.search,
+    );
 
   const setVersion = (v: string | null) => {
     setVersionState(v);

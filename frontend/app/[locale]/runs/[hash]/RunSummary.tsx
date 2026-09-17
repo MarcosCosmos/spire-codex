@@ -98,7 +98,18 @@ interface Run {
   username?: string;
 }
 
-const RARITY_ORDER = ["Starter", "Common", "Uncommon", "Rare", "Ancient", "Event", "Token", "Status", "Curse", "Quest"];
+const RARITY_ORDER = [
+  "Starter",
+  "Common",
+  "Uncommon",
+  "Rare",
+  "Ancient",
+  "Event",
+  "Token",
+  "Status",
+  "Curse",
+  "Quest",
+];
 
 // Matches NDeckHistoryEntry.Reload() in the game:
 //   enchanted → StsColors.purple
@@ -136,7 +147,6 @@ const TIER_OUTLINE: Record<string, string> = {
   boss: "ring-2 ring-danger/60",
 };
 
-
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
@@ -158,13 +168,22 @@ function modeLabel(mode: string | undefined): string {
   return mode.charAt(0).toUpperCase() + mode.slice(1).toLowerCase();
 }
 
-function formatDate(epoch: number | undefined, local: boolean, locale: string): string {
+function formatDate(
+  epoch: number | undefined,
+  local: boolean,
+  locale: string,
+): string {
   if (!epoch) return "";
-  return local ? fmtDateTime(epoch * 1000, DATE_STYLE, locale) : fmtDateTimePacific(epoch * 1000, DATE_STYLE, locale);
+  return local
+    ? fmtDateTime(epoch * 1000, DATE_STYLE, locale)
+    : fmtDateTimePacific(epoch * 1000, DATE_STYLE, locale);
 }
 
 /** Decide the tier ("weak"|"normal"|"elite"|"boss") for an encounter. */
-function encounterTier(modelId: string | undefined, mapPointType: string): "weak" | "normal" | "elite" | "boss" | "" {
+function encounterTier(
+  modelId: string | undefined,
+  mapPointType: string,
+): "weak" | "normal" | "elite" | "boss" | "" {
   if (!modelId) return "";
   if (modelId.endsWith("_BOSS")) return "boss";
   if (modelId.endsWith("_ELITE") || mapPointType === "elite") return "elite";
@@ -243,17 +262,36 @@ interface Props {
   monsterNames: Record<string, string>;
 }
 
-export default function RunSummary({ run, player, cardData, relicData, potionData, charColor, langPrefix: bp, charName, encounterName, actNames, monsterNames }: Props) {
+export default function RunSummary({
+  run,
+  player,
+  cardData,
+  relicData,
+  potionData,
+  charColor,
+  langPrefix: bp,
+  charName,
+  encounterName,
+  actNames,
+  monsterNames,
+}: Props) {
   const t = useT();
   const dateLocale = hreflangOf(useGameLocale());
-  const cardName = (id: string) => cardData[cleanId(id)]?.name ?? displayName(id);
-  const relicName = (id: string) => relicData[cleanId(id)]?.name ?? displayName(id);
+  const cardName = (id: string) =>
+    cardData[cleanId(id)]?.name ?? displayName(id);
+  const relicName = (id: string) =>
+    relicData[cleanId(id)]?.name ?? displayName(id);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const finalStats = lastPlayerStats(run);
-  const totalFloors = (run.map_point_history ?? []).reduce((sum, act) => sum + act.length, 0);
+  const totalFloors = (run.map_point_history ?? []).reduce(
+    (sum, act) => sum + act.length,
+    0,
+  );
   const charSlug = cleanId(player.character).toLowerCase();
-  const charIcon = imageUrl(`/static/images/characters/character_icon_${charSlug}.webp`);
+  const charIcon = imageUrl(
+    `/static/images/characters/character_icon_${charSlug}.webp`,
+  );
   const potionSlots = player.max_potion_slot_count ?? 3;
   const playerPotions = player.potions ?? [];
 
@@ -262,11 +300,20 @@ export default function RunSummary({ run, player, cardData, relicData, potionDat
     : run.was_abandoned
       ? t("The journey ended.")
       : encounterName
-        ? t("{char} fell to {encounter}.", { char: charName, encounter: encounterName })
+        ? t("{char} fell to {encounter}.", {
+            char: charName,
+            encounter: encounterName,
+          })
         : t("{char} fell.", { char: charName });
 
-  const relicsByRarity = bucketByRarity(player.relics, (r) => relicData[cleanId(r.id)]?.rarity);
-  const cardsByRarity = bucketByRarity(player.deck, (c) => cardData[cleanId(c.id)]?.rarity);
+  const relicsByRarity = bucketByRarity(
+    player.relics,
+    (r) => relicData[cleanId(r.id)]?.rarity,
+  );
+  const cardsByRarity = bucketByRarity(
+    player.deck,
+    (c) => cardData[cleanId(c.id)]?.rarity,
+  );
 
   const stackedCards = stackCards(player.deck, cardData);
 
@@ -289,13 +336,41 @@ export default function RunSummary({ run, player, cardData, relicData, potionDat
             crossOrigin="anonymous"
           />
         </Link>
-        <IconStat icon={imageUrl("/static/images/ui/top_bar/top_bar_heart.webp")} alt={t("HP")} value={`${finalStats?.current_hp ?? "?"}/${finalStats?.max_hp ?? "?"}`} color="var(--color-ironclad)" />
-        <IconStat icon={imageUrl("/static/images/ui/top_bar/top_bar_gold.webp")} alt={t("Gold")} value={finalStats?.current_gold ?? "?"} color="var(--accent-gold)" />
-        <PotionSlots potions={playerPotions} total={potionSlots} potionData={potionData} bp={bp} />
-        <IconStat icon={imageUrl("/static/images/ui/top_bar/top_bar_map.webp")} alt={t("Floor")} value={totalFloors} />
-        <IconStat icon={imageUrl("/static/images/ui/top_bar/timer_icon.webp")} alt={t("Time")} value={formatTime(run.run_time ?? 0)} />
+        <IconStat
+          icon={imageUrl("/static/images/ui/top_bar/top_bar_heart.webp")}
+          alt={t("HP")}
+          value={`${finalStats?.current_hp ?? "?"}/${finalStats?.max_hp ?? "?"}`}
+          color="var(--color-ironclad)"
+        />
+        <IconStat
+          icon={imageUrl("/static/images/ui/top_bar/top_bar_gold.webp")}
+          alt={t("Gold")}
+          value={finalStats?.current_gold ?? "?"}
+          color="var(--accent-gold)"
+        />
+        <PotionSlots
+          potions={playerPotions}
+          total={potionSlots}
+          potionData={potionData}
+          bp={bp}
+        />
+        <IconStat
+          icon={imageUrl("/static/images/ui/top_bar/top_bar_map.webp")}
+          alt={t("Floor")}
+          value={totalFloors}
+        />
+        <IconStat
+          icon={imageUrl("/static/images/ui/top_bar/timer_icon.webp")}
+          alt={t("Time")}
+          value={formatTime(run.run_time ?? 0)}
+        />
         {(run.ascension ?? 0) > 0 && (
-          <IconStat icon={imageUrl("/static/images/ui/top_bar/top_bar_ascension.webp")} alt={t("Ascension")} value={`A${run.ascension}`} color="var(--accent-gold)" />
+          <IconStat
+            icon={imageUrl("/static/images/ui/top_bar/top_bar_ascension.webp")}
+            alt={t("Ascension")}
+            value={`A${run.ascension}`}
+            color="var(--accent-gold)"
+          />
         )}
         <div className="w-full sm:w-auto sm:ml-auto text-left sm:text-right text-xs text-[var(--text-muted)] leading-tight">
           {run.username && (
@@ -305,11 +380,18 @@ export default function RunSummary({ run, player, cardData, relicData, potionDat
                 className="text-[var(--text-secondary)] hover:text-[var(--accent-gold)] hover:underline"
                 title={t("View all runs by this player")}
               >
-                {t("by")} <span className="font-medium text-[var(--text-primary)]">{run.username}</span>
+                {t("by")}{" "}
+                <span className="font-medium text-[var(--text-primary)]">
+                  {run.username}
+                </span>
               </Link>
             </div>
           )}
-          {run.start_time && <div className="truncate" suppressHydrationWarning>{formatDate(run.start_time, mounted, dateLocale)}</div>}
+          {run.start_time && (
+            <div className="truncate" suppressHydrationWarning>
+              {formatDate(run.start_time, mounted, dateLocale)}
+            </div>
+          )}
           {run.seed && (
             <div className="truncate">
               {t("Seed")}: <span className="font-mono">{run.seed}</span>
@@ -322,19 +404,38 @@ export default function RunSummary({ run, player, cardData, relicData, potionDat
         </div>
       </div>
 
-      <div className="mb-4 italic text-sm text-[var(--text-secondary)]">&ldquo;{deathQuote}&rdquo;</div>
+      <div className="mb-4 italic text-sm text-[var(--text-secondary)]">
+        &ldquo;{deathQuote}&rdquo;
+      </div>
 
       {/* Act rows with hover popovers */}
       <div className="space-y-2 mb-5">
         {(run.map_point_history ?? []).map((act, i) => {
-          const actName = run.acts?.[i] ? actNames[cleanId(run.acts[i]).toUpperCase()] ?? displayName(run.acts[i]) : t("Act {n}", { n: i + 1 });
-          const actStartFloor = (run.map_point_history ?? []).slice(0, i).reduce((sum, a) => sum + a.length, 0) + 1;
+          const actName = run.acts?.[i]
+            ? (actNames[cleanId(run.acts[i]).toUpperCase()] ??
+              displayName(run.acts[i]))
+            : t("Act {n}", { n: i + 1 });
+          const actStartFloor =
+            (run.map_point_history ?? [])
+              .slice(0, i)
+              .reduce((sum, a) => sum + a.length, 0) + 1;
           return (
             <div key={i} className="flex items-center gap-2 sm:gap-3">
-              <div className="w-20 sm:w-24 text-xs font-medium text-[var(--text-secondary)] flex-shrink-0">{actName}</div>
+              <div className="w-20 sm:w-24 text-xs font-medium text-[var(--text-secondary)] flex-shrink-0">
+                {actName}
+              </div>
               <div className="flex flex-wrap items-center gap-1 flex-1">
                 {act.map((mp, j) => (
-                  <MapNode key={j} mp={mp} floorNum={actStartFloor + j} bp={bp} buildId={run.build_id} cardName={cardName} relicName={relicName} monsterNames={monsterNames} />
+                  <MapNode
+                    key={j}
+                    mp={mp}
+                    floorNum={actStartFloor + j}
+                    bp={bp}
+                    buildId={run.build_id}
+                    cardName={cardName}
+                    relicName={relicName}
+                    monsterNames={monsterNames}
+                  />
                 ))}
               </div>
             </div>
@@ -345,7 +446,9 @@ export default function RunSummary({ run, player, cardData, relicData, potionDat
       {/* Relics row, uses RelicPill tooltip */}
       <div className="mb-4">
         <div className="text-xs text-[var(--text-secondary)] mb-2">
-          <span className="font-semibold">{t("Relics")} ({player.relics.length}):</span>{" "}
+          <span className="font-semibold">
+            {t("Relics")} ({player.relics.length}):
+          </span>{" "}
           <RaritySummary buckets={relicsByRarity} t={t} />
         </div>
         <div className="flex flex-wrap gap-1">
@@ -368,7 +471,9 @@ export default function RunSummary({ run, player, cardData, relicData, potionDat
                     crossOrigin="anonymous"
                   />
                 ) : (
-                  <span className="text-[8px] text-[var(--text-muted)]">{rid.slice(0, 3)}</span>
+                  <span className="text-[8px] text-[var(--text-muted)]">
+                    {rid.slice(0, 3)}
+                  </span>
                 )}
               </RelicPill>
             );
@@ -379,13 +484,18 @@ export default function RunSummary({ run, player, cardData, relicData, potionDat
       {/* Cards grid, card art thumbnails + CardPill tooltip */}
       <div>
         <div className="text-xs text-[var(--text-secondary)] mb-2">
-          <span className="font-semibold">{t("Cards")} ({player.deck.length}):</span>{" "}
+          <span className="font-semibold">
+            {t("Cards")} ({player.deck.length}):
+          </span>{" "}
           <RaritySummary buckets={cardsByRarity} t={t} />
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-3 gap-y-1">
           {stackedCards.map((entry, i) => {
             const info = cardData[entry.id];
-            const colorClass = cardLabelColor(entry.upgraded, !!entry.enchantment);
+            const colorClass = cardLabelColor(
+              entry.upgraded,
+              !!entry.enchantment,
+            );
             return (
               <CardPill
                 key={`${entry.id}-${entry.upgraded ? "u" : "n"}-${entry.enchantment ?? ""}-${i}`}
@@ -396,9 +506,17 @@ export default function RunSummary({ run, player, cardData, relicData, potionDat
                 bp={bp}
                 className="flex items-center gap-1.5 text-xs hover:bg-[var(--bg-card-hover)] rounded px-1 py-0.5 transition-colors"
               >
-                <TinyCard color={info?.color} type={info?.type} rarity={info?.rarity} />
+                <TinyCard
+                  color={info?.color}
+                  type={info?.type}
+                  rarity={info?.rarity}
+                />
                 <span className={`truncate ${colorClass}`}>
-                  {entry.count > 1 && <span className="text-[var(--text-muted)] mr-1">{entry.count}x</span>}
+                  {entry.count > 1 && (
+                    <span className="text-[var(--text-muted)] mr-1">
+                      {entry.count}x
+                    </span>
+                  )}
                   {info?.name || displayName(`CARD.${entry.id}`)}
                   {entry.upgraded && "+"}
                 </span>
@@ -460,33 +578,54 @@ function MapNode({
   const tooltip = show && (
     <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card)] shadow-xl pointer-events-none text-left">
       <div className="flex items-center justify-between mb-1.5">
-        <div className="text-xs font-semibold text-[var(--text-primary)]">{label}</div>
-        <div className="text-[10px] text-[var(--text-muted)]">{t("Floor {n}", { n: floorNum })}</div>
+        <div className="text-xs font-semibold text-[var(--text-primary)]">
+          {label}
+        </div>
+        <div className="text-[10px] text-[var(--text-muted)]">
+          {t("Floor {n}", { n: floorNum })}
+        </div>
       </div>
       <div className="text-[10px] text-[var(--text-muted)] mb-1.5 capitalize">
-        {MAP_POINT_LABELS[mp.map_point_type] ? t(MAP_POINT_LABELS[mp.map_point_type]) : mp.map_point_type.replace(/_/g, " ")}
+        {MAP_POINT_LABELS[mp.map_point_type]
+          ? t(MAP_POINT_LABELS[mp.map_point_type])
+          : mp.map_point_type.replace(/_/g, " ")}
         {tier && ` · ${t(TIER_LABELS[tier])}`}
         {room?.turns_taken != null && ` · ${room.turns_taken} ${t("turns")}`}
       </div>
       {room?.monster_ids && room.monster_ids.length > 0 && (
         <div className="text-[10px] text-[var(--text-secondary)] mb-1.5">
-          {t("vs")} {room.monster_ids.map((m) => monsterNames[cleanId(m).toUpperCase()] ?? displayName(m)).join(", ")}
+          {t("vs")}{" "}
+          {room.monster_ids
+            .map(
+              (m) => monsterNames[cleanId(m).toUpperCase()] ?? displayName(m),
+            )
+            .join(", ")}
         </div>
       )}
       {ps && (
         <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[10px] text-[var(--text-muted)] mb-1.5">
-          <span>{t("HP")} {ps.current_hp}/{ps.max_hp}</span>
+          <span>
+            {t("HP")} {ps.current_hp}/{ps.max_hp}
+          </span>
           {(ps.damage_taken ?? 0) > 0 && (
-            <span style={{ color: "var(--color-ironclad)" }}>-{ps.damage_taken}</span>
+            <span style={{ color: "var(--color-ironclad)" }}>
+              -{ps.damage_taken}
+            </span>
           )}
           {(ps.hp_healed ?? 0) > 0 && (
-            <span style={{ color: "var(--color-silent)" }}>+{ps.hp_healed} {t("HP")}</span>
+            <span style={{ color: "var(--color-silent)" }}>
+              +{ps.hp_healed} {t("HP")}
+            </span>
           )}
           {(ps.gold_gained ?? 0) > 0 && (
-            <span style={{ color: "var(--accent-gold)" }}>+{ps.gold_gained}g</span>
+            <span style={{ color: "var(--accent-gold)" }}>
+              +{ps.gold_gained}g
+            </span>
           )}
           {(ps.gold_spent ?? 0) > 0 && (
-            <span style={{ color: "var(--text-muted)" }}>-{ps.gold_spent}g</span>
+            <span style={{ color: "var(--text-muted)" }}>
+              -{ps.gold_spent}g
+            </span>
           )}
         </div>
       )}
@@ -507,7 +646,11 @@ function MapNode({
       )}
       {ps?.relic_choices?.some((r) => r.was_picked) && (
         <div className="text-[10px] text-[var(--accent-gold)] mb-0.5">
-          + {ps.relic_choices.filter((r) => r.was_picked).map((r) => relicName(r.choice)).join(", ")}
+          +{" "}
+          {ps.relic_choices
+            .filter((r) => r.was_picked)
+            .map((r) => relicName(r.choice))
+            .join(", ")}
         </div>
       )}
       {(() => {
@@ -558,7 +701,10 @@ function humanizeChoiceKey(key: string): string {
   const parts = key.split(".");
   const idx = parts.findIndex((p) => p === "options");
   if (idx >= 0 && parts[idx + 1]) {
-    return parts[idx + 1].replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+    return parts[idx + 1]
+      .replace(/_/g, " ")
+      .toLowerCase()
+      .replace(/\b\w/g, (c) => c.toUpperCase());
   }
   // No "options" segment means there was no real choice: ancients and other
   // single-outcome events record a page key like
@@ -568,10 +714,25 @@ function humanizeChoiceKey(key: string): string {
   return key.includes(".") ? "" : key;
 }
 
-function IconStat({ icon, alt, value, color }: { icon: string; alt: string; value: ReactNode; color?: string }) {
+function IconStat({
+  icon,
+  alt,
+  value,
+  color,
+}: {
+  icon: string;
+  alt: string;
+  value: ReactNode;
+  color?: string;
+}) {
   return (
     <div className="flex items-center gap-1.5 text-xs sm:text-sm">
-      <img src={icon} alt={alt} className="w-5 h-5 object-contain" crossOrigin="anonymous" />
+      <img
+        src={icon}
+        alt={alt}
+        className="w-5 h-5 object-contain"
+        crossOrigin="anonymous"
+      />
       <span className="font-semibold" style={color ? { color } : undefined}>
         {value}
       </span>
@@ -591,7 +752,7 @@ function PotionSlots({
   bp: string;
 }) {
   // Sort potions into a slot array so empty slots render as dashed outlines.
-  const bySlot: (typeof potions[number] | null)[] = Array(total).fill(null);
+  const bySlot: ((typeof potions)[number] | null)[] = Array(total).fill(null);
   for (const p of potions) {
     if (p.slot_index >= 0 && p.slot_index < total) bySlot[p.slot_index] = p;
   }
@@ -633,7 +794,13 @@ function PotionSlots({
   );
 }
 
-function RaritySummary({ buckets, t }: { buckets: Map<string, number>; t: TFn }) {
+function RaritySummary({
+  buckets,
+  t,
+}: {
+  buckets: Map<string, number>;
+  t: TFn;
+}) {
   const parts: string[] = [];
   for (const r of RARITY_ORDER) {
     const n = buckets.get(r);
@@ -642,7 +809,10 @@ function RaritySummary({ buckets, t }: { buckets: Map<string, number>; t: TFn })
   return <span className="text-[var(--text-muted)]">{parts.join(", ")}</span>;
 }
 
-function bucketByRarity<T>(items: T[], getRarity: (item: T) => string | undefined): Map<string, number> {
+function bucketByRarity<T>(
+  items: T[],
+  getRarity: (item: T) => string | undefined,
+): Map<string, number> {
   const m = new Map<string, number>();
   for (const item of items) {
     const r = getRarity(item) ?? "Unknown";
@@ -658,12 +828,17 @@ interface StackEntry {
   count: number;
 }
 
-function stackCards(deck: DeckCard[], cardData: Record<string, CardInfo>): StackEntry[] {
+function stackCards(
+  deck: DeckCard[],
+  cardData: Record<string, CardInfo>,
+): StackEntry[] {
   const map = new Map<string, StackEntry>();
   for (const card of deck) {
     const id = cleanId(card.id);
     const upgraded = !!card.current_upgrade_level;
-    const enchantment = card.enchantment ? cleanId(card.enchantment.id) : undefined;
+    const enchantment = card.enchantment
+      ? cleanId(card.enchantment.id)
+      : undefined;
     const key = `${id}::${upgraded}::${enchantment ?? ""}`;
     const existing = map.get(key);
     if (existing) {
@@ -672,12 +847,21 @@ function stackCards(deck: DeckCard[], cardData: Record<string, CardInfo>): Stack
       map.set(key, { id, upgraded, enchantment, count: 1 });
     }
   }
-  const rarityScore: Record<string, number> = { Rare: 5, Uncommon: 4, Common: 3, Starter: 1, Curse: 0, Status: 0 };
+  const rarityScore: Record<string, number> = {
+    Rare: 5,
+    Uncommon: 4,
+    Common: 3,
+    Starter: 1,
+    Curse: 0,
+    Status: 0,
+  };
   return [...map.values()].sort((a, b) => {
     const ra = rarityScore[cardData[a.id]?.rarity ?? ""] ?? 2;
     const rb = rarityScore[cardData[b.id]?.rarity ?? ""] ?? 2;
     if (ra !== rb) return rb - ra;
-    return (cardData[a.id]?.name ?? a.id).localeCompare(cardData[b.id]?.name ?? b.id);
+    return (cardData[a.id]?.name ?? a.id).localeCompare(
+      cardData[b.id]?.name ?? b.id,
+    );
   });
 }
 

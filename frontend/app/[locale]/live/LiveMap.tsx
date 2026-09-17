@@ -41,7 +41,10 @@ import {
 
 // Per-node-type styling. Types arrive lowercase; an unrecognized type falls
 // back to the neutral "node" entry so a new map symbol never breaks rendering.
-const NODE_STYLE: Record<string, { fill: string; ring: string; glyph: string }> = {
+const NODE_STYLE: Record<
+  string,
+  { fill: string; ring: string; glyph: string }
+> = {
   monster: { fill: "#9aa0a6", ring: "#c5c9ce", glyph: "M" },
   burly_monster: { fill: "#9aa0a6", ring: "#c5c9ce", glyph: "M" },
   elite: { fill: "#e0843a", ring: "#ffb37a", glyph: "E" },
@@ -107,11 +110,22 @@ const REVEALED_UNKNOWN: Record<string, string> = {
   treasure: "map_unknown_chest",
 };
 
-function nodeIcon(baseType: string, revealedType: string | null): string | null {
-  if ((baseType === "unknown" || baseType === "event") && revealedType && REVEALED_UNKNOWN[revealedType]) {
+function nodeIcon(
+  baseType: string,
+  revealedType: string | null,
+): string | null {
+  if (
+    (baseType === "unknown" || baseType === "event") &&
+    revealedType &&
+    REVEALED_UNKNOWN[revealedType]
+  ) {
     return REVEALED_UNKNOWN[revealedType];
   }
-  return NODE_ICON[revealedType && NODE_ICON[revealedType] ? revealedType : baseType] ?? null;
+  return (
+    NODE_ICON[
+      revealedType && NODE_ICON[revealedType] ? revealedType : baseType
+    ] ?? null
+  );
 }
 
 function roomArt(name: string): string {
@@ -120,7 +134,10 @@ function roomArt(name: string): string {
 
 // The boss node draws the game's boss map icon (ui/map_bosses, keyed by the
 // boss encounter id); a missing icon falls back to the boss portrait.
-function assetKey(id: string | null | undefined, prefix: RegExp): string | null {
+function assetKey(
+  id: string | null | undefined,
+  prefix: RegExp,
+): string | null {
   const key = (id || "").toLowerCase().replace(prefix, "");
   return key && safeId(key) ? key : null;
 }
@@ -135,14 +152,27 @@ function bossArt(id?: string | null): string | null {
 // into the drawing itself and ship no silhouette.
 function bossBackingArt(id?: string | null): string | null {
   const key = assetKey(id, /^encounter\./);
-  return key ? imageUrl(`/static/images/ui/map_bosses/${key}_icon_outline.webp`) : null;
+  return key
+    ? imageUrl(`/static/images/ui/map_bosses/${key}_icon_outline.webp`)
+    : null;
 }
 
 // The act's Ancient has its own map art per ancient (Neow, Darv, ...).
-const ANCIENT_ART = new Set(["neow", "darv", "nonupeipe", "orobas", "pael", "tanx", "tezcatara", "vakuu"]);
+const ANCIENT_ART = new Set([
+  "neow",
+  "darv",
+  "nonupeipe",
+  "orobas",
+  "pael",
+  "tanx",
+  "tezcatara",
+  "vakuu",
+]);
 function ancientArt(id?: string | null): string | null {
   const key = assetKey(id, /^ancient\./);
-  return key && ANCIENT_ART.has(key) ? imageUrl(`/static/images/ui/map_ancients/ancient_node_${key}.webp`) : null;
+  return key && ANCIENT_ART.has(key)
+    ? imageUrl(`/static/images/ui/map_ancients/ancient_node_${key}.webp`)
+    : null;
 }
 
 const CIRCLE_ART = imageUrl("/static/images/ui/map_circle/map_circle_4.webp");
@@ -152,7 +182,19 @@ const CIRCLE_ART = imageUrl("/static/images/ui/map_circle/map_circle_4.webp");
 // at 0.95 alpha, with a per-node seeded rotation and a final scale between
 // 0.85 and 0.9. This is the static state the game shows when the map is
 // reopened; the flipbook itself can animate a newly selected floor later.
-function BrushCircle({ cx, cy, size, seed, filterId }: { cx: number; cy: number; size: number; seed: number; filterId: string }) {
+function BrushCircle({
+  cx,
+  cy,
+  size,
+  seed,
+  filterId,
+}: {
+  cx: number;
+  cy: number;
+  size: number;
+  seed: number;
+  filterId: string;
+}) {
   const rotation = (seed * 137) % 360;
   const box = size * (0.85 + ((seed * 31) % 100) / 2000);
   return (
@@ -173,7 +215,19 @@ function BrushCircle({ cx, cy, size, seed, filterId }: { cx: number; cy: number;
 
 // Drawn stand-in for the brush sprite while it is missing on the CDN: same
 // proportions (radius 0.9x the glyph, stroke 2/7 of the radius, 90% arc).
-function InkRing({ cx, cy, size, seed, stroke }: { cx: number; cy: number; size: number; seed: number; stroke?: number }) {
+function InkRing({
+  cx,
+  cy,
+  size,
+  seed,
+  stroke,
+}: {
+  cx: number;
+  cy: number;
+  size: number;
+  seed: number;
+  stroke?: number;
+}) {
   const r = size * 0.9;
   const circumference = 2 * Math.PI * r;
   const angle = -70 + ((seed % 5) - 2) * 7;
@@ -204,7 +258,9 @@ const ACT_BACKGROUND: Record<string, string> = {
 function actBackground(actName?: string | null): string | null {
   const k = (actName || "").toLowerCase().replace(/^act\./, "");
   const region = Object.keys(ACT_BACKGROUND).find((r) => k.includes(r));
-  return region ? imageUrl(`/static/images/ui/map_backgrounds/map_middle_${region}.webp`) : null;
+  return region
+    ? imageUrl(`/static/images/ui/map_backgrounds/map_middle_${region}.webp`)
+    : null;
 }
 
 function key(col: number, row: number): string {
@@ -217,7 +273,13 @@ function hideImg(e: React.SyntheticEvent<HTMLImageElement>) {
 
 // One taken/skipped item: a small icon (best-effort by convention, hidden on a
 // 404) plus its prettified name.
-function RewardRow({ item, cat }: { item: FloorReward; cat?: Partial<LiveCatalogs> }) {
+function RewardRow({
+  item,
+  cat,
+}: {
+  item: FloorReward;
+  cat?: Partial<LiveCatalogs>;
+}) {
   const id = cleanId(item.id);
   const info =
     item.kind === "card"
@@ -225,16 +287,15 @@ function RewardRow({ item, cat }: { item: FloorReward; cat?: Partial<LiveCatalog
       : item.kind === "relic"
         ? cat?.relics?.[id]
         : cat?.potions?.[id];
-  const src =
-    !safeId(id)
-      ? ""
-      : info?.image_url
-        ? imageUrl(info.image_url)
-        : item.kind === "card"
-          ? imageUrl(`/static/images/cards/${id.toLowerCase()}.webp`)
-          : item.kind === "relic"
-            ? imageUrl(`/static/images/relics/${id.toLowerCase()}.png`)
-            : imageUrl(`/static/images/potions/${id.toLowerCase()}.png`);
+  const src = !safeId(id)
+    ? ""
+    : info?.image_url
+      ? imageUrl(info.image_url)
+      : item.kind === "card"
+        ? imageUrl(`/static/images/cards/${id.toLowerCase()}.webp`)
+        : item.kind === "relic"
+          ? imageUrl(`/static/images/relics/${id.toLowerCase()}.png`)
+          : imageUrl(`/static/images/potions/${id.toLowerCase()}.png`);
   return (
     <li className="flex items-center gap-1.5">
       {src ? (
@@ -248,7 +309,9 @@ function RewardRow({ item, cat }: { item: FloorReward; cat?: Partial<LiveCatalog
       ) : (
         <span className="h-4 w-4 shrink-0" />
       )}
-      <span className="truncate text-[var(--text-secondary)]">{info?.name || displayName(id)}</span>
+      <span className="truncate text-[var(--text-secondary)]">
+        {info?.name || displayName(id)}
+      </span>
     </li>
   );
 }
@@ -272,7 +335,9 @@ function RewardList({
     <div className="mt-1.5">
       <div
         className={`text-[10px] font-bold uppercase tracking-wide ${
-          tone === "reward" ? "text-[var(--accent-gold)]" : "text-[var(--text-muted)]"
+          tone === "reward"
+            ? "text-[var(--accent-gold)]"
+            : "text-[var(--text-muted)]"
         }`}
       >
         {label}
@@ -287,7 +352,9 @@ function RewardList({
               crossOrigin="anonymous"
               onError={hideImg}
             />
-            <span className="tabular-nums text-warning">{t("{n} Gold", { n: gold })}</span>
+            <span className="tabular-nums text-warning">
+              {t("{n} Gold", { n: gold })}
+            </span>
           </li>
         ) : null}
         {(items ?? []).map((it, i) => (
@@ -330,13 +397,18 @@ function FloorCard({
 }) {
   const t = useT();
   const isCombat =
-    f.type === "monster" || f.type === "burly_monster" || f.type === "elite" || f.type === "boss";
+    f.type === "monster" ||
+    f.type === "burly_monster" ||
+    f.type === "elite" ||
+    f.type === "boss";
   const encName = f.encounter_id
     ? roomName(f.encounter_id, encounters, monsters, cat)
     : null;
   return (
     <div>
-      <div className="text-sm font-bold text-[var(--accent-gold)]">{t("Floor {n}", { n: f.floor })}</div>
+      <div className="text-sm font-bold text-[var(--accent-gold)]">
+        {t("Floor {n}", { n: f.floor })}
+      </div>
       <div className="mt-0.5 flex gap-3 text-[11px] tabular-nums">
         <span className="text-danger">
           {f.hp}/{f.max_hp} {t("HP")}
@@ -351,27 +423,48 @@ function FloorCard({
               {t(ROOM_LABEL[f.type] ?? "Enemy")}: {encName ?? t("Enemy")}
             </div>
             {f.damage_taken ? (
-              <div className="tabular-nums text-danger">{t("{n} Damage", { n: f.damage_taken })}</div>
+              <div className="tabular-nums text-danger">
+                {t("{n} Damage", { n: f.damage_taken })}
+              </div>
             ) : null}
             {f.turns != null ? (
-              <div className="tabular-nums text-[var(--text-muted)]">{t("{n} Turns", { n: f.turns })}</div>
+              <div className="tabular-nums text-[var(--text-muted)]">
+                {t("{n} Turns", { n: f.turns })}
+              </div>
             ) : null}
           </>
         ) : f.type === "event" && encName ? (
           <div className="text-[var(--text-secondary)]">{encName}</div>
         ) : (
-          <div className="text-[var(--text-secondary)]">{t(ROOM_LABEL[f.type] ?? "Room")}</div>
+          <div className="text-[var(--text-secondary)]">
+            {t(ROOM_LABEL[f.type] ?? "Room")}
+          </div>
         )}
         {f.healed ? (
-          <div className="tabular-nums text-success">{t("{n} Healed", { n: f.healed })}</div>
+          <div className="tabular-nums text-success">
+            {t("{n} Healed", { n: f.healed })}
+          </div>
         ) : null}
         {f.gold_spent ? (
-          <div className="tabular-nums text-warning/80">{t("Spent {n} Gold", { n: f.gold_spent })}</div>
+          <div className="tabular-nums text-warning/80">
+            {t("Spent {n} Gold", { n: f.gold_spent })}
+          </div>
         ) : null}
       </div>
 
-      <RewardList label={t("Rewards")} items={f.rewards} gold={f.gold_gained} tone="reward" cat={cat} />
-      <RewardList label={t("Skipped")} items={f.skipped} tone="skip" cat={cat} />
+      <RewardList
+        label={t("Rewards")}
+        items={f.rewards}
+        gold={f.gold_gained}
+        tone="reward"
+        cat={cat}
+      />
+      <RewardList
+        label={t("Skipped")}
+        items={f.skipped}
+        tone="skip"
+        cat={cat}
+      />
     </div>
   );
 }
@@ -422,7 +515,14 @@ export default function LiveMap({
   const circleMissing = missingArt.has(CIRCLE_ART);
   const inkTint = `ink-${uid}`;
   const paperTint = `paper-${uid}`;
-  const clearedMark = (cx: number, cy: number, size: number, seed: number, ringSize: number, stroke?: number) =>
+  const clearedMark = (
+    cx: number,
+    cy: number,
+    size: number,
+    seed: number,
+    ringSize: number,
+    stroke?: number,
+  ) =>
     circleMissing ? (
       <InkRing cx={cx} cy={cy} size={ringSize} seed={seed} stroke={stroke} />
     ) : (
@@ -442,7 +542,8 @@ export default function LiveMap({
   const visited = new Set((path ?? []).map(([c, r]) => key(c, r)));
   const onPath = (c: number, r: number) => visited.has(key(c, r));
   const isPos = (c: number, r: number) => !!pos && pos[0] === c && pos[1] === r;
-  const isSelected = (c: number, r: number) => !!selected && selected[0] === c && selected[1] === r;
+  const isSelected = (c: number, r: number) =>
+    !!selected && selected[0] === c && selected[1] === r;
 
   const edges = map?.edges ?? [];
 
@@ -486,22 +587,37 @@ export default function LiveMap({
       return null; // shop/rest/treasure/event reveal: no portrait, keep glyph
     }
     if (baseType === "boss" && route?.boss?.id) {
-      return imageUrl(`/static/images/misc/bosses/${route.boss.id.toLowerCase()}.png`);
+      return imageUrl(
+        `/static/images/misc/bosses/${route.boss.id.toLowerCase()}.png`,
+      );
     }
-    if (baseType === "ancient" && route?.ancient?.id && !ancientArt(route.ancient.id)) {
-      return imageUrl(`/static/images/misc/ancients/${route.ancient.id.toLowerCase()}.png`);
+    if (
+      baseType === "ancient" &&
+      route?.ancient?.id &&
+      !ancientArt(route.ancient.id)
+    ) {
+      return imageUrl(
+        `/static/images/misc/ancients/${route.ancient.id.toLowerCase()}.png`,
+      );
     }
     return null;
   }
 
-  function titleFor(c: number, r: number, baseType: string, effType: string): string {
+  function titleFor(
+    c: number,
+    r: number,
+    baseType: string,
+    effType: string,
+  ): string {
     const rv = revealMap.get(key(c, r));
     if (rv && rv[3]) return roomName(rv[3], encounters, monsters, cat);
     if (baseType === "boss" && route?.boss) {
       return enemyName(route.boss, monsters ?? {}, encounters) || t("Boss");
     }
     if (baseType === "ancient" && route?.ancient) {
-      return enemyName(route.ancient, monsters ?? {}, encounters) || t("Ancient");
+      return (
+        enemyName(route.ancient, monsters ?? {}, encounters) || t("Ancient")
+      );
     }
     return t(ROOM_LABEL[effType] ?? effType);
   }
@@ -518,7 +634,11 @@ export default function LiveMap({
   })`;
 
   const background = actBackground(actName);
-  const marker = character ? imageUrl(`/static/images/ui/map_nodes/map_marker_${character.toLowerCase()}.png`) : null;
+  const marker = character
+    ? imageUrl(
+        `/static/images/ui/map_nodes/map_marker_${character.toLowerCase()}.png`,
+      )
+    : null;
   const markerAt = pos ?? selected ?? null;
 
   return (
@@ -526,7 +646,13 @@ export default function LiveMap({
       className="relative inline-block max-w-full overflow-hidden rounded-lg"
       style={{
         backgroundColor: "var(--map-paper)",
-        ...(background ? { backgroundImage: `url(${background})`, backgroundSize: "cover", backgroundPosition: "center" } : {}),
+        ...(background
+          ? {
+              backgroundImage: `url(${background})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }
+          : {}),
       }}
     >
       <svg
@@ -538,7 +664,12 @@ export default function LiveMap({
         aria-label={t("Act map showing the player's route")}
         onMouseLeave={() => setHovered(null)}
       >
-        <image href={CIRCLE_ART} width={0} height={0} onError={() => markMissing(CIRCLE_ART)} />
+        <image
+          href={CIRCLE_ART}
+          width={0}
+          height={0}
+          onError={() => markMissing(CIRCLE_ART)}
+        />
         <defs>
           {/* The boss map icon ships as a white silhouette; the game tints it
               with the act's ink colour at draw time, so do the same. */}
@@ -547,12 +678,17 @@ export default function LiveMap({
             <feComposite in="ink" in2="SourceAlpha" operator="in" />
           </filter>
           <filter id={paperTint} x="-10%" y="-10%" width="120%" height="120%">
-            <feFlood style={{ floodColor: "var(--map-paper)" }} result="paper" />
+            <feFlood
+              style={{ floodColor: "var(--map-paper)" }}
+              result="paper"
+            />
             <feComposite in="paper" in2="SourceAlpha" operator="in" />
           </filter>
         </defs>
         {edges.map(([c, r, cc, cr], i) => {
-          const lit = pathEdges ? pathEdges.has(`${c},${r}>${cc},${cr}`) : onPath(c, r) && onPath(cc, cr);
+          const lit = pathEdges
+            ? pathEdges.has(`${c},${r}>${cc},${cr}`)
+            : onPath(c, r) && onPath(cc, cr);
           return (
             <line
               key={`e-${c}-${r}-${cc}-${cr}-${i}`}
@@ -575,12 +711,17 @@ export default function LiveMap({
           const here = isPos(c, r);
           const seen = onPath(c, r);
           const portrait = portraitFor(c, r, type);
-          const ancient = type === "ancient" ? ancientArt(route?.ancient?.id) : null;
+          const ancient =
+            type === "ancient" ? ancientArt(route?.ancient?.id) : null;
           const bossIcon = type === "boss" ? bossArt(route?.boss?.id) : null;
           const boss = bossIcon && !missingArt.has(bossIcon) ? bossIcon : null;
           const backingIcon = boss ? bossBackingArt(route?.boss?.id) : null;
-          const backing = backingIcon && !missingArt.has(backingIcon) ? backingIcon : null;
-          const icon = portrait || ancient || boss ? null : nodeIcon(type, rv ? rv[2] : null);
+          const backing =
+            backingIcon && !missingArt.has(backingIcon) ? backingIcon : null;
+          const icon =
+            portrait || ancient || boss
+              ? null
+              : nodeIcon(type, rv ? rv[2] : null);
           const big = type === "boss" ? R + 6 : R + 1;
           const dim = !(seen || here);
           const hasFloor = !!floorAt(c, r);
@@ -608,12 +749,32 @@ export default function LiveMap({
                     }
                   : undefined
               }
-              style={{ cursor: clickable ? "pointer" : hasFloor ? "help" : "default", outline: "none" }}
+              style={{
+                cursor: clickable ? "pointer" : hasFloor ? "help" : "default",
+                outline: "none",
+              }}
             >
               {here && (
-                <circle cx={x(c)} cy={y(r)} r={R + 6} fill="none" stroke="var(--accent-gold)" strokeWidth={2}>
-                  <animate attributeName="r" values={`${R + 4};${R + 8};${R + 4}`} dur="1.4s" repeatCount="indefinite" />
-                  <animate attributeName="stroke-opacity" values="1;0.3;1" dur="1.4s" repeatCount="indefinite" />
+                <circle
+                  cx={x(c)}
+                  cy={y(r)}
+                  r={R + 6}
+                  fill="none"
+                  stroke="var(--accent-gold)"
+                  strokeWidth={2}
+                >
+                  <animate
+                    attributeName="r"
+                    values={`${R + 4};${R + 8};${R + 4}`}
+                    dur="1.4s"
+                    repeatCount="indefinite"
+                  />
+                  <animate
+                    attributeName="stroke-opacity"
+                    values="1;0.3;1"
+                    dur="1.4s"
+                    repeatCount="indefinite"
+                  />
                 </circle>
               )}
               {boss ? (
@@ -642,7 +803,15 @@ export default function LiveMap({
                     filter={`url(#${inkTint})`}
                     onError={() => markMissing(boss)}
                   />
-                  {(seen || picked) && clearedMark(x(c), y(r), BOSS * 1.6, c * 13 + r * 7, BOSS * 0.66, 9)}
+                  {(seen || picked) &&
+                    clearedMark(
+                      x(c),
+                      y(r),
+                      BOSS * 1.6,
+                      c * 13 + r * 7,
+                      BOSS * 0.66,
+                      9,
+                    )}
                 </>
               ) : ancient ? (
                 <>
@@ -655,11 +824,23 @@ export default function LiveMap({
                     opacity={dim ? 0.6 : 1}
                     filter={`url(#${inkTint})`}
                   />
-                  {(seen || picked) && clearedMark(x(c), y(r), ICON * 2.8, c * 13 + r * 7, ICON * 0.95)}
+                  {(seen || picked) &&
+                    clearedMark(
+                      x(c),
+                      y(r),
+                      ICON * 2.8,
+                      c * 13 + r * 7,
+                      ICON * 0.95,
+                    )}
                 </>
               ) : portrait ? (
                 <>
-                  <circle cx={x(c)} cy={y(r)} r={big + 1} fill="var(--bg-primary)" />
+                  <circle
+                    cx={x(c)}
+                    cy={y(r)}
+                    r={big + 1}
+                    fill="var(--bg-primary)"
+                  />
                   <clipPath id={`clip-${uid}-${c}-${r}`}>
                     <circle cx={x(c)} cy={y(r)} r={big} />
                   </clipPath>
@@ -673,7 +854,8 @@ export default function LiveMap({
                     preserveAspectRatio="xMidYMid slice"
                     opacity={dim ? 0.55 : 1}
                   />
-                  {(seen || picked) && clearedMark(x(c), y(r), CIRCLE, c * 13 + r * 7, big * 1.6)}
+                  {(seen || picked) &&
+                    clearedMark(x(c), y(r), CIRCLE, c * 13 + r * 7, big * 1.6)}
                 </>
               ) : icon ? (
                 <>
@@ -687,7 +869,8 @@ export default function LiveMap({
                     opacity={dim ? 0.55 : 1}
                     style={dim ? { filter: "saturate(0.35)" } : undefined}
                   />
-                  {(seen || picked) && clearedMark(x(c), y(r), CIRCLE, c * 13 + r * 7, ICON * 0.7)}
+                  {(seen || picked) &&
+                    clearedMark(x(c), y(r), CIRCLE, c * 13 + r * 7, ICON * 0.7)}
                 </>
               ) : (
                 <>
@@ -732,38 +915,47 @@ export default function LiveMap({
             </g>
           );
         })}
-        {markerAt && (() => {
-          const mx = x(markerAt[0]);
-          const isBoss = nodes.some((n) => n[0] === markerAt[0] && n[1] === markerAt[1] && n[2] === "boss");
-          const tip = y(markerAt[1]) - (isBoss ? BOSS : ICON) / 2 + 6;
-          return marker && !missingArt.has(marker) ? (
-            <image
-              href={marker}
-              x={mx - 12}
-              y={tip - MARKER_H}
-              width={24}
-              height={MARKER_H}
-              preserveAspectRatio="xMidYMid meet"
-              pointerEvents="none"
-              onError={() => markMissing(marker)}
-            />
-          ) : (
-            <path
-              d={`M${mx},${tip} l-8,-13 a8,8 0 1,1 16,0 z`}
-              fill="var(--accent-gold)"
-              stroke="var(--map-ink)"
-              strokeWidth={1.5}
-              pointerEvents="none"
-            />
-          );
-        })()}
+        {markerAt &&
+          (() => {
+            const mx = x(markerAt[0]);
+            const isBoss = nodes.some(
+              (n) =>
+                n[0] === markerAt[0] && n[1] === markerAt[1] && n[2] === "boss",
+            );
+            const tip = y(markerAt[1]) - (isBoss ? BOSS : ICON) / 2 + 6;
+            return marker && !missingArt.has(marker) ? (
+              <image
+                href={marker}
+                x={mx - 12}
+                y={tip - MARKER_H}
+                width={24}
+                height={MARKER_H}
+                preserveAspectRatio="xMidYMid meet"
+                pointerEvents="none"
+                onError={() => markMissing(marker)}
+              />
+            ) : (
+              <path
+                d={`M${mx},${tip} l-8,-13 a8,8 0 1,1 16,0 z`}
+                fill="var(--accent-gold)"
+                stroke="var(--map-ink)"
+                strokeWidth={1.5}
+                pointerEvents="none"
+              />
+            );
+          })()}
       </svg>
       {hovered && hoverFloor && (
         <div
           className="pointer-events-none absolute z-50 w-56 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card)] px-3 py-2 text-xs shadow-xl"
           style={{ left: `${lx}%`, top: `${ty}%`, transform: tipTransform }}
         >
-          <FloorCard f={hoverFloor} encounters={encounters} monsters={monsters} cat={cat} />
+          <FloorCard
+            f={hoverFloor}
+            encounters={encounters}
+            monsters={monsters}
+            cat={cat}
+          />
         </div>
       )}
     </div>

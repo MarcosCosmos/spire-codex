@@ -3,7 +3,16 @@ import { isValidBracket } from "@/app/[locale]/leaderboards/metrics/metrics-data
 
 describe("metrics bracket validation", () => {
   it("accepts the keys the page offers", () => {
-    for (const k of ["all", "solo", "a10", "wr30", "solo:wr30", "4p:a10", "v0.111.0", "solo:a10:v0.111.0"]) {
+    for (const k of [
+      "all",
+      "solo",
+      "a10",
+      "wr30",
+      "solo:wr30",
+      "4p:a10",
+      "v0.111.0",
+      "solo:a10:v0.111.0",
+    ]) {
       expect(isValidBracket(k)).toBe(true);
     }
   });

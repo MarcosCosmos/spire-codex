@@ -1,7 +1,9 @@
 import type { EntityStats } from "@/app/components/EntityRunStats";
 
 const API_INTERNAL =
-  process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  process.env.API_INTERNAL_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://localhost:8000";
 
 /**
  * Server-side fetch of an entity's community run stats, so the numbers (win

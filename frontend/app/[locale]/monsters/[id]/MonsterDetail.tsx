@@ -1,12 +1,27 @@
 "use client";
 
 import { useT, useGameLocale } from "@/lib/i18n";
-import { useState, useEffect, useRef, type MouseEvent as ReactMouseEvent, type CSSProperties } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  type MouseEvent as ReactMouseEvent,
+  type CSSProperties,
+} from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Link } from "@/i18n/navigation";
-import type { Monster, MonsterMove, MonsterMovePower, Power, AttackPattern } from "@/lib/api";
+import type {
+  Monster,
+  MonsterMove,
+  MonsterMovePower,
+  Power,
+  AttackPattern,
+} from "@/lib/api";
 import type { EncounterStat } from "@/lib/encounter-stats";
-import { randomPatternSentences, randomPatternSummary } from "@/lib/attack-pattern";
+import {
+  randomPatternSentences,
+  randomPatternSummary,
+} from "@/lib/attack-pattern";
 import { cachedFetch } from "@/lib/fetch-cache";
 import { useBetaPrefix } from "@/lib/use-lang-prefix";
 import RichDescription from "@/app/components/RichDescription";
@@ -76,7 +91,10 @@ function PowerPill({
   const power = powerData[p.power_id];
   const displayName = power
     ? power.name
-    : p.power_id.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+    : p.power_id
+        .replace(/_/g, " ")
+        .toLowerCase()
+        .replace(/\b\w/g, (c) => c.toUpperCase());
 
   return (
     <Link
@@ -105,9 +123,13 @@ function PowerPill({
             <span className="font-semibold text-sm text-[var(--text-primary)]">
               {power.name}
             </span>
-            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ml-auto ${
-              power.type === "Debuff" ? "bg-danger/10 text-danger" : "bg-success/10 text-success"
-            }`}>
+            <span
+              className={`text-[10px] px-1.5 py-0.5 rounded-full ml-auto ${
+                power.type === "Debuff"
+                  ? "bg-danger/10 text-danger"
+                  : "bg-success/10 text-success"
+              }`}
+            >
               {power.type}
             </span>
           </div>
@@ -123,7 +145,10 @@ function PowerPill({
 
 // Title-case a raw id ("EYE_LASERS" -> "Eye Lasers").
 function titleCaseId(id: string): string {
-  return id.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+  return id
+    .replace(/_/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 // A plain-English, one-line summary of what a move does, built from its
@@ -131,7 +156,10 @@ function titleCaseId(id: string): string {
 // non-English monster pages skip it to avoid duplicating boilerplate across
 // the localized variants (same policy as EntityProse). Falls back to an
 // intent-derived line for moves that carry no numbers or powers.
-function describeMove(move: MonsterMove, powerData: Record<string, Power>): string | null {
+function describeMove(
+  move: MonsterMove,
+  powerData: Record<string, Power>,
+): string | null {
   const clauses: string[] = [];
   const d = move.damage;
   if (d && d.normal != null) {
@@ -149,7 +177,9 @@ function describeMove(move: MonsterMove, powerData: Record<string, Power>): stri
   if (move.heal != null) clauses.push(`heals ${move.heal} HP`);
   for (const p of move.powers || []) {
     const nm = powerData[p.power_id]?.name || titleCaseId(p.power_id);
-    clauses.push(`${p.target === "player" ? "applies" : "gains"} ${p.amount} ${nm}`);
+    clauses.push(
+      `${p.target === "player" ? "applies" : "gains"} ${p.amount} ${nm}`,
+    );
   }
   if (clauses.length === 0) {
     // No numbers or powers parsed — lean on the intent so the move still reads.
@@ -176,12 +206,15 @@ function describeMove(move: MonsterMove, powerData: Record<string, Power>): stri
 function patternSteps(pattern: AttackPattern, moves: MonsterMove[]): string[] {
   const states = pattern.states || [];
   if (states.length === 0) return [];
-  const nameOf = (mid: string) => moves.find((m) => m.id === mid)?.name || titleCaseId(mid);
+  const nameOf = (mid: string) =>
+    moves.find((m) => m.id === mid)?.name || titleCaseId(mid);
 
   if (pattern.type === "cycle") {
     const byId = new Map(states.map((s) => [s.id, s]));
     const start =
-      states.find((s) => s.move_id === pattern.initial_move) || states.find((s) => s.move_id) || states[0];
+      states.find((s) => s.move_id === pattern.initial_move) ||
+      states.find((s) => s.move_id) ||
+      states[0];
     const seen = new Set<string>();
     const out: string[] = [];
     let cur: typeof start | undefined = start;
@@ -229,7 +262,8 @@ function MoveCard({
               key={i}
               className={`intent ${intentColors[intent] || intentColors.Unknown}`}
             >
-              {intentIcons[intent] ? `${intentIcons[intent]} ` : ""}{intent}
+              {intentIcons[intent] ? `${intentIcons[intent]} ` : ""}
+              {intent}
             </span>
           ))}
         </div>
@@ -255,7 +289,8 @@ function MoveCard({
                 (A: {move.damage.ascension}
                 {move.damage.hit_count && move.damage.hit_count > 1
                   ? ` × ${move.damage.hit_count} = ${move.damage.ascension * move.damage.hit_count}`
-                  : ""})
+                  : ""}
+                )
               </span>
             )}
           </div>
@@ -320,7 +355,9 @@ export default function MonsterDetail({
   const lang = useGameLocale();
   const t = useT();
   const bp = useBetaPrefix();
-  const [monster, setMonster] = useState<Monster | null>(initialMonster ?? null);
+  const [monster, setMonster] = useState<Monster | null>(
+    initialMonster ?? null,
+  );
   const [powerData, setPowerData] = useState<Record<string, Power>>({});
   const [loading, setLoading] = useState(!initialMonster);
   const [notFound, setNotFound] = useState(false);
@@ -469,7 +506,7 @@ export default function MonsterDetail({
 
   // Derive acts from encounters
   const acts = monster.encounters
-    ? [...new Set(monster.encounters.filter(e => e.act).map(e => e.act!))]
+    ? [...new Set(monster.encounters.filter((e) => e.act).map((e) => e.act!))]
     : [];
 
   // The single deadliest encounter this monster shows up in (highest kill
@@ -481,13 +518,17 @@ export default function MonsterDetail({
       const s = encounterStats.find((x) => x.encounter_id === enc.encounter_id);
       if (!s || !s.total) continue;
       const killRate = (s.fatal / s.total) * 100;
-      if (!best || killRate > best.killRate) best = { name: enc.encounter_name, killRate };
+      if (!best || killRate > best.killRate)
+        best = { name: enc.encounter_name, killRate };
     }
     return best;
   })();
 
   const spineColor = SPINE_BY_TYPE[monster.type] ?? "var(--color-silent)";
-  const heroSrc = betaArt && monster.beta_image_url ? monster.beta_image_url : monster.image_url;
+  const heroSrc =
+    betaArt && monster.beta_image_url
+      ? monster.beta_image_url
+      : monster.image_url;
 
   const hpNormal = monster.min_hp
     ? `${monster.min_hp}${monster.max_hp && monster.max_hp !== monster.min_hp ? `–${monster.max_hp}` : ""}`
@@ -496,12 +537,19 @@ export default function MonsterDetail({
     ? `${monster.min_hp_ascension}${monster.max_hp_ascension && monster.max_hp_ascension !== monster.min_hp_ascension ? `–${monster.max_hp_ascension}` : ""}`
     : null;
 
-  const hasStats = !!(hpNormal || hpAscension || (monster.innate_powers && monster.innate_powers.length > 0) || monster.attack_pattern);
+  const hasStats = !!(
+    hpNormal ||
+    hpAscension ||
+    (monster.innate_powers && monster.innate_powers.length > 0) ||
+    monster.attack_pattern
+  );
   const hasMoves = !!(monster.moves && monster.moves.length > 0);
   const hasEncounters = !!(monster.encounters && monster.encounters.length > 0);
 
   const struggles = builds.filter((b) => b.deaths >= 5).slice(0, 5);
-  const struggleKeys = new Set(struggles.map((b) => `${b.character}:${b.name}`));
+  const struggleKeys = new Set(
+    struggles.map((b) => `${b.character}:${b.name}`),
+  );
   // "Handles it best" = the highest-win-rate builds among those with proof
   // they actually face this fight (enough runs that reached it; on legacy
   // data, a big cluster), with their death share here alongside.
@@ -526,10 +574,14 @@ export default function MonsterDetail({
   return (
     <div
       className="card-rvmp"
-      style={{
-        "--spine": spineColor,
-        ...(heroSrc ? { "--entity-bg": `url("${imageUrl(heroSrc)}?bg")` } : {}),
-      } as CSSProperties}
+      style={
+        {
+          "--spine": spineColor,
+          ...(heroSrc
+            ? { "--entity-bg": `url("${imageUrl(heroSrc)}?bg")` }
+            : {}),
+        } as CSSProperties
+      }
     >
       <div className="cd-top">
         <button type="button" onClick={() => router.back()} className="cd-back">
@@ -583,13 +635,17 @@ export default function MonsterDetail({
                   {hpNormal && (
                     <div className="tile">
                       <div className="k">{t("Hit Points")}</div>
-                      <div className="v" style={{ color: "var(--warn)" }}>{hpNormal}</div>
+                      <div className="v" style={{ color: "var(--warn)" }}>
+                        {hpNormal}
+                      </div>
                     </div>
                   )}
                   {hpAscension && (
                     <div className="tile">
                       <div className="k">{t("HP · Ascension")}</div>
-                      <div className="v" style={{ color: "var(--warn)" }}>{hpAscension}</div>
+                      <div className="v" style={{ color: "var(--warn)" }}>
+                        {hpAscension}
+                      </div>
                     </div>
                   )}
                   {hasMoves && (
@@ -600,7 +656,12 @@ export default function MonsterDetail({
                   )}
                   <div className="tile">
                     <div className="k">{t("Type")}</div>
-                    <div className="v" style={{ color: "var(--spine)", fontSize: 20 }}>{monster.type}</div>
+                    <div
+                      className="v"
+                      style={{ color: "var(--spine)", fontSize: 20 }}
+                    >
+                      {monster.type}
+                    </div>
                   </div>
                 </div>
               )}
@@ -609,18 +670,27 @@ export default function MonsterDetail({
               {monster.innate_powers && monster.innate_powers.length > 0 && (
                 <>
                   <h3 className="subh">{t("Innate Powers")}</h3>
-                  <p className="h-note">{t("Applied at the start of combat")}</p>
+                  <p className="h-note">
+                    {t("Applied at the start of combat")}
+                  </p>
                   <div className="pills">
                     {monster.innate_powers.map((p, i) => (
                       <span key={i} className="flex items-center gap-1">
                         <PowerPill
-                          p={{ power_id: p.power_id, target: "self", amount: p.amount }}
+                          p={{
+                            power_id: p.power_id,
+                            target: "self",
+                            amount: p.amount,
+                          }}
                           powerData={powerData}
                           bp={bp}
                         />
-                        {p.amount_ascension != null && p.amount_ascension !== p.amount && (
-                          <span className="text-xs text-warning">(A: {p.amount_ascension})</span>
-                        )}
+                        {p.amount_ascension != null &&
+                          p.amount_ascension !== p.amount && (
+                            <span className="text-xs text-warning">
+                              (A: {p.amount_ascension})
+                            </span>
+                          )}
                       </span>
                     ))}
                   </div>
@@ -631,59 +701,84 @@ export default function MonsterDetail({
                   arrows). Falls back to the text description only when there
                   aren't enough steps to form a chip sequence, so the two never
                   duplicate each other. */}
-              {monster.attack_pattern && (() => {
-                const steps = patternSteps(monster.attack_pattern!, monster.moves || []);
-                const desc = monster.attack_pattern!.description;
-                const isCycle = monster.attack_pattern!.type === "cycle";
-                const summary = isCycle ? null : randomPatternSummary(monster.attack_pattern!);
-                const moveName = (mid: string) => (monster.moves || []).find((m) => m.id === mid)?.name || titleCaseId(mid);
-                if (summary) {
-                  const sentences = randomPatternSentences(summary, moveName, t, lang);
+              {monster.attack_pattern &&
+                (() => {
+                  const steps = patternSteps(
+                    monster.attack_pattern!,
+                    monster.moves || [],
+                  );
+                  const desc = monster.attack_pattern!.description;
+                  const isCycle = monster.attack_pattern!.type === "cycle";
+                  const summary = isCycle
+                    ? null
+                    : randomPatternSummary(monster.attack_pattern!);
+                  const moveName = (mid: string) =>
+                    (monster.moves || []).find((m) => m.id === mid)?.name ||
+                    titleCaseId(mid);
+                  if (summary) {
+                    const sentences = randomPatternSentences(
+                      summary,
+                      moveName,
+                      t,
+                      lang,
+                    );
+                    return (
+                      <>
+                        <h3 className="subh">{t("Attack Pattern")}</h3>
+                        <p className="desc-body">{sentences.join(" ")}</p>
+                        <div className="atk-seq">
+                          {steps.map((s, i) => (
+                            <span key={i} className="atk-step-wrap">
+                              <span className="atk-step">{s}</span>
+                            </span>
+                          ))}
+                        </div>
+                      </>
+                    );
+                  }
                   return (
                     <>
                       <h3 className="subh">{t("Attack Pattern")}</h3>
-                      <p className="desc-body">{sentences.join(" ")}</p>
-                      <div className="atk-seq">
-                        {steps.map((s, i) => (
-                          <span key={i} className="atk-step-wrap">
-                            <span className="atk-step">{s}</span>
-                          </span>
-                        ))}
-                      </div>
+                      {steps.length > 1 ? (
+                        <div className="atk-seq">
+                          {steps.map((s, i) => (
+                            <span key={i} className="atk-step-wrap">
+                              <span className="atk-step">{s}</span>
+                              {i < steps.length - 1 && (
+                                <span className="atk-arrow">→</span>
+                              )}
+                            </span>
+                          ))}
+                          {isCycle && (
+                            <span className="atk-repeat" title={t("Repeats")}>
+                              ↻
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        desc && <p className="desc-body">{desc}</p>
+                      )}
                     </>
                   );
-                }
-                return (
-                  <>
-                    <h3 className="subh">{t("Attack Pattern")}</h3>
-                    {steps.length > 1 ? (
-                      <div className="atk-seq">
-                        {steps.map((s, i) => (
-                          <span key={i} className="atk-step-wrap">
-                            <span className="atk-step">{s}</span>
-                            {i < steps.length - 1 && <span className="atk-arrow">→</span>}
-                          </span>
-                        ))}
-                        {isCycle && (
-                          <span className="atk-repeat" title={t("Repeats")}>↻</span>
-                        )}
-                      </div>
-                    ) : (
-                      desc && <p className="desc-body">{desc}</p>
-                    )}
-                  </>
-                );
-              })()}
+                })()}
             </section>
           )}
 
           {/* Moves */}
           {hasMoves && (
             <section id="moves">
-              <h2>{t("Moves")} ({monster.moves!.length})</h2>
+              <h2>
+                {t("Moves")} ({monster.moves!.length})
+              </h2>
               <div className="moves">
                 {monster.moves!.map((move) => (
-                  <MoveCard key={move.id} move={move} powerData={powerData} bp={bp} isEnglish={isEnglish} />
+                  <MoveCard
+                    key={move.id}
+                    move={move}
+                    powerData={powerData}
+                    bp={bp}
+                    isEnglish={isEnglish}
+                  />
                 ))}
               </div>
             </section>
@@ -695,44 +790,99 @@ export default function MonsterDetail({
             <section id="builds">
               <h2>{t("Builds")}</h2>
               <p className="h-note">
-                {t("Of each community build's runs that reach {name}, the share that die to it, next to that build's overall win rate.", { name: monster.name })}
+                {t(
+                  "Of each community build's runs that reach {name}, the share that die to it, next to that build's overall win rate.",
+                  { name: monster.name },
+                )}
               </p>
-              <div style={{ display: "grid", gap: "1rem", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
+              <div
+                style={{
+                  display: "grid",
+                  gap: "1rem",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                }}
+              >
                 <div>
-                  <p className="h-note" style={{ color: "var(--warn, #ef4444)" }}>
+                  <p
+                    className="h-note"
+                    style={{ color: "var(--warn, #ef4444)" }}
+                  >
                     {t("Dies here most")}
                   </p>
                   {struggles.map((b) => (
                     <div
                       key={`s-${b.character}-${b.name}`}
-                      style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.25rem 0", fontSize: "0.85rem" }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.5rem",
+                        padding: "0.25rem 0",
+                        fontSize: "0.85rem",
+                      }}
                     >
                       <span
-                        style={{ width: 7, height: 7, borderRadius: "50%", background: BUILD_CHAR_DOT[b.character] || "#888", flexShrink: 0 }}
+                        style={{
+                          width: 7,
+                          height: 7,
+                          borderRadius: "50%",
+                          background: BUILD_CHAR_DOT[b.character] || "#888",
+                          flexShrink: 0,
+                        }}
                       />
-                      <span className="cn" style={{ flexGrow: 1 }}>{b.name}</span>
-                      <span style={{ color: "var(--text-muted)", fontVariantNumeric: "tabular-nums" }}>
-                        {b.death_rate}% {t("die here")} · {t("{pct}% WR", { pct: b.win_rate })}
+                      <span className="cn" style={{ flexGrow: 1 }}>
+                        {b.name}
+                      </span>
+                      <span
+                        style={{
+                          color: "var(--text-muted)",
+                          fontVariantNumeric: "tabular-nums",
+                        }}
+                      >
+                        {b.death_rate}% {t("die here")} ·{" "}
+                        {t("{pct}% WR", { pct: b.win_rate })}
                       </span>
                     </div>
                   ))}
                 </div>
                 {handles.length > 0 && (
                   <div>
-                    <p className="h-note" style={{ color: "var(--good, #22c55e)" }}>
+                    <p
+                      className="h-note"
+                      style={{ color: "var(--good, #22c55e)" }}
+                    >
                       {t("Handles it best")}
                     </p>
                     {handles.map((b) => (
                       <div
                         key={`h-${b.character}-${b.name}`}
-                        style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.25rem 0", fontSize: "0.85rem" }}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.5rem",
+                          padding: "0.25rem 0",
+                          fontSize: "0.85rem",
+                        }}
                       >
                         <span
-                          style={{ width: 7, height: 7, borderRadius: "50%", background: BUILD_CHAR_DOT[b.character] || "#888", flexShrink: 0 }}
+                          style={{
+                            width: 7,
+                            height: 7,
+                            borderRadius: "50%",
+                            background: BUILD_CHAR_DOT[b.character] || "#888",
+                            flexShrink: 0,
+                          }}
                         />
-                        <span className="cn" style={{ flexGrow: 1 }}>{b.name}</span>
-                        <span style={{ color: "var(--text-muted)", fontVariantNumeric: "tabular-nums" }}>
-                          {t("{pct}% WR", { pct: b.win_rate })} · {b.death_rate}% {t("die here")}
+                        <span className="cn" style={{ flexGrow: 1 }}>
+                          {b.name}
+                        </span>
+                        <span
+                          style={{
+                            color: "var(--text-muted)",
+                            fontVariantNumeric: "tabular-nums",
+                          }}
+                        >
+                          {t("{pct}% WR", { pct: b.win_rate })} · {b.death_rate}
+                          % {t("die here")}
                         </span>
                       </div>
                     ))}
@@ -746,7 +896,9 @@ export default function MonsterDetail({
           {hasEncounters && (
             <section id="encounters">
               <h2>{t("Encounters")}</h2>
-              <p className="h-note">{t("Where {name} shows up.", { name: monster.name })}</p>
+              <p className="h-note">
+                {t("Where {name} shows up.", { name: monster.name })}
+              </p>
               {encounterStats && encounterStats.length > 0 && (
                 <div className="enc-deadliness">
                   {monster.encounters!.map((enc) => {
@@ -757,14 +909,17 @@ export default function MonsterDetail({
                     const killRate = (s.fatal / s.total) * 100;
                     return (
                       <p key={enc.encounter_id} className="stat-note">
-                        {t("In {total} community runs, the {name} fight was fatal to {pct}% of runs ({fatal}), dealing an average of {dmg} damage over {turns} turns.", {
-                          total: s.total.toLocaleString(),
-                          name: enc.encounter_name,
-                          pct: killRate.toFixed(1),
-                          fatal: s.fatal.toLocaleString(),
-                          dmg: s.avg_damage,
-                          turns: s.avg_turns,
-                        })}
+                        {t(
+                          "In {total} community runs, the {name} fight was fatal to {pct}% of runs ({fatal}), dealing an average of {dmg} damage over {turns} turns.",
+                          {
+                            total: s.total.toLocaleString(),
+                            name: enc.encounter_name,
+                            pct: killRate.toFixed(1),
+                            fatal: s.fatal.toLocaleString(),
+                            dmg: s.avg_damage,
+                            turns: s.avg_turns,
+                          },
+                        )}
                       </p>
                     );
                   })}
@@ -787,11 +942,15 @@ export default function MonsterDetail({
                     <span className="enc-name">{enc.encounter_name}</span>
                     <div className="enc-meta">
                       {enc.act && <span className="badge">{enc.act}</span>}
-                      <span className={`badge ${typeBadge[enc.room_type] || ""}`}>
+                      <span
+                        className={`badge ${typeBadge[enc.room_type] || ""}`}
+                      >
                         {enc.room_type}
                       </span>
                       {enc.is_weak && (
-                        <span className="badge bg-success/10 text-success">{t("Weak")}</span>
+                        <span className="badge bg-success/10 text-success">
+                          {t("Weak")}
+                        </span>
                       )}
                     </div>
                   </Link>
@@ -812,7 +971,9 @@ export default function MonsterDetail({
               <img
                 className="sprite"
                 src={imageUrl(heroSrc)}
-                alt={t("{name} - Slay the Spire 2 Monster", { name: monster.name })}
+                alt={t("{name} - Slay the Spire 2 Monster", {
+                  name: monster.name,
+                })}
                 crossOrigin="anonymous"
               />
             )}
@@ -825,7 +986,9 @@ export default function MonsterDetail({
                   className={`betabtn${betaArt ? " on" : ""}`}
                   aria-pressed={betaArt}
                   onClick={() => setBetaArt(!betaArt)}
-                  title={betaArt ? t("Show current art") : t("Show concept art")}
+                  title={
+                    betaArt ? t("Show current art") : t("Show concept art")
+                  }
                 >
                   {betaArt ? t("Current art") : t("Concept art")}
                 </button>

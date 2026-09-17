@@ -53,8 +53,20 @@ interface BracketOverview {
   total_wins: number;
   total_abandoned?: number;
   win_rate: number;
-  by_ascension: { ascension: number; runs: number; wins: number; abandoned?: number; win_rate: number }[];
-  by_character: { id: string; runs: number; wins: number; abandoned?: number; win_rate: number }[];
+  by_ascension: {
+    ascension: number;
+    runs: number;
+    wins: number;
+    abandoned?: number;
+    win_rate: number;
+  }[];
+  by_character: {
+    id: string;
+    runs: number;
+    wins: number;
+    abandoned?: number;
+    win_rate: number;
+  }[];
 }
 
 // The live path filters by ?players= (1-4); the snapshot path slices by the
@@ -66,19 +78,30 @@ const PLAYERS_TO_BRACKET: Record<string, string> = {
   "4": "4p",
 };
 
-const CHARACTERS = ["IRONCLAD", "SILENT", "DEFECT", "NECROBINDER", "REGENT"] as const;
+const CHARACTERS = [
+  "IRONCLAD",
+  "SILENT",
+  "DEFECT",
+  "NECROBINDER",
+  "REGENT",
+] as const;
 
 function useCharacterNames(lang: string): (id: string) => string {
   const [names, setNames] = useState<Record<string, string>>({});
   useEffect(() => {
-    cachedFetch<{ character_names?: Record<string, string> }>(`${API}/api/translations?lang=${lang}`)
+    cachedFetch<{ character_names?: Record<string, string> }>(
+      `${API}/api/translations?lang=${lang}`,
+    )
       .then((tr) => setNames(tr.character_names ?? {}))
       .catch(() => {});
   }, [lang]);
   return useCallback(
     (id: string) => {
       const clean = id.replace(/^CHARACTER\./, "");
-      return names[clean.toLowerCase()] ?? clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase();
+      return (
+        names[clean.toLowerCase()] ??
+        clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase()
+      );
     },
     [names],
   );
@@ -123,8 +146,20 @@ export interface CommunityStats {
     game_mode: string | null;
     players: string | null;
   };
-  characters: { character: string; total: number; wins: number; abandoned?: number; win_rate: number }[];
-  ascensions: { level: number; total: number; wins: number; abandoned?: number; win_rate: number }[];
+  characters: {
+    character: string;
+    total: number;
+    wins: number;
+    abandoned?: number;
+    win_rate: number;
+  }[];
+  ascensions: {
+    level: number;
+    total: number;
+    wins: number;
+    abandoned?: number;
+    win_rate: number;
+  }[];
   top_cards: {
     card_id: string;
     count: number;
@@ -133,7 +168,12 @@ export interface CommunityStats {
     win_runs: number;
     total_runs_with: number;
   }[];
-  pick_rates: { card_id: string; offered: number; picked: number; pick_rate: number }[];
+  pick_rates: {
+    card_id: string;
+    offered: number;
+    picked: number;
+    pick_rate: number;
+  }[];
   top_relics: {
     relic_id: string;
     count: number;
@@ -154,7 +194,10 @@ export interface CommunityStats {
 
 function displayName(id: string): string {
   return id
-    .replace(/^(CARD|RELIC|ENCHANTMENT|MONSTER|ENCOUNTER|CHARACTER|ACT|POTION)\./, "")
+    .replace(
+      /^(CARD|RELIC|ENCHANTMENT|MONSTER|ENCOUNTER|CHARACTER|ACT|POTION)\./,
+      "",
+    )
     .replace(/_/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
@@ -207,7 +250,11 @@ function EntityRowPill({
           <img
             src={imageSrc}
             alt={name}
-            className={kind === "card" ? "w-full h-full object-cover" : "w-full h-full object-contain p-0.5"}
+            className={
+              kind === "card"
+                ? "w-full h-full object-cover"
+                : "w-full h-full object-contain p-0.5"
+            }
             crossOrigin="anonymous"
           />
         ) : (
@@ -249,7 +296,9 @@ function EntityRowPill({
                 {name}
                 {isBeta && <BetaBadge />}
               </span>
-              <span className="text-[10px] text-[var(--text-muted)] block">{subtitle}</span>
+              <span className="text-[10px] text-[var(--text-muted)] block">
+                {subtitle}
+              </span>
             </span>
           </span>
           <span className="text-[10px] text-[var(--text-secondary)] leading-relaxed block">
@@ -280,7 +329,15 @@ type RelicSort = "pick_rate" | "win_pct" | "count" | "name";
 type PotionSort = "pick_rate" | "use_rate" | "win_pct" | "count" | "name";
 type SortDir = "asc" | "desc";
 
-function PercentBar({ value, max = 100, color }: { value: number; max?: number; color: string }) {
+function PercentBar({
+  value,
+  max = 100,
+  color,
+}: {
+  value: number;
+  max?: number;
+  color: string;
+}) {
   const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0;
   return (
     <div className="flex items-center gap-2 min-w-[90px]">
@@ -351,10 +408,12 @@ export default function StatsClient({
   // per-bracket by_character splits. Win and ascension have no snapshot
   // dimension, so those two grey out.
   const [bracket, setBracket] = useState("all");
-  const [bracketScores, setBracketScores] = useState<
-    Record<EntityKind, Record<string, BracketScore>> | null
-  >(null);
-  const [bracketOverview, setBracketOverview] = useState<BracketOverview | null>(null);
+  const [bracketScores, setBracketScores] = useState<Record<
+    EntityKind,
+    Record<string, BracketScore>
+  > | null>(null);
+  const [bracketOverview, setBracketOverview] =
+    useState<BracketOverview | null>(null);
   const [bracketLoading, setBracketLoading] = useState(false);
   const [statVersions, setStatVersions] = useState<string[]>([]);
   useEffect(() => {
@@ -398,15 +457,24 @@ export default function StatsClient({
   // toggles asc/desc. New columns default to descending, except name (A→Z).
   const onCardHeader = (col: CardSort) => {
     if (col === cardSort) setCardDir((d) => (d === "asc" ? "desc" : "asc"));
-    else { setCardSort(col); setCardDir(col === "name" ? "asc" : "desc"); }
+    else {
+      setCardSort(col);
+      setCardDir(col === "name" ? "asc" : "desc");
+    }
   };
   const onRelicHeader = (col: RelicSort) => {
     if (col === relicSort) setRelicDir((d) => (d === "asc" ? "desc" : "asc"));
-    else { setRelicSort(col); setRelicDir(col === "name" ? "asc" : "desc"); }
+    else {
+      setRelicSort(col);
+      setRelicDir(col === "name" ? "asc" : "desc");
+    }
   };
   const onPotionHeader = (col: PotionSort) => {
     if (col === potionSort) setPotionDir((d) => (d === "asc" ? "desc" : "asc"));
-    else { setPotionSort(col); setPotionDir(col === "name" ? "asc" : "desc"); }
+    else {
+      setPotionSort(col);
+      setPotionDir(col === "name" ? "asc" : "desc");
+    }
   };
 
   useEffect(() => {
@@ -428,7 +496,7 @@ export default function StatsClient({
 
       // Codex Elo rides along; best-effort, the column just stays empty.
       cachedFetch<Record<string, { elo: number | null }>>(
-        `${API}/api/runs/scores/cards`
+        `${API}/api/runs/scores/cards`,
       )
         .then((scores) => {
           const em: Record<string, number | null> = {};
@@ -504,7 +572,9 @@ export default function StatsClient({
       return;
     }
     let cancelled = false;
-    const fromMetrics = (kind: EntityKind): Promise<Record<string, BracketScore>> => {
+    const fromMetrics = (
+      kind: EntityKind,
+    ): Promise<Record<string, BracketScore>> => {
       const params = new URLSearchParams({ bracket: apiBracket });
       if (character) params.set("character", character);
       return cachedFetch<{ rows: MetricsRow[] }>(
@@ -526,7 +596,9 @@ export default function StatsClient({
         return out;
       });
     };
-    const fetchType = (kind: EntityKind): Promise<Record<string, BracketScore>> => {
+    const fetchType = (
+      kind: EntityKind,
+    ): Promise<Record<string, BracketScore>> => {
       if (kind === "card" || character) return fromMetrics(kind);
       return cachedFetch<Record<string, BracketScore>>(
         `${API}/api/runs/scores/${kind}s?bracket=${encodeURIComponent(apiBracket)}`,
@@ -669,7 +741,9 @@ export default function StatsClient({
         });
     }
     if (!stats || stats.total_runs === 0) return [];
-    const pickMap = new Map((stats.pick_rates || []).map((p) => [p.card_id, p]));
+    const pickMap = new Map(
+      (stats.pick_rates || []).map((p) => [p.card_id, p]),
+    );
     const deckMap = new Map((stats.top_cards || []).map((c) => [c.card_id, c]));
     const allIds = new Set<string>([...pickMap.keys(), ...deckMap.keys()]);
     // Only official (Megacrit) cards: a run can carry modded cards whose ids
@@ -678,32 +752,34 @@ export default function StatsClient({
     const rows = [...allIds]
       .filter((id) => cardData[id])
       .map((id) => {
-      const pick = pickMap.get(id);
-      const deck = deckMap.get(id);
-      const winRuns = deck?.win_runs || 0;
-      const totalRunsWith = deck?.total_runs_with || 0;
-      const winPct =
-        totalRunsWith > 0 ? Math.round((winRuns / totalRunsWith) * 1000) / 10 : 0;
-      const info = cardData[id];
-      return {
-        id,
-        name: info?.name || displayName(`CARD.${id}`),
-        type: info?.type || "",
-        rarity: info?.rarity || "",
-        cost: info?.cost ?? -99,
-        color: info?.color || "",
-        image_url: info?.image_url || null,
-        description: info?.description || "",
-        offered: pick?.offered || 0,
-        picked: pick?.picked || 0,
-        pick_rate: pick?.pick_rate || 0,
-        count: deck?.count || 0,
-        win_runs: winRuns,
-        total_runs_with: totalRunsWith,
-        win_pct: winPct,
-        elo: eloMap[id] ?? null,
-      };
-    });
+        const pick = pickMap.get(id);
+        const deck = deckMap.get(id);
+        const winRuns = deck?.win_runs || 0;
+        const totalRunsWith = deck?.total_runs_with || 0;
+        const winPct =
+          totalRunsWith > 0
+            ? Math.round((winRuns / totalRunsWith) * 1000) / 10
+            : 0;
+        const info = cardData[id];
+        return {
+          id,
+          name: info?.name || displayName(`CARD.${id}`),
+          type: info?.type || "",
+          rarity: info?.rarity || "",
+          cost: info?.cost ?? -99,
+          color: info?.color || "",
+          image_url: info?.image_url || null,
+          description: info?.description || "",
+          offered: pick?.offered || 0,
+          picked: pick?.picked || 0,
+          pick_rate: pick?.pick_rate || 0,
+          count: deck?.count || 0,
+          win_runs: winRuns,
+          total_runs_with: totalRunsWith,
+          win_pct: winPct,
+          elo: eloMap[id] ?? null,
+        };
+      });
     return rows;
   }, [stats, cardData, eloMap, bracketActive, bracketScores]);
 
@@ -733,8 +809,10 @@ export default function StatsClient({
     filtered.sort((a, b) => {
       let v = 0;
       if (cardSort === "name") v = a.name.localeCompare(b.name);
-      else if (cardSort === "pick_rate") v = a.pick_rate - b.pick_rate || a.offered - b.offered;
-      else if (cardSort === "win_pct") v = a.win_pct - b.win_pct || a.win_runs - b.win_runs;
+      else if (cardSort === "pick_rate")
+        v = a.pick_rate - b.pick_rate || a.offered - b.offered;
+      else if (cardSort === "win_pct")
+        v = a.win_pct - b.win_pct || a.win_runs - b.win_runs;
       // Cards without an Elo (not reward picks) sink to the bottom either way.
       else if (cardSort === "elo") v = (a.elo ?? -1e9) - (b.elo ?? -1e9);
       else if (cardSort === "count") v = a.count - b.count;
@@ -772,24 +850,28 @@ export default function StatsClient({
     return (stats.top_relics || [])
       .filter((r) => relicData[r.relic_id])
       .map((r) => {
-      const info = relicData[r.relic_id];
-      const winPct =
-        r.total_runs_with > 0 ? Math.round((r.win_runs / r.total_runs_with) * 1000) / 10 : 0;
-      const pickRate =
-        stats.total_runs > 0 ? Math.round((r.count / stats.total_runs) * 1000) / 10 : 0;
-      return {
-        id: r.relic_id,
-        name: info?.name || displayName(`RELIC.${r.relic_id}`),
-        rarity: info?.rarity || "",
-        image_url: info?.image_url || null,
-        description: info?.description || "",
-        count: r.count,
-        total_runs_with: r.total_runs_with,
-        win_runs: r.win_runs,
-        pick_rate: pickRate,
-        win_pct: winPct,
-      };
-    });
+        const info = relicData[r.relic_id];
+        const winPct =
+          r.total_runs_with > 0
+            ? Math.round((r.win_runs / r.total_runs_with) * 1000) / 10
+            : 0;
+        const pickRate =
+          stats.total_runs > 0
+            ? Math.round((r.count / stats.total_runs) * 1000) / 10
+            : 0;
+        return {
+          id: r.relic_id,
+          name: info?.name || displayName(`RELIC.${r.relic_id}`),
+          rarity: info?.rarity || "",
+          image_url: info?.image_url || null,
+          description: info?.description || "",
+          count: r.count,
+          total_runs_with: r.total_runs_with,
+          win_runs: r.win_runs,
+          pick_rate: pickRate,
+          win_pct: winPct,
+        };
+      });
   }, [stats, relicData, bracketActive, bracketScores]);
 
   const relicRarities = useMemo(() => {
@@ -799,13 +881,17 @@ export default function StatsClient({
   }, [relicRows]);
 
   const filteredRelics = useMemo(() => {
-    const filtered = relicRows.filter((r) => !relicRarity || r.rarity === relicRarity);
+    const filtered = relicRows.filter(
+      (r) => !relicRarity || r.rarity === relicRarity,
+    );
     const mul = relicDir === "asc" ? 1 : -1;
     filtered.sort((a, b) => {
       let v = 0;
       if (relicSort === "name") v = a.name.localeCompare(b.name);
-      else if (relicSort === "pick_rate") v = a.pick_rate - b.pick_rate || a.count - b.count;
-      else if (relicSort === "win_pct") v = a.win_pct - b.win_pct || a.win_runs - b.win_runs;
+      else if (relicSort === "pick_rate")
+        v = a.pick_rate - b.pick_rate || a.count - b.count;
+      else if (relicSort === "win_pct")
+        v = a.win_pct - b.win_pct || a.win_runs - b.win_runs;
       else if (relicSort === "count") v = a.count - b.count;
       return mul * v;
     });
@@ -844,27 +930,29 @@ export default function StatsClient({
     return (stats.top_potions || [])
       .filter((p) => potionData[p.potion_id])
       .map((p) => {
-      const info = potionData[p.potion_id];
-      const winPct =
-        p.total_runs_with > 0 ? Math.round((p.win_runs / p.total_runs_with) * 1000) / 10 : 0;
-      const useRate =
-        p.picked > 0 ? Math.round((p.used / p.picked) * 1000) / 10 : 0;
-      return {
-        id: p.potion_id,
-        name: info?.name || displayName(`POTION.${p.potion_id}`),
-        rarity: info?.rarity || "",
-        image_url: info?.image_url || null,
-        description: info?.description || "",
-        offered: p.offered,
-        picked: p.picked,
-        used: p.used,
-        total_runs_with: p.total_runs_with,
-        win_runs: p.win_runs,
-        pick_rate: p.pick_rate,
-        use_rate: useRate,
-        win_pct: winPct,
-      };
-    });
+        const info = potionData[p.potion_id];
+        const winPct =
+          p.total_runs_with > 0
+            ? Math.round((p.win_runs / p.total_runs_with) * 1000) / 10
+            : 0;
+        const useRate =
+          p.picked > 0 ? Math.round((p.used / p.picked) * 1000) / 10 : 0;
+        return {
+          id: p.potion_id,
+          name: info?.name || displayName(`POTION.${p.potion_id}`),
+          rarity: info?.rarity || "",
+          image_url: info?.image_url || null,
+          description: info?.description || "",
+          offered: p.offered,
+          picked: p.picked,
+          used: p.used,
+          total_runs_with: p.total_runs_with,
+          win_runs: p.win_runs,
+          pick_rate: p.pick_rate,
+          use_rate: useRate,
+          win_pct: winPct,
+        };
+      });
   }, [stats, potionData, bracketActive, bracketScores]);
 
   const potionRarities = useMemo(() => {
@@ -874,15 +962,21 @@ export default function StatsClient({
   }, [potionRows]);
 
   const filteredPotions = useMemo(() => {
-    const filtered = potionRows.filter((p) => !potionRarity || p.rarity === potionRarity);
+    const filtered = potionRows.filter(
+      (p) => !potionRarity || p.rarity === potionRarity,
+    );
     const mul = potionDir === "asc" ? 1 : -1;
     filtered.sort((a, b) => {
       let v = 0;
       if (potionSort === "name") v = a.name.localeCompare(b.name);
-      else if (potionSort === "pick_rate") v = a.pick_rate - b.pick_rate || a.offered - b.offered;
-      else if (potionSort === "use_rate") v = a.use_rate - b.use_rate || a.used - b.used;
-      else if (potionSort === "win_pct") v = a.win_pct - b.win_pct || a.win_runs - b.win_runs;
-      else if (potionSort === "count") v = a.total_runs_with - b.total_runs_with;
+      else if (potionSort === "pick_rate")
+        v = a.pick_rate - b.pick_rate || a.offered - b.offered;
+      else if (potionSort === "use_rate")
+        v = a.use_rate - b.use_rate || a.used - b.used;
+      else if (potionSort === "win_pct")
+        v = a.win_pct - b.win_pct || a.win_runs - b.win_runs;
+      else if (potionSort === "count")
+        v = a.total_runs_with - b.total_runs_with;
       return mul * v;
     });
     return filtered;
@@ -934,7 +1028,9 @@ export default function StatsClient({
 
       {/* Jumping-off points to the deeper views built on the same run data. */}
       <div className="flex flex-wrap items-center gap-1.5 mb-6 text-xs">
-        <span className="text-[var(--text-muted)] mr-1">{t("Dig deeper:")}</span>
+        <span className="text-[var(--text-muted)] mr-1">
+          {t("Dig deeper:")}
+        </span>
         {[
           { href: "/charts", label: "Run Charts" },
           { href: "/community-stats", label: "Community Stats" },
@@ -957,7 +1053,9 @@ export default function StatsClient({
           player count and character keep combining with it, win/ascension
           grey out. */}
       <div className="flex flex-wrap items-center gap-1.5 mb-4">
-        <span className="text-xs text-[var(--text-muted)] mr-1">{t("Bracket")}</span>
+        <span className="text-xs text-[var(--text-muted)] mr-1">
+          {t("Bracket")}
+        </span>
         {CONTENT_BRACKETS.map((b) => {
           const isActive = bracket === b.key;
           return (
@@ -984,7 +1082,9 @@ export default function StatsClient({
           >
             <option value="">{t("All versions")}</option>
             {statVersions.map((v) => (
-              <option key={v} value={v}>{v}</option>
+              <option key={v} value={v}>
+                {v}
+              </option>
             ))}
           </select>
         )}
@@ -995,7 +1095,9 @@ export default function StatsClient({
         )}
         {bracketActive && character && (
           <span className="text-xs text-[var(--text-muted)] ml-1">
-            {t("Character rows carry Codex Score and Win% only. Elo and Pick% aren't tracked per character.")}
+            {t(
+              "Character rows carry Codex Score and Win% only. Elo and Pick% aren't tracked per character.",
+            )}
           </span>
         )}
       </div>
@@ -1057,7 +1159,9 @@ export default function StatsClient({
           <option value="abandoned">{t("Abandoned")}</option>
         </select>
         {(loading || bracketLoading) && (
-          <span className="text-xs text-[var(--text-muted)] self-center">{t("Loading...")}</span>
+          <span className="text-xs text-[var(--text-muted)] self-center">
+            {t("Loading...")}
+          </span>
         )}
       </div>
 
@@ -1088,7 +1192,13 @@ export default function StatsClient({
         </div>
       ) : (
         <>
-          {tab === "overview" && <OverviewTab stats={viewStats} onCharacterClick={setCharacter} lang={lang} />}
+          {tab === "overview" && (
+            <OverviewTab
+              stats={viewStats}
+              onCharacterClick={setCharacter}
+              lang={lang}
+            />
+          )}
           {tab === "cards" && (
             <CardsTab
               rows={filteredCards}
@@ -1161,7 +1271,9 @@ function OverviewTab({
   const t = useT();
   const charName = useCharacterNames(lang);
   const losses =
-    (stats.total_runs || 0) - (stats.total_wins || 0) - (stats.total_abandoned || 0);
+    (stats.total_runs || 0) -
+    (stats.total_wins || 0) -
+    (stats.total_abandoned || 0);
 
   const maxCharTotal = Math.max(1, ...stats.characters.map((c) => c.total));
 
@@ -1176,18 +1288,24 @@ function OverviewTab({
             <div className="text-xs text-[var(--text-muted)]">{t("Runs")}</div>
           </div>
           <div className="bg-[var(--bg-primary)] rounded-lg p-3">
-            <div className="text-2xl font-bold text-success">{stats.total_wins}</div>
+            <div className="text-2xl font-bold text-success">
+              {stats.total_wins}
+            </div>
             <div className="text-xs text-[var(--text-muted)]">{t("Wins")}</div>
           </div>
           <div className="bg-[var(--bg-primary)] rounded-lg p-3">
             <div className="text-2xl font-bold text-danger">{losses}</div>
-            <div className="text-xs text-[var(--text-muted)]">{t("Losses")}</div>
+            <div className="text-xs text-[var(--text-muted)]">
+              {t("Losses")}
+            </div>
           </div>
           <div className="bg-[var(--bg-primary)] rounded-lg p-3">
             <div className="text-2xl font-bold text-[var(--text-secondary)]">
               {stats.total_abandoned || 0}
             </div>
-            <div className="text-xs text-[var(--text-muted)]">{t("Abandoned")}</div>
+            <div className="text-xs text-[var(--text-muted)]">
+              {t("Abandoned")}
+            </div>
           </div>
           <div className="bg-[var(--bg-primary)] rounded-lg p-3">
             <div className="text-2xl font-bold text-[var(--accent-gold)]">
@@ -1211,51 +1329,55 @@ function OverviewTab({
                   CHAR_ORDER.indexOf(b.character.toUpperCase()),
               )
               .map((c) => {
-              const charColor = characterHex(c.character) || "var(--text-muted)";
-              const totalPct = (c.total / maxCharTotal) * 100;
-              const winPct = c.total > 0 ? (c.wins / c.total) * 100 : 0;
-              return (
-                <button
-                  key={c.character}
-                  onClick={() => onCharacterClick(c.character)}
-                  className="w-full text-left group"
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span
-                      className="text-sm font-medium group-hover:text-[var(--accent-gold)] transition-colors"
-                      style={{ color: charColor }}
-                    >
-                      {charName(c.character)}
-                    </span>
-                    <div className="flex items-center gap-3 text-xs">
-                      <span className="text-[var(--text-muted)]">
-                        {c.wins}W / {c.total - c.wins - (c.abandoned || 0)}L
-                        {c.abandoned ? ` / ${c.abandoned}A` : ""}
-                      </span>
+                const charColor =
+                  characterHex(c.character) || "var(--text-muted)";
+                const totalPct = (c.total / maxCharTotal) * 100;
+                const winPct = c.total > 0 ? (c.wins / c.total) * 100 : 0;
+                return (
+                  <button
+                    key={c.character}
+                    onClick={() => onCharacterClick(c.character)}
+                    className="w-full text-left group"
+                  >
+                    <div className="flex items-center justify-between mb-1">
                       <span
-                        className="font-semibold tabular-nums"
-                        style={{ color: winRateColor(c.win_rate) }}
+                        className="text-sm font-medium group-hover:text-[var(--accent-gold)] transition-colors"
+                        style={{ color: charColor }}
                       >
-                        {c.win_rate}%
+                        {charName(c.character)}
                       </span>
+                      <div className="flex items-center gap-3 text-xs">
+                        <span className="text-[var(--text-muted)]">
+                          {c.wins}W / {c.total - c.wins - (c.abandoned || 0)}L
+                          {c.abandoned ? ` / ${c.abandoned}A` : ""}
+                        </span>
+                        <span
+                          className="font-semibold tabular-nums"
+                          style={{ color: winRateColor(c.win_rate) }}
+                        >
+                          {c.win_rate}%
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="relative h-2 rounded-full bg-[var(--bg-primary)] overflow-hidden">
-                    <div
-                      className="absolute inset-y-0 left-0 rounded-full opacity-40"
-                      style={{ width: `${totalPct}%`, backgroundColor: charColor }}
-                    />
-                    <div
-                      className="absolute inset-y-0 left-0 rounded-full"
-                      style={{
-                        width: `${(totalPct * winPct) / 100}%`,
-                        backgroundColor: charColor,
-                      }}
-                    />
-                  </div>
-                </button>
-              );
-            })}
+                    <div className="relative h-2 rounded-full bg-[var(--bg-primary)] overflow-hidden">
+                      <div
+                        className="absolute inset-y-0 left-0 rounded-full opacity-40"
+                        style={{
+                          width: `${totalPct}%`,
+                          backgroundColor: charColor,
+                        }}
+                      />
+                      <div
+                        className="absolute inset-y-0 left-0 rounded-full"
+                        style={{
+                          width: `${(totalPct * winPct) / 100}%`,
+                          backgroundColor: charColor,
+                        }}
+                      />
+                    </div>
+                  </button>
+                );
+              })}
           </div>
         </div>
       )}
@@ -1272,7 +1394,9 @@ function OverviewTab({
                 <th className="text-right py-2 font-medium">{t("Runs")}</th>
                 <th className="text-right py-2 font-medium">{t("Wins")}</th>
                 <th className="text-right py-2 font-medium">{t("Losses")}</th>
-                <th className="text-right py-2 font-medium">{t("Abandoned")}</th>
+                <th className="text-right py-2 font-medium">
+                  {t("Abandoned")}
+                </th>
                 <th className="text-right py-2 font-medium">{t("Win Rate")}</th>
               </tr>
             </thead>
@@ -1282,11 +1406,15 @@ function OverviewTab({
                   key={a.level}
                   className="border-b border-[var(--border-subtle)] last:border-0 hover:bg-[var(--bg-primary)]/40"
                 >
-                  <td className="py-2 text-[var(--text-primary)] font-medium">A{a.level}</td>
+                  <td className="py-2 text-[var(--text-primary)] font-medium">
+                    A{a.level}
+                  </td>
                   <td className="py-2 text-right text-[var(--text-secondary)] tabular-nums">
                     {a.total}
                   </td>
-                  <td className="py-2 text-right text-success tabular-nums">{a.wins}</td>
+                  <td className="py-2 text-right text-success tabular-nums">
+                    {a.wins}
+                  </td>
                   <td className="py-2 text-right text-danger tabular-nums">
                     {a.total - a.wins - (a.abandoned || 0)}
                   </td>
@@ -1374,7 +1502,11 @@ function CardsTab({
     <div className="bg-[var(--bg-card)] rounded-xl border border-[var(--border-subtle)] p-5">
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <div className="flex flex-wrap gap-2">
-          <select value={cardType} onChange={(e) => setCardType(e.target.value)} className={selectClass}>
+          <select
+            value={cardType}
+            onChange={(e) => setCardType(e.target.value)}
+            className={selectClass}
+          >
             <option value="">{t("All Types")}</option>
             {cardTypes.map((ct) => (
               <option key={ct} value={ct}>
@@ -1394,7 +1526,11 @@ function CardsTab({
               </option>
             ))}
           </select>
-          <select value={cardCost} onChange={(e) => setCardCost(e.target.value)} className={selectClass}>
+          <select
+            value={cardCost}
+            onChange={(e) => setCardCost(e.target.value)}
+            className={selectClass}
+          >
             <option value="">{t("All Costs")}</option>
             <option value="0">0</option>
             <option value="1">1</option>
@@ -1404,7 +1540,9 @@ function CardsTab({
             <option value="X">X</option>
           </select>
         </div>
-        <span className="text-xs text-[var(--text-muted)]">{rows.length} {t("cards")}</span>
+        <span className="text-xs text-[var(--text-muted)]">
+          {rows.length} {t("cards")}
+        </span>
       </div>
 
       <CardTable
@@ -1446,7 +1584,9 @@ function SortHeader<T extends string>({
     >
       <span className="inline-flex items-center gap-1">
         {children}
-        {active && <span className="text-[10px]">{dir === "asc" ? "▲" : "▼"}</span>}
+        {active && (
+          <span className="text-[10px]">{dir === "asc" ? "▲" : "▼"}</span>
+        )}
       </span>
     </th>
   );
@@ -1474,7 +1614,9 @@ function CardTable({
   const t = useT();
   if (rows.length === 0) {
     return (
-      <div className="py-8 text-center text-sm text-[var(--text-muted)]">{t("No cards match.")}</div>
+      <div className="py-8 text-center text-sm text-[var(--text-muted)]">
+        {t("No cards match.")}
+      </div>
     );
   }
   return (
@@ -1482,20 +1624,48 @@ function CardTable({
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-[var(--border-subtle)]">
-            <th className="text-left py-2 font-medium text-[var(--text-muted)] w-10">#</th>
-            <SortHeader column="name" current={cardSort} dir={cardDir} onClick={onCardHeader} align="left">
+            <th className="text-left py-2 font-medium text-[var(--text-muted)] w-10">
+              #
+            </th>
+            <SortHeader
+              column="name"
+              current={cardSort}
+              dir={cardDir}
+              onClick={onCardHeader}
+              align="left"
+            >
               {t("Card")}
             </SortHeader>
-            <SortHeader column="pick_rate" current={cardSort} dir={cardDir} onClick={onCardHeader}>
+            <SortHeader
+              column="pick_rate"
+              current={cardSort}
+              dir={cardDir}
+              onClick={onCardHeader}
+            >
               {t("Pick Rate")}
             </SortHeader>
-            <SortHeader column="win_pct" current={cardSort} dir={cardDir} onClick={onCardHeader}>
+            <SortHeader
+              column="win_pct"
+              current={cardSort}
+              dir={cardDir}
+              onClick={onCardHeader}
+            >
               {t("Win Rate")}
             </SortHeader>
-            <SortHeader column="elo" current={cardSort} dir={cardDir} onClick={onCardHeader}>
+            <SortHeader
+              column="elo"
+              current={cardSort}
+              dir={cardDir}
+              onClick={onCardHeader}
+            >
               Codex Elo
             </SortHeader>
-            <SortHeader column="count" current={cardSort} dir={cardDir} onClick={onCardHeader}>
+            <SortHeader
+              column="count"
+              current={cardSort}
+              dir={cardDir}
+              onClick={onCardHeader}
+            >
               {t("Count")}
             </SortHeader>
           </tr>
@@ -1506,13 +1676,17 @@ function CardTable({
               key={r.id}
               className="border-b border-[var(--border-subtle)] last:border-0 hover:bg-[var(--bg-card-hover)]/60 transition-colors"
             >
-              <td className="py-2 text-[var(--text-muted)] tabular-nums">{i + 1}</td>
+              <td className="py-2 text-[var(--text-muted)] tabular-nums">
+                {i + 1}
+              </td>
               <td className="py-2 min-w-[200px]">
                 <EntityRowPill
                   kind="card"
                   id={r.id}
                   name={r.name}
-                  imageSrc={r.image_url ? `${imgBaseFor(r.id)}${r.image_url}` : null}
+                  imageSrc={
+                    r.image_url ? `${imgBaseFor(r.id)}${r.image_url}` : null
+                  }
                   subtitle={`${r.type || "—"} · ${r.rarity || "—"} · ${r.cost >= 0 ? r.cost : r.cost === -1 ? "X" : "—"}`}
                   description={r.description}
                   bp={bp}
@@ -1522,7 +1696,10 @@ function CardTable({
               <td className="py-2">
                 <div className="flex justify-end">
                   {r.offered > 0 ? (
-                    <PercentBar value={r.pick_rate} color={pickRateColor(r.pick_rate)} />
+                    <PercentBar
+                      value={r.pick_rate}
+                      color={pickRateColor(r.pick_rate)}
+                    />
                   ) : (
                     <span className="text-[var(--text-muted)]">—</span>
                   )}
@@ -1531,7 +1708,10 @@ function CardTable({
               <td className="py-2">
                 <div className="flex justify-end">
                   {r.total_runs_with > 0 ? (
-                    <PercentBar value={r.win_pct} color={winRateColor(r.win_pct)} />
+                    <PercentBar
+                      value={r.win_pct}
+                      color={winRateColor(r.win_pct)}
+                    />
                   ) : (
                     <span className="text-[var(--text-muted)]">—</span>
                   )}
@@ -1539,7 +1719,9 @@ function CardTable({
               </td>
               <td className="py-2 text-right tabular-nums">
                 {r.elo != null ? (
-                  <span className="text-[var(--accent-gold)]">{Math.round(r.elo)}</span>
+                  <span className="text-[var(--accent-gold)]">
+                    {Math.round(r.elo)}
+                  </span>
                 ) : (
                   <span className="text-[var(--text-muted)]">—</span>
                 )}
@@ -1614,27 +1796,54 @@ function RelicsTab({
             </option>
           ))}
         </select>
-        <span className="text-xs text-[var(--text-muted)]">{rows.length} {t("relics")}</span>
+        <span className="text-xs text-[var(--text-muted)]">
+          {rows.length} {t("relics")}
+        </span>
       </div>
 
       {rows.length === 0 ? (
-        <div className="py-8 text-center text-sm text-[var(--text-muted)]">{t("No relics match.")}</div>
+        <div className="py-8 text-center text-sm text-[var(--text-muted)]">
+          {t("No relics match.")}
+        </div>
       ) : (
         <div className="overflow-x-auto md:overflow-visible">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[var(--border-subtle)]">
-                <th className="text-left py-2 font-medium text-[var(--text-muted)] w-10">#</th>
-                <SortHeader column="name" current={relicSort} dir={relicDir} onClick={onRelicHeader} align="left">
+                <th className="text-left py-2 font-medium text-[var(--text-muted)] w-10">
+                  #
+                </th>
+                <SortHeader
+                  column="name"
+                  current={relicSort}
+                  dir={relicDir}
+                  onClick={onRelicHeader}
+                  align="left"
+                >
                   {t("Relic")}
                 </SortHeader>
-                <SortHeader column="pick_rate" current={relicSort} dir={relicDir} onClick={onRelicHeader}>
+                <SortHeader
+                  column="pick_rate"
+                  current={relicSort}
+                  dir={relicDir}
+                  onClick={onRelicHeader}
+                >
                   {t("Pick Rate")}
                 </SortHeader>
-                <SortHeader column="win_pct" current={relicSort} dir={relicDir} onClick={onRelicHeader}>
+                <SortHeader
+                  column="win_pct"
+                  current={relicSort}
+                  dir={relicDir}
+                  onClick={onRelicHeader}
+                >
                   {t("Win Rate")}
                 </SortHeader>
-                <SortHeader column="count" current={relicSort} dir={relicDir} onClick={onRelicHeader}>
+                <SortHeader
+                  column="count"
+                  current={relicSort}
+                  dir={relicDir}
+                  onClick={onRelicHeader}
+                >
                   {t("Count")}
                 </SortHeader>
               </tr>
@@ -1645,13 +1854,17 @@ function RelicsTab({
                   key={r.id}
                   className="border-b border-[var(--border-subtle)] last:border-0 hover:bg-[var(--bg-card-hover)]/60 transition-colors"
                 >
-                  <td className="py-2 text-[var(--text-muted)] tabular-nums">{i + 1}</td>
+                  <td className="py-2 text-[var(--text-muted)] tabular-nums">
+                    {i + 1}
+                  </td>
                   <td className="py-2 min-w-[200px]">
                     <EntityRowPill
                       kind="relic"
                       id={r.id}
                       name={r.name}
-                      imageSrc={r.image_url ? `${imgBaseFor(r.id)}${r.image_url}` : null}
+                      imageSrc={
+                        r.image_url ? `${imgBaseFor(r.id)}${r.image_url}` : null
+                      }
                       subtitle={r.rarity || "—"}
                       description={r.description}
                       bp={bp}
@@ -1663,7 +1876,10 @@ function RelicsTab({
                       {/* Character-scoped bracket rows have no pick rate
                           (inclusion isn't tracked per character). */}
                       {r.pick_rate > 0 ? (
-                        <PercentBar value={r.pick_rate} color={pickRateColor(r.pick_rate)} />
+                        <PercentBar
+                          value={r.pick_rate}
+                          color={pickRateColor(r.pick_rate)}
+                        />
                       ) : (
                         <span className="text-[var(--text-muted)]">—</span>
                       )}
@@ -1672,7 +1888,10 @@ function RelicsTab({
                   <td className="py-2">
                     <div className="flex justify-end">
                       {r.total_runs_with > 0 ? (
-                        <PercentBar value={r.win_pct} color={winRateColor(r.win_pct)} />
+                        <PercentBar
+                          value={r.win_pct}
+                          color={winRateColor(r.win_pct)}
+                        />
                       ) : (
                         <span className="text-[var(--text-muted)]">—</span>
                       )}
@@ -1753,32 +1972,68 @@ function PotionsTab({
             </option>
           ))}
         </select>
-        <span className="text-xs text-[var(--text-muted)]">{rows.length} {t("potions")}</span>
+        <span className="text-xs text-[var(--text-muted)]">
+          {rows.length} {t("potions")}
+        </span>
       </div>
 
       {rows.length === 0 ? (
-        <div className="py-8 text-center text-sm text-[var(--text-muted)]">{t("No potions match.")}</div>
+        <div className="py-8 text-center text-sm text-[var(--text-muted)]">
+          {t("No potions match.")}
+        </div>
       ) : (
         <div className="overflow-x-auto md:overflow-visible">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[var(--border-subtle)]">
-                <th className="text-left py-2 font-medium text-[var(--text-muted)] w-10">#</th>
-                <SortHeader column="name" current={potionSort} dir={potionDir} onClick={onPotionHeader} align="left">
+                <th className="text-left py-2 font-medium text-[var(--text-muted)] w-10">
+                  #
+                </th>
+                <SortHeader
+                  column="name"
+                  current={potionSort}
+                  dir={potionDir}
+                  onClick={onPotionHeader}
+                  align="left"
+                >
                   {t("Potion")}
                 </SortHeader>
-                <SortHeader column="pick_rate" current={potionSort} dir={potionDir} onClick={onPotionHeader}>
-                  <span title={t("How often a potion is bought when it appears on a shop shelf. Combat-drop potions are excluded: with an open slot you take almost every free potion, so drop pick-rate just measures slot availability, not quality. A shop buy is a real gold decision.")}>
+                <SortHeader
+                  column="pick_rate"
+                  current={potionSort}
+                  dir={potionDir}
+                  onClick={onPotionHeader}
+                >
+                  <span
+                    title={t(
+                      "How often a potion is bought when it appears on a shop shelf. Combat-drop potions are excluded: with an open slot you take almost every free potion, so drop pick-rate just measures slot availability, not quality. A shop buy is a real gold decision.",
+                    )}
+                  >
                     {t("Shop Buy %")}
                   </span>
                 </SortHeader>
-                <SortHeader column="use_rate" current={potionSort} dir={potionDir} onClick={onPotionHeader}>
+                <SortHeader
+                  column="use_rate"
+                  current={potionSort}
+                  dir={potionDir}
+                  onClick={onPotionHeader}
+                >
                   {t("Use Rate")}
                 </SortHeader>
-                <SortHeader column="win_pct" current={potionSort} dir={potionDir} onClick={onPotionHeader}>
+                <SortHeader
+                  column="win_pct"
+                  current={potionSort}
+                  dir={potionDir}
+                  onClick={onPotionHeader}
+                >
                   {t("Win Rate")}
                 </SortHeader>
-                <SortHeader column="count" current={potionSort} dir={potionDir} onClick={onPotionHeader}>
+                <SortHeader
+                  column="count"
+                  current={potionSort}
+                  dir={potionDir}
+                  onClick={onPotionHeader}
+                >
                   {t("Count")}
                 </SortHeader>
               </tr>
@@ -1789,13 +2044,17 @@ function PotionsTab({
                   key={r.id}
                   className="border-b border-[var(--border-subtle)] last:border-0 hover:bg-[var(--bg-card-hover)]/60 transition-colors"
                 >
-                  <td className="py-2 text-[var(--text-muted)] tabular-nums">{i + 1}</td>
+                  <td className="py-2 text-[var(--text-muted)] tabular-nums">
+                    {i + 1}
+                  </td>
                   <td className="py-2 min-w-[200px]">
                     <EntityRowPill
                       kind="potion"
                       id={r.id}
                       name={r.name}
-                      imageSrc={r.image_url ? `${imgBaseFor(r.id)}${r.image_url}` : null}
+                      imageSrc={
+                        r.image_url ? `${imgBaseFor(r.id)}${r.image_url}` : null
+                      }
                       subtitle={r.rarity || "—"}
                       description={r.description}
                       bp={bp}
@@ -1805,7 +2064,10 @@ function PotionsTab({
                   <td className="py-2">
                     <div className="flex justify-end">
                       {r.offered > 0 ? (
-                        <PercentBar value={r.pick_rate} color={pickRateColor(r.pick_rate)} />
+                        <PercentBar
+                          value={r.pick_rate}
+                          color={pickRateColor(r.pick_rate)}
+                        />
                       ) : (
                         <span className="text-[var(--text-muted)]">—</span>
                       )}
@@ -1823,7 +2085,10 @@ function PotionsTab({
                   <td className="py-2">
                     <div className="flex justify-end">
                       {r.total_runs_with > 0 ? (
-                        <PercentBar value={r.win_pct} color={winRateColor(r.win_pct)} />
+                        <PercentBar
+                          value={r.win_pct}
+                          color={winRateColor(r.win_pct)}
+                        />
                       ) : (
                         <span className="text-[var(--text-muted)]">—</span>
                       )}
@@ -1856,7 +2121,9 @@ function EncountersTab({ bp, lang }: { bp: string; lang: string }) {
   const t = useT();
   const [rows, setRows] = useState<EncStatRow[] | null>(null);
   useEffect(() => {
-    cachedFetch<{ encounters: EncStatRow[] }>(`${API}/api/runs/encounter-stats?limit=200`)
+    cachedFetch<{ encounters: EncStatRow[] }>(
+      `${API}/api/runs/encounter-stats?limit=200`,
+    )
       .then((d) => setRows(d.encounters || []))
       .catch(() => setRows([]));
   }, []);
@@ -1893,15 +2160,21 @@ function EncountersTab({ bp, lang }: { bp: string; lang: string }) {
         {t("Deadliest Encounters")}
       </h2>
       <p className="text-xs text-[var(--text-muted)] mb-3">
-        {t("Ranked by deaths per encounter — the share of parties that die to a fight, not raw death count.")}
+        {t(
+          "Ranked by deaths per encounter — the share of parties that die to a fight, not raw death count.",
+        )}
       </p>
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-[var(--border-subtle)] text-[var(--text-muted)] text-xs">
             <th className="text-left py-2 font-medium w-10">#</th>
             <th className="text-left py-2 font-medium">{t("Encounter")}</th>
-            <th className="text-right py-2 font-medium">{t("Per encounter")}</th>
-            <th className="text-right py-2 font-medium">{t("Deaths / faced")}</th>
+            <th className="text-right py-2 font-medium">
+              {t("Per encounter")}
+            </th>
+            <th className="text-right py-2 font-medium">
+              {t("Deaths / faced")}
+            </th>
             <th className="py-2 font-medium w-40"></th>
           </tr>
         </thead>
@@ -1911,7 +2184,9 @@ function EncountersTab({ bp, lang }: { bp: string; lang: string }) {
               key={r.encounter_id}
               className="border-b border-[var(--border-subtle)] last:border-0 hover:bg-[var(--bg-card-hover)]/60 transition-colors"
             >
-              <td className="py-2 text-[var(--text-muted)] tabular-nums">{i + 1}</td>
+              <td className="py-2 text-[var(--text-muted)] tabular-nums">
+                {i + 1}
+              </td>
               <td className="py-2">
                 <Link
                   href={`${bp}/encounters/${r.encounter_id.toLowerCase()}`}

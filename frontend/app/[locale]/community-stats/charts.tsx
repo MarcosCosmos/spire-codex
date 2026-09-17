@@ -82,7 +82,6 @@ function DeferredChart({
   );
 }
 
-
 // Theme hexes (canvas rendering needs resolved colors, not CSS vars).
 const GOLD = "#d4a843";
 const TEXT_SECONDARY = "#a1a1aa";
@@ -156,7 +155,9 @@ export function RankBars({
       maxRotation: vertical ? 60 : 0,
       callback(value: string | number) {
         const label = labels[Number(value)] ?? "";
-        return label.length > MAX_LABEL ? `${label.slice(0, MAX_LABEL - 1)}…` : label;
+        return label.length > MAX_LABEL
+          ? `${label.slice(0, MAX_LABEL - 1)}…`
+          : label;
       },
     },
   };
@@ -175,7 +176,8 @@ export function RankBars({
       tooltip: {
         ...TOOLTIP_BASE,
         callbacks: {
-          title: (items: TooltipItem<"bar">[]) => labels[items[0]?.dataIndex ?? 0],
+          title: (items: TooltipItem<"bar">[]) =>
+            labels[items[0]?.dataIndex ?? 0],
           label: (item: TooltipItem<"bar">) => {
             const d = data[item.dataIndex];
             return d?.detail ?? d?.display ?? "";
@@ -225,7 +227,10 @@ export function RankBars({
 // by every donut on the page).
 let donutTip: HTMLDivElement | null = null;
 
-function donutTooltip(ctx: { chart: ChartJS; tooltip: TooltipModel<"doughnut"> }) {
+function donutTooltip(ctx: {
+  chart: ChartJS;
+  tooltip: TooltipModel<"doughnut">;
+}) {
   const { chart, tooltip } = ctx;
   if (!donutTip) {
     donutTip = document.createElement("div");
@@ -255,7 +260,11 @@ function donutTooltip(ctx: { chart: ChartJS; tooltip: TooltipModel<"doughnut"> }
   label.style.color = TEXT_SECONDARY;
   label.textContent = String(item.label ?? "");
   const value = document.createElement("span");
-  Object.assign(value.style, { color: "#e5e5e5", fontWeight: "600", marginLeft: "6px" });
+  Object.assign(value.style, {
+    color: "#e5e5e5",
+    fontWeight: "600",
+    marginLeft: "6px",
+  });
   value.textContent = `${item.parsed}%`;
   donutTip.append(label, value);
   const rect = chart.canvas.getBoundingClientRect();
@@ -317,7 +326,6 @@ export function EventDonut({
   );
 }
 
-
 // Survival curve: share of runs still alive at each floor. Single gold
 // series (no legend needed), soft area fill, hover crosshair via tooltip.
 export function SurvivalLine({
@@ -357,8 +365,10 @@ export function SurvivalLine({
       tooltip: {
         ...TOOLTIP_BASE,
         callbacks: {
-          title: (items: TooltipItem<"line">[]) => `${floorLabel} ${items[0]?.label}`,
-          label: (item: TooltipItem<"line">) => `${item.parsed.y}% ${aliveLabel}`,
+          title: (items: TooltipItem<"line">[]) =>
+            `${floorLabel} ${items[0]?.label}`,
+          label: (item: TooltipItem<"line">) =>
+            `${item.parsed.y}% ${aliveLabel}`,
         },
       },
       datalabels: { display: false },

@@ -78,7 +78,9 @@ export default function SiteSwitcher() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [open]);
 
-  const betaLabel = betaVersion ? t("beta {version}", { version: stripSuffix(betaVersion) }) : t("beta");
+  const betaLabel = betaVersion
+    ? t("beta {version}", { version: stripSuffix(betaVersion) })
+    : t("beta");
 
   // min-w on the beta state so first-paint "beta" -> post-fetch
   // "beta v0.107.0" doesn't widen the navbar and push the mobile burger

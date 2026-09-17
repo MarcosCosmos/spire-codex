@@ -20,7 +20,10 @@ interface BetaDiff {
   types: Record<string, { added: string[] }>;
 }
 
-export function useBetaAdditions<T extends { id: string }>(type: string, lang: string): T[] {
+export function useBetaAdditions<T extends { id: string }>(
+  type: string,
+  lang: string,
+): T[] {
   const channel = useChannel();
   const [items, setItems] = useState<T[]>([]);
 
@@ -33,16 +36,18 @@ export function useBetaAdditions<T extends { id: string }>(type: string, lang: s
     (async () => {
       try {
         const diff = await cachedFetch<BetaDiff>(`${API}/api/beta/diff`);
-        const added = diff?.beta_version ? (diff.types?.[type]?.added ?? []) : [];
+        const added = diff?.beta_version
+          ? (diff.types?.[type]?.added ?? [])
+          : [];
         if (added.length === 0) {
           if (active) setItems([]);
           return;
         }
         const fetched = await Promise.all(
           added.map((id) =>
-            cachedFetch<T>(`${API}/api/${type}/${id.toLowerCase()}?lang=${lang}&channel=beta`).catch(
-              () => null,
-            ),
+            cachedFetch<T>(
+              `${API}/api/${type}/${id.toLowerCase()}?lang=${lang}&channel=beta`,
+            ).catch(() => null),
           ),
         );
         if (active) setItems(fetched.filter(Boolean) as T[]);

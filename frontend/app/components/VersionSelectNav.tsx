@@ -44,7 +44,8 @@ export default function VersionSelectNav({
   // Keep a URL-supplied version selectable even if it fell out of the
   // snapshot's list (stale link), so the select reflects the page state.
   const value = splitBracket(current).version;
-  const options = value && !versions.includes(value) ? [value, ...versions] : versions;
+  const options =
+    value && !versions.includes(value) ? [value, ...versions] : versions;
 
   const onChange = (v: string) => {
     const bracket = v ? (base ? `${base}:${v}` : v) : base;
@@ -59,7 +60,9 @@ export default function VersionSelectNav({
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <span className="w-14 text-xs text-[var(--text-muted)]">{t("Version")}</span>
+      <span className="w-14 text-xs text-[var(--text-muted)]">
+        {t("Version")}
+      </span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}

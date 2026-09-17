@@ -101,6 +101,9 @@ jobs:
       - name: TypeScript type-check
         run: npx tsc --noEmit
 
+      - name: Prettier
+        run: npm run format:check
+
   # ── Backend checks ─────────────────────────────────────
   backend-lint:
     name: Backend lint

@@ -1,7 +1,14 @@
 "use client";
 
 import { useT, useGameLocale } from "@/lib/i18n";
-import { Suspense, useState, useEffect, useRef, useMemo, useCallback } from "react";
+import {
+  Suspense,
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  useCallback,
+} from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import type { Card } from "@/lib/api";
 import { cachedFetch } from "@/lib/fetch-cache";
@@ -78,7 +85,9 @@ function matchesCost(c: Card, want: string): boolean {
   if (want === "starx") return !!c.is_x_star_cost;
   if (want.startsWith("star")) {
     if (typeof c.star_cost !== "number") return false;
-    return want === "star4plus" ? c.star_cost >= 4 : want === `star${c.star_cost}`;
+    return want === "star4plus"
+      ? c.star_cost >= 4
+      : want === `star${c.star_cost}`;
   }
   if (typeof c.cost !== "number" || c.cost < 0) return false;
   return want === "4plus" ? c.cost >= 4 : want === String(c.cost);
@@ -126,22 +135,36 @@ function CardsClientInner({ initialCards }: { initialCards: Card[] }) {
   const initialRender = useRef(true);
 
   // Sync filter state to URL search params
-  const updateUrl = useCallback((newState: Record<string, string>) => {
-    const params = new URLSearchParams();
-    for (const [k, v] of Object.entries(newState)) {
-      if (v && v !== "az") params.set(k, v);
-    }
-    const qs = params.toString();
-    router.replace(`${bp}/cards${qs ? `?${qs}` : ""}`, { scroll: false });
-  }, [router, bp]);
+  const updateUrl = useCallback(
+    (newState: Record<string, string>) => {
+      const params = new URLSearchParams();
+      for (const [k, v] of Object.entries(newState)) {
+        if (v && v !== "az") params.set(k, v);
+      }
+      const qs = params.toString();
+      router.replace(`${bp}/cards${qs ? `?${qs}` : ""}`, { scroll: false });
+    },
+    [router, bp],
+  );
 
   // Wrap setters to also update URL
-  const setFilterAndUrl = useCallback((key: string, value: string, setter: (v: string) => void) => {
-    setter(value);
-    const current: Record<string, string> = { search, color, type, rarity, keyword, cost, sort };
-    current[key] = value;
-    updateUrl(current);
-  }, [search, color, type, rarity, keyword, cost, sort, updateUrl]);
+  const setFilterAndUrl = useCallback(
+    (key: string, value: string, setter: (v: string) => void) => {
+      setter(value);
+      const current: Record<string, string> = {
+        search,
+        color,
+        type,
+        rarity,
+        keyword,
+        cost,
+        sort,
+      };
+      current[key] = value;
+      updateUrl(current);
+    },
+    [search, color, type, rarity, keyword, cost, sort, updateUrl],
+  );
 
   // Pull the discrete filters back out of the URL whenever it changes from
   // outside this component, e.g. clicking a "Browse cards by character"
@@ -166,7 +189,17 @@ function CardsClientInner({ initialCards }: { initialCards: Card[] }) {
     // stable catalog, and cachedFetch appends channel=beta on /beta paths.
     if (initialRender.current) {
       initialRender.current = false;
-      if (channel !== "beta" && lang === "eng" && !color && !type && !rarity && !keyword && !cost && !search && initialCards.length > 0) {
+      if (
+        channel !== "beta" &&
+        lang === "eng" &&
+        !color &&
+        !type &&
+        !rarity &&
+        !keyword &&
+        !cost &&
+        !search &&
+        initialCards.length > 0
+      ) {
         return;
       }
     }
@@ -178,8 +211,7 @@ function CardsClientInner({ initialCards }: { initialCards: Card[] }) {
     if (cost) params.set("cost", cost);
     if (search) params.set("search", search);
     params.set("lang", lang);
-    cachedFetch<Card[]>(`${API}/api/cards?${params}`)
-      .then(setCards);
+    cachedFetch<Card[]>(`${API}/api/cards?${params}`).then(setCards);
   }, [color, type, rarity, keyword, cost, search, lang, channel]);
 
   const scores = useEntityScores("cards");
@@ -195,7 +227,10 @@ function CardsClientInner({ initialCards }: { initialCards: Card[] }) {
           (!color || c.color === color) &&
           (!type || c.type === type) &&
           (!rarity || c.rarity === rarity) &&
-          (!keyword || (c.keywords ?? []).some((k) => k.toLowerCase() === keyword.toLowerCase())) &&
+          (!keyword ||
+            (c.keywords ?? []).some(
+              (k) => k.toLowerCase() === keyword.toLowerCase(),
+            )) &&
           matchesCost(c, cost) &&
           (!search || c.name.toLowerCase().includes(search.toLowerCase())),
       )
@@ -207,7 +242,8 @@ function CardsClientInner({ initialCards }: { initialCards: Card[] }) {
     const sorted = [...withBeta];
     if (sort === "az") sorted.sort((a, b) => a.name.localeCompare(b.name));
     else if (sort === "za") sorted.sort((a, b) => b.name.localeCompare(a.name));
-    else if (sort === "compendium") sorted.sort((a, b) => a.compendium_order - b.compendium_order);
+    else if (sort === "compendium")
+      sorted.sort((a, b) => a.compendium_order - b.compendium_order);
     else if (sort === "score") {
       sorted.sort((a, b) => {
         const sa = scores[a.id.toUpperCase()]?.score ?? -1;
@@ -291,7 +327,10 @@ function CardsClientInner({ initialCards }: { initialCards: Card[] }) {
         // Sit the transparent card renders on a subtle panel so the grid reads
         // as a contained module instead of floating on the page background.
         <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)]/40 p-3 sm:p-5">
-          <FullCardGrid cards={sortedCards} stats={sort === "score" ? scores : undefined} />
+          <FullCardGrid
+            cards={sortedCards}
+            stats={sort === "score" ? scores : undefined}
+          />
         </div>
       ) : (
         <CardGrid cards={sortedCards} />
@@ -304,7 +343,9 @@ function CardsClientInner({ initialCards }: { initialCards: Card[] }) {
 // layout no longer provides one (the app-wide boundary made every dynamic
 // page's body invisible to non-JS crawlers). The boundary lives here so
 // every page that renders this client, English and localized, gets it.
-export default function CardsClient(props: Parameters<typeof CardsClientInner>[0]) {
+export default function CardsClient(
+  props: Parameters<typeof CardsClientInner>[0],
+) {
   return (
     <Suspense fallback={null}>
       <CardsClientInner {...props} />

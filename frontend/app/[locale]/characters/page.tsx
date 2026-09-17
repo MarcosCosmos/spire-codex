@@ -7,14 +7,22 @@ import JsonLd from "@/app/components/JsonLd";
 import { buildCollectionPageJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import CharactersClient from "./CharactersClient";
 
-const API = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API =
+  process.env.API_INTERNAL_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://localhost:8000";
 
 type Props = { params: Promise<{ locale: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const locale = localeOf((await params).locale);
   const t = await getT(locale);
-  return buildPageMetadata({ locale, path: "/characters", title: t("Characters"), description: t("characters_meta_description") });
+  return buildPageMetadata({
+    locale,
+    path: "/characters",
+    title: t("Characters"),
+    description: t("characters_meta_description"),
+  });
 }
 
 export default async function CharactersPage({ params }: Props) {
@@ -24,7 +32,9 @@ export default async function CharactersPage({ params }: Props) {
   const tagline = t("characters_tagline");
   let characters: Character[] = [];
   try {
-    const res = await fetch(`${API}/api/characters?lang=${locale}`, { next: { revalidate: 300 } });
+    const res = await fetch(`${API}/api/characters?lang=${locale}`, {
+      next: { revalidate: 300 },
+    });
     if (res.ok) characters = await res.json();
   } catch {}
 
@@ -38,7 +48,10 @@ export default async function CharactersPage({ params }: Props) {
       description: "All playable characters in Slay the Spire 2.",
       path: localePath(locale, "/characters"),
       inLanguage: inLanguageOf(locale),
-      items: characters.map((c) => ({ name: c.name, path: `/characters/${c.id.toLowerCase()}` })),
+      items: characters.map((c) => ({
+        name: c.name,
+        path: `/characters/${c.id.toLowerCase()}`,
+      })),
     }),
   ];
 

@@ -135,7 +135,8 @@
   --info-fill: #1d4ed8;
   --special-fill: #6d28d9;
   --color-silent: #2e7d32;
-  --shadow-card: 0 1px 2px rgba(76, 79, 105, 0.10), 0 2px 6px rgba(76, 79, 105, 0.08);
+  --shadow-card:
+    0 1px 2px rgba(76, 79, 105, 0.1), 0 2px 6px rgba(76, 79, 105, 0.08);
 }
 
 /* Light-mode fixes that are about layout, not palette. Palette differences
@@ -164,7 +165,7 @@
 }
 :root[data-theme="light"] .card-rvmp .cardimg.render {
   background: color-mix(in srgb, var(--text-primary) 6%, transparent);
-  filter: drop-shadow(0 10px 24px rgba(76, 79, 105, 0.20));
+  filter: drop-shadow(0 10px 24px rgba(76, 79, 105, 0.2));
 }
 
 @theme inline {
@@ -216,14 +217,16 @@
   /* Kreon (the Slay the Spire 2 typeface) is the site font; Geist stays as the
      sans fallback if Kreon fails to load. Mono keeps Geist Mono for tabular
      alignment of ids and numbers. */
-  --font-sans: var(--font-kreon), var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  --font-sans:
+    var(--font-kreon), var(--font-geist-sans), Arial, Helvetica, sans-serif;
   --font-mono: var(--font-geist-mono);
 }
 
 body {
   background: var(--bg-primary);
   color: var(--text-primary);
-  font-family: var(--font-kreon), var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  font-family:
+    var(--font-kreon), var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 
 /* Kreon's deep descenders (g, y, p) get cut off by the default line boxes
@@ -258,19 +261,24 @@ body::before {
   /* webp, not the original png: at 4% opacity the 876 KB png and the 25 KB
      webp are indistinguishable, and the png was the single heaviest asset
      on every first visit. */
-  background: url("https://cdn.spire-codex.com/misc/main_menu_bg.webp") center center / cover no-repeat;
+  background: url("https://cdn.spire-codex.com/misc/main_menu_bg.webp") center
+    center / cover no-repeat;
   opacity: 0.04;
 }
 /* Phones skip the texture entirely: at 4% opacity on a small bright screen
    it's imperceptible, and mobile is where the page-weight budget hurts. */
 @media (max-width: 640px) {
-  body::before { display: none; }
+  body::before {
+    display: none;
+  }
 }
 
 /* Entity detail pages swap the global menu art for the entity's own artwork,
    passed in as --entity-bg on the .card-rvmp root. When present it replaces the
    global background (hidden below) rather than stacking on top of it. */
-body:has(.card-rvmp[style*="--entity-bg"])::before { display: none; }
+body:has(.card-rvmp[style*="--entity-bg"])::before {
+  display: none;
+}
 .card-rvmp::before {
   content: "";
   position: fixed;
@@ -282,29 +290,57 @@ body:has(.card-rvmp[style*="--entity-bg"])::before { display: none; }
 }
 
 /* Scrollbar */
-::-webkit-scrollbar { width: 8px; }
-::-webkit-scrollbar-track { background: var(--bg-secondary); }
-::-webkit-scrollbar-thumb { background: var(--border-accent); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-accent);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
 
 /* `.no-scrollbar` — keep horizontal/vertical scrollability but hide
    the scrollbar chrome. Use on tab strips and other UI where the
    scrollbar is only there as a small-viewport escape hatch and the
    bar itself adds visual noise on desktop. */
-.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
 
 /* Rich text effects — matches game's [sine] and [jitter] tags */
 @keyframes rich-sine {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-2px); }
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
 }
 
 @keyframes rich-jitter {
-  0%, 100% { transform: translate(0, 0); }
-  25% { transform: translate(-1px, 1px); }
-  50% { transform: translate(1px, -1px); }
-  75% { transform: translate(-1px, -1px); }
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(-1px, 1px);
+  }
+  50% {
+    transform: translate(1px, -1px);
+  }
+  75% {
+    transform: translate(-1px, -1px);
+  }
 }
 
 .rich-sine {
@@ -319,8 +355,14 @@ body:has(.card-rvmp[style*="--entity-bg"])::before { display: none; }
 
 /* Alert ticker: each slot fades/slides in as it becomes the active one. */
 @keyframes sc-ticker-fade {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .sc-ticker-fade {
@@ -328,14 +370,21 @@ body:has(.card-rvmp[style*="--entity-bg"])::before { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sc-ticker-fade { animation: none; }
+  .sc-ticker-fade {
+    animation: none;
+  }
 }
-
 
 /* Mobile nav logo mark: white on the dark ground, black on the light ground.
    (Desktop shows the SPIRE CODEX wordmark instead, so both stay hidden there.) */
-.sc-nav-logo--b { display: none; }
-:root[data-theme="light"] .sc-nav-logo--w { display: none; }
+.sc-nav-logo--b {
+  display: none;
+}
+:root[data-theme="light"] .sc-nav-logo--w {
+  display: none;
+}
 @media (max-width: 639px) {
-  :root[data-theme="light"] .sc-nav-logo--b { display: inline; }
+  :root[data-theme="light"] .sc-nav-logo--b {
+    display: inline;
+  }
 }

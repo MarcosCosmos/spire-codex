@@ -5,7 +5,12 @@ import { entityFallbackDescription, uiText } from "@/lib/locale-server";
 import CardDetail from "./CardDetail";
 import type { EntityStats } from "@/app/components/EntityRunStats";
 import { fetchEntityStats } from "@/lib/entity-stats";
-import { stripTags, stripTagsFlat, clipMetaDescription, buildPageMetadata } from "@/lib/seo";
+import {
+  stripTags,
+  stripTagsFlat,
+  clipMetaDescription,
+  buildPageMetadata,
+} from "@/lib/seo";
 import JsonLd from "@/app/components/JsonLd";
 import { buildDetailPageJsonLd, buildFAQPageJsonLd } from "@/lib/jsonld";
 import { redirectMissingEntity } from "@/lib/redirect-helpers";
@@ -22,8 +27,12 @@ import { enchantmentsForCard } from "@/lib/card-enchantments";
 export const dynamic = "force-static";
 export const revalidate = 3600;
 
-const API_INTERNAL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-const API_PUBLIC = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_API_URL || "";
+const API_INTERNAL =
+  process.env.API_INTERNAL_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://localhost:8000";
+const API_PUBLIC =
+  process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_API_URL || "";
 
 type Props = { params: Promise<{ locale: string; id: string }> };
 
@@ -33,14 +42,27 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const t = await getT(locale);
   const path = `/cards/${id}`;
   try {
-    const res = await fetch(`${API_INTERNAL}/api/cards/${id}${langQuery(locale)}`, {
-      next: { revalidate: 3600 },
-    });
-    if (!res.ok) return buildPageMetadata({ locale, path, title: t("Card Not Found"), noIndex: true });
+    const res = await fetch(
+      `${API_INTERNAL}/api/cards/${id}${langQuery(locale)}`,
+      {
+        next: { revalidate: 3600 },
+      },
+    );
+    if (!res.ok)
+      return buildPageMetadata({
+        locale,
+        path,
+        title: t("Card Not Found"),
+        noIndex: true,
+      });
     const card = await res.json();
-    const color = (card.color || "").replace(/^\w/, (c: string) => c.toUpperCase());
+    const color = (card.color || "").replace(/^\w/, (c: string) =>
+      c.toUpperCase(),
+    );
     const descFlat = stripTagsFlat(card.description || "");
-    const keywords = card.keywords?.length ? ` Keywords: ${card.keywords.join(", ")}.` : "";
+    const keywords = card.keywords?.length
+      ? ` Keywords: ${card.keywords.join(", ")}.`
+      : "";
     // Full game-rendered card (base + upgraded) as the share image, English.
     const ogImages = cardOgImages(card, "eng");
     return buildPageMetadata({
@@ -62,7 +84,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       image: ogImages[0]?.url,
     });
   } catch {
-    return buildPageMetadata({ locale, path, title: t("Database"), noIndex: true });
+    return buildPageMetadata({
+      locale,
+      path,
+      title: t("Database"),
+      noIndex: true,
+    });
   }
 }
 
@@ -73,15 +100,19 @@ export default async function Page({ params }: Props) {
   let card = null;
   let apiUnreachable = false;
   try {
-    const res = await fetchEntityRes(`${API_INTERNAL}/api/cards/${id}${langQuery(locale)}`, {
-      next: { revalidate: 3600 },
-    });
+    const res = await fetchEntityRes(
+      `${API_INTERNAL}/api/cards/${id}${langQuery(locale)}`,
+      {
+        next: { revalidate: 3600 },
+      },
+    );
     if (res.ok) {
       card = await res.json();
       const desc = stripTags(card.description || "");
       const detailJsonLd = buildDetailPageJsonLd({
         name: card.name,
-        description: desc || entityFallbackDescription(locale, card.name, "card"),
+        description:
+          desc || entityFallbackDescription(locale, card.name, "card"),
         path: localePath(locale, `/cards/${id}`),
         imageUrl: cardOgImages(card, "eng")[0]?.url,
         category: "Card",
@@ -92,16 +123,37 @@ export default async function Page({ params }: Props) {
           { name: card.name, href: localePath(locale, `/cards/${id}`) },
         ],
       });
-      const costText = card.is_x_cost ? "X energy" : card.is_x_star_cost ? "X stars" : card.star_cost ? `${card.star_cost} star(s)` : `${card.cost} energy`;
+      const costText = card.is_x_cost
+        ? "X energy"
+        : card.is_x_star_cost
+          ? "X stars"
+          : card.star_cost
+            ? `${card.star_cost} star(s)`
+            : `${card.cost} energy`;
       const faqQuestions = [
-        { question: `What does ${card.name} do in Slay the Spire 2?`, answer: desc || `${card.name} is a card in Slay the Spire 2.` },
-        { question: `How much does ${card.name} cost?`, answer: `${card.name} costs ${costText}.` },
-        { question: `What type of card is ${card.name}?`, answer: `${card.name} is a ${card.rarity} ${card.type} card for ${card.color}.` },
+        {
+          question: `What does ${card.name} do in Slay the Spire 2?`,
+          answer: desc || `${card.name} is a card in Slay the Spire 2.`,
+        },
+        {
+          question: `How much does ${card.name} cost?`,
+          answer: `${card.name} costs ${costText}.`,
+        },
+        {
+          question: `What type of card is ${card.name}?`,
+          answer: `${card.name} is a ${card.rarity} ${card.type} card for ${card.color}.`,
+        },
       ];
       if (card.keywords?.length) {
-        faqQuestions.push({ question: `Does ${card.name} have any keywords?`, answer: `Yes, ${card.name} has: ${card.keywords.join(", ")}.` });
+        faqQuestions.push({
+          question: `Does ${card.name} have any keywords?`,
+          answer: `Yes, ${card.name} has: ${card.keywords.join(", ")}.`,
+        });
       }
-      jsonLd = locale === "eng" ? [...detailJsonLd, buildFAQPageJsonLd(faqQuestions)] : detailJsonLd;
+      jsonLd =
+        locale === "eng"
+          ? [...detailJsonLd, buildFAQPageJsonLd(faqQuestions)]
+          : detailJsonLd;
     }
   } catch {
     // Network / DNS / backend-down. Don't redirect blindly here, if
@@ -116,7 +168,9 @@ export default async function Page({ params }: Props) {
   if (apiUnreachable) throw new Error("entity API unreachable");
   if (!card) redirectMissingEntity("cards", id, locale);
   // Server-render the community stats into the HTML (unique, crawlable data).
-  const initialStats: EntityStats | null = card ? await fetchEntityStats("cards", id) : null;
+  const initialStats: EntityStats | null = card
+    ? await fetchEntityStats("cards", id)
+    : null;
   return (
     <>
       {jsonLd && <JsonLd data={jsonLd} />}

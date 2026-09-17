@@ -13,7 +13,12 @@ type Props = { params: Promise<{ locale: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const locale = localeOf((await params).locale);
   const t = await getT(locale);
-  return buildPageMetadata({ locale, path: "/leaderboards/encounters", title: t("Encounter Stats"), description: t("leaderboards_encounters_meta_description") });
+  return buildPageMetadata({
+    locale,
+    path: "/leaderboards/encounters",
+    title: t("Encounter Stats"),
+    description: t("leaderboards_encounters_meta_description"),
+  });
 }
 
 export default async function EncountersStatsPage({ params }: Props) {
@@ -23,7 +28,10 @@ export default async function EncountersStatsPage({ params }: Props) {
     buildBreadcrumbJsonLd([
       { name: t("Home"), href: localePath(locale, "/") },
       { name: t("Leaderboards"), href: localePath(locale, "/leaderboards") },
-      { name: t("Encounters"), href: localePath(locale, "/leaderboards/encounters") },
+      {
+        name: t("Encounters"),
+        href: localePath(locale, "/leaderboards/encounters"),
+      },
     ]),
     buildCollectionPageJsonLd({
       name: "Slay the Spire 2 Encounter Stats",

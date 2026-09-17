@@ -77,7 +77,11 @@ export default function EntityPairings({
   // than a synergy claim.
   const allGroups: { key: Kind; heading: string; items: Partner[] }[] = [
     { key: "cards", heading: t("Cards"), items: (p.cards || []).slice(0, TOP) },
-    { key: "relics", heading: t("Relics"), items: (p.relics || []).slice(0, TOP) },
+    {
+      key: "relics",
+      heading: t("Relics"),
+      items: (p.relics || []).slice(0, TOP),
+    },
     {
       key: "potions",
       heading: t("Commonly seen with"),
@@ -133,7 +137,8 @@ export default function EntityPairings({
                         {pct(it.conf)} {t("of")} {name} {unit} {verb} {it.name}
                       </span>
                       <span>
-                        {pct(it.conf_rev)} {t("of")} {it.name} {unit} {verb} {name}
+                        {pct(it.conf_rev)} {t("of")} {it.name} {unit} {verb}{" "}
+                        {name}
                       </span>
                     </span>
                   </li>

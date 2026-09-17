@@ -57,7 +57,10 @@ interface BrowseDetailProps {
   fixedParams: Record<string, string>;
 }
 
-export default function BrowseDetail({ initialCards, fixedParams }: BrowseDetailProps) {
+export default function BrowseDetail({
+  initialCards,
+  fixedParams,
+}: BrowseDetailProps) {
   const t = useT();
   const [cards, setCards] = useState<Card[]>(initialCards);
   const [search, setSearch] = useState("");
@@ -95,7 +98,8 @@ export default function BrowseDetail({ initialCards, fixedParams }: BrowseDetail
     const sorted = [...cards];
     if (sort === "az") sorted.sort((a, b) => a.name.localeCompare(b.name));
     else if (sort === "za") sorted.sort((a, b) => b.name.localeCompare(a.name));
-    else if (sort === "compendium") sorted.sort((a, b) => a.compendium_order - b.compendium_order);
+    else if (sort === "compendium")
+      sorted.sort((a, b) => a.compendium_order - b.compendium_order);
     return sorted;
   }, [cards, sort]);
 

@@ -1,5 +1,10 @@
 import type { Metadata } from "next";
-import { buildLanguageAlternates, DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
+import {
+  buildLanguageAlternates,
+  DEFAULT_OG_IMAGE,
+  SITE_NAME,
+  SITE_URL,
+} from "@/lib/seo";
 import { api } from "@/lib/api";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -10,7 +15,8 @@ export async function generateMetadata(): Promise<Metadata> {
   } catch {
     // Fall back to the baseline count if the API is unreachable at build time.
   }
-  const title = "Cards - Complete Card List - Slay the Spire 2 (sts2) | Spire Codex";
+  const title =
+    "Cards - Complete Card List - Slay the Spire 2 (sts2) | Spire Codex";
   const ogDesc = `Browse all ${count} Slay the Spire 2 (sts2) cards. Filter by character, type, rarity, and keywords.`;
   return {
     title,
@@ -24,7 +30,10 @@ export async function generateMetadata(): Promise<Metadata> {
       images: [{ url: DEFAULT_OG_IMAGE }],
     },
     twitter: { card: "summary_large_image", title, description: ogDesc },
-    alternates: { canonical: "/cards", languages: buildLanguageAlternates("/cards") },
+    alternates: {
+      canonical: "/cards",
+      languages: buildLanguageAlternates("/cards"),
+    },
   };
 }
 

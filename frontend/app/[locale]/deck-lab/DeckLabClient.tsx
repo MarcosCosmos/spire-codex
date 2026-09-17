@@ -73,7 +73,8 @@ function ItemPicker({
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
-      if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false);
+      if (boxRef.current && !boxRef.current.contains(e.target as Node))
+        setOpen(false);
     }
     document.addEventListener("mousedown", onDocClick);
     return () => document.removeEventListener("mousedown", onDocClick);
@@ -139,15 +140,25 @@ export default function DeckLabClient() {
     async function loadCatalogs() {
       try {
         const [own, colorless, rel] = await Promise.all([
-          fetch(`${API}/api/cards?color=${character.toLowerCase()}`).then((r) => r.json()),
+          fetch(`${API}/api/cards?color=${character.toLowerCase()}`).then((r) =>
+            r.json(),
+          ),
           fetch(`${API}/api/cards?color=colorless`).then((r) => r.json()),
           fetch(`${API}/api/relics`).then((r) => r.json()),
         ]);
         if (dead) return;
         const cards = [...own, ...colorless]
-          .filter((c: any) => c.rarity_key !== "Basic" && c.type_key !== "Status" && c.type_key !== "Curse")
+          .filter(
+            (c: any) =>
+              c.rarity_key !== "Basic" &&
+              c.type_key !== "Status" &&
+              c.type_key !== "Curse",
+          )
           .map((c: any) => ({ id: String(c.id).toUpperCase(), name: c.name }));
-        const rl = rel.map((r: any) => ({ id: String(r.id).toUpperCase(), name: r.name }));
+        const rl = rel.map((r: any) => ({
+          id: String(r.id).toUpperCase(),
+          name: r.name,
+        }));
         setCardCatalog(cards);
         setRelicCatalog(rl);
         setNames((prev) => {
@@ -184,7 +195,9 @@ export default function DeckLabClient() {
       if (target) coachParams.set("target", target);
       const advisorUrl = `${API}/api/runs/deck-advisor?character=${character}&cards=${encodeURIComponent(cardsParam)}&relics=${encodeURIComponent(relicsParam)}`;
       const [c, a] = await Promise.all([
-        fetch(`${API}/api/runs/pick-coach?${coachParams.toString()}`).then((r) => r.json()),
+        fetch(`${API}/api/runs/pick-coach?${coachParams.toString()}`).then(
+          (r) => r.json(),
+        ),
         fetch(advisorUrl).then((r) => r.json()),
       ]);
       setCoach(c?.available ? c : null);
@@ -212,7 +225,11 @@ export default function DeckLabClient() {
     setAdvisor(null);
   }
 
-  function removeOne(list: string[], setList: (v: string[]) => void, id: string) {
+  function removeOne(
+    list: string[],
+    setList: (v: string[]) => void,
+    id: string,
+  ) {
     const idx = list.indexOf(id);
     if (idx >= 0) setList([...list.slice(0, idx), ...list.slice(idx + 1)]);
   }
@@ -223,7 +240,10 @@ export default function DeckLabClient() {
     return m;
   }, [deck]);
 
-  const maxScore = Math.max(1, ...(coach?.offers ?? []).map((o) => o.coach_score));
+  const maxScore = Math.max(
+    1,
+    ...(coach?.offers ?? []).map((o) => o.coach_score),
+  );
   const color = characterHex(character) || "var(--accent-gold)";
 
   return (
@@ -237,9 +257,14 @@ export default function DeckLabClient() {
         </span>
       </div>
       <p className="text-sm text-[var(--text-muted)] mb-8 max-w-3xl">
-        {t("Sketch a draft and see what the community data says: the archetype it is becoming, what winners with similar decks took next, and how each card in an offer commits you.")}{" "}
+        {t(
+          "Sketch a draft and see what the community data says: the archetype it is becoming, what winners with similar decks took next, and how each card in an offer commits you.",
+        )}{" "}
         {t("Powered by")}{" "}
-        <Link href="/archetypes" className="text-[var(--accent-gold)] hover:underline">
+        <Link
+          href="/archetypes"
+          className="text-[var(--accent-gold)] hover:underline"
+        >
           {t("community archetypes")}
         </Link>
         .
@@ -256,7 +281,11 @@ export default function DeckLabClient() {
                 ? "bg-[var(--bg-card-hover)] border-[var(--border-accent)] text-[var(--text-primary)]"
                 : "bg-[var(--bg-card)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:border-[var(--border-accent)]"
             }`}
-            style={character === c ? { borderColor: characterHex(c) || undefined } : undefined}
+            style={
+              character === c
+                ? { borderColor: characterHex(c) || undefined }
+                : undefined
+            }
           >
             {t(characterLabel(c))}
           </button>
@@ -266,7 +295,9 @@ export default function DeckLabClient() {
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-5">
           <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4">
-            <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-3">{t("Your draft")}</h2>
+            <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-3">
+              {t("Your draft")}
+            </h2>
             <div className="grid gap-2 sm:grid-cols-2 mb-3">
               <ItemPicker
                 placeholder={t("Add a card…")}
@@ -276,12 +307,16 @@ export default function DeckLabClient() {
               <ItemPicker
                 placeholder={t("Add a relic…")}
                 items={relicCatalog}
-                onPick={(i) => setRelics((r) => (r.includes(i.id) ? r : [...r, i.id]))}
+                onPick={(i) =>
+                  setRelics((r) => (r.includes(i.id) ? r : [...r, i.id]))
+                }
               />
             </div>
             {deck.length === 0 && relics.length === 0 ? (
               <p className="text-xs text-[var(--text-muted)]">
-                {t("Add the cards and relics you have picked so far. Starters are assumed and don't need to be entered.")}
+                {t(
+                  "Add the cards and relics you have picked so far. Starters are assumed and don't need to be entered.",
+                )}
               </p>
             ) : (
               <div className="flex flex-wrap gap-1.5">
@@ -324,7 +359,9 @@ export default function DeckLabClient() {
                 placeholder={t("Add an offered card (up to 5)…")}
                 items={cardCatalog}
                 onPick={(i) =>
-                  setOffer((o) => (o.includes(i.id) || o.length >= 5 ? o : [...o, i.id]))
+                  setOffer((o) =>
+                    o.includes(i.id) || o.length >= 5 ? o : [...o, i.id],
+                  )
                 }
               />
             </div>
@@ -347,7 +384,13 @@ export default function DeckLabClient() {
                 {coach.offers.map((o, i) => (
                   <div key={o.id} className="text-xs">
                     <div className="flex items-center justify-between mb-0.5">
-                      <span className={i === 0 ? "font-semibold text-[var(--text-primary)]" : "text-[var(--text-secondary)]"}>
+                      <span
+                        className={
+                          i === 0
+                            ? "font-semibold text-[var(--text-primary)]"
+                            : "text-[var(--text-secondary)]"
+                        }
+                      >
                         {i === 0 ? "★ " : ""}
                         {o.name}
                       </span>
@@ -355,14 +398,25 @@ export default function DeckLabClient() {
                         {o.commitment_delta != null && (
                           <span
                             className="mr-2"
-                            style={{ color: o.commitment_delta >= 0 ? "#22c55e" : "#ef4444" }}
-                            title={t("How much this pick moves you toward the target build")}
+                            style={{
+                              color:
+                                o.commitment_delta >= 0 ? "#22c55e" : "#ef4444",
+                            }}
+                            title={t(
+                              "How much this pick moves you toward the target build",
+                            )}
                           >
-                            {t("{n} commit", { n: `${o.commitment_delta >= 0 ? "+" : ""}${o.commitment_delta}` })}
+                            {t("{n} commit", {
+                              n: `${o.commitment_delta >= 0 ? "+" : ""}${o.commitment_delta}`,
+                            })}
                           </span>
                         )}
                         {o.winner_support != null && (
-                          <span title={t("Share of nearby winning decks carrying this card")}>
+                          <span
+                            title={t(
+                              "Share of nearby winning decks carrying this card",
+                            )}
+                          >
                             {t("{n}% of winners", { n: o.winner_support })}
                           </span>
                         )}
@@ -388,11 +442,17 @@ export default function DeckLabClient() {
           <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4">
             <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-3">
               {t("Build trajectory")}
-              {loading && <span className="ml-2 text-xs font-normal text-[var(--text-muted)]">{t("updating…")}</span>}
+              {loading && (
+                <span className="ml-2 text-xs font-normal text-[var(--text-muted)]">
+                  {t("updating…")}
+                </span>
+              )}
             </h2>
             {!coach?.target ? (
               <p className="text-xs text-[var(--text-muted)]">
-                {t("Add a few picks and the nearest community archetypes appear here.")}
+                {t(
+                  "Add a few picks and the nearest community archetypes appear here.",
+                )}
               </p>
             ) : (
               <>
@@ -406,12 +466,15 @@ export default function DeckLabClient() {
                     )}
                   </div>
                   <div className="text-xs text-[var(--text-muted)]">
-                    {t("{similarity}% match · {winRate}% community win rate · {share}% of {character} runs", {
-                      similarity: coach.target.similarity,
-                      winRate: coach.target.win_rate,
-                      share: coach.target.share,
-                      character: t(characterLabel(character)),
-                    })}
+                    {t(
+                      "{similarity}% match · {winRate}% community win rate · {share}% of {character} runs",
+                      {
+                        similarity: coach.target.similarity,
+                        winRate: coach.target.win_rate,
+                        share: coach.target.share,
+                        character: t(characterLabel(character)),
+                      },
+                    )}
                   </div>
                 </div>
                 {(coach.candidates ?? []).length > 1 && (
@@ -424,7 +487,9 @@ export default function DeckLabClient() {
                         <button
                           key={c.key}
                           type="button"
-                          onClick={() => setTarget(target === c.key ? null : c.key)}
+                          onClick={() =>
+                            setTarget(target === c.key ? null : c.key)
+                          }
                           className={`flex w-full items-center justify-between text-xs px-2.5 py-1.5 rounded-md border transition-colors ${
                             target === c.key
                               ? "border-[var(--accent-gold)]/60 bg-[var(--accent-gold)]/10 text-[var(--accent-gold)]"
@@ -433,7 +498,10 @@ export default function DeckLabClient() {
                         >
                           <span>{c.name}</span>
                           <span className="tabular-nums text-[var(--text-muted)]">
-                            {t("{similarity}% · {winRate}% WR", { similarity: c.similarity, winRate: c.win_rate })}
+                            {t("{similarity}% · {winRate}% WR", {
+                              similarity: c.similarity,
+                              winRate: c.win_rate,
+                            })}
                           </span>
                         </button>
                       ))}
@@ -450,7 +518,9 @@ export default function DeckLabClient() {
             </h2>
             {!advisor || advisor.length === 0 ? (
               <p className="text-xs text-[var(--text-muted)]">
-                {t("Suggestions from winning decks near yours show up once you add picks.")}
+                {t(
+                  "Suggestions from winning decks near yours show up once you add picks.",
+                )}
               </p>
             ) : (
               <div className="flex flex-wrap gap-1.5">
@@ -465,7 +535,9 @@ export default function DeckLabClient() {
                     }`}
                   >
                     {it.name}
-                    <span className="ml-1 text-[var(--text-muted)]">{it.support}%</span>
+                    <span className="ml-1 text-[var(--text-muted)]">
+                      {it.support}%
+                    </span>
                   </Link>
                 ))}
               </div>
