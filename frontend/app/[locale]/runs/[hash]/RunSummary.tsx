@@ -17,10 +17,10 @@ import { Link } from "@/i18n/navigation";
 import TinyCard from "@/app/components/TinyCard";
 import { CardPill, RelicPill, PotionPill } from "./RunPills";
 import { imageUrl } from "@/lib/image-url";
+import { useStackCards } from "@/lib/deck-stack";
 import { fmtDateTime, fmtDateTimePacific } from "@/lib/pacific";
 import {
   Run,
-  DeckCard,
   Floor,
   EncounterRoom,
   RawRoom,
@@ -28,7 +28,6 @@ import {
   PlayerStats,
 } from "../../../../lib/api/run/types";
 import { useBetaPrefix } from "@/lib/use-lang-prefix";
-import { ApiConfigContext } from "@/app/contexts/ApiConfigContext";
 import SharedRunContext, {
   CardsContext,
   RelicsContext,
@@ -796,47 +795,6 @@ function countUniques(items: string[]): Map<string, number> {
     counts.set(item, (counts.get(item) ?? 0) + 1);
   }
   return counts;
-}
-
-interface StackEntry {
-  id: string;
-  upgraded: boolean;
-  enchantment?: string;
-  count: number;
-}
-
-function useStackCards(deck: DeckCard[]): StackEntry[] {
-  const tryGT = useTryGameTranslations({ namespace: "cards" });
-  const cards = useContext(CardsContext);
-  const map = new Map<string, StackEntry>();
-  for (const card of deck) {
-    const id = card.id;
-    const upgraded = !!card.current_upgrade_level;
-    const enchantment = card.enchantment ? card.enchantment.id : undefined;
-    const key = `${id}::${upgraded}::${enchantment ?? ""}`;
-    const existing = map.get(key);
-    if (existing) {
-      existing.count += 1;
-    } else {
-      map.set(key, { id, upgraded, enchantment, count: 1 });
-    }
-  }
-  const rarityScore: Record<string, number> = {
-    Rare: 5,
-    Uncommon: 4,
-    Common: 3,
-    Starter: 1,
-    Curse: 0,
-    Status: 0,
-  };
-  return [...map.values()].sort((a, b) => {
-    const ra = rarityScore[cards?.[a.id]?.rarity ?? ""] ?? 2;
-    const rb = rarityScore[cards?.[b.id]?.rarity ?? ""] ?? 2;
-    if (ra !== rb) return rb - ra;
-    return (tryGT(`${a.id}.title`) ?? a.id).localeCompare(
-      tryGT(`${a.id}.title`) ?? b.id,
-    );
-  });
 }
 
 function lastPlayerStats(run: Run): PlayerStats | undefined {

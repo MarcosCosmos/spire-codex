@@ -2,6 +2,7 @@ export interface DeckCard {
   id: string;
   current_upgrade_level?: number;
   enchantment?: RunEnchantment | null;
+  floor_added_to_deck?: number;
 }
 
 export interface RunEnchantment {
