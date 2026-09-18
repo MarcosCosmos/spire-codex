@@ -11,9 +11,11 @@ from parser_paths import loc_dir as _loc_dir, data_dir as _data_dir
 
 EMPTY_KEY_FILLER = "!"
 
+
 def extract_group_key(entry):
-    (key_parts,_) = entry
+    (key_parts, _) = entry
     return key_parts[0] if len(key_parts) > 0 else EMPTY_KEY_FILLER
+
 
 """
 Build nested structures from the semi-structre of the raw key-value pairs
@@ -34,32 +36,45 @@ After the initial binning stage, the returned results must use a given key at mo
 
 Note: the path param is purely for debugging
 """
+
+
 def apply_nesting(messages):
     # no more nesting to apply, we can just return the value and we don't need to potentially unravel anything
     if len(messages) == 1:
         (key_parts, value) = messages[0]
         if len(key_parts) == 0:
             return value
-    
+
     return {
         # note: key_parts[1:] deliberately failed if we ever hit multiple values without sub-keys. It should be manifestly impossible, but still, fail-fast is better than infinite recursion
-        key: apply_nesting([(key_parts[1:], value) for (key_parts, value) in sub_messages])
-        for key, sub_messages in itertools.groupby(sorted(messages, key=extract_group_key), key=extract_group_key)
+        key: apply_nesting(
+            [(key_parts[1:], value) for (key_parts, value) in sub_messages]
+        )
+        for key, sub_messages in itertools.groupby(
+            sorted(messages, key=extract_group_key), key=extract_group_key
+        )
     }
-def renest_messages(messages): 
-    split = [ (key.split('.'), value) for key, value in messages.items() ]
+
+
+def renest_messages(messages):
+    split = [(key.split("."), value) for key, value in messages.items()]
     return apply_nesting(split)
 
+
 def load_messages_file(path):
-    with open(path, 'r', encoding="utf8") as f:
+    with open(path, "r", encoding="utf8") as f:
         messages = json.load(f)
         return renest_messages(messages)
+
 
 def main(lang: str = "eng"):
     loc_dir = _loc_dir(lang)
     output_dir = _data_dir(lang)
     filenames = filter(lambda x: x.endswith(".json"), os.listdir(loc_dir))
-    messages = { name[:name.find(".json")]: load_messages_file(loc_dir / name) for name in filenames }
+    messages = {
+        name[: name.find(".json")]: load_messages_file(loc_dir / name)
+        for name in filenames
+    }
 
     with open(output_dir / "messages.json", "w", encoding="utf-8") as f:
         json.dump(messages, f, indent=2, ensure_ascii=False)
