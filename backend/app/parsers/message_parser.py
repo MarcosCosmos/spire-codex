@@ -36,7 +36,7 @@ Note: the path param is purely for debugging
 """
 def apply_nesting(messages):
     # no more nesting to apply, we can just return the value and we don't need to potentially unravel anything
-    if len(messages) is 1:
+    if len(messages) == 1:
         (key_parts, value) = messages[0]
         if len(key_parts) == 0:
             return value
