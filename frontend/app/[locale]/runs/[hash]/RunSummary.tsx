@@ -17,7 +17,7 @@ import { Link } from "@/i18n/navigation";
 import TinyCard from "@/app/components/TinyCard";
 import { CardPill, RelicPill, PotionPill } from "./RunPills";
 import { imageUrl } from "@/lib/image-url";
-import { useStackCards } from "@/lib/deck-stack";
+import { stackCards } from "@/lib/deck-stack";
 import { fmtDateTime, fmtDateTimePacific } from "@/lib/pacific";
 import {
   Run,
@@ -251,7 +251,7 @@ export default function RunSummary() {
   const relics = useContext(RelicsContext);
   const bp = useBetaPrefix();
   const _player = run?.players[run.player_index ?? 0];
-  const stackedCards = useStackCards(_player?.deck || []);
+  const stackedCards = stackCards(_player?.deck || [], cards ?? {}, tryGT);
 
   if (run && cards && relics) {
     const player = _player!;

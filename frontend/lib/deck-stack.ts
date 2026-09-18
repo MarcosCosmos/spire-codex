@@ -2,6 +2,7 @@ import { DeckCard } from "@/lib/api/run/types";
 import { CardsContext } from "@/app/contexts/api";
 import { useContext } from "react";
 import { useTryGameTranslations } from "./i18n";
+import { Card } from "./api/types";
 
 export interface StackEntry {
   id: string;
@@ -23,9 +24,11 @@ const rarityScore: Record<string, number> = {
   Status: 0,
 };
 
-export function useStackCards(deck: DeckCard[]): StackEntry[] {
-  const tryGT = useTryGameTranslations({ namespace: "cards" });
-  const cards = useContext(CardsContext);
+export function stackCards(
+  deck: DeckCard[],
+  cards: Record<string, Card>,
+  tryGT: ReturnType<typeof useTryGameTranslations>,
+): StackEntry[] {
   const map = new Map<string, StackEntry>();
   for (const [index, card] of deck.entries()) {
     const id = card.id;
@@ -63,8 +66,8 @@ export function useStackCards(deck: DeckCard[]): StackEntry[] {
     const scoreA = rarityA ? rarityScore[rarityA] : 2;
     const scoreB = rarityB ? rarityScore[rarityB] : 2;
     if (scoreA !== scoreB) return scoreB - scoreA;
-    return (tryGT(`${a.id}.title`) ?? a.id).localeCompare(
-      tryGT(`${a.id}.title`) ?? b.id,
+    return (tryGT(`cards.${a.id}.title`) ?? a.id).localeCompare(
+      tryGT(`cards.${a.id}.title`) ?? b.id,
     );
   });
 }
