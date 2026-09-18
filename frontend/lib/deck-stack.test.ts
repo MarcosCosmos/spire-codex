@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { stackCards } from "./deck-stack";
+import { describe, expect, it, vi } from "vitest";
+import { useStackCards } from "./deck-stack";
 
 const info = {
   STRIKE: { rarity: "Starter", name: "Strike" },
@@ -7,6 +7,14 @@ const info = {
   WHIRLWIND: { rarity: "Rare", name: "Whirlwind" },
   ANGER: { rarity: "Common", name: "Anger" },
 };
+
+vi.mock(import("react"), () => {
+  return {
+    useContext<T>() {
+      return info as T;
+    },
+  };
+});
 
 describe("deck stacks follow the order the deck was built", () => {
   it("orders by the floor a card joined, starters first, then pick order", () => {
@@ -20,7 +28,7 @@ describe("deck stacks follow the order the deck was built", () => {
       { id: "CARD.STRIKE", floor_added_to_deck: 12 },
     ];
     expect(
-      stackCards(deck, info).map((s) => [s.id, s.upgraded, s.count, s.floor]),
+      useStackCards(deck).map((s) => [s.id, s.upgraded, s.count, s.floor]),
     ).toEqual([
       ["STRIKE", false, 3, 1],
       ["BASH", false, 1, 1],
@@ -36,7 +44,7 @@ describe("deck stacks follow the order the deck was built", () => {
       { id: "CARD.ANGER" },
       { id: "CARD.WHIRLWIND", floor_added_to_deck: 9 },
     ];
-    expect(stackCards(deck, info).map((s) => s.id)).toEqual([
+    expect(useStackCards(deck).map((s) => s.id)).toEqual([
       "WHIRLWIND",
       "ANGER",
       "STRIKE",

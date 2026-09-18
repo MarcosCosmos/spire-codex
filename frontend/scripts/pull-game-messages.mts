@@ -15,6 +15,9 @@ import path from "node:path";
         { with: { type: "json" } }
       )
     ).default;
+    if (!fs.existsSync("./i18n/game")) {
+      fs.mkdirSync("./i18n/game");
+    }
     fs.writeFileSync(
       path.join("./i18n/game", `${locale}.json`),
       JSON.stringify(
