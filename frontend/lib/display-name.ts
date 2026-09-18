@@ -9,9 +9,8 @@ export function cleanId(id: string): string {
 export function displayName(id: string): string {
   const bare = cleanId(id);
   if (!BARE_ID.test(bare)) return bare;
-  // return bare
-  //   .toLowerCase()
-  //   .replace(/_/g, " ")
-  //   .replace(/\b\w/g, (c) => c.toUpperCase());
-  return "HI_I_DID_NOT_TRANSLATE_" + bare;
+  return bare
+    .toLowerCase()
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
