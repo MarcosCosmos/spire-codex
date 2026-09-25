@@ -439,7 +439,7 @@ def get_stats(lang: str = DEFAULT_LANG) -> dict:
 
 
 def load_localization(lang: str = DEFAULT_LANG, table: str = None) -> dict | None:
-    return _load_json(lang, "localization" / table)
+    return _load_json(lang, Path("localization") / table)
 
 def localization_table_names(lang) -> set[str]:
     if get_channel() == "beta":
