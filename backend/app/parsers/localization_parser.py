@@ -69,7 +69,7 @@ def load_messages_file(path):
 
 def main(lang: str = "eng"):
     loc_dir = _loc_dir(lang)
-    output_dir = _data_dir(lang) / "messages"
+    output_dir = _data_dir(lang) / "localization"
     filenames = filter(lambda x: x.endswith(".json"), os.listdir(loc_dir))
     os.makedirs(output_dir,exist_ok=True)
     for name in filenames:
