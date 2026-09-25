@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from ..services.data_service import localization_table_names, load_localization
 from ..dependencies import get_lang
 
-router = APIRouter(prefix="/api/localization", tags=["Languages"])
+router = APIRouter(prefix="/api/localizations", tags=["Languages"])
 @router.get("", response_model=dict)
 def get_localizations(
     request: Request,
