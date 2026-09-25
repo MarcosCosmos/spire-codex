@@ -1,8 +1,5 @@
+import { CodexApiConfig } from "@/lib/api/config.common";
 import { createContext } from "react";
-
-export interface CodexApiConfig {
-  beta: boolean;
-}
 
 /**
  * Helper for overriding beta assumptions normally based on page context that need to be differently targeted e.g. due to a run context.

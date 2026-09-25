@@ -1,5 +1,5 @@
 "use client";
-import { CodexApiConfig } from "@/app/contexts/ApiConfigContext";
+import { CodexApiConfig } from "./config.common";
 import { cachedFetch } from "@/lib/fetch-cache";
 import { useChannel } from "@/lib/api/prefix.client";
 import { useState, useEffect } from "react";

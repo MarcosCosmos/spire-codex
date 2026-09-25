@@ -1,5 +1,5 @@
 import { getChannel } from "@/lib/api/prefix.server";
-import { CodexApiConfig } from "../../app/contexts/ApiConfigContext";
+import { CodexApiConfig } from "./config.common";
 import {
   API_INTERNAL,
   Endpoints,

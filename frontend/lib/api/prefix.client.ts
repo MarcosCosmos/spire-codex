@@ -1,6 +1,6 @@
 "use client";
 import { useContext } from "react";
-import { ApiConfigContext } from "@/app/contexts/ApiConfigContext";
+import { ApiConfigContext } from "@/app/contexts/api/ApiConfigContext";
 
 /** "beta" when the current path sits in the beta section
  *  (/beta/... or /<lang>/beta/...), else "stable". */

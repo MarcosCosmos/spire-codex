@@ -1,5 +1,5 @@
 "use client";
-import { CodexApiConfig } from "../../../app/contexts/ApiConfigContext";
+import { CodexApiConfig } from "../config.common";
 import { useApiEndpoint } from "../endpoint.client";
 import { Run } from "./types";
 import { cleanRun } from "./util";
