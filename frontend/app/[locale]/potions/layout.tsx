@@ -5,7 +5,7 @@ import {
   SITE_NAME,
   SITE_URL,
 } from "@/lib/seo";
-import { api } from "@/lib/api";
+import { api } from "@/lib/api/types";
 
 export async function generateMetadata(): Promise<Metadata> {
   let count = "63+";
