@@ -18,7 +18,7 @@ from ascension_parser import main as parse_ascensions
 from pool_parser import main as parse_pools
 from translation_parser import main as parse_translations
 from news_parser import main as parse_news
-from backend.app.parsers.localization_parser import main as parse_localizations
+from localization_parser import main as parse_localizations
 
 LANGUAGES = [
     "deu",
