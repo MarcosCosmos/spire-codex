@@ -12,5 +12,5 @@ export default function DefaultApiConfigProvider({
 }) {
   const pathname = usePathname();
   const config = { beta: inBeta(pathname) ?? false };
-  return <ApiConfigContext value={config}></ApiConfigContext>;
+  return <ApiConfigContext value={config}>{children}</ApiConfigContext>;
 }
