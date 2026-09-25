@@ -1,4 +1,4 @@
-import { LANG_PREFIXES } from "./languages";
+import { LANG_PREFIXES } from "./../languages";
 
 export function inBeta(pathname: string): boolean {
   const parts = pathname.split("/");

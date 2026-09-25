@@ -10,7 +10,7 @@ import {
 import { useRouter, usePathname } from "next/navigation";
 import { setBetaVersion, clearCache } from "@/lib/fetch-cache";
 import { ApiConfigContext } from "./ApiConfigContext";
-import { inBeta } from "@/lib/langPrefix";
+import { inBeta } from "@/lib/api/prefix.common";
 
 const STORAGE_KEY = "spire-codex-beta-version";
 
