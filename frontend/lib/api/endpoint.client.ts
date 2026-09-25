@@ -1,7 +1,7 @@
 "use client";
 import { CodexApiConfig } from "@/app/contexts/ApiConfigContext";
 import { cachedFetch } from "@/lib/fetch-cache";
-import { useChannel } from "@/lib/useLangPrefix";
+import { useChannel } from "@/lib/api/prefix.client";
 import { useState, useEffect } from "react";
 import { API, Endpoints, IdMappableEndpointKeyTypes } from "./endpoint.common";
 import { useGameLocale } from "@/lib/i18n";

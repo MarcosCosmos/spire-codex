@@ -1,4 +1,4 @@
-import { getChannel } from "@/lib/getLangPrefix";
+import { getChannel } from "@/lib/api/prefix.server";
 import { CodexApiConfig } from "../../app/contexts/ApiConfigContext";
 import {
   API_INTERNAL,

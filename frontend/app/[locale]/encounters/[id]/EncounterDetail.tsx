@@ -16,7 +16,7 @@ import LocalizedNames from "@/app/components/LocalizedNames";
 import EntityUpdateHistory from "@/app/components/EntityUpdateHistory";
 import EntityProse from "@/app/components/EntityProse";
 import type { EncounterStat } from "@/lib/encounter-stats";
-import { useBetaPrefix } from "@/lib/useLangPrefix";
+import { useBetaPrefix } from "@/lib/api/prefix.client";
 import "@/app/card-revamp.css";
 import "@/app/monster-encounter-extra.css";
 

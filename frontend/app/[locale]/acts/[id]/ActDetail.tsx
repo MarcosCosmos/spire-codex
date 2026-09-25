@@ -11,7 +11,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import type { Act } from "@/lib/api/types";
 import { cachedFetch } from "@/lib/fetch-cache";
-import { useBetaPrefix } from "@/lib/useLangPrefix";
+import { useBetaPrefix } from "@/lib/api/prefix.client";
 import LocalizedNames from "@/app/components/LocalizedNames";
 import EntityUpdateHistory from "@/app/components/EntityUpdateHistory";
 import EntityProse from "@/app/components/EntityProse";

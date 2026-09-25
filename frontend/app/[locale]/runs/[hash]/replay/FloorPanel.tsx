@@ -33,7 +33,7 @@ import {
   type PotionInfo,
   type RelicInfo,
 } from "../RunPills";
-import { useBetaPrefix } from "@/lib/useLangPrefix";
+import { useBetaPrefix } from "@/lib/api/prefix.client";
 
 export interface EventInfo {
   id: string;

@@ -10,7 +10,7 @@ import { cachedFetch } from "@/lib/fetch-cache";
 import LocalizedNames from "@/app/components/LocalizedNames";
 import EntityUpdateHistory from "@/app/components/EntityUpdateHistory";
 import EntityProse from "@/app/components/EntityProse";
-import { useBetaPrefix } from "@/lib/useLangPrefix";
+import { useBetaPrefix } from "@/lib/api/prefix.client";
 import "@/app/card-revamp.css";
 import "@/app/reference-extra.css";
 

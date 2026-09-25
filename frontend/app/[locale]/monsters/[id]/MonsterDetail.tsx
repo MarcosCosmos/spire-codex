@@ -23,7 +23,7 @@ import {
   randomPatternSummary,
 } from "@/lib/attack-pattern";
 import { cachedFetch } from "@/lib/fetch-cache";
-import { useBetaPrefix } from "@/lib/useLangPrefix";
+import { useBetaPrefix } from "@/lib/api/prefix.client";
 import RichDescription from "@/app/components/RichDescription";
 import LocalizedNames from "@/app/components/LocalizedNames";
 import EntityUpdateHistory from "@/app/components/EntityUpdateHistory";
