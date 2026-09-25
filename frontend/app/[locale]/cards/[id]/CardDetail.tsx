@@ -26,7 +26,7 @@ import EntityRunStats, {
 } from "@/app/components/EntityRunStats";
 import EntityVersionSelect from "@/app/components/EntityVersionSelect";
 import HoverTooltip from "@/app/components/HoverTooltip";
-import { useChannel, useBetaPrefix } from "@/lib/use-lang-prefix";
+import { useChannel, useBetaPrefix } from "@/lib/useLangPrefix";
 import BetaDiffNotice from "@/app/components/BetaDiffNotice";
 import "@/app/card-revamp.css";
 

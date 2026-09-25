@@ -22,7 +22,7 @@ import EntityRunStats, {
 } from "@/app/components/EntityRunStats";
 import EntityVersionSelect from "@/app/components/EntityVersionSelect";
 import { imageUrl } from "@/lib/image-url";
-import { useBetaPrefix } from "@/lib/use-lang-prefix";
+import { useBetaPrefix } from "@/lib/useLangPrefix";
 import "@/app/card-revamp.css";
 import "@/app/relic-potion-extra.css";
 

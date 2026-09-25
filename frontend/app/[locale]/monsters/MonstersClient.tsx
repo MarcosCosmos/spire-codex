@@ -7,7 +7,7 @@ import { Link } from "@/i18n/navigation";
 import type { Monster } from "@/lib/api/types";
 import { cachedFetch } from "@/lib/fetch-cache";
 import SearchFilter from "@/app/components/SearchFilter";
-import { useChannel, useBetaPrefix } from "@/lib/use-lang-prefix";
+import { useChannel, useBetaPrefix } from "@/lib/useLangPrefix";
 import { useBetaAdditions } from "@/lib/use-beta-additions";
 import BetaBadge from "@/app/components/BetaBadge";
 import { imageUrl } from "@/lib/image-url";

@@ -4,7 +4,7 @@ import { useT, useGameLocale } from "@/lib/i18n";
 import { useState, useEffect } from "react";
 import { Link } from "@/i18n/navigation";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useBetaPrefix } from "@/lib/use-lang-prefix";
+import { useBetaPrefix } from "@/lib/useLangPrefix";
 import { Pills, PLAYER_OPTS } from "@/app/components/PlayerCountPills";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";

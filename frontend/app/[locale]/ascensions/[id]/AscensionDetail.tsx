@@ -12,7 +12,7 @@ import { Link } from "@/i18n/navigation";
 import type { Ascension } from "@/lib/api/types";
 import RichDescription from "@/app/components/RichDescription";
 import { cachedFetch } from "@/lib/fetch-cache";
-import { useBetaPrefix } from "@/lib/use-lang-prefix";
+import { useBetaPrefix } from "@/lib/useLangPrefix";
 import LocalizedNames from "@/app/components/LocalizedNames";
 import EntityUpdateHistory from "@/app/components/EntityUpdateHistory";
 import EntityProse from "@/app/components/EntityProse";

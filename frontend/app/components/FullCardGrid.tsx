@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Link } from "@/i18n/navigation";
 import type { Card } from "@/lib/api/types";
 import { fullCardUrl, imageUrl } from "@/lib/image-url";
-import { useChannel, useBetaPrefix } from "@/lib/use-lang-prefix";
+import { useChannel, useBetaPrefix } from "@/lib/useLangPrefix";
 import BetaBadge from "./BetaBadge";
 
 /**

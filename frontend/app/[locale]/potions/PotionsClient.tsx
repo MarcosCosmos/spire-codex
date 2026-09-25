@@ -15,7 +15,7 @@ import { cachedFetch } from "@/lib/fetch-cache";
 import { Link } from "@/i18n/navigation";
 import SearchFilter from "@/app/components/SearchFilter";
 import RichDescription from "@/app/components/RichDescription";
-import { useChannel, useBetaPrefix } from "@/lib/use-lang-prefix";
+import { useChannel, useBetaPrefix } from "@/lib/useLangPrefix";
 import { useEntityScores } from "@/lib/use-entity-scores";
 import { imageUrl } from "@/lib/image-url";
 

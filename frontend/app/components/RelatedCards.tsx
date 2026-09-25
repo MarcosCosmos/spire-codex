@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { Link } from "@/i18n/navigation";
 import type { Card } from "@/lib/api/types";
 import { cachedFetch } from "@/lib/fetch-cache";
-import { useBetaPrefix } from "@/lib/use-lang-prefix";
+import { useBetaPrefix } from "@/lib/useLangPrefix";
 import HoverTooltip from "@/app/components/HoverTooltip";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";

@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import { cachedFetch } from "@/lib/fetch-cache";
 import { setBetaRenderVersion } from "@/lib/image-url";
-import { useChannel } from "@/lib/use-lang-prefix";
+import { useChannel } from "@/lib/useLangPrefix";
 import { LANG_PREFIXES } from "@/lib/languages";
 import { useT } from "@/lib/i18n";
 
