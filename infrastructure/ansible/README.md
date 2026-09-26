@@ -1,6 +1,6 @@
 # spire-codex Ansible
 
-Playbooks for managing the DigitalOcean prod box (FastAPI + Next.js + nginx + co-located MongoDB). One-shot deploys, hourly auto-deploy installer, and the housekeeping toolkit.
+Playbooks for managing the DigitalOcean prod box (FastAPI + Next.js + nginx + co-located MongoDB). One-shot deploys, the manual deploy script installer, and the housekeeping toolkit.
 
 Everything sensitive (SSH keys, usernames, IPs, third-party credentials) lives in 1Password and is fetched at runtime via the wrapper script. Nothing secret or identifying lands in git.
 
@@ -42,7 +42,7 @@ Single DigitalOcean droplet (`primary`). Runs everything: the backend and fronte
 |---|---|
 | `ping.yml` | Connectivity smoke test |
 | `deploy.yml` | Pull latest images + recreate containers. |
-| `install-autodeploy.yml` | One-time setup of the hourly auto-deploy cron on the DO box. Re-run after any change to `files/autodeploy.sh`. |
+| `install-autodeploy.yml` | Installs the deploy script and CF purge env on the DO box and removes the retired hourly cron. Re-run after any change to `files/autodeploy.sh`. |
 | `restart.yml` | Bounce a container without re-pulling |
 | `verify.yml` | Post-deploy smoke test |
 | `tail-logs.yml` | Pull recent container logs |
@@ -133,8 +133,8 @@ its chunks survive the first swap:
     docker volume create spire-codex_next-static
     rm -rf /tmp/next-static && docker cp spire-codex-frontend:/app/.next/static /tmp/next-static
     docker run --rm -v spire-codex_next-static:/dst -v /tmp/next-static:/src:ro alpine:3.20 sh -c 'cp -R /src/. /dst/' && rm -rf /tmp/next-static
-    docker compose -f docker-compose.prod.yml pull backend frontend rebuilder
-    docker compose -f docker-compose.prod.yml up -d --force-recreate backend frontend rebuilder
+    docker compose -f docker-compose.prod.yml pull backend frontend
+    docker compose -f docker-compose.prod.yml up -d --force-recreate backend frontend
     docker inspect --format '{{.Name}} {{.State.Health.Status}}' spire-codex-frontend spire-codex-backend
 
 Rollback: every deploy tags the images it replaces as `:previous`, so
@@ -145,8 +145,7 @@ of those, remove the two `frontend` volume mounts from the compose file
 first. If a release leaves bad data in the fetch cache,
 `docker volume rm spire-codex_next-cache` after stopping the frontend.
 
-Manual-only deploys: the hourly cron only acts when `main` moved, but to
-take deploys fully into your own hands disable it with
-`sudo mv /etc/cron.d/spire-codex-autodeploy /etc/cron.d/spire-codex-autodeploy.off`
-(and back to re-enable), then release with `./tools/startup.sh release`
-whenever you choose.
+Deploys are manual. The hourly cron is retired: the playbook removes
+`/etc/cron.d/spire-codex-autodeploy`, and on a box that still has it,
+`sudo rm /etc/cron.d/spire-codex-autodeploy` does the same. Nothing reaches
+prod until `./tools/startup.sh release` is run on the box.

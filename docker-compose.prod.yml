@@ -254,6 +254,7 @@ services:
       - next-static:/app/.next/static
       - next-cache:/app/.next/cache/fetch-cache
     environment:
+      - HOSTNAME=0.0.0.0
       - API_INTERNAL_URL=http://spire-codex-backend:8000
       - NEXT_PUBLIC_SITE_URL=https://spire-codex.com
     healthcheck:
@@ -282,4 +283,6 @@ networks:
 
 volumes:
   next-static:
+    name: spire-codex_next-static
+    external: true
   next-cache:
