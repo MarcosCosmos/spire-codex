@@ -104,7 +104,7 @@ class RepeatParameter(FunctionParameter):
     """
     n: int | None
 @dataclass(frozen=True)
-class SelectionParameter(FunctionParameter):
+class ConditionParameter(FunctionParameter):
     """
         Basically a Conditional without the explict coditions. Selections are made hueristically (or customisably) based on the arg type.
 
@@ -119,7 +119,7 @@ class SelectionParameter(FunctionParameter):
         """
     options: list[ParsedMessage]
 @dataclass(frozen=True)
-class ConditionParameter(FunctionParameter):
+class NumericConditionParameter(FunctionParameter):
     """
     Not a subclass of SelectionParameter because of the conflicting option type.
     Kind of like ICU plurals but more specific.
@@ -128,7 +128,7 @@ class ConditionParameter(FunctionParameter):
     options: list[ConditionalMessage]
     fn_name: str = fn_name_field("cond")
 @dataclass(frozen=True)
-class ChooseParameter(SelectionParameter):
+class ChooseParameter(ConditionParameter):
     keys: list[str]
     fn_name: str = fn_name_field("choose")
 
@@ -379,9 +379,9 @@ def parse_message(
                                         consume(DelimiterKind.COLON)
                                         match fn_name:
                                             case "cond":
-                                                result = ConditionParameter(var_name, collect_conditional_options())
+                                                result = NumericConditionParameter(var_name, collect_conditional_options())
                                             case _:
-                                                result = SelectionParameter(var_name, collect_options(), fn_name=fn_name)
+                                                result = ConditionParameter(var_name, collect_options(), fn_name=fn_name)
                                     case _:
                                         # all other functions are assumed to take the name() form
                                         consume(DelimiterKind.PAREN_OPEN)
@@ -411,22 +411,16 @@ def parse_message(
                                                             case bad:
                                                                 raise UnexpectedTokenError(bad, "an integer or ')'")
                                                         result = RepeatParameter(var_name, n, fn_name=fn_name)
+                                                    # the rest of these are simple name() functions
+                                                    case "diff" | "inverseDiff" | "percentLess" | "percentMore":
+                                                        result = FunctionParameter(var_name, fn_name=fn_name)
+                                                        consume(DelimiterKind.PAREN_CLOSE)
                                                     case _:
-                                                        # the rest of these are simple name() functions
-                                                        match fn_name:
-                                                            case "diff" | "inverseDiff" | "percentLess" | "percentMore":
-                                                                result = FunctionParameter(var_name, fn_name=fn_name)
-                                                                consume(DelimiterKind.PAREN_CLOSE)
-                                                            case _:
-                                                                raise MessageParseError(f"Unrecognised template function {fn_name}", position)
-                                                current = next(tokens) #all the other parameters have options and therefore proceed current up to a }
+                                                        raise MessageParseError(f"Unrecognised template function {fn_name}", position)
+                                                current = next(tokens) #all the other parameters have options and therefore proceed current up to a }, but these need an extra hand
                             case other:
                                 current = other
-                                options = collect_options()
-                                if 1 <= len(options) <= 2:
-                                    result = SelectionParameter(var_name, options)
-                                else:
-                                    raise MessageParseError(f"Expected 1-2 message options for an IfElse parameter but got {len(options)}.", current[2])
+                                result = ConditionParameter(var_name, collect_options())
                     case (TextKind.BRACE_CLOSE, _, _):
                         result = TemplateParameter(var_name)
                     case bad:
@@ -493,14 +487,6 @@ def unparse_message_recursively(parsed: ParsedMessage) -> Generator[str, None, N
                 yield "("
                 yield "" if n is None else n
                 yield ")}"
-            case ConditionParameter(variable, options, fn_name=fn_name):
-                yield "{"
-                yield variable
-                yield ":"
-                yield fn_name
-                yield ":"
-                yield from inject_bars(unparse_conditional_message(options))
-                yield "}"
             case ChooseParameter(variable, options, keys, fn_name=fn_name):
                 yield "{"
                 yield variable
@@ -512,7 +498,15 @@ def unparse_message_recursively(parsed: ParsedMessage) -> Generator[str, None, N
                 yield ":"
                 yield from inject_bars(map(unparse_message_recursively, options))
                 yield "}"
-            case SelectionParameter(variable, options, keys, fn_name=fn_name):
+            case NumericConditionParameter(variable, options, fn_name=fn_name):
+                yield "{"
+                yield variable
+                yield ":"
+                yield fn_name
+                yield ":"
+                yield from inject_bars(unparse_numeric_condition_message(options))
+                yield "}"
+            case ConditionParameter(variable, options, keys, fn_name=fn_name):
                 yield "{"
                 yield variable
                 yield ":"
@@ -530,7 +524,7 @@ def unparse_message_recursively(parsed: ParsedMessage) -> Generator[str, None, N
                 yield "{"
                 yield variable
                 yield "}"
-def unparse_conditional_message(message: ConditionalMessage) -> Generator[str, None, None]:
+def unparse_numeric_condition_message(message: ConditionalMessage) -> Generator[str, None, None]:
     if message.condition is not None:
         yield message.condition.operator.value
         yield message.condition.threshold
