@@ -40,29 +40,32 @@ class ConditionKind(StrEnum):
 class LexerState(IntEnum):
     TEMPLATE = 0,
     PARAMETER = auto(),
-    SUBTEMPLATE = auto(),
-    FUNCTION_OR_SUBTEMPLATE = auto(),
     ARGUMENTS = auto(),
+    ARGUMENTS_END = auto(),
+    ARGUMENTS_END_SCANNED = auto(),
+    SUBTEMPLATE = auto(),
+    SUBTEMPLATE_SCANNED = auto(),
+    FUNCTION_OR_SUBTEMPLATE = auto(),
     CONDITION_OR_SUBTEMPLATE = auto(),
     
 type TokenKind = DelimiterKind | TextKind | ConditionKind
 type Token = tuple[DelimiterKind, None, int] | tuple[TextKind, str, int] | tuple[ConditionKind, MessageCondition, int]
 
-class MessageParseError(Exception):
+class MessageSyntaxError(Exception):
     """
         A None position implies end of message. Used by a wrapper to visualise where the error is in the message
     """
     def __init__(self, message: str, position: int | None = None):
-        super.__init__(message)
+        super().__init__(message)
         self.position = position
-class MessageTokenizationError(MessageParseError):
+class LexicalError(MessageSyntaxError):
     """
         A None position implies end of message. Used by a wrapper to visualise where the error is in the message
     """
     def __init__(self, state: LexerState, position: int | None = None):
-        super.__init__(f"Could not find a delimiter that satifies the state/rule: {state.name}.")
+        super().__init__(f"Could not find a delimiter that satifies the state/rule: {state.name}.")
         self.position = position
-class UnexpectedTokenError(MessageParseError):
+class UnexpectedTokenError(MessageSyntaxError):
     def __init__(self, token: Token | None, expectation: str):
         match token:
             case None:
@@ -74,7 +77,9 @@ class UnexpectedTokenError(MessageParseError):
                     result = f"{kind.value}"
                 else:
                     result = f"{kind.name}({value})"
-        super.__init__(f"Expected {expectation} but got {result}.", position)
+            case bad:
+                raise ValueError(f"what the hell is this: {bad}")
+        super().__init__(f"Expected {expectation} but got {result}.", position)
 
 type ParsedMessage = list[str | TemplateParameter]
 
@@ -145,119 +150,121 @@ def parse_cond_expression(expression: str) -> MessageCondition:
 
     return MessageCondition(op, threshold)
 
-WORD_REGEX = re.compile(r"\w+")
-
 def lex(message: str) -> Generator[Token, None, None]:
     """
     Generates a stream of tokens from the original message.
     This lexer is kind of halfway between a pure lexer and a parser in that it needs a well informed state machine to inform appropriate token delimiters
     But this lexer is still more permissive than it needs to be, partly to keep it simple but mostly because it makes it relatively easier to create relatively better error messages
-    todo: not sure off the top of my head if the game uses \{ or {{ escapes, but that can easily be fixed later.
+    todo: not sure off the top of my head if the game uses \\{ or {{ escapes, but that can easily be fixed later.
     """
     states: list[LexerState] = []
-    length = len(message)
+    state: LexerState
+    delimiter: str = ''
+    fragment: str = ''
     position = 0
-    while position < length:
+    delimiter_pos = 0
+
+    def scan(*targets: str):
+        nonlocal position, delimiter_pos, delimiter, fragment
+        position = delimiter_pos
+        for i in range(position, len(message)):
+            if any(message[i] in target for target in targets) and (message[i] != "{" or i == 0 or message[i-1] != "{"):
+                delimiter = message[i]
+                fragment = message[position:i]
+                delimiter_pos = i
+        raise LexicalError(state, position)
+    
+    while position < len(message):
         state = states.pop() if len(states) > 0 else LexerState.TEMPLATE
-        try:
-            match state:
-                case LexerState.TEMPLATE:
-                    delimiter_pos = message.find(r"(?<!\\)\{")
-                    if delimiter_pos == -1:
-                        yield (TextKind.GENERIC, message[position:])
-                        position = length
-                    else:
-                        if delimiter_pos > position:
-                            yield (TextKind.GENERIC, message[position:delimiter_pos], position)
-                        yield (DelimiterKind.BRACE_OPEN,None,delimiter_pos)
-                        position = delimiter_pos + 1
-                        states.append(LexerState.PARAMETER)
-                case LexerState.PARAMETER:
-                    # now looking for a parameter/var name
-                    delimiter_pos = message.index(r"(?<!\\)[:}]")
-                    delimiter = message[delimiter_pos]
-                    if delimiter_pos > position:
-                        yield (TextKind.VARIABLE, message[position:delimiter_pos], position)
-                    match delimiter:
-                        case "}":
-                            yield (DelimiterKind.BRACE_CLOSE, None, delimiter_pos)
-                        case ":":
-                            yield (DelimiterKind.COLON, None, delimiter_pos)
-                            state.append(LexerState.FUNCTION_OR_SUBTEMPLATE)
-                    position = delimiter_pos + 1
-                case LexerState.FUNCTION_OR_SUBTEMPLATE:
-                    # a potential function name will be exactly a word
-                    function_match = WORD_REGEX.match(message, position)
-                    if function_match is None:
-                        states.append(LexerState.SUBTEMPLATE)
-                    else:
-                        delimiter_pos = position + function_match.span()
-                        delimiter = message[delimiter_pos]
+        match state:
+            case LexerState.TEMPLATE:
+                try:
+                    scan("{")
+                except LexicalError:
+                    yield (TextKind.GENERIC, message[position:], position)
+                    return
+                if fragment:
+                    yield (TextKind.GENERIC, fragment, position)
+                yield (DelimiterKind.BRACE_OPEN, None, delimiter_pos)
+                states.append(LexerState.PARAMETER)
+            case LexerState.PARAMETER:
+                scan(":", "}")
+                if fragment:
+                    yield (TextKind.VARIABLE, fragment, position)
+                match delimiter:
+                    case ":":
+                        yield (DelimiterKind.COLON, None, delimiter_pos)
+                        state.append(LexerState.FUNCTION_OR_SUBTEMPLATE)
+                    case "}":
+                        yield (DelimiterKind.BRACE_CLOSE, None, delimiter_pos)
+            case LexerState.FUNCTION_OR_SUBTEMPLATE:
+                scan(":", "(", "|", "{", "}")
+                match delimiter:
+                    case "|", "{", "}": # valid "fall-through" scenario.
+                        states.append(LexerState.SUBTEMPLATE_SCANNED)
+                    case _:
+                        if fragment:
+                            yield (TextKind.FUNCTION, fragment, position)
                         match delimiter:
-                            case "(" | ":":
-                                function_name = function_match.group()
-                                yield (TextKind.FUNCTION, function_name, position)
-                                position = delimiter_pos + 1
-                                match delimiter:
-                                    case "(":
-                                        yield (DelimiterKind.PAREN_OPEN, None, delimiter_pos)
-                                        states.append(LexerState.ARGUMENTS)
-                                    case ":":
-                                        yield (DelimiterKind.COLON, None, delimiter_pos)
-                                        # note: this is the only known special case where knowing the function name seems to affect parsing
-                                        states.append(LexerState.CONDITION_OR_SUBTEMPLATE if function_name == "cond" else LexerState.SUBTEMPLATE)
-                            case "}":
-                                # note: this outcome is redundant at best if not illegal, but balancing the brace here will lead to more precise error locations anyway
+                            case "(":
+                                yield (DelimiterKind.PAREN_OPEN, None, delimiter_pos)
+                                states.append(LexerState.ARGUMENTS)
+                            case ":":
+                                yield (DelimiterKind.COLON, None, delimiter_pos)
+                                # note: this is the only known special case where knowing the function name seems to affect parsing
+                                states.append(LexerState.CONDITION_OR_SUBTEMPLATE if fragment == "cond" else LexerState.SUBTEMPLATE)
+            case LexerState.ARGUMENTS:
+                scan("|", ")", ":", "}")
+                match delimiter:
+                    case  ":" | "}": # pseudo-error recovery (better error position info)
+                        states.append(LexerState.ARGUMENTS_END_SCANNED)
+                    case _:
+                        if fragment:
+                            yield (TextKind.ARGUMENT, fragment, position)
+                        match delimiter:
+                            case "|":
+                                yield (DelimiterKind.BAR, None, delimiter_pos)
+                                states.append(LexerState.ARGUMENTS)
+                            case ")":
                                 yield (DelimiterKind.PAREN_CLOSE, None, delimiter_pos)
-                            case _:
-                                states.append(LexerState.SUBTEMPLATE)
-                case LexerState.ARGUMENTS:
-                    delimiter_pos = message.index(r"(?<!\\)[|)}]")
-                    delimiter = message[delimiter_pos]
-                    if delimiter_pos > position:
-                        yield (TextKind.ARGUMENT, message[position:delimiter_pos], position)
-                    position = delimiter_pos + 1
-                    match delimiter:
-                        case "|":
-                            yield (DelimiterKind.BAR, None, delimiter_pos)
-                            states.append(LexerState.ARGUMENTS)
-                        case ")":
-                            yield (DelimiterKind.PAREN_CLOSE, None, delimiter_pos)
-                            states.append(LexerState.SUBTEMPLATE)
-                        case "}":
-                            # note: this outcome is definitely illegal, but we get more precise token information by gracefully handling it in the lexer, and it would facilitate a degree of error recovery if ever we wanted it.
-                            yield (DelimiterKind.PAREN_CLOSE, None, delimiter_pos)
-                case LexerState.CONDITION_OR_SUBTEMPLATE:
-                    # this is a kind of peek ahead: we're matching against ? or whatever subtemplate would match
-                    delimiter_pos = message.index(r"(?<!\\)[\?|\{\}]")
-                    delimiter = message[delimiter_pos]
-                    # note: we consume the ? entirely, no point in emitting it as a token
-                    if delimiter == "?":
-                        yield (ConditionKind.CONDITION, parse_cond_expression(message[position:delimiter_pos]), position)
-                        position = delimiter_pos + 1
-                        # double stack state instead of duplicating the code for PARAM_OPTION
-                        # by only double pushing when we get a match, we prevent an infinite loop
+                                states.append(LexerState.ARGUMENTS_END)
+            case LexerState.ARGUMENTS_END:
+                scan(":", "}")
+                states.append(LexerState.ARGUMENTS_END_SCANNED)
+            case LexerState.ARGUMENTS_END_SCANNED:
+                match delimiter:
+                    case ":":
+                        yield (DelimiterKind.COLON, None, delimiter_pos)
+                        states.append(LexerState.SUBTEMPLATE)
+                    case _: # pseudo-error recovery (better error position info)
+                        states.append(LexerState.SUBTEMPLATE_SCANNED)
+            case LexerState.CONDITION_OR_SUBTEMPLATE:
+                scan("?", "|", "{", "}")
+                match delimiter:
+                    case "?":
+                        yield (ConditionKind.CONDITION, parse_cond_expression(fragment), position)
                         states.append(LexerState.CONDITION_OR_SUBTEMPLATE)
-                    # regardless of whether or not we got a condition, the next step is to build a subtemplate
-                    states.append(LexerState.SUBTEMPLATE)
-                case LexerState.SUBTEMPLATE:
-                    delimiter_pos = message.index(r"(?<!\\)[|\{\}]")
-                    delimiter = message[delimiter_pos]
-                    if delimiter_pos > position:
-                        yield (TextKind.GENERIC, message[position:delimiter_pos], position)
-                    position = delimiter_pos + 1
-                    match delimiter:
-                        case "|":
-                            yield (DelimiterKind.BAR, None, delimiter_pos)
-                            if states[-1] != LexerState.CONDITION_OR_SUBTEMPLATE:
-                                states.append(LexerState.SUBTEMPLATE)
-                        case "{":
-                            yield (DelimiterKind.BRACE_OPEN, None, delimiter_pos)
-                            states.append(LexerState.PARAMETER)
-                        case "}":
-                            yield (DelimiterKind.BRACE_CLOSE, None, delimiter_pos)
-        except ValueError as exec: 
-            raise MessageTokenizationError(state, position) from exec
+                        states.append(LexerState.SUBTEMPLATE)
+                    case _:
+                        states.append(LexerState.SUBTEMPLATE_SCANNED)
+            case LexerState.SUBTEMPLATE:
+                scan("|", "{", "}")
+                states.append(LexerState.SUBTEMPLATE_SCANNED)
+            case LexerState.SUBTEMPLATE_SCANNED:
+                if fragment:
+                    yield (TextKind.GENERIC, fragment, position)
+                match delimiter:
+                    case "}":
+                        yield (DelimiterKind.BRACE_CLOSE, None, delimiter_pos)
+                    case _:
+                        if states[-1] != LexerState.CONDITION_OR_SUBTEMPLATE:
+                            states.append(LexerState.SUBTEMPLATE)
+                        match delimiter:
+                            case "|":
+                                yield (DelimiterKind.BAR, None, delimiter_pos)
+                            case "{":
+                                yield (DelimiterKind.BRACE_OPEN, None, delimiter_pos)
+                                states.append(LexerState.PARAMETER)
 
 def parse(
     message: str
@@ -280,13 +287,17 @@ def parse(
     This implementation can be made more perissive though, especially e.g. around whitespace in certain places.
     """
     tokens = lex(message)
-    current: Token | None = next(tokens)
-
+    current: Token | None 
+    def advance():
+        nonlocal current
+        current = next(tokens, None)
+        return current
+    advance()
     def consume(delimiter: DelimiterKind):
         """
         Consumes the next yield from tokens and raises an UnexpectedTokenError if it is not for the expected delimiter
         """
-        match next(tokens):
+        match advance():
             case (delimiter, _, _):
                 pass
             case bad:
@@ -305,7 +316,7 @@ def parse(
                     result.append(collect_parameter())
                 case _:
                     return result
-            current = next(tokens)
+            advance()
     def generate_options() -> Generator[ParsedMessage, None, None]:
         """
         Returns a token if there are more options to gather, though the token is always a | delimiter, it's positional information is useful for error messaging.
@@ -314,7 +325,7 @@ def parse(
         The case where there are 0 options never appears in input anyway.
         """
         nonlocal current
-        current = next(tokens)
+        advance()
         while True:
             template = collect_message()
             yield template
@@ -322,7 +333,7 @@ def parse(
                 case DelimiterKind.BRACE_CLOSE:
                     break
                 case DelimiterKind.BAR:
-                    current = next(tokens)
+                    advance()
                 case _:
                     raise UnexpectedTokenError(current, "a template option starting with either be text or a parameter")
     def collect_options() -> list[ParsedMessage]:
@@ -335,9 +346,9 @@ def parse(
         while True:
             match current:
                 case (ConditionKind.CONDITION, condition, _):
-                    current = next(tokens)
+                    advance()
                     result.append(ConditionalMessage(condition, next(options)))
-                    current = next(tokens)
+                    advance()
                 case (DelimiterKind.BRACE_CLOSE, _, _):
                     # this isn't quite redundant as it makes it easier to reproduce whether or not the original input had a | after the final non-empty option
                     break
@@ -353,7 +364,7 @@ def parse(
         had_arg = False
         seen: set[str] = set()
         while True:
-            match next(tokens):
+            match advance():
                 case (DelimiterKind.PAREN_CLOSE, _, _) if had_arg:
                     break               
                 case (DelimiterKind.BAR, _, _) if had_arg:
@@ -368,11 +379,11 @@ def parse(
         return list(seen)
     def collect_parameter() -> TemplateParameter:
         nonlocal current
-        match next(tokens):
+        match advance():
             case (TextKind.VARIABLE, var_name, _):
-                match next(tokens):
+                match advance():
                     case (TextKind.COLON, _, _):
-                        match next(tokens):
+                        match advance():
                             case (TextKind.FUNCTION, fn_name, position):
                                 match fn_name:
                                     case "show" | "cond" | "pural":
@@ -394,17 +405,17 @@ def parse(
                                                 options = collect_options()
                                                 if len(options) != len(keys):
                                                     # todo: we could decide to be permissive if the game has n-1 options for n keys, but for now I'd prefer to find out if that is ever the case.
-                                                    raise MessageParseError(f"Expected {len(keys)} message options (for {len(keys)} 'choose' keys) but got {len(options)}.", current[2])
+                                                    raise MessageSyntaxError(f"Expected {len(keys)} message options (for {len(keys)} 'choose' keys) but got {len(options)}.", current[2])
                                                 result = ChooseParameter(var_name, keys, options)
                                             case _:
                                                 match fn_name:
                                                     case "energyIcons" | "starIcons":
-                                                        match next(tokens):
+                                                        match advance():
                                                             case (TextKind.ARGUMENT, arg, position):
                                                                 try:
                                                                     n = int(arg)
                                                                 except exec:
-                                                                    raise MessageParseError("Invalid integer argument", position) from exec
+                                                                    raise MessageSyntaxError("Invalid integer argument", position) from exec
                                                                 consume(DelimiterKind.PAREN_CLOSE)
                                                             case (DelimiterKind.PAREN_CLOSE, _, _):
                                                                 n = None
@@ -416,8 +427,8 @@ def parse(
                                                         result = FunctionParameter(var_name, fn_name=fn_name)
                                                         consume(DelimiterKind.PAREN_CLOSE)
                                                     case _:
-                                                        raise MessageParseError(f"Unrecognised template function {fn_name}", position)
-                                                current = next(tokens) #all the other parameters have options and therefore proceed current up to a }, but these need an extra hand
+                                                        raise MessageSyntaxError(f"Unrecognised template function {fn_name}", position)
+                                                advance() #all the other parameters have options and therefore proceed current up to a }, but these need an extra hand
                             case other:
                                 current = other
                                 result = ConditionParameter(var_name, collect_options())
@@ -431,7 +442,7 @@ def parse(
         # but doing it at the outermost level is more fail-fast and reduces the risk of the rest of the code being accidentally incomplete
         match current:
             case (DelimiterKind.BRACE_CLOSE, _, _):
-                current = next(tokens) # skip past the } we confirmed to exist above
+                advance() # skip past the } we confirmed to exist above
             case bad:
                 raise UnexpectedTokenError(current, "a '}' to end the parameter")
         return result
@@ -440,9 +451,9 @@ def parse(
         if current is not None:
             raise UnexpectedTokenError(current, "end of message")
         return result
-    except MessageParseError as exec:
+    except MessageSyntaxError as exec:
         position = exec.position or len(message)
-        raise MessageParseError(
+        raise MessageSyntaxError(
 f"""Failed to parse message. A problem was found at position {position}:
 {message}
 {"-" * (max(0, position - 1))}^
