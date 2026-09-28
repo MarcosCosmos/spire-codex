@@ -37,7 +37,7 @@ class TextKind(IntEnum):
     ARGUMENT = auto(),
 class ConditionKind(StrEnum):
     CONDITION = "cond",
-class TokenizerState(IntEnum):
+class LexerState(IntEnum):
     TEMPLATE = 0,
     PARAMETER = auto(),
     SUBTEMPLATE = auto(),
@@ -59,7 +59,7 @@ class MessageTokenizationError(MessageParseError):
     """
         A None position implies end of message. Used by a wrapper to visualise where the error is in the message
     """
-    def __init__(self, state: TokenizerState, position: int | None = None):
+    def __init__(self, state: LexerState, position: int | None = None):
         super.__init__(f"Could not find a delimiter that satifies the state/rule: {state.name}.")
         self.position = position
 class UnexpectedTokenError(MessageParseError):
@@ -147,21 +147,21 @@ def parse_cond_expression(expression: str) -> MessageCondition:
 
 WORD_REGEX = re.compile(r"\w+")
 
-def tokenize(message: str) -> Generator[Token, None, None]:
+def lex(message: str) -> Generator[Token, None, None]:
     """
     Generates a stream of tokens from the original message.
-    This tokenizer is kind of halfway between a pure tokenizer and a parser in that it needs a well informed state machine to inform appropriate token delimiters
-    But this tokenizer is still more permissive than it needs to be, partly to keep it simple but mostly because it makes it relatively easier to create relatively better error messages
+    This lexer is kind of halfway between a pure lexer and a parser in that it needs a well informed state machine to inform appropriate token delimiters
+    But this lexer is still more permissive than it needs to be, partly to keep it simple but mostly because it makes it relatively easier to create relatively better error messages
     todo: not sure off the top of my head if the game uses \{ or {{ escapes, but that can easily be fixed later.
     """
-    states: list[TokenizerState] = []
+    states: list[LexerState] = []
     length = len(message)
     position = 0
     while position < length:
-        state = states.pop() if len(states) > 0 else TokenizerState.TEMPLATE
+        state = states.pop() if len(states) > 0 else LexerState.TEMPLATE
         try:
             match state:
-                case TokenizerState.TEMPLATE:
+                case LexerState.TEMPLATE:
                     delimiter_pos = message.find(r"(?<!\\)\{")
                     if delimiter_pos == -1:
                         yield (TextKind.GENERIC, message[position:])
@@ -171,8 +171,8 @@ def tokenize(message: str) -> Generator[Token, None, None]:
                             yield (TextKind.GENERIC, message[position:delimiter_pos], position)
                         yield (DelimiterKind.BRACE_OPEN,None,delimiter_pos)
                         position = delimiter_pos + 1
-                        states.append(TokenizerState.PARAMETER)
-                case TokenizerState.PARAMETER:
+                        states.append(LexerState.PARAMETER)
+                case LexerState.PARAMETER:
                     # now looking for a parameter/var name
                     delimiter_pos = message.index(r"(?<!\\)[:}]")
                     delimiter = message[delimiter_pos]
@@ -183,13 +183,13 @@ def tokenize(message: str) -> Generator[Token, None, None]:
                             yield (DelimiterKind.BRACE_CLOSE, None, delimiter_pos)
                         case ":":
                             yield (DelimiterKind.COLON, None, delimiter_pos)
-                            state.append(TokenizerState.FUNCTION_OR_SUBTEMPLATE)
+                            state.append(LexerState.FUNCTION_OR_SUBTEMPLATE)
                     position = delimiter_pos + 1
-                case TokenizerState.FUNCTION_OR_SUBTEMPLATE:
+                case LexerState.FUNCTION_OR_SUBTEMPLATE:
                     # a potential function name will be exactly a word
                     function_match = WORD_REGEX.match(message, position)
                     if function_match is None:
-                        states.append(TokenizerState.SUBTEMPLATE)
+                        states.append(LexerState.SUBTEMPLATE)
                     else:
                         delimiter_pos = position + function_match.span()
                         delimiter = message[delimiter_pos]
@@ -201,17 +201,17 @@ def tokenize(message: str) -> Generator[Token, None, None]:
                                 match delimiter:
                                     case "(":
                                         yield (DelimiterKind.PAREN_OPEN, None, delimiter_pos)
-                                        states.append(TokenizerState.ARGUMENTS)
+                                        states.append(LexerState.ARGUMENTS)
                                     case ":":
                                         yield (DelimiterKind.COLON, None, delimiter_pos)
                                         # note: this is the only known special case where knowing the function name seems to affect parsing
-                                        states.append(TokenizerState.CONDITION_OR_SUBTEMPLATE if function_name == "cond" else TokenizerState.SUBTEMPLATE)
+                                        states.append(LexerState.CONDITION_OR_SUBTEMPLATE if function_name == "cond" else LexerState.SUBTEMPLATE)
                             case "}":
                                 # note: this outcome is redundant at best if not illegal, but balancing the brace here will lead to more precise error locations anyway
                                 yield (DelimiterKind.PAREN_CLOSE, None, delimiter_pos)
                             case _:
-                                states.append(TokenizerState.SUBTEMPLATE)
-                case TokenizerState.ARGUMENTS:
+                                states.append(LexerState.SUBTEMPLATE)
+                case LexerState.ARGUMENTS:
                     delimiter_pos = message.index(r"(?<!\\)[|)}]")
                     delimiter = message[delimiter_pos]
                     if delimiter_pos > position:
@@ -220,14 +220,14 @@ def tokenize(message: str) -> Generator[Token, None, None]:
                     match delimiter:
                         case "|":
                             yield (DelimiterKind.BAR, None, delimiter_pos)
-                            states.append(TokenizerState.ARGUMENTS)
+                            states.append(LexerState.ARGUMENTS)
                         case ")":
                             yield (DelimiterKind.PAREN_CLOSE, None, delimiter_pos)
-                            states.append(TokenizerState.SUBTEMPLATE)
+                            states.append(LexerState.SUBTEMPLATE)
                         case "}":
-                            # note: this outcome is definitely illegal, but we get more precise token information by gracefully handling it in the tokenizer, and it would facilitate a degree of error recovery if ever we wanted it.
+                            # note: this outcome is definitely illegal, but we get more precise token information by gracefully handling it in the lexer, and it would facilitate a degree of error recovery if ever we wanted it.
                             yield (DelimiterKind.PAREN_CLOSE, None, delimiter_pos)
-                case TokenizerState.CONDITION_OR_SUBTEMPLATE:
+                case LexerState.CONDITION_OR_SUBTEMPLATE:
                     # this is a kind of peek ahead: we're matching against ? or whatever subtemplate would match
                     delimiter_pos = message.index(r"(?<!\\)[\?|\{\}]")
                     delimiter = message[delimiter_pos]
@@ -237,10 +237,10 @@ def tokenize(message: str) -> Generator[Token, None, None]:
                         position = delimiter_pos + 1
                         # double stack state instead of duplicating the code for PARAM_OPTION
                         # by only double pushing when we get a match, we prevent an infinite loop
-                        states.append(TokenizerState.CONDITION_OR_SUBTEMPLATE)
+                        states.append(LexerState.CONDITION_OR_SUBTEMPLATE)
                     # regardless of whether or not we got a condition, the next step is to build a subtemplate
-                    states.append(TokenizerState.SUBTEMPLATE)
-                case TokenizerState.SUBTEMPLATE:
+                    states.append(LexerState.SUBTEMPLATE)
+                case LexerState.SUBTEMPLATE:
                     delimiter_pos = message.index(r"(?<!\\)[|\{\}]")
                     delimiter = message[delimiter_pos]
                     if delimiter_pos > position:
@@ -249,17 +249,17 @@ def tokenize(message: str) -> Generator[Token, None, None]:
                     match delimiter:
                         case "|":
                             yield (DelimiterKind.BAR, None, delimiter_pos)
-                            if states[-1] != TokenizerState.CONDITION_OR_SUBTEMPLATE:
-                                states.append(TokenizerState.SUBTEMPLATE)
+                            if states[-1] != LexerState.CONDITION_OR_SUBTEMPLATE:
+                                states.append(LexerState.SUBTEMPLATE)
                         case "{":
                             yield (DelimiterKind.BRACE_OPEN, None, delimiter_pos)
-                            states.append(TokenizerState.PARAMETER)
+                            states.append(LexerState.PARAMETER)
                         case "}":
                             yield (DelimiterKind.BRACE_CLOSE, None, delimiter_pos)
         except ValueError as exec: 
             raise MessageTokenizationError(state, position) from exec
 
-def parse_message(
+def parse(
     message: str
 ) -> ParsedMessage:
     """
@@ -274,12 +274,12 @@ def parse_message(
     CONDITION = CONDITION_OP, int
     CONDITION_OP = ">" | "<" | ">=" | "<=" | "==" | "!="
 
-    The tokenizer is smart enough to process most of this but is deliberately permissive about a few things (most notably premature closer of a malformed parameter).
+    The lexer is smart enough to process most of this but is deliberately permissive about a few things (most notably premature closer of a malformed parameter).
 
     Note: Although SmartFormat itself is more complex, the game only utilises a specific subset (as far as we know).
     This implementation can be made more perissive though, especially e.g. around whitespace in certain places.
     """
-    tokens = tokenize(message)
+    tokens = lex(message)
     current: Token | None = next(tokens)
 
     def consume(delimiter: DelimiterKind):
@@ -451,7 +451,7 @@ f"""Failed to parse message. A problem was found at position {position}:
 
 # todo: write a helper for converting to ICU
 
-def unparse_message(parsed: ParsedMessage) -> str:
+def unparse(parsed: ParsedMessage) -> str:
     """
     A helper that compiles a ParsedMessage back into the game's original syntax.
     Mainly useful for testing/validating the implementation of parse_message(str).
@@ -460,11 +460,11 @@ def unparse_message(parsed: ParsedMessage) -> str:
     SmartFormat is more permissive than that would allow but the game might not actually leverage that permissiveness.
     Even if that does occur in future the parser 
     """
-    return ''.join(unparse_message_recursively(parsed))
+    return ''.join(unparse_recursively(parsed))
 
 # Note: the rest of this file is deceptively simple for how long it is and is internal helpers for the above
 
-def unparse_message_recursively(parsed: ParsedMessage) -> Generator[str, None, None]:
+def unparse_recursively(parsed: ParsedMessage) -> Generator[str, None, None]:
     """
     The generator form is genuinely more efficient for recursion
     """
@@ -496,7 +496,7 @@ def unparse_message_recursively(parsed: ParsedMessage) -> Generator[str, None, N
                 yield from inject_bars(keys)
                 yield ")"
                 yield ":"
-                yield from inject_bars(map(unparse_message_recursively, options))
+                yield from inject_bars(map(unparse_recursively, options))
                 yield "}"
             case NumericConditionParameter(variable, options, fn_name=fn_name):
                 yield "{"
@@ -504,7 +504,7 @@ def unparse_message_recursively(parsed: ParsedMessage) -> Generator[str, None, N
                 yield ":"
                 yield fn_name
                 yield ":"
-                yield from inject_bars(unparse_numeric_condition_message(options))
+                yield from inject_bars(map(unparse_conditional_message_recursively(options)))
                 yield "}"
             case ConditionParameter(variable, options, keys, fn_name=fn_name):
                 yield "{"
@@ -512,7 +512,7 @@ def unparse_message_recursively(parsed: ParsedMessage) -> Generator[str, None, N
                 yield ":"
                 yield fn_name
                 yield ":"
-                inject_bars(map(unparse_message_recursively, options))
+                inject_bars(map(unparse_recursively, options))
                 yield "}"
             case FunctionParameter(variable, fn_name=fn_name):
                 yield "{"
@@ -524,9 +524,9 @@ def unparse_message_recursively(parsed: ParsedMessage) -> Generator[str, None, N
                 yield "{"
                 yield variable
                 yield "}"
-def unparse_numeric_condition_message(message: ConditionalMessage) -> Generator[str, None, None]:
+def unparse_conditional_message_recursively(message: ConditionalMessage) -> Generator[str, None, None]:
     if message.condition is not None:
         yield message.condition.operator.value
         yield message.condition.threshold
         yield "?"
-        yield unparse_message_recursively(message.content)
+        yield unparse_recursively(message.content)
