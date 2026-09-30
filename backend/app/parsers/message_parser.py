@@ -10,6 +10,8 @@ from enum import StrEnum, IntEnum, auto
 import re
 from collections.abc import Generator, Callable, Iterable, Iterator
 
+from app.parsers.description_resolver import _lookup
+
 class ComparisonOperator(StrEnum):
     GREATER_THAN = ">",
     LESS_THAN = "<",
@@ -470,6 +472,148 @@ f"""Failed to parse message. A problem was found at position {position}:
 {"-" * (max(0, position - 1))}^
 """
         ) from exec
+
+
+def resolve_description(
+    raw: str, vars_dict: dict[str, int | str], is_upgraded: bool = False
+) -> str:
+    """Companion to app.parsers.description_resolver.resolve_description (e.g. for testing)"""
+    resolve_recursively(parse(raw), vars_dict, is_upgraded)
+
+
+    def resolve_recursively(
+        message: ParsedMessage
+    ) -> Generator[str, None, None]:
+        """Companion to app.parsers.description_resolver.resolve_description (e.g. for testing). Will be able to modify to yield icu after."""
+
+        for part in message:
+            match part:
+                case RepeatPlaceholder(variable, n, fn_name=fn_name):
+                    if fn_name.endswith("Icons"):
+                        fn_name = fn_name[:fn_name.index("Icons")]
+                    yield "["
+                    yield fn_name
+                    yield ":"
+                    if n:
+                        yield str(n)
+                    else:
+                        yield str(_lookup(variable, vars_dict))
+                    yield "]"
+                case ChoosePlaceholder(variable, options, keys, fn_name=fn_name):
+                    match fn_name:
+                        case "choose":
+                            yield from resolve_recursively(options[keys.index(_lookup(variable, vars_dict))])
+                        case _:
+                            raise "unrecognised fn"
+                case ConditionalPlaceholder(variable, options, fn_name=fn_name):
+                    if variable == "IfUpgraded":
+                        value = is_upgraded
+                    else:
+                        value = _lookup(variable, vars_dict)
+                    match fn_name:
+                        case None | "show" if len(options) <= 2:
+                            if value:
+                                yield from resolve_recursively(options[0])
+                            elif len(value) == 2:
+                                yield from resolve_recursively(options[1])
+                        case "plural":
+                            if value == 1:
+                                yield from resolve_recursively(options[0])
+                            else:
+                                yield from resolve_recursively(options[1])
+                        case "list":
+                            if len(value) > 0:
+                                yield from resolve_recursively(options[0])
+                                i = 0
+                                while i < len(value):
+                                    yield from resolve_recursively(options[1])
+                                    yield from resolve_recursively(options[0])
+                            if len(value) == 3:
+                                yield from resolve_recursively(options[2])
+                        case _:
+                            raise "idk how to handle this conditional conditional"
+                case NumericConditionPlaceholder(variable, options, fn_name=fn_name):
+                    value = _lookup(variable, vars_dict)
+                    if not isinstance(value, int):
+                        raise "wrong type"
+                    for option in options:
+                        match option.condition:
+                            case None:
+                                hit = True
+                            case (op, threshold):
+                                match op:
+                                    case ComparisonOperator.GREATER_THAN if value > threshold:
+                                        hit = True
+                                    case ComparisonOperator.GREATER_THAN_OR_EQUAL if value >= threshold:
+                                        hit = True
+                                    case ComparisonOperator.LESS_THAN if value < threshold:
+                                        hit = True
+                                    case ComparisonOperator.LESS_THAN_OR_EQUAL if value <= threshold:
+                                        hit = True
+                                    case ComparisonOperator.EQUAL if value == threshold:
+                                        hit = True
+                                    case ComparisonOperator.NOT_EQUAL if value != threshold:
+                                        hit = True
+                                    case _:
+                                        hit = False
+                        if hit:
+                            yield from option
+                            break
+                case FunctionPlaceholder(variable, fn_name=fn_name):
+                    value = _lookup(variable, vars_dict)
+                    if value is None:
+                        raise "couldn't find the val"
+                    match fn_name:
+                        case "percentMore" if isinstance(val, (int, float)):
+                            yield str(int((val - 1) * 100))
+                        case "percentLess" if isinstance(val, (int, float)):
+                            yield str(int((1 - val) * 100))
+                        case "diff":
+                            yield value
+                        case "inverseDiff":
+                            yield value
+                        case _:
+                            raise "unrecognised fn"
+                case Placeholder(variable) if variable == "singleStarIcon":
+                    yield from resolve_recursively(RepeatPlaceholder(variable, 1, fn_name="starIcons"))
+                case Placeholder(variable):
+                    value = _lookup(variable, vars_dict)
+                    if value is None:
+                        raise "couldn't find the val"
+                    else:
+                        yield value
+                case x if isinstance(x, str):
+                    yield x
+                case _:
+                    raise "unrecognised message part"
+
+    # # Handle remaining {Var} without formatter
+    # def _make_readable(name: str) -> str:
+    #     # Strip trailing digits (e.g. Enchantment1 -> Enchantment) but keep
+    #     # CamelCase intact so [OwnerName] stays a single token for the
+    #     # frontend tokenizer (spaces would break it into a false BBCode tag).
+    #     readable = re.sub(r"\d+$", "", name).strip()
+    #     return readable
+
+    # def resolve_bare(m):
+    #     value = _lookup(m.group(1), vars_dict)
+    #     if val is not None:
+    #         return str(val)
+    #     return f"[{_make_readable(m.group(1))}]"
+
+    # text = re.sub(r"\{(\w+)\}", resolve_bare, text)
+
+    # # Handle {Var:cond:...} and other complex formatters -> just show value
+    # def resolve_remaining(m):
+    #     var_name = m.group(1).split(":")[0]
+    #     value = _lookup(var_name, vars_dict)
+    #     if val is not None:
+    #         return str(val)
+    #     return f"[{_make_readable(var_name)}]"
+
+    # text = re.sub(r"\{([^}]+)\}", resolve_remaining, text)
+
+    return text
 
 # todo: write a helper for converting to ICU
 
