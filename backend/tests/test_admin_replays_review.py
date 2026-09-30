@@ -10,6 +10,9 @@ from bson import ObjectId
 from app.services import replay_admin, replays_db
 from tests import test_admin_replays as base
 from tests.test_admin_replays import NOW, Cursor, Fake, _hashes, _replay, client
+from app.services.timeutil import pacific_date
+
+NOW_DAY = pacific_date(NOW).isoformat()
 
 env = base.env
 
@@ -108,7 +111,7 @@ def test_delete_and_restore_update_run_hash_keyed_run(env):
 
 
 def test_date_only_range_includes_the_named_calendar_date(env):
-    assert _hashes(since="2026-09-25", until="2026-09-25") == ["h1"]
+    assert _hashes(since=NOW_DAY, until=NOW_DAY) == ["h1"]
 
 
 class _UnstableTieCursor(Cursor):
