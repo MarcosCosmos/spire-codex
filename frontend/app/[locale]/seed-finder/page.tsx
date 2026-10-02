@@ -46,13 +46,13 @@ export default async function SeedFinderPage({ params }: Props) {
             badge={t("Preview")}
             lines={[
               t(
-                "Search seeds the community has actually played into the run start you want: Neow offers, card rewards by floor, relics, events, ancients, bosses, shop stock and the final deck. Every hit is a real run with a real outcome.",
+                "Search recorded runs and predicted seeds for Neow offers, card rewards, relics, events, ancients, bosses and shop stock. Predictions assume a fully unlocked profile and no modifiers.",
               ),
               t(
                 "Seeds are locked to specific achievement unlocks. For the best experience, only use this tool when you're at max achievements and Ascension 10.",
               ),
               t(
-                "Main and beta hash seeds differently, so pick the version you play. Every result is a lobby that showed everything you asked for, most wins first.",
+                "Main and beta hash seeds differently, so pick the version you play. Recorded matches appear before predictions. Predicted rewards and shops assume the displayed reward order.",
               ),
             ]}
           />
