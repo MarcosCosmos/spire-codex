@@ -14,6 +14,8 @@ from ..services.data_service import (
 router = APIRouter(prefix="/api/localizations", tags=["Languages"])
 limiter = shared_limiter
 CACHE = "public, max-age=3600"
+MAX_TABLES = 50
+NO_STORE = "no-store"
 
 
 @router.get("", response_model=dict)
@@ -28,11 +30,15 @@ def get_localizations(
 ):
     """Every localization table for the language, or only the ones named in
     `tables` (unknown names are 404)."""
-    response.headers["Cache-Control"] = CACHE
     pack = load_localization_pack(lang)
+    response.headers["Cache-Control"] = CACHE if pack else NO_STORE
     if not tables:
         return pack
-    wanted = [t.strip() for t in tables.split(",") if t.strip()]
+    wanted = list(dict.fromkeys(t.strip() for t in tables.split(",") if t.strip()))
+    if len(wanted) > MAX_TABLES:
+        raise HTTPException(
+            status_code=400, detail=f"At most {MAX_TABLES} tables per request"
+        )
     missing = [t for t in wanted if t not in pack]
     if missing:
         raise HTTPException(
@@ -47,8 +53,9 @@ def get_localizations(
 def get_localization_tables(
     request: Request, response: Response, lang: str = Depends(get_lang)
 ):
-    response.headers["Cache-Control"] = CACHE
-    return localization_table_names(lang)
+    names = localization_table_names(lang)
+    response.headers["Cache-Control"] = CACHE if names else NO_STORE
+    return names
 
 
 @router.get("/{table}", response_model=dict)

@@ -16,6 +16,7 @@ from app.parsers.message_parser import (
     Placeholder,
     TextKind,
     convert_table,
+    escape_icu_text,
     lex,
     message_to_icu,
     parse,
@@ -177,7 +178,7 @@ def test_to_icu_report_counts_constructs():
     assert report.constructs["show"] == 1
     assert report.constructs["energyIcons"] == 1
     assert report.constructs["variable"] == 1
-    assert report.derived_conditions == [("C", "<", 2)]
+    assert report.derived_conditions == [("C", "<", 2, "C_cond")]
 
 
 def test_convert_table_recurses_and_reports():
@@ -195,7 +196,7 @@ def test_convert_table_recurses_and_reports():
     assert report["unconvertible"] == 0
     assert report["constructs"]["plural"] == 1
     assert report["constructs"]["cond"] == 1
-    assert report["derived_conditions"] == [("Z", "<", 1)]
+    assert report["derived_conditions"] == [("Z", "<", 1, "Z_cond")]
     assert report["renamed_variables"] == {"Bad.Name": "Bad_Name"}
 
 
@@ -533,3 +534,211 @@ def test_every_language_round_trips_and_converts():
     for language, failed_keys in syntax_failures.items():
         assert failed_keys == KNOWN_TRANSLATOR_TYPOS.get(language, set()), language
         assert unconvertible[language] == len(failed_keys), language
+
+
+def test_derived_selectors_are_unique_and_numbered_in_source_order():
+    raw = (
+        "Gain {X:cond:<1?a|b}. Deal {X:cond:<=5?c|d}. {X:While {} is up|down} "
+        "{X:cond:==-2?e|<=3?f|g} {Y:cond:<0?h|i}"
+    )
+    report = message_parser.ConversionReport()
+    assert to_icu(parse(raw), report) == (
+        "Gain {X_cond, select, true {a} other {b}}. "
+        "Deal {X_cond2, select, true {c} other {d}}. "
+        "{X_cond3, select, true {While {X} is up} other {down}} "
+        "{X_cond4, select, true {e} other {{X_cond5, select, true {f} other {g}}}} "
+        "{Y_cond, select, true {h} other {i}}"
+    )
+    assert report.derived_conditions == [
+        ("X", "<", 1, "X_cond"),
+        ("X", "<=", 5, "X_cond2"),
+        ("X", "truthy", None, "X_cond3"),
+        ("X", "==", -2, "X_cond4"),
+        ("X", "<=", 3, "X_cond5"),
+        ("Y", "<", 0, "Y_cond"),
+    ]
+    assert message_to_icu("{X:cond:<1?a|b}") == "{X_cond, select, true {a} other {b}}"
+
+
+def _engine_index(rule: str, value: int, count: int) -> int:
+    if rule == "singular":
+        return 0
+    if rule == "dual":
+        if count == 2:
+            return 0 if value == 1 else 1
+        if count == 3:
+            return 0 if value == 0 else (1 if value == 1 else 2)
+        if count == 4:
+            return 0 if value < 0 else (1 if value == 0 else (2 if value == 1 else 3))
+        return -1
+    if rule == "french":
+        if count == 2:
+            return 0 if value < 2 else 1
+        if count == 3:
+            if value < 2:
+                return 1 if value > 0 else (0 if value == 0 else -1)
+            return 2 if value > 2 else -1
+        if count == 4:
+            if value < 2:
+                return (1 if value == 0 else 2) if value >= 0 else 0
+            return 3 if value > 2 else -1
+        return -1
+    if rule == "russian":
+        if value % 10 == 1 and value % 100 != 11:
+            return 0
+        return 1 if 2 <= value % 10 <= 4 and not 12 <= value % 100 <= 14 else 2
+    if rule == "polish":
+        if value == 1:
+            return 0
+        if 2 <= value % 10 <= 4 and not 12 <= value % 100 <= 14:
+            return 1
+        if (
+            not 0 <= value % 10 <= 1
+            and not 5 <= value % 10 <= 9
+            and not 12 <= value % 100 <= 14
+        ):
+            return 3
+        return 2
+    raise ValueError(rule)
+
+
+def _cldr_category(language: str, value: int) -> str:
+    if language in ("en", "de", "es", "it", "tr"):
+        return "one" if value == 1 else "other"
+    if language in ("fr", "pt"):
+        return "one" if value in (0, 1) else "other"
+    if language == "pl":
+        if value == 1:
+            return "one"
+        if 2 <= value % 10 <= 4 and not 12 <= value % 100 <= 14:
+            return "few"
+        return "many"
+    if language == "ru":
+        if value % 10 == 1 and value % 100 != 11:
+            return "one"
+        if 2 <= value % 10 <= 4 and not 12 <= value % 100 <= 14:
+            return "few"
+        return "many"
+    raise ValueError(language)
+
+
+def _icu_pick(cases: list[tuple[str, str]], value: int, language: str) -> str:
+    keyed = dict(cases)
+    if f"={value}" in keyed:
+        return keyed[f"={value}"]
+    return keyed.get(_cldr_category(language, value), keyed["other"])
+
+
+@pytest.mark.parametrize(
+    "icu_rule, engine_rule, language, count",
+    [
+        ("dual", "dual", "en", 2),
+        ("dual", "dual", "en", 3),
+        ("dual", "dual", "en", 4),
+        ("dual_exact", "dual", "pt", 2),
+        ("dual_exact", "dual", "pt", 3),
+        ("dual_exact", "dual", "pt", 4),
+        ("french", "french", "fr", 2),
+        ("french", "french", "fr", 3),
+        ("french", "french", "fr", 4),
+        ("slavic", "polish", "pl", 3),
+        ("slavic", "polish", "pl", 4),
+        ("slavic", "russian", "ru", 3),
+        ("slavic", "russian", "ru", 4),
+    ],
+)
+def test_plural_cases_match_the_engine_for_every_integer(
+    icu_rule, engine_rule, language, count
+):
+    bodies = [f"b{i}" for i in range(count)]
+    cases = message_parser._plural_cases(icu_rule, bodies)
+    assert cases[-1][0] == "other"
+    checked = 0
+    for value in [*range(0, 40), *range(100, 125), 1001, 1012, 1021]:
+        index = _engine_index(engine_rule, value, count)
+        if index < 0 or index >= count:
+            continue
+        assert _icu_pick(cases, value, language) == bodies[index], value
+        checked += 1
+    assert checked > 30
+
+
+def test_dual_four_option_index_zero_is_the_negative_branch():
+    assert _engine_index("dual", -1, 4) == 0
+    assert _engine_index("dual", 0, 4) == 1
+    assert _engine_index("dual", 1, 4) == 2
+    assert _engine_index("dual", 2, 4) == 3
+    cases = message_parser._plural_cases("dual", ["neg", "zero", "one", "many"])
+    assert cases == [("=0", "zero"), ("=1", "one"), ("other", "many")]
+
+
+def test_french_engine_has_no_index_for_two_with_three_or_four_options():
+    assert _engine_index("french", 2, 3) == -1
+    assert _engine_index("french", 2, 4) == -1
+    assert message_to_icu("{X:plural:z|a|b}", language="fra") == (
+        "{X, plural, =0 {z} =1 {a} other {b}}"
+    )
+
+
+def test_singular_rule_always_renders_the_first_option():
+    for value in range(0, 10):
+        assert _engine_index("singular", value, 2) == 0
+    assert message_to_icu("{X:plural:a|{} b}", language="kor") == "a"
+
+
+def test_pt_br_uses_exact_one_because_cldr_one_covers_zero():
+    assert _cldr_category("pt", 0) == "one"
+    assert _engine_index("dual", 0, 2) == 1
+    cases = message_parser._plural_cases("dual_exact", ["a", "b"])
+    assert _icu_pick(cases, 0, "pt") == "b"
+
+
+def test_pound_is_only_the_count_directly_inside_a_plural():
+    assert message_to_icu("{A:plural:x|{B:show:#1|y}}") == (
+        "{A, plural, one {x} other {{B, select, true {#1} other {y}}}}"
+    )
+    assert message_to_icu("{A:plural:#|{B:show:{}|y}}") == (
+        "{A, plural, one {'#'} other {{B_cond, select, true {{B}} other {y}}}}"
+    )
+    assert message_to_icu("{A:plural:x|{B:plural:#|{} y}}") == (
+        "{A, plural, one {x} other {{B, plural, one {'#'} other {# y}}}}"
+    )
+    assert validate_icu("{a, plural, other {{b, select, x {# z} other {z}}}}") == []
+
+
+def test_negative_thresholds_go_through_derived_selects():
+    assert parse_cond_expression(">=-1") == message_parser.MessageCondition(
+        message_parser.ComparisonOperator.GREATER_THAN_OR_EQUAL, -1
+    )
+    raw = "{X:cond:>=-1?big|small}"
+    assert unparse(parse(raw)) == raw
+    report = message_parser.ConversionReport()
+    assert to_icu(parse(raw), report) == "{X_cond, select, true {big} other {small}}"
+    assert report.derived_conditions == [("X", ">=", -1, "X_cond")]
+    report = message_parser.ConversionReport()
+    assert to_icu(parse("{X:cond:>-1?a|b}"), report) == (
+        "{X_cond, select, true {a} other {b}}"
+    )
+    assert report.derived_conditions == [("X", ">", -1, "X_cond")]
+    assert message_to_icu("{X:cond:>1?a|b}") == "{X, plural, =0 {b} =1 {b} other {a}}"
+
+
+def test_deep_nesting_is_unconvertible_not_a_crash():
+    raw = "{X:" * 1500
+    report = message_parser.ConversionReport()
+    assert message_to_icu(raw, report, "k") == escape_icu_text(raw)
+    assert report.unconvertible == 1
+    converted, table_report = convert_table({"deep": raw, "ok": "{Y}"})
+    assert converted["ok"] == "{Y}"
+    assert table_report["unconvertible"] == 1
+
+
+def test_invalid_icu_output_falls_back_and_is_reported(monkeypatch):
+    monkeypatch.setattr(message_parser, "to_icu", lambda *args, **kwargs: "{broken")
+    converted, report = convert_table({"a": "{X}", "b": {"c": "{Y}"}})
+    assert converted == {"a": "'{'X'}'", "b": {"c": "'{'Y'}'"}}
+    assert report["invalid_icu"] == 2
+    assert report["invalid_icu_examples"] == ["a", "b.c"]
+    assert report["unconvertible"] == 2
+    assert report["unconvertible_examples"] == ["a", "b.c"]
+    assert validate_icu(converted["a"]) == []

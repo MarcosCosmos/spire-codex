@@ -38,19 +38,22 @@ ICU export conventions:
   renamed_keys; the caller must sanitise the value it passes with the same rule.
 - Numeric conditions become plurals with exact matches when the whole chain can be decided
   from the values 0..N (operators >, >=, ==, != with thresholds up to EXACT_MATCH_LIMIT).
-  Chains that cannot (any < or <=, or large thresholds) select on a derived boolean named
-  Var_cond (then Var_cond2, Var_cond3 for later conditions in the same chain):
-  {Var_cond, select, true {a} other {b}}. The caller computes Var_cond from Var using the
-  (var, op, threshold) tuples the report lists under derived_conditions.
+  Chains that cannot (any < or <=, a negative threshold, or a large one) select on derived
+  booleans: {Var_cond, select, true {a} other {b}}. Derived names are unique within a
+  message and numbered in source order across every chain and truthiness select on that
+  variable: Var_cond, Var_cond2, Var_cond3. The caller computes each one from Var using the
+  (var, op, threshold, derived_name) rows the report lists under derived_conditions.
 - Bare {X:a|b}, {X:show:a|b} and conditions without a comparison select on the variable:
   {X, select, true {a} other {b}}. When the body also prints the value ({} inside), the
-  selector is the derived X_cond instead, reported as (var, "truthy", None), so the value
-  can still be interpolated.
+  selector is a derived X_cond instead, reported as (var, "truthy", None, derived_name), so
+  the value can still be interpolated.
 - {Key:choose(A|B):x|y|z} -> {Key, select, A {x} B {y} other {z}}.
 - {V:energyIcons(n)} -> "[E]" repeated n times, starIcons -> "[S]". Without a count the
   caller supplies the rendered icons as {V}; the report counts these as energyIcons_variable.
 - Variable names outside [A-Za-z_][A-Za-z0-9_]* are sanitised and listed in
   renamed_variables.
+- Every exported string is checked with icu_check.validate_icu; one that fails is counted
+  under invalid_icu and unconvertible and falls back to the quoted literal.
 """
 
 import re
@@ -58,6 +61,11 @@ from collections import Counter
 from collections.abc import Generator
 from dataclasses import MISSING, dataclass, field
 from enum import IntEnum, StrEnum, auto
+
+try:
+    from app.parsers.icu_check import validate_icu
+except ImportError:
+    from icu_check import validate_icu
 
 
 class ComparisonOperator(StrEnum):
@@ -233,8 +241,8 @@ SIMPLE_FUNCTIONS = frozenset(
 REPEAT_FUNCTIONS = frozenset({"energyIcons", "starIcons"})
 OPTION_FUNCTIONS = frozenset({"show", "cond", "plural", "list"})
 
-CONDITION_REGEX = re.compile(r"\s*(>=|<=|!=|>|<|==)\s*(\d+)\s*")
-CONDITION_PREFIX_REGEX = re.compile(r"\s*(>=|<=|!=|>|<|==)\s*(\d+)\s*\?")
+CONDITION_REGEX = re.compile(r"\s*(>=|<=|!=|>|<|==)\s*(-?\d+)\s*")
+CONDITION_PREFIX_REGEX = re.compile(r"\s*(>=|<=|!=|>|<|==)\s*(-?\d+)\s*\?")
 IDENTIFIER_REGEX = re.compile(r"\w+")
 WORD_CHAR_REGEX = re.compile(r"\w")
 
@@ -768,7 +776,9 @@ class ConversionReport:
         self.constructs: Counter[str] = Counter()
         self.unconvertible = 0
         self.unconvertible_examples: list[str] = []
-        self.derived_conditions: list[tuple[str, str, int | None]] = []
+        self.invalid_icu = 0
+        self.invalid_icu_examples: list[str] = []
+        self.derived_conditions: list[tuple[str, str, int | None, str]] = []
         self.renamed_variables: dict[str, str] = {}
         self.renamed_keys: dict[str, str] = {}
 
@@ -778,6 +788,10 @@ class ConversionReport:
         for example in other.unconvertible_examples:
             if len(self.unconvertible_examples) < MAX_EXAMPLES:
                 self.unconvertible_examples.append(example)
+        self.invalid_icu += other.invalid_icu
+        for example in other.invalid_icu_examples:
+            if len(self.invalid_icu_examples) < MAX_EXAMPLES:
+                self.invalid_icu_examples.append(example)
         self.derived_conditions.extend(other.derived_conditions)
         self.renamed_variables.update(other.renamed_variables)
         self.renamed_keys.update(other.renamed_keys)
@@ -787,6 +801,8 @@ class ConversionReport:
             "constructs": dict(sorted(self.constructs.items())),
             "unconvertible": self.unconvertible,
             "unconvertible_examples": list(self.unconvertible_examples),
+            "invalid_icu": self.invalid_icu,
+            "invalid_icu_examples": list(self.invalid_icu_examples),
             "derived_conditions": list(self.derived_conditions),
             "renamed_variables": dict(self.renamed_variables),
             "renamed_keys": dict(self.renamed_keys),
@@ -878,6 +894,16 @@ class _IcuWriter:
     def __init__(self, report: ConversionReport, language: str | None = None):
         self.report = report
         self.rule = plural_rule(language) or DEFAULT_PLURAL_RULE
+        self.derived_counts: Counter[str] = Counter()
+
+    def derived(self, name: str, variable: str | None, op: str, threshold) -> str:
+        self.derived_counts[name] += 1
+        count = self.derived_counts[name]
+        derived = name + "_cond" + (str(count) if count > 1 else "")
+        self.report.derived_conditions.append(
+            (variable or name, op, threshold, derived)
+        )
+        return derived
 
     def note(self, construct: str, count: int = 1):
         self.report.constructs[construct] += count
@@ -1021,8 +1047,7 @@ class _IcuWriter:
         bodies = [self.message(option, inner) for option in options]
         selector = name
         if any(_references_current_value(option) for option in options):
-            selector = name + "_cond"
-            self.report.derived_conditions.append((variable or name, "truthy", None))
+            selector = self.derived(name, variable, "truthy", None)
         other = bodies[1] if len(bodies) == 2 else ""
         return self.select(selector, [("true", bodies[0]), ("other", other)])
 
@@ -1037,7 +1062,7 @@ class _IcuWriter:
             options = options + [ConditionalMessage(None, [])]
         plural_safe = all(
             condition.operator in PLURAL_SAFE_OPERATORS
-            and condition.threshold <= EXACT_MATCH_LIMIT
+            and 0 <= condition.threshold <= EXACT_MATCH_LIMIT
             for condition in conditions
         )
         if plural_safe:
@@ -1070,22 +1095,22 @@ class _IcuWriter:
     def derived_select(self, name, variable, options, context) -> str:
         inner = context + [(name, False)]
         bodies = [self.message(option.content, inner) for option in options]
+        selectors = [
+            self.derived(
+                name,
+                variable,
+                option.condition.operator.value,
+                option.condition.threshold,
+            )
+            for option in options
+            if option.condition is not None
+        ]
         result = ""
-        index = 0
         for option, body in zip(reversed(options), reversed(bodies)):
             if option.condition is None:
                 result = body
                 continue
-            index += 1
-            derived = name + "_cond" + (str(index) if index > 1 else "")
-            self.report.derived_conditions.append(
-                (
-                    variable or name,
-                    option.condition.operator.value,
-                    option.condition.threshold,
-                )
-            )
-            result = self.select(derived, [("true", body), ("other", result)])
+            result = self.select(selectors.pop(), [("true", body), ("other", result)])
         return result
 
 
@@ -1116,15 +1141,25 @@ def message_to_icu(
     attempt = ConversionReport()
     try:
         result = to_icu(parse(raw), attempt, language)
-    except (MessageSyntaxError, IcuConversionError):
+    except (MessageSyntaxError, IcuConversionError, RecursionError):
+        return _fallback(raw, report, key)
+    if validate_icu(result):
         if report is not None:
-            report.unconvertible += 1
-            if key is not None and len(report.unconvertible_examples) < MAX_EXAMPLES:
-                report.unconvertible_examples.append(key)
-        return escape_icu_text(raw)
+            report.invalid_icu += 1
+            if key is not None and len(report.invalid_icu_examples) < MAX_EXAMPLES:
+                report.invalid_icu_examples.append(key)
+        return _fallback(raw, report, key)
     if report is not None:
         report.merge(attempt)
     return result
+
+
+def _fallback(raw: str, report: ConversionReport | None, key: str | None) -> str:
+    if report is not None:
+        report.unconvertible += 1
+        if key is not None and len(report.unconvertible_examples) < MAX_EXAMPLES:
+            report.unconvertible_examples.append(key)
+    return escape_icu_text(raw)
 
 
 def convert_table(table: dict, language: str | None = None) -> tuple[dict, dict]:

@@ -23,14 +23,17 @@ def extract_group_key(entry):
     return key_parts[0] if len(key_parts) > 0 else EMPTY_KEY_FILLER
 
 
-def apply_nesting(messages):
+def apply_nesting(messages, path=()):
     if len(messages) == 1:
         (key_parts, value) = messages[0]
         if len(key_parts) == 0:
             return value
+    if len(messages) > 1 and all(len(key_parts) == 0 for key_parts, _ in messages):
+        raise ValueError(f"localization key collision at {'.'.join(path) or '<root>'}")
     return {
         key: apply_nesting(
-            [(key_parts[1:], value) for (key_parts, value) in sub_messages]
+            [(key_parts[1:], value) for (key_parts, value) in sub_messages],
+            path + (key,),
         )
         for key, sub_messages in itertools.groupby(
             sorted(messages, key=extract_group_key), key=extract_group_key
@@ -45,7 +48,10 @@ def renest_messages(messages):
 
 def load_messages_file(path):
     with open(path, "r", encoding="utf8") as f:
-        return renest_messages(json.load(f))
+        raw = json.load(f)
+    if not isinstance(raw, dict):
+        raise ValueError(f"{path.name}: expected an object of messages")
+    return renest_messages(raw)
 
 
 def build_message_pack(loc_dir, lang: str = "eng") -> tuple[dict, dict]:
@@ -55,9 +61,12 @@ def build_message_pack(loc_dir, lang: str = "eng") -> tuple[dict, dict]:
         if not name.endswith(".json"):
             continue
         table = name[: -len(".json")]
-        converted, report = convert_table(
-            load_messages_file(loc_dir / name), language=lang
-        )
+        try:
+            messages = load_messages_file(loc_dir / name)
+        except ValueError as error:
+            print(f"Skipping {name}: {error}")
+            continue
+        converted, report = convert_table(messages, language=lang)
         pack[table] = converted
         reports[table] = report
     return pack, reports
@@ -74,9 +83,10 @@ def main(lang: str = "eng"):
         json.dump(pack, f, indent=1, ensure_ascii=False)
         f.write("\n")
     unconvertible = sum(r.get("unconvertible", 0) for r in reports.values())
+    invalid = sum(r.get("invalid_icu", 0) for r in reports.values())
     print(
         f"Generated {len(pack)} localization tables -> {output_file}"
-        f" ({unconvertible} strings left as literals)"
+        f" ({unconvertible} strings left as literals, {invalid} failed ICU validation)"
     )
     if unconvertible:
         for table, r in reports.items():

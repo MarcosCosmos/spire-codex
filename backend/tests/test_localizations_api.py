@@ -47,6 +47,12 @@ def test_single_table_and_subset(packs):
     r = client.get("/api/localizations?lang=eng&tables=cards")
     assert r.json() == {"cards": PACK["cards"]}
     assert client.get("/api/localizations/nope?lang=eng").status_code == 404
+    r = client.get("/api/localizations?lang=eng&tables=cards,cards,relics")
+    assert list(r.json()) == ["cards", "relics"]
+    too_many = ",".join(f"t{i}" for i in range(51))
+    assert (
+        client.get(f"/api/localizations?lang=eng&tables={too_many}").status_code == 400
+    )
     assert (
         client.get("/api/localizations?lang=eng&tables=cards,nope").status_code == 404
     )
@@ -62,5 +68,6 @@ def test_language_and_eng_fallback(packs):
 def test_missing_pack_is_empty_not_500(packs, monkeypatch):
     monkeypatch.setattr(data_service, "DATA_DIR", packs / "nowhere")
     data_service._load_json_versioned.cache_clear()
-    assert client.get("/api/localizations?lang=eng").json() == {}
+    r = client.get("/api/localizations?lang=eng")
+    assert r.json() == {} and r.headers["cache-control"] == "no-store"
     assert client.get("/api/localizations/cards?lang=eng").status_code == 404
