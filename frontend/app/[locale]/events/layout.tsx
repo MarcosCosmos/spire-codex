@@ -10,8 +10,11 @@ import { getApiEndpoint } from "@/lib/api/endpoint.server";
 export async function generateMetadata(): Promise<Metadata> {
   let count = "66";
   try {
-    const stats = await getApiEndpoint("stats");
-    count = String(stats?.events ?? 0);
+    const stats = await getApiEndpoint("stats", undefined, {
+      timeoutMs: 3000,
+      revalidate: 3600,
+    });
+    if (typeof stats?.events === "number") count = String(stats.events);
   } catch {
     // Fall back to the baseline count if the API is unreachable at build time.
   }

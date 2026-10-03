@@ -1,3 +1,4 @@
+"use client";
 import { CodexApiConfig } from "@/lib/api/config.common";
 import { createContext } from "react";
 

@@ -56,5 +56,3 @@ infrastructure/ansible/inventory.yml
 
 # on-box analytics lab output
 lake/
-
-worktrees/

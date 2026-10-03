@@ -11,6 +11,6 @@ export default function DefaultApiConfigProvider({
   children: ReactNode;
 }) {
   const pathname = usePathname();
-  const config = { beta: inBeta(pathname) ?? false };
+  const config = { beta: inBeta(pathname) };
   return <ApiConfigContext value={config}>{children}</ApiConfigContext>;
 }

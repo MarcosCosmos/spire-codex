@@ -2,7 +2,7 @@
 import { CodexApiConfig } from "./config.common";
 import { cachedFetch } from "@/lib/fetch-cache";
 import { useChannel } from "@/lib/api/prefix.client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { API, Endpoints, IdMappableEndpointKeyTypes } from "./endpoint.common";
 import { useGameLocale } from "@/lib/i18n";
 
@@ -17,8 +17,10 @@ export const useApiEndpointIdMapped = <K extends IdMappableEndpointKeyTypes>(
   enabled?: boolean,
 ): Record<string, Endpoints[K][number]> | undefined => {
   const payload = useApiEndpoint(endpoint, config, enabled);
-  return (
-    payload && Object.fromEntries(payload.map((entry) => [entry.id, entry]))
+  return useMemo(
+    () =>
+      payload && Object.fromEntries(payload.map((entry) => [entry.id, entry])),
+    [payload],
   );
 };
 
@@ -35,14 +37,13 @@ export const useApiEndpoint = <K extends keyof Endpoints>(
       return;
     }
     let cancelled = false;
-    (async () => {
-      const payload = await cachedFetch<Endpoints[K]>(
-        `${API}/api/${endpoint}?lang=${lang}&channel=${channel}`,
-      );
-      if (!cancelled) {
-        setResult(payload);
-      }
-    })();
+    cachedFetch<Endpoints[K]>(
+      `${API}/api/${endpoint}?lang=${lang}&channel=${channel}`,
+    )
+      .then((payload) => {
+        if (!cancelled) setResult(payload);
+      })
+      .catch(() => undefined);
     return () => {
       cancelled = true;
     };

@@ -1,5 +1,4 @@
 "use client";
-import { Run } from "@/lib/api/run/types";
 import {
   Act,
   Affliction,
@@ -9,6 +8,7 @@ import {
   Character,
   Enchantment,
   Encounter,
+  GameEvent,
   Intent,
   Keyword,
   Potion,
@@ -49,9 +49,9 @@ export const EnchantmentsContext = createContext<
 export const EncountersContext = createContext<
   Record<string, Encounter> | undefined
 >(undefined);
-export const EventsContext = createContext<Record<string, Event> | undefined>(
-  undefined,
-);
+export const EventsContext = createContext<
+  Record<string, GameEvent> | undefined
+>(undefined);
 export const IntentsContext = createContext<Record<string, Intent> | undefined>(
   undefined,
 );
@@ -79,6 +79,3 @@ export const ModifiersContext = createContext<
 export const MonstersContext = createContext<
   Record<string, Monster> | undefined
 >(undefined);
-
-const SharedRunContext = createContext<Run | undefined>(undefined);
-export default SharedRunContext;
