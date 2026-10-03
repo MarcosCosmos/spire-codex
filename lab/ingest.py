@@ -425,6 +425,65 @@ def main() -> None:
     except Exception as e:
         print(f"profile refresh failed: {e}", flush=True)
     _mark("profiles")
+    try:
+        import player_elo_board
+
+        t_elo = time.time()
+        elo = player_elo_board.build()
+        print(
+            f"player elo board built ({len(elo['players'])} shown, {elo['total_rated']} rated) "
+            f"in {time.time() - t_elo:.0f}s",
+            flush=True,
+        )
+    except Exception as e:
+        print(f"player elo board failed: {e}", flush=True)
+    _mark("player_elo")
+    try:
+        import seed_profiles
+
+        t_seeds = time.time()
+        seeds = seed_profiles.build()
+        print(
+            f"seed profiles built ({seeds['seeds']} seeds, {seeds['facts']} facts) in {time.time() - t_seeds:.0f}s",
+            flush=True,
+        )
+    except Exception as e:
+        print(f"seed profiles failed: {e}", flush=True)
+    _mark("seed_profiles")
+    try:
+        import seed_predict
+
+        predictions = seed_predict.build()
+        print(f"seed predictions: {predictions}", flush=True)
+    except Exception as e:
+        print(f"seed predictions failed: {e}", flush=True)
+    _mark("seed_predict")
+    try:
+        import export_dump
+
+        t_dump = time.time()
+        dump = export_dump.build()
+        print(
+            f"runs export built ({dump['runs']} runs, {dump['bytes']:,} bytes) in {time.time() - t_dump:.0f}s"
+            if dump
+            else "runs export still fresh, kept",
+            flush=True,
+        )
+    except Exception as e:
+        print(f"runs export failed: {e}", flush=True)
+    _mark("runs_export")
+    try:
+        import replay_guard
+
+        guard = replay_guard.run()
+        print(
+            f"replay guard: {guard['flagged']} flagged, {guard['hidden']} hidden, "
+            f"{guard['already_hidden']} already hidden",
+            flush=True,
+        )
+    except Exception as e:
+        print(f"replay guard failed: {e}", flush=True)
+    _mark("replay_guard")
     # A box that publishes to R2 must never purge the edge, even if CF creds
     # leak into its env: purging before the serving box pulls would let the
     # edge re-cache stale origin data for the whole pull gap.

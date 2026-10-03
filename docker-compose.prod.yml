@@ -78,6 +78,7 @@ services:
       # served from the CDN (nginx 301s /static/images/*).
       - ./backend/static:/app/static:ro
       - ./lake:/lake:ro
+      - /opt/spire-sim:/opt/spire-sim:ro
       - ./.secrets:/secrets:ro
     environment:
       <<: *shared-env
@@ -111,6 +112,15 @@ services:
       # on a small corpus. See services/community_stats.py.
       COMMUNITY_ANCIENT_MIN_OFFERS: ${COMMUNITY_ANCIENT_MIN_OFFERS:-}
       STEAM_WEB_API_KEY: ${STEAM_WEB_API_KEY:-}
+      # Thank You page: Ko-fi webhook token, GitHub contributor sources,
+      # logins kept off the public list, optional token for the rate limit.
+      KOFI_VERIFICATION_TOKEN: ${KOFI_VERIFICATION_TOKEN:-}
+      THANKS_GITHUB_REPOS: ${THANKS_GITHUB_REPOS:-}
+      THANKS_GITHUB_EXCLUDE: ${THANKS_GITHUB_EXCLUDE:-}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      OVERWOLF_STORE_ID: ${OVERWOLF_STORE_ID:-}
+      OVERWOLF_EXTENSION_ID: ${OVERWOLF_EXTENSION_ID:-}
+      SUPPORTER_EMAIL_SALT: ${SUPPORTER_EMAIL_SALT:-}
       GITHUB_APP_ID: ${GITHUB_APP_ID:-}
       GITHUB_APP_INSTALLATION_ID: ${GITHUB_APP_INSTALLATION_ID:-}
       GITHUB_APP_REPO: ${GITHUB_APP_REPO:-}
@@ -159,6 +169,13 @@ services:
     # Redis down, since the cache layer is fail-safe by design.
     depends_on:
       - redis
+    stop_grace_period: 15s
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/health',timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
     networks:
       - nginx_web-network
     logging:
@@ -200,6 +217,7 @@ services:
       - ./lab:/lab:ro
       - ./data:/data:ro
       - ./lake:/lake
+      - /opt/spire-sim:/opt/spire-sim:ro
     networks:
       - nginx_web-network
 
@@ -239,13 +257,29 @@ services:
     restart: unless-stopped
     # Next server sits ~400M; 1G leaves room for ISR render spikes.
     mem_limit: 1g
+    stop_grace_period: 15s
     depends_on:
       - backend
     volumes:
       - ./data:/data:ro
+      - next-static:/app/.next/static
+      - next-cache:/app/.next/cache/fetch-cache
     environment:
+      - HOSTNAME=0.0.0.0
       - API_INTERNAL_URL=http://spire-codex-backend:8000
       - NEXT_PUBLIC_SITE_URL=https://spire-codex.com
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/robots.txt').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
     networks:
       - nginx_web-network
     logging:
@@ -257,3 +291,9 @@ services:
 networks:
   nginx_web-network:
     external: true
+
+volumes:
+  next-static:
+    name: spire-codex_next-static
+    external: true
+  next-cache:

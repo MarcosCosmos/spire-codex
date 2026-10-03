@@ -5,6 +5,7 @@ import createNextIntlPlugin from "next-intl/plugin";
 const LANGS = "eng|deu|esp|fra|ita|jpn|kor|pol|ptb|rus|spa|tha|tur|zhs|zht";
 
 const nextConfig: NextConfig = {
+  deploymentId: process.env.NEXT_DEPLOYMENT_ID || undefined,
   output: "standalone",
   poweredByHeader: false,
   // Without this, dynamic-route prefetches are stale on arrival
@@ -21,6 +22,12 @@ const nextConfig: NextConfig = {
       {
         source: "/ads.txt",
         destination: "https://api.nitropay.com/v1/ads-2467.txt",
+        permanent: true,
+      },
+      { source: "/giveaway", destination: "/", permanent: true },
+      {
+        source: `/:lang(${LANGS})/giveaway`,
+        destination: "/:lang",
         permanent: true,
       },
     ];

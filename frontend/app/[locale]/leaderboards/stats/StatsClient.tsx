@@ -6,11 +6,12 @@ import { Link } from "@/i18n/navigation";
 import { useBetaPrefix } from "@/lib/use-lang-prefix";
 import { cachedFetch } from "@/lib/fetch-cache";
 import RichDescription from "@/app/components/RichDescription";
-import { fullCardUrl } from "@/lib/image-url";
+import CardImage from "@/app/components/CardImage";
 import { characterHex } from "@/lib/character-colors";
 import StatsRebuildingNotice from "@/app/components/StatsRebuildingNotice";
 import { CONTENT_BRACKETS, combineBracket } from "@/lib/content-brackets";
 import { Pills, PLAYER_OPTS } from "@/app/components/PlayerCountPills";
+import { pct2 } from "@/lib/pct";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 // Canonical character order, shared with the profile page so the two lists
@@ -233,7 +234,6 @@ function EntityRowPill({
   isBeta: boolean;
 }) {
   const [show, setShow] = useState(false);
-  const lang = useGameLocale();
   const t = useT();
   const href = isBeta
     ? `${bp}/beta/${kind}s/${id.toLowerCase()}`
@@ -268,14 +268,10 @@ function EntityRowPill({
       {show && kind === "card" && (
         // Cards pop the full rendered card image, not the text tooltip.
         <span className="pointer-events-none absolute z-[100] bottom-full left-0 mb-2 w-40">
-          <img
-            src={fullCardUrl(id.toLowerCase(), false, "stable", lang)}
-            alt=""
+          <CardImage
+            id={id}
+            art={imageSrc}
             className="w-40 h-auto drop-shadow-[0_8px_24px_rgba(0,0,0,0.7)]"
-            crossOrigin="anonymous"
-            onError={(e) => {
-              if (imageSrc) (e.target as HTMLImageElement).src = imageSrc;
-            }}
           />
         </span>
       )}
@@ -672,7 +668,7 @@ export default function StatsClient({
       total_abandoned: totalAbandoned,
       win_rate: character
         ? totalRuns > 0
-          ? Math.round((totalWins / totalRuns) * 1000) / 10
+          ? pct2((totalWins / totalRuns) * 100)
           : 0
         : bracketOverview.win_rate,
       filters: {
@@ -757,9 +753,7 @@ export default function StatsClient({
         const winRuns = deck?.win_runs || 0;
         const totalRunsWith = deck?.total_runs_with || 0;
         const winPct =
-          totalRunsWith > 0
-            ? Math.round((winRuns / totalRunsWith) * 1000) / 10
-            : 0;
+          totalRunsWith > 0 ? pct2((winRuns / totalRunsWith) * 100) : 0;
         const info = cardData[id];
         return {
           id,
@@ -853,12 +847,10 @@ export default function StatsClient({
         const info = relicData[r.relic_id];
         const winPct =
           r.total_runs_with > 0
-            ? Math.round((r.win_runs / r.total_runs_with) * 1000) / 10
+            ? pct2((r.win_runs / r.total_runs_with) * 100)
             : 0;
         const pickRate =
-          stats.total_runs > 0
-            ? Math.round((r.count / stats.total_runs) * 1000) / 10
-            : 0;
+          stats.total_runs > 0 ? pct2((r.count / stats.total_runs) * 100) : 0;
         return {
           id: r.relic_id,
           name: info?.name || displayName(`RELIC.${r.relic_id}`),
@@ -933,10 +925,9 @@ export default function StatsClient({
         const info = potionData[p.potion_id];
         const winPct =
           p.total_runs_with > 0
-            ? Math.round((p.win_runs / p.total_runs_with) * 1000) / 10
+            ? pct2((p.win_runs / p.total_runs_with) * 100)
             : 0;
-        const useRate =
-          p.picked > 0 ? Math.round((p.used / p.picked) * 1000) / 10 : 0;
+        const useRate = p.picked > 0 ? pct2((p.used / p.picked) * 100) : 0;
         return {
           id: p.potion_id,
           name: info?.name || displayName(`POTION.${p.potion_id}`),

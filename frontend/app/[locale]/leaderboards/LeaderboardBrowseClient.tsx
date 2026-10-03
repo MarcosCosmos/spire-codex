@@ -2,8 +2,8 @@
 
 import { useT, useGameLocale } from "@/lib/i18n";
 import { useState, useEffect } from "react";
-import { Link } from "@/i18n/navigation";
-import { useRouter, useSearchParams } from "next/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
+import { useSearchParams } from "next/navigation";
 import { useBetaPrefix } from "@/lib/use-lang-prefix";
 import { Pills, PLAYER_OPTS } from "@/app/components/PlayerCountPills";
 
@@ -14,6 +14,7 @@ import {
   normalizeBracket,
   bracketListParams,
 } from "@/lib/content-brackets";
+import { PlayerBadge } from "@/app/components/SupporterBadge";
 
 function cleanId(id: string): string {
   return id.replace(
@@ -613,6 +614,10 @@ export default function LeaderboardBrowseClient() {
                           </td>
                           <td className="hidden sm:table-cell py-2.5 px-3 text-[var(--text-primary)] truncate max-w-[10rem]">
                             {entry.username || t("Anonymous")}
+                            <PlayerBadge
+                              username={entry.username}
+                              className="ml-1"
+                            />
                           </td>
                           <td
                             className="py-2.5 px-2 sm:px-3"
@@ -778,6 +783,7 @@ export default function LeaderboardBrowseClient() {
                           {r.username}
                         </span>
                       )}
+                      <PlayerBadge username={r.username} />
                     </div>
                     <div className="flex items-center gap-3 sm:gap-4 text-xs text-[var(--text-muted)] shrink-0">
                       <span className="hidden sm:inline">

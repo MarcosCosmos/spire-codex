@@ -7,6 +7,7 @@ import { imageUrl } from "@/lib/image-url";
 import { characterHex } from "@/lib/character-colors";
 import type { FastestBlock, RunRow } from "./HomeLeaderboardSection";
 import { dedupePartyRows } from "@/lib/party-dedupe";
+import { PlayerBadge } from "@/app/components/SupporterBadge";
 
 const TARGET_ASCENSION = 10;
 const POLL_MS = 20_000;
@@ -126,7 +127,7 @@ export default function HomeLeaderboardLive({
         }
       });
       grab(
-        `${pollBase}/api/runs/leaderboard?category=highest_ascension&game_mode=daily&today=true&limit=20`,
+        `${pollBase}/api/runs/leaderboard?category=highest_ascension&game_mode=daily&today=true&players=single&limit=20`,
       ).then((d) => {
         if (active && d?.runs)
           setDaily(dedupePartyRows(d.runs as RunRow[]).slice(0, 5));
@@ -234,7 +235,12 @@ export default function HomeLeaderboardLive({
                                   {characterLabel(r.character, characterNames)}
                                 </span>
                                 <span className="lb-sub">
-                                  {r.username ?? t("Anonymous")} · fl
+                                  {r.username ?? t("Anonymous")}
+                                  <PlayerBadge
+                                    username={r.username}
+                                    className="ml-1"
+                                  />{" "}
+                                  · fl
                                   {r.floors_reached}
                                 </span>
                               </span>
@@ -309,7 +315,12 @@ export default function HomeLeaderboardLive({
                                   {characterLabel(r.character, characterNames)}
                                 </span>
                                 <span className="lb-sub">
-                                  {r.username ?? t("Anonymous")} · fl
+                                  {r.username ?? t("Anonymous")}
+                                  <PlayerBadge
+                                    username={r.username}
+                                    className="ml-1"
+                                  />{" "}
+                                  · fl
                                   {r.floors_reached}
                                 </span>
                               </span>

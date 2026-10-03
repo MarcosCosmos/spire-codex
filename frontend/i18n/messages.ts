@@ -20,6 +20,18 @@ import { X9B } from "@/lib/i18n-x9b";
 import { X9C } from "@/lib/i18n-x9c";
 import { X9D } from "@/lib/i18n-x9d";
 import { X9E } from "@/lib/i18n-x9e";
+import { X9F } from "@/lib/i18n-x9f";
+import { X9G } from "@/lib/i18n-x9g";
+import { X9H } from "@/lib/i18n-x9h";
+import { X9I } from "@/lib/i18n-x9i";
+import { X9J } from "@/lib/i18n-x9j";
+import { X9K } from "@/lib/i18n-x9k";
+import { X9L } from "@/lib/i18n-x9l";
+import { X9O } from "@/lib/i18n-x9o";
+import { X9M } from "@/lib/i18n-x9m";
+import { X9N } from "@/lib/i18n-x9n";
+import { X9P } from "@/lib/i18n-x9p";
+import { X9Q } from "@/lib/i18n-x9q";
 import { UI_TRANSLATIONS } from "@/lib/ui-translations";
 import { safeKey } from "@/lib/i18n-keys";
 import type { Locale } from "./routing";
@@ -52,6 +64,18 @@ const TABLES = [
   X9C,
   X9D,
   X9E,
+  X9F,
+  X9G,
+  X9H,
+  X9I,
+  X9J,
+  X9K,
+  X9L,
+  X9O,
+  X9M,
+  X9N,
+  X9P,
+  X9Q,
 ];
 const cache = new Map<string, Record<string, string>>();
 
