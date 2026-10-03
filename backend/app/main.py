@@ -458,7 +458,7 @@ _ENTITY_TYPES = frozenset(
         "acts",
         "ascensions",
         "guides",
-        "localizations"
+        "localizations",
     )
 )
 
@@ -929,7 +929,7 @@ def root(request: Request):
             "stats": "/api/stats",
             "languages": "/api/languages",
             "translations": "/api/translations",
-            "localisations": "api/localisations",
+            "localizations": "/api/localizations",
         },
     }
 

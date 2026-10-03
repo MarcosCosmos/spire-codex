@@ -1,42 +1,535 @@
-
 import json
-import os
-import warnings
+from collections import Counter
+from pathlib import Path
 
-from app.parsers.parser_paths import loc_dir as _loc_dir, data_dir as _data_dir
-from app.parsers.message_parser import lex, parse, unparse, resolve_description as new_resolver
-from app.parsers.description_resolver import resolve_description as old_resolver
-# note: this main method does testing the entry 
-def main(lang: str = "eng"):
-    loc_dir = _loc_dir(lang)
-    filenames = filter(lambda x: x.endswith(".json"), os.listdir(loc_dir))
-    successful = []
-    failed = []
-    for name in filenames:
-        with open(loc_dir / name, "r", encoding="utf8") as f:
-            messages_json: dict[str] = json.load(f)
-        for key, message in messages_json.items():
-            full_key = f"{name}.{key}"
-            parsed = parse(message)
-            unparsed = unparse(parsed)
-            if unparsed == message:
-                old_resolved = old_resolver(message)
-                new_resolved = new_resolver(message)
-                if new_resolved == old_resolved:
-                    successful.append(message)
-                    continue    
-            failed.append(full_key)
-            warnings.warn(
-f"""Warning: unparse did not reproduce the original message for key: {name}.{key}. This may or may not be an error:
-Original:
-{message.replace("\n", " ")}
-Unparsed:
-{unparsed.replace("\n", " ")}
-Parsed intermediate (for reference):
-{parsed}
-""")
-    print(f"Successfully parsed and accurately unparsed {len(successful)}/{len(successful)+len(failed)} messages")
-    
+import pytest
 
-if __name__ == "__main__":
-    main()
+from app.parsers import message_parser
+from app.parsers.icu_check import validate_icu
+from app.parsers.message_parser import (
+    ChoosePlaceholder,
+    ConditionalPlaceholder,
+    DelimiterKind,
+    FunctionPlaceholder,
+    MessageSyntaxError,
+    NumericConditionPlaceholder,
+    Placeholder,
+    TextKind,
+    convert_table,
+    lex,
+    message_to_icu,
+    parse,
+    parse_cond_expression,
+    to_icu,
+    unparse,
+)
+
+ENG_DIR = Path(
+    "/mnt/c/Users/peter/Documents/prima-codex/spire-codex/extraction/beta/raw/localization/eng"
+)
+ENTITY_TABLES = ["cards", "relics", "potions", "powers", "monsters", "events"]
+
+
+def _load_tables() -> dict[str, dict]:
+    if not ENG_DIR.is_dir():
+        pytest.skip(f"{ENG_DIR} is missing")
+    tables = {}
+    for path in sorted(ENG_DIR.glob("*.json")):
+        with open(path, encoding="utf8") as f:
+            tables[path.stem] = json.load(f)
+    if not tables:
+        pytest.skip(f"no tables under {ENG_DIR}")
+    return tables
+
+
+def _leaves(node, path=""):
+    if isinstance(node, dict):
+        for key, value in node.items():
+            yield from _leaves(value, f"{path}.{key}" if path else str(key))
+    elif isinstance(node, list):
+        for i, value in enumerate(node):
+            yield from _leaves(value, f"{path}[{i}]")
+    elif isinstance(node, str):
+        yield path, node
+
+
+def test_round_trip_every_eng_table():
+    tables = _load_tables()
+    syntax_failures = []
+    round_trip_failures = []
+    total = 0
+    for table, data in tables.items():
+        for key, message in _leaves(data):
+            total += 1
+            try:
+                parsed = parse(message)
+            except MessageSyntaxError as error:
+                syntax_failures.append((f"{table}.{key}", str(error).splitlines()[0]))
+                continue
+            if unparse(parsed) != message:
+                round_trip_failures.append(f"{table}.{key}")
+    print(
+        f"{total} strings, {len(syntax_failures)} syntax failures, "
+        f"{len(round_trip_failures)} round-trip failures"
+    )
+    for failure in syntax_failures[:20]:
+        print("syntax:", failure)
+    for failure in round_trip_failures[:20]:
+        print("round trip:", failure)
+    assert total > 0
+    assert syntax_failures == []
+    assert round_trip_failures == []
+
+
+@pytest.mark.parametrize(
+    "raw, expected",
+    [
+        (
+            "This turn, your next {Attacks:cond:>1?{Attacks:diff()} Attacks are|Attack is} played an extra time.",
+            "This turn, your next {Attacks, plural, =0 {Attack is} =1 {Attack is} other {{Attacks} Attacks are}} played an extra time.",
+        ),
+        (
+            "Add {Shivs:diff()} [gold]{Cards:plural:{IfUpgraded:show:Shiv+|Shiv}|{IfUpgraded:show:Shivs+|Shivs}}[/gold] into your [gold]Hand[/gold].",
+            "Add {Shivs} [gold]{Cards, plural, one {{IfUpgraded, select, true {Shiv+} other {Shiv}}} other {{IfUpgraded, select, true {Shivs+} other {Shivs}}}}[/gold] into your [gold]Hand[/gold].",
+        ),
+        (
+            "Deal {Damage:diff()} damage{TargetType:choose(AllEnemies): to ALL enemies|}{Repeat:plural:| {} times}.{GainsBlock:cond:\nGain {CalculatedBlock:diff()} [gold]Block[/gold].|}",
+            "Deal {Damage} damage{TargetType, select, AllEnemies { to ALL enemies} other {}}{Repeat, plural, one {} other { # times}}.{GainsBlock, select, true {\nGain {CalculatedBlock} [gold]Block[/gold].} other {}}",
+        ),
+        (
+            "Add a 0{energyPrefix:energyIcons(1)} copy of this card",
+            "Add a 0[E] copy of this card",
+        ),
+        (
+            "Don't use {{braces}} or #hashtags, {Name}'s {{{Count}}} ok",
+            "Don''t use '{'braces'}' or #hashtags, {Name}''s '{'{Count}'}' ok",
+        ),
+        (
+            "{Count:plural:#1 item|{} items}",
+            "{Count, plural, one {'#'1 item} other {# items}}",
+        ),
+        (
+            "{Amount:cond:<0?Decreases|Increases} by {Amount:abs()}.",
+            "{Amount_cond, select, true {Decreases} other {Increases}} by {Amount}.",
+        ),
+        (
+            "{Amount:cond:==1? next turn|>1? for the next {} turns|}",
+            "{Amount, plural, =0 {} =1 { next turn} other { for the next # turns}}",
+        ),
+        (
+            "{Amount:cond:==1? next turn|>1? for the next {} turns|never}",
+            "{Amount, plural, =0 {never} =1 { next turn} other { for the next # turns}}",
+        ),
+        (
+            "{Who.StringValue:cond:While {} is alive|never}",
+            "{Who_StringValue_cond, select, true {While {Who_StringValue} is alive} other {never}}",
+        ),
+        (
+            "Deck {Hotkey:choose(None):| ({})}",
+            "Deck {Hotkey, select, None {} other { ({Hotkey})}}",
+        ),
+        ("{IfUpgraded:show:+1}", "{IfUpgraded, select, true {+1} other {}}"),
+        (
+            "{InCombat:\n(Hits {CalculatedHits:diff()})|}",
+            "{InCombat, select, true {\n(Hits {CalculatedHits})} other {}}",
+        ),
+        ("{Energy:energyIcons()} and {Stars:starIcons(2)}", "{Energy} and [S][S]"),
+        ("{ascensions:list: +{}|\n}", "{ascensions}"),
+        ("{} and {:diff()}", "{value} and {value}"),
+        ("{N:plural:none|one|many}", "{N, plural, =0 {none} one {one} other {many}}"),
+        (
+            "{MapPointType}{ModelTitle:: {}|}",
+            "{MapPointType}{ModelTitle_cond, select, true { {ModelTitle}} other {}}",
+        ),
+        ("<Inquisitive beeps> a < b", "'<'Inquisitive beeps> a < b"),
+        ("{#%Character%_title} - {0}", "{__Character__title} - {_0}"),
+    ],
+)
+def test_exact_icu(raw, expected):
+    assert message_to_icu(raw) == expected
+    assert validate_icu(expected) == []
+
+
+def test_message_to_icu_falls_back_to_a_literal():
+    raw = "Broken {X:cond:>1?yes with {unclosed"
+    with pytest.raises(MessageSyntaxError):
+        parse(raw)
+    report = message_parser.ConversionReport()
+    converted = message_to_icu(raw, report, "k")
+    assert converted == "Broken '{'X:cond:>1?yes with '{'unclosed"
+    assert validate_icu(converted) == []
+    assert report.unconvertible == 1
+    assert report.unconvertible_examples == ["k"]
+    assert report.constructs == Counter()
+
+
+def test_to_icu_report_counts_constructs():
+    report = message_parser.ConversionReport()
+    to_icu(
+        parse(
+            "{A:diff()} {B:plural:x|y} {C:cond:<2?a|b} {D:show:a} {E:energyIcons(1)} {F}"
+        ),
+        report,
+    )
+    assert report.constructs["diff"] == 1
+    assert report.constructs["plural"] == 1
+    assert report.constructs["cond"] == 1
+    assert report.constructs["show"] == 1
+    assert report.constructs["energyIcons"] == 1
+    assert report.constructs["variable"] == 1
+    assert report.derived_conditions == [("C", "<", 2)]
+
+
+def test_convert_table_recurses_and_reports():
+    table = {
+        "a": {"b": "{X:plural:one|{} many}", "c": ["{Y}", 3]},
+        "d": "{Z:cond:<1?low|high}",
+        "e": "{Bad.Name}",
+    }
+    converted, report = convert_table(table)
+    assert converted == {
+        "a": {"b": "{X, plural, one {one} other {# many}}", "c": ["{Y}", 3]},
+        "d": "{Z_cond, select, true {low} other {high}}",
+        "e": "{Bad_Name}",
+    }
+    assert report["unconvertible"] == 0
+    assert report["constructs"]["plural"] == 1
+    assert report["constructs"]["cond"] == 1
+    assert report["derived_conditions"] == [("Z", "<", 1)]
+    assert report["renamed_variables"] == {"Bad.Name": "Bad_Name"}
+
+
+def test_every_converted_eng_string_is_valid_icu():
+    tables = _load_tables()
+    invalid = []
+    unconvertible = {}
+    for table, data in tables.items():
+        converted, report = convert_table(data)
+        print(
+            f"{table}: constructs={report['constructs']} "
+            f"unconvertible={report['unconvertible']} "
+            f"examples={report['unconvertible_examples']} "
+            f"derived_conditions={len(report['derived_conditions'])} "
+            f"renamed_variables={report['renamed_variables']}"
+        )
+        unconvertible[table] = report["unconvertible"]
+        for key, message in _leaves(converted):
+            errors = validate_icu(message)
+            if errors:
+                invalid.append((f"{table}.{key}", errors, message[:160]))
+    for item in invalid[:20]:
+        print("invalid:", item)
+    assert invalid == []
+    for table in ENTITY_TABLES:
+        assert table in tables
+        assert unconvertible[table] == 0, table
+
+
+@pytest.mark.parametrize(
+    "message, expected_error",
+    [
+        ("{a, plural, one {x}}", "'other'"),
+        ("{a", "expected ','"),
+        ("{", "bad argument name"),
+        ("x } y", "unbalanced"),
+        ("{a, foo, x}", "unknown argument type"),
+        ("{a, select}", "without options"),
+        ("{a, plural, one {x} other {y}", "unterminated"),
+        ("it's '{", "unterminated quote"),
+        ("<b>bold</b>", "starts a tag"),
+    ],
+)
+def test_validate_icu_catches_bad_messages(message, expected_error):
+    errors = validate_icu(message)
+    assert errors, message
+    assert any(expected_error in error for error in errors), errors
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "plain text with it's apostrophe and 'quotes'",
+        "{a} and {b, number} and {c, plural, offset:1 =0 {none} one {# item} other {# items}}",
+        "{a, select, x {{b, plural, one {'#'} other {#}}} other {'{'}}",
+        "line one\nline two '<' not a tag",
+    ],
+)
+def test_validate_icu_accepts_good_messages(message):
+    assert validate_icu(message) == []
+
+
+def test_lexer_keeps_delimiters_found_inside_arguments():
+    tokens = list(lex("{X:energyIcons(1}"))
+    assert tokens[-1][0] == DelimiterKind.BRACE_CLOSE
+    with pytest.raises(MessageSyntaxError) as info:
+        parse("{X:energyIcons(1}")
+    assert info.value.position == 15
+    assert (TextKind.GENERIC, "1", 15) in tokens
+    tokens = list(lex("{X:choose(A:a|b}"))
+    assert (DelimiterKind.COLON, None, 11) in tokens
+    with pytest.raises(MessageSyntaxError) as info:
+        parse("{X:choose(A:a|b}")
+    assert info.value.position == 11
+
+
+def test_bad_energy_icons_argument_is_a_syntax_error():
+    with pytest.raises(MessageSyntaxError) as info:
+        parse("{X:energyIcons(abc)}")
+    assert "integer" in str(info.value)
+    assert info.value.position == 15
+
+
+def test_bad_condition_is_a_message_syntax_error():
+    with pytest.raises(MessageSyntaxError):
+        parse_cond_expression("abc")
+    with pytest.raises(MessageSyntaxError):
+        parse_cond_expression(">x")
+    assert parse("{X:cond:~1?a|b}") == [
+        NumericConditionPlaceholder(
+            "X",
+            [
+                message_parser.ConditionalMessage(None, ["~1?a"]),
+                message_parser.ConditionalMessage(None, ["b"]),
+            ],
+        )
+    ]
+    with pytest.raises(MessageSyntaxError):
+        parse("{X:cond:a|>1?b|c}")
+
+
+def test_condition_option_text_may_contain_a_question_mark():
+    parsed = parse("{X:cond:>1?Many?|One?}")
+    assert parsed == [
+        NumericConditionPlaceholder(
+            "X",
+            [
+                message_parser.ConditionalMessage(
+                    message_parser.MessageCondition(
+                        message_parser.ComparisonOperator.GREATER_THAN, 1
+                    ),
+                    ["Many?"],
+                ),
+                message_parser.ConditionalMessage(None, ["One?"]),
+            ],
+        )
+    ]
+    assert unparse(parsed) == "{X:cond:>1?Many?|One?}"
+    assert unparse(parse("{X:cond:>1?a} tail?")) == "{X:cond:>1?a} tail?"
+    nested = "{X:cond:>1?{Y:a|b} {Z:cond:==1?c|d}|e}"
+    assert unparse(parse(nested)) == nested
+    assert message_to_icu(nested) == (
+        "{X, plural, =0 {e} =1 {e} other {{Y, select, true {a} other {b}} "
+        "{Z, plural, =1 {c} other {d}}}}"
+    )
+
+
+@pytest.mark.parametrize(
+    "raw, options",
+    [
+        ("{X:Hello (world)|bye}", [["Hello (world)"], ["bye"]]),
+        ("{X:Note 1: yes|no}", [["Note 1: yes"], ["no"]]),
+        ("{X:a (b) {Y}|c}", [["a (b) ", Placeholder("Y")], ["c"]]),
+    ],
+)
+def test_option_text_with_parens_or_colons_is_not_a_function(raw, options):
+    assert parse(raw) == [ConditionalPlaceholder("X", options)]
+    assert unparse(parse(raw)) == raw
+
+
+def test_unknown_function_names_still_fail():
+    with pytest.raises(MessageSyntaxError) as info:
+        parse("{X:bogus():a|b}")
+    assert "bogus" in str(info.value)
+
+
+def test_double_braces_are_literal_text():
+    assert parse("a {{b}} c") == ["a {b} c"]
+    assert unparse(parse("a {{b}} c")) == "a {{b}} c"
+    assert parse("{X:{{lit|y} z") == [
+        ConditionalPlaceholder("X", [["{lit"], ["y"]]),
+        " z",
+    ]
+    assert unparse(parse("{X:{{lit|y} z")) == "{X:{{lit|y} z"
+    assert message_to_icu("{X:{{lit|y} z") == "{X, select, true {'{'lit} other {y}} z"
+
+
+def test_empty_formatter_name_round_trips():
+    parsed = parse("{ModelTitle:: {}|}")
+    assert parsed == [
+        ConditionalPlaceholder("ModelTitle", [[" ", Placeholder(None)], []], fn_name="")
+    ]
+    assert unparse(parsed) == "{ModelTitle:: {}|}"
+
+
+def test_empty_variable_with_function():
+    assert parse("{:diff()}") == [FunctionPlaceholder(None, fn_name="diff")]
+    assert parse("{K:choose(A):x|y}") == [ChoosePlaceholder("K", [["x"], ["y"]], ["A"])]
+
+
+def test_trailing_text_yields_no_empty_token():
+    tokens = list(lex("{X}"))
+    assert tokens == [
+        (DelimiterKind.BRACE_OPEN, None, 0),
+        (TextKind.VARIABLE, "X", 1),
+        (DelimiterKind.BRACE_CLOSE, None, 2),
+    ]
+    assert parse("{X}") == [Placeholder("X")]
+
+
+def test_resolver_was_removed_from_the_parser_module():
+    assert not hasattr(message_parser, "resolve_description")
+    assert not hasattr(message_parser, "_lookup")
+
+
+LOC_ROOT = Path(
+    "/mnt/c/Users/peter/Documents/prima-codex/spire-codex/extraction/beta-v0111/raw/localization"
+)
+KNOWN_TRANSLATOR_TYPOS = {"ita": {"cards.REFRACT.description"}}
+
+
+def _load_languages() -> dict[str, dict[str, dict]]:
+    if not LOC_ROOT.is_dir():
+        pytest.skip(f"{LOC_ROOT} is missing")
+    languages = {}
+    for lang_dir in sorted(LOC_ROOT.iterdir()):
+        if not lang_dir.is_dir():
+            continue
+        tables = {}
+        for path in sorted(lang_dir.glob("*.json")):
+            with open(path, encoding="utf8") as f:
+                tables[path.stem] = json.load(f)
+        if tables:
+            languages[lang_dir.name] = tables
+    if not languages:
+        pytest.skip(f"no language tables under {LOC_ROOT}")
+    return languages
+
+
+@pytest.mark.parametrize(
+    "raw, language, expected",
+    [
+        (
+            "{Cards:plural(pl):kartę|karty|kart}",
+            None,
+            "{Cards, plural, one {kartę} few {karty} many {kart} other {kart}}",
+        ),
+        (
+            "{Amount:plural:W tej turze|Przez [blue]{}[/blue] tury|Przez [blue]{}[/blue] tur|Przez [blue]{}[/blue] tur}",
+            "pol",
+            "{Amount, plural, one {W tej turze} few {Przez [blue]#[/blue] tury} many {Przez [blue]#[/blue] tur} other {Przez [blue]#[/blue] tur}}",
+        ),
+        (
+            "{Amount} {Amount:plural(ru):карта|карты|карт}",
+            "rus",
+            "{Amount} {Amount, plural, one {карта} few {карты} many {карт} other {карт}}",
+        ),
+        (
+            "{Amount:choose:本|接下來 [blue]{}[/blue] }",
+            "zht",
+            "{Amount, plural, =1 {本} other {接下來 [blue]#[/blue] }}",
+        ),
+        ("{N:choose:a|b|c}", "zht", "{N, plural, =0 {a} =1 {b} other {c}}"),
+        (
+            "Pilih {Amount:choose(1):sebuah kartu|[blue]{}[/blue] kartu}",
+            "ind",
+            "Pilih {Amount, plural, =1 {sebuah kartu} other {[blue]#[/blue] kartu}}",
+        ),
+        ("{N:choose(1|2):a|b|c}", "kor", "{N, plural, =1 {a} =2 {b} other {c}}"),
+        ("{Cards:plural:牌|牌}", "zhs", "牌"),
+        ("{Cards:plural:a|{} b}", "jpn", "a"),
+        ("{X:plural:a|b}", "ptb", "{X, plural, =1 {a} other {b}}"),
+        ("{X:plural:a|b}", "fra", "{X, plural, one {a} other {b}}"),
+        ("{X:plural:z|a|b}", "fra", "{X, plural, =0 {z} =1 {a} other {b}}"),
+        ("{X:plural:z|a|b}", "deu", "{X, plural, =0 {z} one {a} other {b}}"),
+        ("{X:plural:n|z|a|b}", "ita", "{X, plural, =0 {z} =1 {a} other {b}}"),
+        ("{X:plural:a|b}", "eng", "{X, plural, one {a} other {b}}"),
+        ("{X:plural:a|b}", "zz", "{X, plural, one {a} other {b}}"),
+        ("{X:plural(ru):a|b}", "eng", "{X, plural, one {a} other {b}}"),
+        (
+            "{BossName:choose(Leśny Stróż|Umiej.):a|b|c}",
+            "pol",
+            "{BossName, select, Leśny_Stróż {a} Umiej_ {b} other {c}}",
+        ),
+    ],
+)
+def test_language_aware_icu(raw, language, expected):
+    assert message_to_icu(raw, language=language) == expected
+    assert validate_icu(expected) == []
+    assert unparse(parse(raw)) == raw
+
+
+def test_plural_language_argument_round_trips_and_is_reported():
+    parsed = parse("{Cards:plural(pl):kartę|karty|kart}")
+    assert parsed == [
+        ConditionalPlaceholder(
+            "Cards", [["kartę"], ["karty"], ["kart"]], fn_name="plural", args=["pl"]
+        )
+    ]
+    assert parse("{Amount:choose:a|b}") == [
+        ConditionalPlaceholder("Amount", [["a"], ["b"]], fn_name="choose")
+    ]
+    report = message_parser.ConversionReport()
+    to_icu(parsed, report)
+    assert report.constructs["plural"] == 1
+    assert report.constructs["plural_lang_arg"] == 1
+    report = message_parser.ConversionReport()
+    assert message_to_icu("{X:plural(xx):a|b}", report, "k") == "'{'X:plural(xx):a|b'}'"
+    assert report.unconvertible == 1
+
+
+def test_choose_key_sanitising_is_reported():
+    converted, report = convert_table(
+        {"a": "{BossName:choose(Leśny Stróż|Umiej.):a|b|c}", "b": "{N:choose(1):x|y}"},
+        language="pol",
+    )
+    assert report["renamed_keys"] == {"Leśny Stróż": "Leśny_Stróż", "Umiej.": "Umiej_"}
+    assert report["constructs"]["choose_numeric"] == 1
+    assert converted["b"] == "{N, plural, =1 {x} other {y}}"
+
+
+def test_choose_with_other_as_a_key_is_unconvertible():
+    report = message_parser.ConversionReport()
+    message_to_icu("{X:choose(other):a|b}", report, "k")
+    assert report.unconvertible == 1
+
+
+def test_cond_rejects_arguments():
+    with pytest.raises(MessageSyntaxError):
+        parse("{X:cond(pl):>1?a|b}")
+
+
+def test_every_language_round_trips_and_converts():
+    languages = _load_languages()
+    syntax_failures = {}
+    round_trip_failures = []
+    invalid = []
+    unconvertible = {}
+    for language, tables in languages.items():
+        failed_keys = set()
+        count = 0
+        for table, data in tables.items():
+            for key, message in _leaves(data):
+                try:
+                    parsed = parse(message)
+                except MessageSyntaxError:
+                    failed_keys.add(f"{table}.{key}")
+                    continue
+                if unparse(parsed) != message:
+                    round_trip_failures.append(f"{language}.{table}.{key}")
+            converted, report = convert_table(data, language=language)
+            count += report["unconvertible"]
+            for key, message in _leaves(converted):
+                errors = validate_icu(message)
+                if errors:
+                    invalid.append((f"{language}.{table}.{key}", errors))
+            failed_keys.update(
+                f"{table}.{key}" for key in report["unconvertible_examples"]
+            )
+        syntax_failures[language] = failed_keys
+        unconvertible[language] = count
+        print(f"{language}: unconvertible={count} {sorted(failed_keys)}")
+    assert round_trip_failures == []
+    assert invalid == []
+    for language, failed_keys in syntax_failures.items():
+        assert failed_keys == KNOWN_TRANSLATOR_TYPOS.get(language, set()), language
+        assert unconvertible[language] == len(failed_keys), language

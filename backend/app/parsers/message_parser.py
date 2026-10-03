@@ -1,72 +1,155 @@
 """
-Shared SmartFormat template parser for entity description and general localization templates.
-Unlike description_resolver, this code does not finalize strings given game data.
-Instead it parsers the templates, and there are optional helpers for exporting them to ICU for the frontend
-description_resolver uses this logic internally (or will, as part of the PR)
+SmartFormat message templates: lexer, parser, unparser, and ICU MessageFormat export.
+
+The game localizes its text with a SmartFormat subset. This module parses those templates
+into a ParsedMessage tree without resolving any game data (description_resolver does that),
+reproduces the original syntax from the tree (unparse), and exports the tree as an ICU
+MessageFormat string that next-intl can load directly (to_icu / message_to_icu / convert_table).
+
+Grammar, as far as the game data shows it:
+    TEMPLATE                 = { text | PLACEHOLDER }
+    PLACEHOLDER              = "{", [ variable ], [ ":", FUNCTION_OR_SUBTEMPLATE ], "}"
+    FUNCTION_OR_SUBTEMPLATE  = "cond", ":", CONDITIONAL_OPTIONS
+                             | function, [ "(", [ ARGUMENTS ], ")" ], [ ":", SUBTEMPLATE ]
+                             | SUBTEMPLATE
+    ARGUMENTS                = word, { "|", word }
+    CONDITIONAL_OPTIONS      = { CONDITION, "?", TEMPLATE, "|" }, SUBTEMPLATE
+    SUBTEMPLATE              = TEMPLATE, { "|", TEMPLATE }
+    CONDITION                = ( ">" | "<" | ">=" | "<=" | "==" | "!=" ), int
+"{{" and "}}" are literal braces in text; a backslash before a delimiter also makes it literal.
+
+ICU export conventions:
+- {Var} and every value-only formatter ({Var:diff()}, inverseDiff, n, abs, percentMore,
+  percentLess, list) become {Var}. Colouring and sign display are a UI concern.
+- {} (the current value) becomes # inside a plural body, otherwise the enclosing
+  conditional's variable, otherwise {value}.
+- {Var:plural:a|b} follows SmartFormat's plural rule for the table's language (pass it as
+  language=; an explicit {Var:plural(ru):...} argument overrides it, as in the engine).
+  English-style languages: two options -> one/other, three -> =0/one/other, four ->
+  =0/=1/other (pt-BR uses =1 since CLDR "one" covers 0 there; French the same for three
+  and four). Polish and Russian: one/few/many with other repeating the last option.
+  Chinese, Japanese, Korean, Thai and Indonesian use the engine's "singular" rule, which
+  always renders the first option, so only that option is emitted (plural_singular_rule).
+- {Var:choose:a|b} with no key list is what translators use as a count switch; it becomes
+  {Var, plural, =1 {a} other {b}} (three options -> =0/=1/other). In the engine it is a
+  select on the empty key and always shows the last option.
+- {Var:choose(1):a|b} with integer keys -> {Var, plural, =1 {a} other {b}}, with {} -> #.
+  Other keys that are not \\w+ are sanitised the same way as variables and listed in
+  renamed_keys; the caller must sanitise the value it passes with the same rule.
+- Numeric conditions become plurals with exact matches when the whole chain can be decided
+  from the values 0..N (operators >, >=, ==, != with thresholds up to EXACT_MATCH_LIMIT).
+  Chains that cannot (any < or <=, or large thresholds) select on a derived boolean named
+  Var_cond (then Var_cond2, Var_cond3 for later conditions in the same chain):
+  {Var_cond, select, true {a} other {b}}. The caller computes Var_cond from Var using the
+  (var, op, threshold) tuples the report lists under derived_conditions.
+- Bare {X:a|b}, {X:show:a|b} and conditions without a comparison select on the variable:
+  {X, select, true {a} other {b}}. When the body also prints the value ({} inside), the
+  selector is the derived X_cond instead, reported as (var, "truthy", None), so the value
+  can still be interpolated.
+- {Key:choose(A|B):x|y|z} -> {Key, select, A {x} B {y} other {z}}.
+- {V:energyIcons(n)} -> "[E]" repeated n times, starIcons -> "[S]". Without a count the
+  caller supplies the rendered icons as {V}; the report counts these as energyIcons_variable.
+- Variable names outside [A-Za-z_][A-Za-z0-9_]* are sanitised and listed in
+  renamed_variables.
 """
 
-from dataclasses import MISSING, dataclass, field
-from enum import StrEnum, IntEnum, auto
 import re
-from collections.abc import Generator, Callable, Iterable, Iterator
+from collections import Counter
+from collections.abc import Generator
+from dataclasses import MISSING, dataclass, field
+from enum import IntEnum, StrEnum, auto
 
-from app.parsers.description_resolver import _lookup
 
 class ComparisonOperator(StrEnum):
-    GREATER_THAN = ">",
-    LESS_THAN = "<",
-    GREATER_THAN_OR_EQUAL = ">=",
-    LESS_THAN_OR_EQUAL = "<=",
-    EQUAL = "==",
-    NOT_EQUAL = "!=",
+    GREATER_THAN = ">"
+    LESS_THAN = "<"
+    GREATER_THAN_OR_EQUAL = ">="
+    LESS_THAN_OR_EQUAL = "<="
+    EQUAL = "=="
+    NOT_EQUAL = "!="
+
+    def evaluate(self, value: int, threshold: int) -> bool:
+        match self:
+            case ComparisonOperator.GREATER_THAN:
+                return value > threshold
+            case ComparisonOperator.LESS_THAN:
+                return value < threshold
+            case ComparisonOperator.GREATER_THAN_OR_EQUAL:
+                return value >= threshold
+            case ComparisonOperator.LESS_THAN_OR_EQUAL:
+                return value <= threshold
+            case ComparisonOperator.EQUAL:
+                return value == threshold
+            case ComparisonOperator.NOT_EQUAL:
+                return value != threshold
+        raise ValueError(self)
+
+
 @dataclass(frozen=True)
 class MessageCondition:
     operator: ComparisonOperator
     threshold: int
-# todo: we can skip generating some of these tokens by yielding more specific tokens in some cases
+
+
 class DelimiterKind(StrEnum):
-    BRACE_OPEN = '{',
-    BRACE_CLOSE = '}',
-    PAREN_OPEN = '(',
-    PAREN_CLOSE = ')',
-    BAR = '|',
-    COLON = ':',
-    END = '',
+    BRACE_OPEN = "{"
+    BRACE_CLOSE = "}"
+    PAREN_OPEN = "("
+    PAREN_CLOSE = ")"
+    BAR = "|"
+    COLON = ":"
+    END = ""
+
+
 class TextKind(IntEnum):
-    GENERIC = 0,
-    VARIABLE = auto(),
-    FUNCTION = auto(),
-    ARGUMENT = auto(),
+    GENERIC = 0
+    VARIABLE = auto()
+    FUNCTION = auto()
+    ARGUMENT = auto()
+
+
 class ConditionKind(StrEnum):
-    CONDITION = "cond",
+    CONDITION = "cond"
+
+
 class LexerState(IntEnum):
-    TEMPLATE = 0,
-    PLACEHOLDER = auto(),
-    ARGUMENTS = auto(),
-    ARGUMENTS_END = auto(),
-    ARGUMENTS_END_SCANNED = auto(),
-    SUBTEMPLATE = auto(),
-    SUBTEMPLATE_SCANNED = auto(),
-    FUNCTION_OR_SUBTEMPLATE = auto(),
-    CONDITION_OR_SUBTEMPLATE = auto(),
-    
+    TEMPLATE = 0
+    PLACEHOLDER = auto()
+    ARGUMENTS = auto()
+    ARGUMENTS_END = auto()
+    ARGUMENTS_END_SCANNED = auto()
+    SUBTEMPLATE = auto()
+    SUBTEMPLATE_SCANNED = auto()
+    FUNCTION_OR_SUBTEMPLATE = auto()
+    CONDITION_OPTION_START = auto()
+    CONDITION_OPTION = auto()
+    CONDITION_OPTION_SCANNED = auto()
+
+
 type TokenKind = DelimiterKind | TextKind | ConditionKind
-type Token = tuple[DelimiterKind, None, int] | tuple[TextKind, str, int] | tuple[ConditionKind, MessageCondition, int]
+type Token = (
+    tuple[DelimiterKind, None, int]
+    | tuple[TextKind, str, int]
+    | tuple[ConditionKind, MessageCondition, int]
+)
+
 
 class MessageSyntaxError(Exception):
-    """
-        A None position implies end of message. Used by a wrapper to visualise where the error is in the message
-    """
+    """A None position means the end of the message."""
+
     def __init__(self, message: str, position: int | None = None):
         super().__init__(message)
         self.position = position
+
+
 class LexicalError(MessageSyntaxError):
-    """
-        A None position implies end of message. Used by a wrapper to visualise where the error is in the message
-    """
     def __init__(self, state: LexerState, position: int | None = None):
-        super().__init__(f"Could not find a delimiter that satifies the state/rule: {state.name}.")
-        self.position = position
+        super().__init__(
+            f"Could not find a delimiter that satisfies the state/rule: {state.name}.",
+            position,
+        )
+
+
 class UnexpectedTokenError(MessageSyntaxError):
     def __init__(self, token: Token | None, expectation: str):
         match token:
@@ -75,123 +158,164 @@ class UnexpectedTokenError(MessageSyntaxError):
                 position = None
             case (kind, value, pos):
                 position = pos
-                if kind in DelimiterKind._value2member_map_:
-                    result = f"{kind.value}"
+                if isinstance(kind, DelimiterKind):
+                    result = f"'{kind.value}'"
                 else:
                     result = f"{kind.name}({value})"
             case bad:
-                raise ValueError(f"what the hell is this: {bad}")
+                raise ValueError(f"Not a token: {bad}")
         super().__init__(f"Expected {expectation} but got {result}.", position)
+
 
 type ParsedMessage = list[str | Placeholder]
 
+
 def fn_name_field(value: str | None = None):
     return field(default=value, kw_only=True)
+
 
 @dataclass(frozen=True)
 class ConditionalMessage:
     condition: MessageCondition | None
     content: ParsedMessage
+
+
 @dataclass(frozen=True)
 class Placeholder:
-    """If not subclassed it really is as simple as {var}. However variable can be None (special {} placeholder)"""
-    """
-    Pseudo-abstract base type
-    """
+    """{variable}; the variable is None for the current-value placeholder {}."""
+
     variable: str | None
+
+
 @dataclass(frozen=True)
 class FunctionPlaceholder(Placeholder):
-    """
-    Complex placeholders with a name(<args>?) form.
-    Those that are not subclassed can generally be considered to call some custom code, and will generally need to be converted to custom [bb] code to be resolvable on the frontend.
-    Note: 'choose' does not count as it maps more simply to an ICU select
-    """
+    """{variable:name()} formatters that only change how the value is displayed."""
+
     fn_name: str | None = fn_name_field(MISSING)
+
+
 @dataclass(frozen=True)
 class RepeatPlaceholder(FunctionPlaceholder):
-    """
-    Namely energyIcons and starIcons
-    """
+    """energyIcons(n) and starIcons(n); n is None when the count comes from the variable."""
+
     n: int | None
+
+
 @dataclass(frozen=True)
 class ConditionalPlaceholder(FunctionPlaceholder):
-    fn_name: str | None = fn_name_field(None)
     """
-        Basically a Conditional without the explict coditions. Selections are made hueristically (or customisably) based on the arg type and also the function name if present.
+    Option lists chosen by the value: bare {X:a|b}, {X::a|b}, show, plural and list.
+    fn_name is None for the bare form and "" for an explicitly empty formatter name.
+    """
 
-        Note: IfUpgraded is a special case of the ConditionPlaceholder.
-        In plain text it would be the same result, but in practice we should be showing green upgrade text in the upgraded cases.
-        I.e. they are written like: {IfUpgraded:show:<upgradedcase>|<normalcase>}
-        But should print like they were instead: {IfUpgraded:[upgraded]<upgradedcase>[/upgraded]|<normalcase>}
-        In principle the IfUpgraded should be qualified as a CustomPlaceholder, but it's probably going to be easier to manually check for the varname and unroll it like an IfElse with injected bb code
-        I'm not sure if the upgraded bb code should be [upgraded] or just [green] but we can decide that later
-
-        Note: plural is also captured as Selection in this parser
-        """
+    fn_name: str | None = fn_name_field(None)
+    args: list[str] | None = field(default=None, kw_only=True)
     options: list[ParsedMessage]
+
+
 @dataclass(frozen=True)
 class NumericConditionPlaceholder(FunctionPlaceholder):
+    """{X:cond:>1?a|==1?b|c}: options guarded by comparisons, the last one unguarded."""
+
     fn_name: str = fn_name_field("cond")
-    """
-    Not a subclass of ConditionPlaceholder because of the conflicting option type.
-    Kind of like ICU plurals but more specific.
-    This will be trickier to translate into ICU than most of the others, but I think RuleBasedNumberFormat would work?
-    """
     options: list[ConditionalMessage]
+
+
 @dataclass(frozen=True)
 class ChoosePlaceholder(ConditionalPlaceholder):
     fn_name: str = fn_name_field("choose")
     keys: list[str]
-#Note: the rest of the known functions are zero-arg FunctionPlaceholders. They can be built inline in parse_mesage and will need to be output as custom bbcode in the form [fn_name:{var}].
 
-def parse_cond_expression(expression: str) -> MessageCondition:
-    """Convert a SmartFormat condition like >1, ==1, >=5 into a callable lambda"""
-    parts = re.match(r"(>=|<=|!=|>|<|==)\s*(\d+)", expression)
-    if not parts:
-        raise SyntaxError("Expected 'cond' function to be a numerical comparison but got {condition}.")
-    op, threshold = ComparisonOperator._value2member_map_[parts.group(1)], int(parts.group(2))
-    if op is None:
-        raise ValueError(f"Unrecognised cond operator '{op}'.")
 
-    return MessageCondition(op, threshold)
+SIMPLE_FUNCTIONS = frozenset(
+    {"diff", "inverseDiff", "percentLess", "percentMore", "n", "abs"}
+)
+REPEAT_FUNCTIONS = frozenset({"energyIcons", "starIcons"})
+OPTION_FUNCTIONS = frozenset({"show", "cond", "plural", "list"})
+
+CONDITION_REGEX = re.compile(r"\s*(>=|<=|!=|>|<|==)\s*(\d+)\s*")
+CONDITION_PREFIX_REGEX = re.compile(r"\s*(>=|<=|!=|>|<|==)\s*(\d+)\s*\?")
+IDENTIFIER_REGEX = re.compile(r"\w+")
 WORD_CHAR_REGEX = re.compile(r"\w")
+
+
+def parse_cond_expression(
+    expression: str, position: int | None = None
+) -> MessageCondition:
+    parts = CONDITION_REGEX.fullmatch(expression)
+    if not parts:
+        raise MessageSyntaxError(
+            f"Expected a numerical comparison such as >1 but got '{expression}'.",
+            position,
+        )
+    return MessageCondition(ComparisonOperator(parts.group(1)), int(parts.group(2)))
+
+
+def _unescape_text(fragment: str, top_level: bool) -> str:
+    fragment = fragment.replace("{{", "{")
+    if top_level:
+        fragment = fragment.replace("}}", "}")
+    return fragment
+
+
+def _escape_text(text: str) -> str:
+    return text.replace("{", "{{").replace("}", "}}")
+
+
 def lex(message: str) -> Generator[Token, None, None]:
     """
     Generates a stream of tokens from the original message.
-    This lexer is kind of halfway between a pure lexer and a parser in that it needs a well informed state machine to inform appropriate token delimiters
-    But this lexer is still more permissive than it needs to be, partly to keep it simple but mostly because it makes it relatively easier to create relatively better error messages
-    todo: not sure off the top of my head if the game uses \\{ or {{ escapes, but that can easily be fixed later.
+    The lexer carries a state stack so it knows which delimiters end the current fragment,
+    and it stays permissive where that gives better error positions than failing early.
     """
     states: list[LexerState] = [LexerState.TEMPLATE]
-    state: LexerState
-    delimiter: str = ''
-    fragment: str = ''
+    state = LexerState.TEMPLATE
+    delimiter = ""
+    fragment = ""
+    fragment_pos = 0
     position = 0
     delimiter_pos = -1
 
     def scan(*targets: str):
-        nonlocal position, delimiter_pos, delimiter, fragment
-        for i in range(position, len(message)):
-            if message[i] in targets and (i == 0 or (message[i-1] != "\\" and (message[i] != "{" or message[i-1] != "{"))):
-                delimiter = message[i]
+        nonlocal delimiter, fragment, fragment_pos, delimiter_pos
+        i = position
+        while i < len(message):
+            char = message[i]
+            if char == "\\":
+                i += 2
+                continue
+            if char == "{" and message[i + 1 : i + 2] == "{":
+                i += 2
+                continue
+            if char in targets:
+                delimiter = char
                 fragment = message[position:i]
+                fragment_pos = position
                 delimiter_pos = i
                 return
+            i += 1
         raise LexicalError(state, position)
-    while len(states) > 0:
+
+    while states:
         position = delimiter_pos + 1
         state = states.pop()
         match state:
             case LexerState.TEMPLATE:
                 try:
                     scan("{")
-                    states.append(LexerState.TEMPLATE)
-                    if fragment:
-                        yield (TextKind.GENERIC, fragment, position)
-                    yield (DelimiterKind.BRACE_OPEN, None, delimiter_pos)
-                    states.append(LexerState.PLACEHOLDER)
                 except LexicalError:
-                    yield (TextKind.GENERIC, message[position:], position)
+                    if position < len(message):
+                        yield (
+                            TextKind.GENERIC,
+                            _unescape_text(message[position:], True),
+                            position,
+                        )
+                    continue
+                states.append(LexerState.TEMPLATE)
+                if fragment:
+                    yield (TextKind.GENERIC, _unescape_text(fragment, True), position)
+                yield (DelimiterKind.BRACE_OPEN, None, delimiter_pos)
+                states.append(LexerState.PLACEHOLDER)
             case LexerState.PLACEHOLDER:
                 scan(":", "}")
                 if fragment:
@@ -203,28 +327,36 @@ def lex(message: str) -> Generator[Token, None, None]:
                     case "}":
                         yield (DelimiterKind.BRACE_CLOSE, None, delimiter_pos)
             case LexerState.FUNCTION_OR_SUBTEMPLATE:
-                if WORD_CHAR_REGEX.match(message[position]):
+                head = message[position : position + 1]
+                if head == ":":
+                    delimiter_pos = position
+                    yield (TextKind.FUNCTION, "", position)
+                    yield (DelimiterKind.COLON, None, position)
+                    states.append(LexerState.SUBTEMPLATE)
+                elif head and WORD_CHAR_REGEX.match(head):
                     scan("(", ":", "|", "{", "}")
-                    match delimiter:
-                        case "|" | "{" | "}": # valid "fall-through" scenario.
-                            states.append(LexerState.SUBTEMPLATE_SCANNED)
-                        case _:
-                            if fragment:
-                                yield (TextKind.FUNCTION, fragment, position)
-                            match delimiter:
-                                case "(":
-                                    yield (DelimiterKind.PAREN_OPEN, None, delimiter_pos)
-                                    states.append(LexerState.ARGUMENTS)
-                                case ":":
-                                    yield (DelimiterKind.COLON, None, delimiter_pos)
-                                    # note: this is the only known special case where knowing the function name seems to affect parsing
-                                    states.append(LexerState.CONDITION_OR_SUBTEMPLATE if fragment == "cond" else LexerState.SUBTEMPLATE)
+                    if delimiter in ("(", ":") and IDENTIFIER_REGEX.fullmatch(fragment):
+                        yield (TextKind.FUNCTION, fragment, position)
+                        if delimiter == "(":
+                            yield (DelimiterKind.PAREN_OPEN, None, delimiter_pos)
+                            states.append(LexerState.ARGUMENTS)
+                        else:
+                            yield (DelimiterKind.COLON, None, delimiter_pos)
+                            states.append(
+                                LexerState.CONDITION_OPTION_START
+                                if fragment == "cond"
+                                else LexerState.SUBTEMPLATE
+                            )
+                    else:
+                        if delimiter in ("(", ":"):
+                            scan("|", "{", "}")
+                        states.append(LexerState.SUBTEMPLATE_SCANNED)
                 else:
                     states.append(LexerState.SUBTEMPLATE)
             case LexerState.ARGUMENTS:
                 scan("|", ")", ":", "{", "}")
                 match delimiter:
-                    case  ":" | "{", "}": # pseudo-error recovery (better error position info)
+                    case ":" | "{" | "}":
                         states.append(LexerState.ARGUMENTS_END_SCANNED)
                     case _:
                         if fragment:
@@ -244,79 +376,70 @@ def lex(message: str) -> Generator[Token, None, None]:
                     case ":":
                         yield (DelimiterKind.COLON, None, delimiter_pos)
                         states.append(LexerState.SUBTEMPLATE)
-                    case _: # pseudo-error recovery (better error position info)
-                        states.append(LexerState.SUBTEMPLATE_SCANNED)
-            case LexerState.CONDITION_OR_SUBTEMPLATE:
-                scan("?", "|", "{", "}")
-                match delimiter:
-                    case "?":
-                        yield (ConditionKind.CONDITION, parse_cond_expression(fragment), position)
-                        states.append(LexerState.CONDITION_OR_SUBTEMPLATE)
-                        states.append(LexerState.SUBTEMPLATE)
                     case _:
                         states.append(LexerState.SUBTEMPLATE_SCANNED)
+            case LexerState.CONDITION_OPTION_START:
+                condition = CONDITION_PREFIX_REGEX.match(message, position)
+                if condition:
+                    yield (
+                        ConditionKind.CONDITION,
+                        parse_cond_expression(condition.group()[:-1], position),
+                        position,
+                    )
+                    delimiter_pos = condition.end() - 1
+                states.append(LexerState.CONDITION_OPTION)
+            case LexerState.CONDITION_OPTION:
+                scan("|", "{", "}")
+                states.append(LexerState.CONDITION_OPTION_SCANNED)
             case LexerState.SUBTEMPLATE:
                 scan("|", "{", "}")
                 states.append(LexerState.SUBTEMPLATE_SCANNED)
-            case LexerState.SUBTEMPLATE_SCANNED:
+            case LexerState.SUBTEMPLATE_SCANNED | LexerState.CONDITION_OPTION_SCANNED:
                 if fragment:
-                    yield (TextKind.GENERIC, fragment, position)
+                    yield (
+                        TextKind.GENERIC,
+                        _unescape_text(fragment, False),
+                        fragment_pos,
+                    )
+                conditional = state == LexerState.CONDITION_OPTION_SCANNED
                 match delimiter:
                     case "}":
                         yield (DelimiterKind.BRACE_CLOSE, None, delimiter_pos)
-                    case _:
-                        if states[-1] != LexerState.CONDITION_OR_SUBTEMPLATE:
-                            states.append(LexerState.SUBTEMPLATE)
-                        match delimiter:
-                            case "|":
-                                yield (DelimiterKind.BAR, None, delimiter_pos)
-                            case "{":
-                                yield (DelimiterKind.BRACE_OPEN, None, delimiter_pos)
-                                states.append(LexerState.PLACEHOLDER)
+                    case "|":
+                        states.append(
+                            LexerState.CONDITION_OPTION_START
+                            if conditional
+                            else LexerState.SUBTEMPLATE
+                        )
+                        yield (DelimiterKind.BAR, None, delimiter_pos)
+                    case "{":
+                        states.append(
+                            LexerState.CONDITION_OPTION
+                            if conditional
+                            else LexerState.SUBTEMPLATE
+                        )
+                        yield (DelimiterKind.BRACE_OPEN, None, delimiter_pos)
+                        states.append(LexerState.PLACEHOLDER)
 
-def parse(
-    message: str
-) -> ParsedMessage:
-    """
-    Parse SmartFormat templates in descriptions and other messages into resolvable placeholders. Fail-fast.
-    As far as we know the syntax for the game's messages is approximately:
-    TEMPLATE = { text | PLACEHOLDER },
-    PLACEHOLDER = "{", CURRENT_OR_NAMED
-    CURRENT_OR_NAMED = "}" | NAMED_PLACEHOLDER
-    PLACEHOLDER = "{", variable, [ FUNCTION_OR_SUBTEMPLATE ], "}"
-    FUNCTION_OR_SUBTEMPLATE = ":", ( "cond", ":", CONDITION_OR_SUBTEMPLATE | [ function, [ "(", [ ARGUMENTS ], ")", ], ":", SUBTEMPLATE, ] | SUBTEMPLATE )
-    ARGUMENTS = word, { "|", word }
-    CONDITION_OR_SUBTEMPLATE = [ CONDITION, TEMPLATE, { "|", CONDITION, TEMPLATE } ], [ TEMPLATE ]
-    SUBTEMPLATE = TEMPLATE, { "|", TEMPLATE }
-    CONDITION = CONDITION_OP, int
-    CONDITION_OP = ">" | "<" | ">=" | "<=" | "==" | "!="
 
-    The lexer is smart enough to process most of this but is deliberately permissive about a few things (most notably premature closer of a malformed placeholder).
-
-    Note: Although SmartFormat itself is more complex, the game only utilises a specific subset (as far as we know).
-    This implementation can be made more perissive though, especially e.g. around whitespace in certain places.
-    """
+def parse(message: str) -> ParsedMessage:
+    """Parse a SmartFormat template into a ParsedMessage. Raises MessageSyntaxError."""
     tokens = lex(message)
-    current: Token | None 
+    current: Token | None = None
+
     def advance():
         nonlocal current
         current = next(tokens, None)
         return current
-    advance()
+
     def consume(expected: DelimiterKind):
-        """
-        Consumes the next yield from tokens and raises an UnexpectedTokenError if it is not for the expected delimiter
-        """
         match advance():
             case (kind, _, _) if kind == expected:
                 pass
             case bad:
-                raise UnexpectedTokenError(bad, expected)
+                raise UnexpectedTokenError(bad, f"'{expected.value}'")
+
     def collect_message() -> ParsedMessage:
-        """
-        Potentially recursive token-to-template parsing
-        """
-        nonlocal current
         result = []
         while True:
             match current:
@@ -327,30 +450,26 @@ def parse(
                     result.append(collect_placeholder())
                 case _:
                     return result
+
     def generate_options() -> Generator[ParsedMessage, None, None]:
-        """
-        Returns a token if there are more options to gather, though the token is always a | delimiter, it's positional information is useful for error messaging.
-        It yields at least n+1 messages for n occurances of | bar. This is correct because in most cases the game data will explicitly have empty final options (although there are exceptions).
-        Including or omitting the final bar on an empty option makes little practical difference except for trying to perfectly reproduce inputs as a quick way of testing.
-        The case where there are 0 options never appears in input anyway.
-        """
-        nonlocal current
         while True:
             template = collect_message()
-            match current[0]:
-                case DelimiterKind.BRACE_CLOSE:
+            match current:
+                case (DelimiterKind.BRACE_CLOSE, _, _):
                     yield template
                     break
-                case DelimiterKind.BAR:
+                case (DelimiterKind.BAR, _, _):
                     advance()
                     yield template
                 case _:
-                    raise UnexpectedTokenError(current, "a template option starting with either be text or a placeholder")
+                    raise UnexpectedTokenError(
+                        current, "a template option made of text or placeholders"
+                    )
+
     def collect_options() -> list[ParsedMessage]:
-        """Using a generator for the base implementation makes it easier to blend with conditional options"""
         return list(generate_options())
+
     def collect_conditional_options() -> list[ConditionalMessage]:
-        nonlocal current
         result = []
         options = generate_options()
         saw_unconditional = False
@@ -358,7 +477,10 @@ def parse(
             match current:
                 case (ConditionKind.CONDITION, condition, _):
                     if saw_unconditional:
-                        raise UnexpectedTokenError(current, "to see no more complex (<n?) conditions after the first simple/else case of a numerical condition placeholder")
+                        raise UnexpectedTokenError(
+                            current,
+                            "no further conditions after the unconditional option",
+                        )
                     advance()
                 case _:
                     saw_unconditional = True
@@ -368,6 +490,7 @@ def parse(
                 break
             result.append(ConditionalMessage(condition, option))
         return result
+
     def collect_keys() -> list[str]:
         had_arg = False
         seen: set[str] = set()
@@ -375,7 +498,7 @@ def parse(
         while True:
             match advance():
                 case (DelimiterKind.PAREN_CLOSE, _, _) if had_arg:
-                    break               
+                    break
                 case (DelimiterKind.BAR, _, _) if had_arg:
                     had_arg = False
                 case (TextKind.ARGUMENT, arg, _) if not had_arg and arg not in seen:
@@ -383,264 +506,129 @@ def parse(
                     result.append(arg)
                     had_arg = True
                 case bad if had_arg:
-                    raise UnexpectedTokenError(bad, "'|' or ')")
+                    raise UnexpectedTokenError(bad, "'|' or ')'")
                 case bad:
                     raise UnexpectedTokenError(bad, "a unique and non-empty argument")
         return result
+
+    def collect_function(var_name: str | None, fn_name: str, position: int):
+        if fn_name in OPTION_FUNCTIONS or fn_name in ("", "choose"):
+            args = None
+            match advance():
+                case (DelimiterKind.PAREN_OPEN, _, _):
+                    args = collect_keys()
+                    consume(DelimiterKind.COLON)
+                case (DelimiterKind.COLON, _, _):
+                    pass
+                case bad:
+                    raise UnexpectedTokenError(
+                        bad, "':' or '(' after the formatter name"
+                    )
+            advance()
+            if fn_name == "cond":
+                if args is not None:
+                    raise MessageSyntaxError("'cond' takes no arguments.", position)
+                return NumericConditionPlaceholder(
+                    var_name, collect_conditional_options()
+                )
+            options = collect_options()
+            if fn_name == "choose" and args is not None:
+                if len(options) < len(args) or len(options) > len(args) + 1:
+                    raise MessageSyntaxError(
+                        f"Expected {len(args)} or {len(args) + 1} options for "
+                        f"{len(args)} 'choose' keys but got {len(options)}.",
+                        current[2] if current else None,
+                    )
+                return ChoosePlaceholder(var_name, options, args)
+            return ConditionalPlaceholder(var_name, options, fn_name=fn_name, args=args)
+        consume(DelimiterKind.PAREN_OPEN)
+        if fn_name in REPEAT_FUNCTIONS:
+            match advance():
+                case (TextKind.ARGUMENT, arg, arg_position):
+                    try:
+                        n = int(arg)
+                    except ValueError as error:
+                        raise MessageSyntaxError(
+                            f"Expected an integer argument but got '{arg}'.",
+                            arg_position,
+                        ) from error
+                    consume(DelimiterKind.PAREN_CLOSE)
+                case (DelimiterKind.PAREN_CLOSE, _, _):
+                    n = None
+                case bad:
+                    raise UnexpectedTokenError(bad, "an integer or ')'")
+            result = RepeatPlaceholder(var_name, n, fn_name=fn_name)
+        elif fn_name in SIMPLE_FUNCTIONS:
+            consume(DelimiterKind.PAREN_CLOSE)
+            result = FunctionPlaceholder(var_name, fn_name=fn_name)
+        else:
+            raise MessageSyntaxError(
+                f"Unrecognised template function '{fn_name}'.", position
+            )
+        advance()
+        return result
+
     def collect_placeholder() -> Placeholder:
         match advance():
-            case (TextKind.VARIABLE | DelimiterKind.COLON, var_name, _): # note: kind of abusing the fact that the second arg is None if the token kind is COLON.
+            case (TextKind.VARIABLE | DelimiterKind.COLON, var_name, _):
                 if current[0] == TextKind.VARIABLE:
                     advance()
                 match current:
                     case (DelimiterKind.COLON, _, _):
                         match advance():
                             case (TextKind.FUNCTION, fn_name, position):
-                                match fn_name:
-                                    case "show" | "cond" | "plural" | "list":
-                                        consume(DelimiterKind.COLON)                                                       
-                                        advance()
-                                        match fn_name:
-                                            case "cond":
-                                                result = NumericConditionPlaceholder(var_name, collect_conditional_options())
-                                            case _:
-                                                result = ConditionalPlaceholder(var_name, collect_options(), fn_name=fn_name)
-                                    case _:
-                                        # all other functions are assumed to take the name() form
-                                        consume(DelimiterKind.PAREN_OPEN)
-                                        match fn_name:
-                                            case "choose":
-                                                # this is the only name() form function that takes options
-                                                keys = collect_keys()
-                                                consume(DelimiterKind.COLON)
-                                                advance()
-                                                options = collect_options()
-                                                if len(options) < len(keys) or len(options) > len(keys) + 1:
-                                                    # todo: we could decide to be permissive if the game has n-1 options for n keys, but for now I'd prefer to find out if that is ever the case.
-                                                    raise MessageSyntaxError(f"Expected {len(keys)} message options (for {len(keys)} 'choose' keys) but got {len(options)}: {options}.", current[2])
-                                                result = ChoosePlaceholder(var_name, options, keys)
-                                            case _:
-                                                match fn_name:
-                                                    case "energyIcons" | "starIcons":
-                                                        match advance():
-                                                            case (TextKind.ARGUMENT, arg, position):
-                                                                try:
-                                                                    n = int(arg)
-                                                                except exec:
-                                                                    raise MessageSyntaxError("Invalid integer argument", position) from exec
-                                                                consume(DelimiterKind.PAREN_CLOSE)
-                                                            case (DelimiterKind.PAREN_CLOSE, _, _):
-                                                                n = None
-                                                            case bad:
-                                                                raise UnexpectedTokenError(bad, "an integer or ')'")
-                                                        result = RepeatPlaceholder(var_name, n, fn_name=fn_name)
-                                                    # the rest of these are simple name() functions
-                                                    case "diff" | "inverseDiff" | "percentLess" | "percentMore" | "n" | "abs":
-                                                        result = FunctionPlaceholder(var_name, fn_name=fn_name)
-                                                        consume(DelimiterKind.PAREN_CLOSE)
-                                                    case _:
-                                                        raise MessageSyntaxError(f"Unrecognised template function {fn_name}", position)
-                                                advance() #all the other placeholders have options and therefore proceed current up to a }, but these need an extra hand
+                                result = collect_function(var_name, fn_name, position)
                             case _:
-                                result = ConditionalPlaceholder(var_name, collect_options())
+                                result = ConditionalPlaceholder(
+                                    var_name, collect_options()
+                                )
                     case (DelimiterKind.BRACE_CLOSE, _, _):
                         result = Placeholder(var_name)
                     case bad:
-                        raise UnexpectedTokenError(bad, "':' or '}}' after a placeholder's variable name")
+                        raise UnexpectedTokenError(
+                            bad, "':' or '}' after a placeholder's variable name"
+                        )
             case (DelimiterKind.BRACE_CLOSE, _, _):
                 result = Placeholder(None)
             case bad:
                 raise UnexpectedTokenError(bad, "a variable name")
-        # note: this check is redundant in the event of a simple placeholder,
-        # but doing it at the outermost level is more fail-fast and reduces the risk of the rest of the code being accidentally incomplete
         match current:
             case (DelimiterKind.BRACE_CLOSE, _, _):
-                advance() # skip past the } we confirmed to exist above
+                advance()
             case bad:
-                raise UnexpectedTokenError(current, "a '}' to end the placeholder")
+                raise UnexpectedTokenError(bad, "a '}' to end the placeholder")
         return result
+
     try:
+        advance()
         result = collect_message()
         if current is not None:
             raise UnexpectedTokenError(current, "end of message")
         return result
-    except MessageSyntaxError as exec:
-        position = exec.position or len(message)
+    except MessageSyntaxError as error:
+        position = len(message) if error.position is None else error.position
+        single_line = message.replace("\n", " ")
         raise MessageSyntaxError(
-f"""Failed to parse message. A problem was found at position {position}:
-{message.replace("\n", " ")}
-{"-" * (max(0, position - 1))}^
-"""
-        ) from exec
+            f"Failed to parse message at position {position}: {error}\n"
+            f"{single_line}\n{'-' * max(0, position)}^",
+            position,
+        ) from error
 
-
-def resolve_description(
-    raw: str, vars_dict: dict[str, int | str], is_upgraded: bool = False
-) -> str:
-    """Companion to app.parsers.description_resolver.resolve_description (e.g. for testing)"""
-    resolve_recursively(parse(raw), vars_dict, is_upgraded)
-
-
-    def resolve_recursively(
-        message: ParsedMessage
-    ) -> Generator[str, None, None]:
-        """Companion to app.parsers.description_resolver.resolve_description (e.g. for testing). Will be able to modify to yield icu after."""
-
-        for part in message:
-            match part:
-                case RepeatPlaceholder(variable, n, fn_name=fn_name):
-                    if fn_name.endswith("Icons"):
-                        fn_name = fn_name[:fn_name.index("Icons")]
-                    yield "["
-                    yield fn_name
-                    yield ":"
-                    if n:
-                        yield str(n)
-                    else:
-                        yield str(_lookup(variable, vars_dict))
-                    yield "]"
-                case ChoosePlaceholder(variable, options, keys, fn_name=fn_name):
-                    match fn_name:
-                        case "choose":
-                            yield from resolve_recursively(options[keys.index(_lookup(variable, vars_dict))])
-                        case _:
-                            raise "unrecognised fn"
-                case ConditionalPlaceholder(variable, options, fn_name=fn_name):
-                    if variable == "IfUpgraded":
-                        value = is_upgraded
-                    else:
-                        value = _lookup(variable, vars_dict)
-                    match fn_name:
-                        case None | "show" if len(options) <= 2:
-                            if value:
-                                yield from resolve_recursively(options[0])
-                            elif len(value) == 2:
-                                yield from resolve_recursively(options[1])
-                        case "plural":
-                            if value == 1:
-                                yield from resolve_recursively(options[0])
-                            else:
-                                yield from resolve_recursively(options[1])
-                        case "list":
-                            if len(value) > 0:
-                                yield from resolve_recursively(options[0])
-                                i = 0
-                                while i < len(value):
-                                    yield from resolve_recursively(options[1])
-                                    yield from resolve_recursively(options[0])
-                            if len(value) == 3:
-                                yield from resolve_recursively(options[2])
-                        case _:
-                            raise "idk how to handle this conditional conditional"
-                case NumericConditionPlaceholder(variable, options, fn_name=fn_name):
-                    value = _lookup(variable, vars_dict)
-                    if not isinstance(value, int):
-                        raise "wrong type"
-                    for option in options:
-                        match option.condition:
-                            case None:
-                                hit = True
-                            case (op, threshold):
-                                match op:
-                                    case ComparisonOperator.GREATER_THAN if value > threshold:
-                                        hit = True
-                                    case ComparisonOperator.GREATER_THAN_OR_EQUAL if value >= threshold:
-                                        hit = True
-                                    case ComparisonOperator.LESS_THAN if value < threshold:
-                                        hit = True
-                                    case ComparisonOperator.LESS_THAN_OR_EQUAL if value <= threshold:
-                                        hit = True
-                                    case ComparisonOperator.EQUAL if value == threshold:
-                                        hit = True
-                                    case ComparisonOperator.NOT_EQUAL if value != threshold:
-                                        hit = True
-                                    case _:
-                                        hit = False
-                        if hit:
-                            yield from option
-                            break
-                case FunctionPlaceholder(variable, fn_name=fn_name):
-                    value = _lookup(variable, vars_dict)
-                    if value is None:
-                        raise "couldn't find the val"
-                    match fn_name:
-                        case "percentMore" if isinstance(val, (int, float)):
-                            yield str(int((val - 1) * 100))
-                        case "percentLess" if isinstance(val, (int, float)):
-                            yield str(int((1 - val) * 100))
-                        case "diff":
-                            yield value
-                        case "inverseDiff":
-                            yield value
-                        case _:
-                            raise "unrecognised fn"
-                case Placeholder(variable) if variable == "singleStarIcon":
-                    yield from resolve_recursively(RepeatPlaceholder(variable, 1, fn_name="starIcons"))
-                case Placeholder(variable):
-                    value = _lookup(variable, vars_dict)
-                    if value is None:
-                        raise "couldn't find the val"
-                    else:
-                        yield value
-                case x if isinstance(x, str):
-                    yield x
-                case _:
-                    raise "unrecognised message part"
-
-    # # Handle remaining {Var} without formatter
-    # def _make_readable(name: str) -> str:
-    #     # Strip trailing digits (e.g. Enchantment1 -> Enchantment) but keep
-    #     # CamelCase intact so [OwnerName] stays a single token for the
-    #     # frontend tokenizer (spaces would break it into a false BBCode tag).
-    #     readable = re.sub(r"\d+$", "", name).strip()
-    #     return readable
-
-    # def resolve_bare(m):
-    #     value = _lookup(m.group(1), vars_dict)
-    #     if val is not None:
-    #         return str(val)
-    #     return f"[{_make_readable(m.group(1))}]"
-
-    # text = re.sub(r"\{(\w+)\}", resolve_bare, text)
-
-    # # Handle {Var:cond:...} and other complex formatters -> just show value
-    # def resolve_remaining(m):
-    #     var_name = m.group(1).split(":")[0]
-    #     value = _lookup(var_name, vars_dict)
-    #     if val is not None:
-    #         return str(val)
-    #     return f"[{_make_readable(var_name)}]"
-
-    # text = re.sub(r"\{([^}]+)\}", resolve_remaining, text)
-
-    return text
-
-# todo: write a helper for converting to ICU
 
 def unparse(parsed: ParsedMessage) -> str:
-    """
-    A helper that compiles a ParsedMessage back into the game's original syntax.
-    Mainly useful for testing/validating the implementation of parse_message(str).
+    """Compile a ParsedMessage back into the game's original syntax."""
+    return "".join(unparse_recursively(parsed))
 
-    Note: Theoretically, currently, it should be able to reproduce inputs exactly.
-    SmartFormat is more permissive than that would allow but the game might not actually leverage that permissiveness.
-    Even if that does occur in future the parser 
-    """
-    return ''.join(unparse_recursively(parsed))
-
-# Note: the rest of this file is deceptively simple for how long it is and is internal helpers for the above
 
 def unparse_recursively(parsed: ParsedMessage) -> Generator[str, None, None]:
-    """
-    The generator form is genuinely more efficient for recursion
-    """
-    def inject_bars(content: Generator[str, None, None]):
-        each = next(content, None)
-        while each is not None:
-            yield from each
-            each = next(content, None)
-            if each is not None:
+    def inject_bars(content):
+        first = True
+        for each in content:
+            if not first:
                 yield "|"
+            first = False
+            yield from each
+
     for part in parsed:
         match part:
             case RepeatPlaceholder(variable, n, fn_name=fn_name):
@@ -659,9 +647,8 @@ def unparse_recursively(parsed: ParsedMessage) -> Generator[str, None, None]:
                 yield ":"
                 yield fn_name
                 yield "("
-                yield from inject_bars(keys.__iter__())
-                yield ")"
-                yield ":"
+                yield from inject_bars(keys)
+                yield "):"
                 yield from inject_bars(map(unparse_recursively, options))
                 yield "}"
             case NumericConditionPlaceholder(variable, options, fn_name=fn_name):
@@ -671,15 +658,21 @@ def unparse_recursively(parsed: ParsedMessage) -> Generator[str, None, None]:
                 yield ":"
                 yield fn_name
                 yield ":"
-                yield from inject_bars(map(unparse_conditional_message_recursively, options))
+                yield from inject_bars(
+                    map(unparse_conditional_message_recursively, options)
+                )
                 yield "}"
-            case ConditionalPlaceholder(variable, options, fn_name=fn_name):
+            case ConditionalPlaceholder(variable, options, fn_name=fn_name, args=args):
                 yield "{"
                 if variable:
                     yield variable
                 yield ":"
-                if fn_name:
+                if fn_name is not None:
                     yield fn_name
+                    if args is not None:
+                        yield "("
+                        yield from inject_bars(args)
+                        yield ")"
                     yield ":"
                 yield from inject_bars(map(unparse_recursively, options))
                 yield "}"
@@ -696,12 +689,462 @@ def unparse_recursively(parsed: ParsedMessage) -> Generator[str, None, None]:
                     yield variable
                 yield "}"
             case text if isinstance(text, str):
-                yield text
+                yield _escape_text(text)
             case bad:
                 raise ValueError(f"Unrecognised message part: {bad}")
-def unparse_conditional_message_recursively(message: ConditionalMessage) -> Generator[str, None, None]:
+
+
+def unparse_conditional_message_recursively(
+    message: ConditionalMessage,
+) -> Generator[str, None, None]:
     if message.condition is not None:
         yield message.condition.operator.value
         yield str(message.condition.threshold)
         yield "?"
     yield from unparse_recursively(message.content)
+
+
+ICU_IDENTIFIER_REGEX = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+ICU_UNSAFE_CHAR_REGEX = re.compile(r"[^A-Za-z0-9_]")
+BACKSLASH_ESCAPE_REGEX = re.compile(r"\\([{}|:()?\\])")
+TAG_START_REGEX = re.compile(r"<(?=[A-Za-z/])")
+EXACT_MATCH_LIMIT = 10
+PLURAL_SAFE_OPERATORS = frozenset(
+    {
+        ComparisonOperator.GREATER_THAN,
+        ComparisonOperator.GREATER_THAN_OR_EQUAL,
+        ComparisonOperator.EQUAL,
+        ComparisonOperator.NOT_EQUAL,
+    }
+)
+REPEAT_ICONS = {"energyIcons": "[E]", "starIcons": "[S]"}
+LANGUAGE_CODES = {
+    "eng": "en",
+    "zhs": "zh",
+    "zht": "zh",
+    "deu": "de",
+    "esp": "es",
+    "fra": "fr",
+    "ind": "id",
+    "ita": "it",
+    "jpn": "ja",
+    "kor": "ko",
+    "pol": "pl",
+    "ptb": "pt",
+    "rus": "ru",
+    "spa": "es",
+    "tha": "th",
+    "tur": "tr",
+}
+PLURAL_RULES = {
+    "en": "dual",
+    "de": "dual",
+    "es": "dual",
+    "it": "dual",
+    "tr": "dual",
+    "pt": "dual_exact",
+    "fr": "french",
+    "pl": "slavic",
+    "ru": "slavic",
+    "zh": "singular",
+    "ja": "singular",
+    "ko": "singular",
+    "th": "singular",
+    "id": "singular",
+}
+DEFAULT_PLURAL_RULE = "dual"
+ICU_KEY_REGEX = re.compile(r"\w+")
+ICU_UNSAFE_KEY_CHAR_REGEX = re.compile(r"\W")
+INTEGER_REGEX = re.compile(r"[0-9]+")
+MAX_EXAMPLES = 20
+
+
+class IcuConversionError(Exception):
+    pass
+
+
+class ConversionReport:
+    def __init__(self):
+        self.constructs: Counter[str] = Counter()
+        self.unconvertible = 0
+        self.unconvertible_examples: list[str] = []
+        self.derived_conditions: list[tuple[str, str, int | None]] = []
+        self.renamed_variables: dict[str, str] = {}
+        self.renamed_keys: dict[str, str] = {}
+
+    def merge(self, other: "ConversionReport"):
+        self.constructs.update(other.constructs)
+        self.unconvertible += other.unconvertible
+        for example in other.unconvertible_examples:
+            if len(self.unconvertible_examples) < MAX_EXAMPLES:
+                self.unconvertible_examples.append(example)
+        self.derived_conditions.extend(other.derived_conditions)
+        self.renamed_variables.update(other.renamed_variables)
+        self.renamed_keys.update(other.renamed_keys)
+
+    def as_dict(self) -> dict:
+        return {
+            "constructs": dict(sorted(self.constructs.items())),
+            "unconvertible": self.unconvertible,
+            "unconvertible_examples": list(self.unconvertible_examples),
+            "derived_conditions": list(self.derived_conditions),
+            "renamed_variables": dict(self.renamed_variables),
+            "renamed_keys": dict(self.renamed_keys),
+        }
+
+
+def escape_icu_text(text: str, in_plural: bool = False) -> str:
+    """Quote ICU syntax characters in literal text. Newlines pass through unchanged."""
+    special = "{}<" if not in_plural else "{}<#"
+    out: list[str] = []
+    quoting = False
+    for i, char in enumerate(text):
+        if char == "'":
+            out.append("''")
+        elif char in special and (char != "<" or TAG_START_REGEX.match(text, i)):
+            if not quoting:
+                out.append("'")
+                quoting = True
+            out.append(char)
+        else:
+            if quoting:
+                out.append("'")
+                quoting = False
+            out.append(char)
+    if quoting:
+        out.append("'")
+    return "".join(out)
+
+
+def _references_current_value(parts: ParsedMessage) -> bool:
+    for part in parts:
+        match part:
+            case ConditionalPlaceholder() | NumericConditionPlaceholder():
+                continue
+            case Placeholder(variable=None):
+                return True
+    return False
+
+
+def plural_rule(language: str | None) -> str | None:
+    """The SmartFormat plural rule family for a game language code or culture name."""
+    if not language:
+        return None
+    code = language.strip().lower()
+    code = LANGUAGE_CODES.get(code, code.split("-")[0])
+    return PLURAL_RULES.get(code)
+
+
+def _plural_cases(rule: str, bodies: list[str]) -> list[tuple[str, str]]:
+    n = len(bodies)
+    match rule:
+        case "dual" | "dual_exact":
+            one = "one" if rule == "dual" else "=1"
+            if n == 2:
+                return [(one, bodies[0]), ("other", bodies[1])]
+            if n == 3:
+                return [("=0", bodies[0]), (one, bodies[1]), ("other", bodies[2])]
+            if n == 4:
+                return [("=0", bodies[1]), ("=1", bodies[2]), ("other", bodies[3])]
+        case "french":
+            if n == 2:
+                return [("one", bodies[0]), ("other", bodies[1])]
+            if n == 3:
+                return [("=0", bodies[0]), ("=1", bodies[1]), ("other", bodies[2])]
+            if n == 4:
+                return [("=0", bodies[1]), ("=1", bodies[2]), ("other", bodies[3])]
+        case "slavic":
+            if n == 2:
+                return [("one", bodies[0]), ("other", bodies[1])]
+            if n in (3, 4):
+                return [
+                    ("one", bodies[0]),
+                    ("few", bodies[1]),
+                    ("many", bodies[2]),
+                    ("other", bodies[-1]),
+                ]
+    raise IcuConversionError(f"plural with {n} options under the {rule} rule")
+
+
+def _exact_cases(bodies: list[str]) -> list[tuple[str, str]]:
+    if len(bodies) == 2:
+        return [("=1", bodies[0]), ("other", bodies[1])]
+    if len(bodies) == 3:
+        return [("=0", bodies[0]), ("=1", bodies[1]), ("other", bodies[2])]
+    raise IcuConversionError(f"keyless choose with {len(bodies)} options")
+
+
+class _IcuWriter:
+    def __init__(self, report: ConversionReport, language: str | None = None):
+        self.report = report
+        self.rule = plural_rule(language) or DEFAULT_PLURAL_RULE
+
+    def note(self, construct: str, count: int = 1):
+        self.report.constructs[construct] += count
+
+    def name(self, variable: str) -> str:
+        if ICU_IDENTIFIER_REGEX.fullmatch(variable):
+            return variable
+        renamed = ICU_UNSAFE_CHAR_REGEX.sub("_", variable)
+        if not ICU_IDENTIFIER_REGEX.match(renamed):
+            renamed = "_" + renamed
+        self.report.renamed_variables[variable] = renamed
+        return renamed
+
+    def text(self, text: str, context: list) -> str:
+        unescaped, backslashes = BACKSLASH_ESCAPE_REGEX.subn(r"\1", text)
+        braces = unescaped.count("{") + unescaped.count("}")
+        if backslashes or braces:
+            self.note("escapes", backslashes + braces)
+        in_plural = bool(context) and context[-1][1]
+        return escape_icu_text(unescaped, in_plural)
+
+    def current_value(self, context: list) -> str:
+        if not context:
+            return "{value}"
+        name, is_plural = context[-1]
+        return "#" if is_plural else "{" + name + "}"
+
+    def value(self, variable: str | None, context: list) -> str:
+        if variable is None:
+            return self.current_value(context)
+        return "{" + self.name(variable) + "}"
+
+    def message(self, parts: ParsedMessage, context: list) -> str:
+        return "".join(self.part(part, context) for part in parts)
+
+    def part(self, part, context: list) -> str:
+        match part:
+            case str():
+                return self.text(part, context)
+            case RepeatPlaceholder(variable, n, fn_name=fn_name):
+                self.note(fn_name)
+                if n is None:
+                    self.note(fn_name + "_variable")
+                    return self.value(variable, context)
+                return REPEAT_ICONS[fn_name] * n
+            case ChoosePlaceholder(variable, options, keys):
+                self.note("choose")
+                return self.choose(variable, options, keys, context)
+            case NumericConditionPlaceholder(variable, options):
+                self.note("cond")
+                return self.numeric_condition(variable, options, context)
+            case ConditionalPlaceholder(variable, options, fn_name=fn_name, args=args):
+                return self.conditional(variable, options, fn_name, args, context)
+            case FunctionPlaceholder(variable, fn_name=fn_name):
+                self.note(fn_name)
+                return self.value(variable, context)
+            case Placeholder(variable):
+                self.note("variable" if variable else "current_value")
+                return self.value(variable, context)
+        raise IcuConversionError(f"Unrecognised message part: {part!r}")
+
+    def selector_name(self, variable: str | None, context: list) -> str:
+        if variable is not None:
+            return self.name(variable)
+        if context:
+            return context[-1][0]
+        return "value"
+
+    @staticmethod
+    def select(name: str, cases: list[tuple[str, str]]) -> str:
+        body = " ".join(f"{key} {{{text}}}" for key, text in cases)
+        return "{" + name + ", select, " + body + "}"
+
+    @staticmethod
+    def plural(name: str, cases: list[tuple[str, str]]) -> str:
+        body = " ".join(f"{key} {{{text}}}" for key, text in cases)
+        return "{" + name + ", plural, " + body + "}"
+
+    def key(self, key: str) -> str:
+        if ICU_KEY_REGEX.fullmatch(key) and key != "other":
+            return key
+        renamed = ICU_UNSAFE_KEY_CHAR_REGEX.sub("_", key)
+        if not renamed or renamed == "other":
+            raise IcuConversionError(f"choose key '{key}' is not an ICU select key")
+        self.report.renamed_keys[key] = renamed
+        return renamed
+
+    def choose(self, variable, options, keys, context) -> str:
+        name = self.selector_name(variable, context)
+        numeric = all(INTEGER_REGEX.fullmatch(key) for key in keys)
+        inner = context + [(name, numeric)]
+        bodies = [self.message(option, inner) for option in options]
+        other = bodies[len(keys)] if len(bodies) > len(keys) else ""
+        if numeric:
+            self.note("choose_numeric")
+            cases = [(f"={int(key)}", body) for key, body in zip(keys, bodies)]
+            return self.plural(name, cases + [("other", other)])
+        cases = [(self.key(key), body) for key, body in zip(keys, bodies)]
+        return self.select(name, cases + [("other", other)])
+
+    def plural_options(self, name, options, args, context) -> str:
+        rule = self.rule
+        if args:
+            self.note("plural_lang_arg")
+            rule = plural_rule(args[0])
+            if rule is None:
+                raise IcuConversionError(f"unknown plural language '{args[0]}'")
+        if rule == "singular":
+            self.note("plural_singular_rule")
+            return self.message(options[0], context + [(name, False)])
+        inner = context + [(name, True)]
+        bodies = [self.message(option, inner) for option in options]
+        return self.plural(name, _plural_cases(rule, bodies))
+
+    def conditional(self, variable, options, fn_name, args, context) -> str:
+        name = self.selector_name(variable, context)
+        match fn_name:
+            case "plural":
+                self.note("plural")
+                return self.plural_options(name, options, args, context)
+            case "choose":
+                self.note("choose_keyless")
+                inner = context + [(name, True)]
+                bodies = [self.message(option, inner) for option in options]
+                return self.plural(name, _exact_cases(bodies))
+            case "list":
+                self.note("list")
+                return "{" + name + "}"
+            case "show":
+                self.note("show")
+            case None | "":
+                self.note("bare_conditional")
+            case _:
+                raise IcuConversionError(f"conditional formatter '{fn_name}'")
+        return self.truthiness(name, variable, options, context)
+
+    def truthiness(self, name, variable, options, context) -> str:
+        if len(options) > 2:
+            raise IcuConversionError(f"truthiness with {len(options)} options")
+        inner = context + [(name, False)]
+        bodies = [self.message(option, inner) for option in options]
+        selector = name
+        if any(_references_current_value(option) for option in options):
+            selector = name + "_cond"
+            self.report.derived_conditions.append((variable or name, "truthy", None))
+        other = bodies[1] if len(bodies) == 2 else ""
+        return self.select(selector, [("true", bodies[0]), ("other", other)])
+
+    def numeric_condition(self, variable, options, context) -> str:
+        name = self.selector_name(variable, context)
+        conditions = [option.condition for option in options if option.condition]
+        if not conditions:
+            return self.truthiness(
+                name, variable, [option.content for option in options], context
+            )
+        if options[-1].condition is not None:
+            options = options + [ConditionalMessage(None, [])]
+        plural_safe = all(
+            condition.operator in PLURAL_SAFE_OPERATORS
+            and condition.threshold <= EXACT_MATCH_LIMIT
+            for condition in conditions
+        )
+        if plural_safe:
+            return self.exact_match_plural(name, options, conditions, context)
+        return self.derived_select(name, variable, options, context)
+
+    def exact_match_plural(self, name, options, conditions, context) -> str:
+        inner = context + [(name, True)]
+        bodies = [self.message(option.content, inner) for option in options]
+
+        def pick(value: int) -> str:
+            for option, body in zip(options, bodies):
+                condition = option.condition
+                if condition is None or condition.operator.evaluate(
+                    value, condition.threshold
+                ):
+                    return body
+            return ""
+
+        limit = max(condition.threshold for condition in conditions)
+        other = pick(limit + 1)
+        cases = [
+            (f"={value}", body)
+            for value in range(limit + 1)
+            if (body := pick(value)) != other
+        ]
+        cases.append(("other", other))
+        return self.plural(name, cases)
+
+    def derived_select(self, name, variable, options, context) -> str:
+        inner = context + [(name, False)]
+        bodies = [self.message(option.content, inner) for option in options]
+        result = ""
+        index = 0
+        for option, body in zip(reversed(options), reversed(bodies)):
+            if option.condition is None:
+                result = body
+                continue
+            index += 1
+            derived = name + "_cond" + (str(index) if index > 1 else "")
+            self.report.derived_conditions.append(
+                (
+                    variable or name,
+                    option.condition.operator.value,
+                    option.condition.threshold,
+                )
+            )
+            result = self.select(derived, [("true", body), ("other", result)])
+        return result
+
+
+def to_icu(
+    parsed: ParsedMessage,
+    report: ConversionReport | None = None,
+    language: str | None = None,
+) -> str:
+    """
+    Export a ParsedMessage as ICU MessageFormat. Raises IcuConversionError.
+    language is the table's game language code (eng, pol, ...) and picks the plural rule;
+    None means English.
+    """
+    writer = _IcuWriter(report if report is not None else ConversionReport(), language)
+    return writer.message(parsed, [])
+
+
+def message_to_icu(
+    raw: str,
+    report: ConversionReport | None = None,
+    key: str | None = None,
+    language: str | None = None,
+) -> str:
+    """
+    Parse and export one template. A template that cannot be parsed or mapped comes back as
+    the raw text quoted as an ICU literal, counted under unconvertible in the report.
+    """
+    attempt = ConversionReport()
+    try:
+        result = to_icu(parse(raw), attempt, language)
+    except (MessageSyntaxError, IcuConversionError):
+        if report is not None:
+            report.unconvertible += 1
+            if key is not None and len(report.unconvertible_examples) < MAX_EXAMPLES:
+                report.unconvertible_examples.append(key)
+        return escape_icu_text(raw)
+    if report is not None:
+        report.merge(attempt)
+    return result
+
+
+def convert_table(table: dict, language: str | None = None) -> tuple[dict, dict]:
+    """
+    Convert every string leaf of a nested table to ICU. Returns (converted, report).
+    Pass the table's game language code so plurals follow that language's rule.
+    """
+    report = ConversionReport()
+
+    def convert(node, path: str):
+        match node:
+            case dict():
+                return {
+                    key: convert(value, f"{path}.{key}" if path else str(key))
+                    for key, value in node.items()
+                }
+            case list():
+                return [convert(value, f"{path}[{i}]") for i, value in enumerate(node)]
+            case str():
+                return message_to_icu(node, report, path, language)
+        return node
+
+    return convert(table, ""), report.as_dict()
