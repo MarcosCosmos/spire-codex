@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from fastapi.responses import JSONResponse
 
 from ..dependencies import shared_limiter
-from ..services import rate_limit_config
+from ..services import supporters, rate_limit_config
 from ..services.auth_jwt import (
     get_current_user,
     is_admin,
@@ -55,6 +55,8 @@ def me(request: Request):
         "needs_email": not user.get("email"),
         "is_admin": is_admin(user),
         "profile_private": bool(user.get("profile_private")),
+        "supporter": supporters.status(user),
+        "overwolf_id": user.get("overwolf_id"),
     }
 
 
@@ -101,6 +103,28 @@ def logout(request: Request):
     return response
 
 
+def _trusted_browser_origin(request: Request) -> bool:
+    """The Origin header names this site (same host as the request, or one
+    of CORS_ORIGINS). A missing Origin fails: browsers always send it on a
+    cross-site POST, and a same-site fetch sends it too."""
+    from urllib.parse import urlparse
+
+    origin = (request.headers.get("origin") or "").strip().rstrip("/")
+    if not origin or origin.lower() == "null":
+        return False
+    allowed = {
+        o.strip().rstrip("/")
+        for o in os.environ.get("CORS_ORIGINS", "").split(",")
+        if o.strip()
+    }
+    if origin in allowed:
+        return True
+    origin_host = (urlparse(origin).hostname or "").lower()
+    own = request.headers.get("host") or request.url.hostname or ""
+    own_host = own.split(":")[0].strip().lower()
+    return bool(origin_host) and origin_host == own_host
+
+
 @router.post("/set-cookie")
 @limiter.limit(rate_limit_config.endpoint_limit("auth.set_cookie", "20/minute"))
 async def set_cookie(request: Request):
@@ -109,12 +133,17 @@ async def set_cookie(request: Request):
     Used by the frontend after OAuth redirects when backend and frontend
     are on different origins (local dev with separate ports).
     """
+    if not _trusted_browser_origin(request):
+        raise HTTPException(status_code=403, detail="Origin not allowed")
+    content_type = (request.headers.get("content-type") or "").split(";")[0]
+    if content_type.strip().lower() != "application/json":
+        raise HTTPException(status_code=415, detail="JSON body required")
     try:
         body = await request.json()
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid JSON body")
 
-    token = body.get("token", "")
+    token = body.get("token", "") if isinstance(body, dict) else ""
     if not token:
         raise HTTPException(status_code=400, detail="Token is required")
 
@@ -421,6 +450,109 @@ def user_insights(
     return data
 
 
+@router.post("/overwolf/link")
+@limiter.limit(rate_limit_config.endpoint_limit("auth.overwolf_link", "20/minute"))
+async def overwolf_link(request: Request):
+    """Link the signed-in account to an Overwolf user and refresh its
+    subscription state. Body: {"token": <overwolf.profile.generateUserSessionToken()>}.
+    The token is verified against Overwolf's keys; nothing in the body is
+    trusted on its own."""
+    user = require_user(request)
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON body")
+    token = body.get("token")
+    if not isinstance(token, str) or not token.strip():
+        raise HTTPException(status_code=400, detail="token is required")
+    try:
+        result = supporters.link_overwolf(user["_id"], token)
+    except supporters.OverwolfError as exc:
+        raise HTTPException(status_code=401, detail=str(exc))
+    fresh = get_current_user(request) or user
+    return {**result, "supporter": supporters.status(fresh)}
+
+
+@router.delete("/overwolf")
+@limiter.limit(rate_limit_config.endpoint_limit("auth.overwolf_unlink", "10/minute"))
+def overwolf_unlink(request: Request):
+    user = require_user(request)
+    return supporters.unlink_overwolf(user["_id"])
+
+
+@router.patch("/thanks-listing")
+@limiter.limit(rate_limit_config.endpoint_limit("auth.thanks_listing", "10/minute"))
+async def thanks_listing(request: Request):
+    """Opt in or out of being named on the Thank You page as a supporter."""
+    user = require_user(request)
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON body")
+    listed = body.get("listed")
+    if not isinstance(listed, bool):
+        raise HTTPException(status_code=400, detail="listed must be a boolean")
+    return supporters.set_thanks_listing(user["_id"], listed)
+
+
+@router.patch("/theme")
+@limiter.limit(rate_limit_config.endpoint_limit("auth.theme", "20/minute"))
+async def theme_setting(request: Request):
+    """Save the supporter theme (a character preset or a hex colour) and
+    whether other people see it on the profile, run and replay pages."""
+    user = require_user(request)
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON body")
+    if not isinstance(body, dict) or not ({"theme", "public"} & set(body)):
+        raise HTTPException(status_code=400, detail="theme or public required")
+    out: dict = {}
+    if "theme" in body:
+        theme = body.get("theme")
+        if theme is not None:
+            theme = supporters.normalize_theme(theme)
+            if not theme:
+                raise HTTPException(status_code=400, detail="Unknown theme")
+            if not supporters.status(user)["active"]:
+                raise HTTPException(status_code=403, detail="Supporters only")
+        out.update(supporters.set_theme(user["_id"], theme))
+    if "public" in body:
+        public = body.get("public")
+        if not isinstance(public, bool):
+            raise HTTPException(status_code=400, detail="public must be a boolean")
+        out.update(supporters.set_theme_public(user["_id"], public))
+    supporters.invalidate_flair(user.get("username"))
+    return out
+
+
+@router.post("/refresh")
+@limiter.limit(rate_limit_config.endpoint_limit("auth.refresh", "30/minute"))
+def refresh_token(request: Request):
+    """Swap a valid, unexpired token for a fresh one so long-running clients
+    (the overlay stays open for days) never fall off the 7 day expiry. The
+    old token keeps working until it expires; nothing is revoked here."""
+    from fastapi.responses import JSONResponse
+
+    from ..services.auth_jwt import _JWT_EXPIRY_DAYS, create_token, set_auth_cookie
+
+    user = require_user(request)
+    token = create_token(
+        user_id=str(user["_id"]),
+        steam_id=user.get("steam_id"),
+        discord_id=user.get("discord_id"),
+    )
+    response = JSONResponse(
+        {
+            "token": token,
+            "user_id": str(user["_id"]),
+            "expires_in_days": _JWT_EXPIRY_DAYS,
+        }
+    )
+    set_auth_cookie(response, token)
+    return response
+
+
 @router.patch("/profile-privacy")
 @limiter.limit(rate_limit_config.endpoint_limit("auth.profile_privacy", "10/minute"))
 async def profile_privacy(request: Request):
@@ -704,9 +836,17 @@ def _try_claim_run(run_hash: str, user: dict) -> None:
         }
         if user_sid:
             owner_set["steam_id"] = user_sid
-        coll.update_one(
-            {"_id": run_hash, "user_id": None, "steam_id": {"$in": [None, user_sid]}},
-            {"$set": owner_set},
+        from ..services.runs_db_mongo import (
+            _HINT_UNSET,
+            claimable_by,
+            forget_shared_run,
         )
+
+        coll.update_one(
+            {"_id": run_hash, **claimable_by(user_sid)},
+            {"$set": owner_set, "$unset": _HINT_UNSET},
+        )
+
+        forget_shared_run(run_hash)
     except Exception:
         pass

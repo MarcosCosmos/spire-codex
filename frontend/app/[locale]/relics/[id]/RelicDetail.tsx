@@ -7,8 +7,8 @@ import {
   type MouseEvent as ReactMouseEvent,
   type CSSProperties,
 } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { Link } from "@/i18n/navigation";
+import { useParams } from "next/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import type { Relic } from "@/lib/api/types";
 import RichDescription from "@/app/components/RichDescription";
 import { cachedFetch } from "@/lib/fetch-cache";
@@ -18,6 +18,9 @@ import RelatedItems from "@/app/components/RelatedItems";
 import EntityProse from "@/app/components/EntityProse";
 import EntityPairings from "@/app/components/EntityPairings";
 import EntityDraftRecs from "@/app/components/EntityDraftRecs";
+import EntitySummary from "@/app/components/EntitySummary";
+import type { EntitySummaryData } from "@/lib/entity-summary";
+import type { DraftRecs, Pairings, RelatedGroup } from "@/lib/entity-links";
 import EntityRunStats, {
   type EntityStats,
 } from "@/app/components/EntityRunStats";
@@ -46,7 +49,18 @@ interface MiniStats extends MiniBracket {
 export default function RelicDetail({
   initialRelic,
   initialStats,
-}: { initialRelic?: Relic | null; initialStats?: EntityStats | null } = {}) {
+  initialPairings,
+  initialRecs,
+  initialRelated,
+  summary = null,
+}: {
+  initialRelic?: Relic | null;
+  initialStats?: EntityStats | null;
+  initialPairings?: Pairings | null;
+  initialRecs?: DraftRecs | null;
+  initialRelated?: RelatedGroup[] | null;
+  summary?: EntitySummaryData | null;
+} = {}) {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const lang = useGameLocale();
@@ -242,6 +256,7 @@ export default function RelicDetail({
           {/* Description */}
           <section id="description">
             <h2>{t("Description")}</h2>
+            <EntitySummary name={relic.name} data={summary} />
             <div className="desc-quote">
               <RichDescription text={relic.description} />
             </div>
@@ -308,6 +323,7 @@ export default function RelicDetail({
                   path: `/api/relics?rarity=${encodeURIComponent(relic.rarity)}&lang=${lang}`,
                 },
               ]}
+              initialGroups={initialRelated}
             />
           </section>
 
@@ -317,6 +333,7 @@ export default function RelicDetail({
             name={relic.name}
             lang={lang}
             bp={bp}
+            initial={initialPairings}
           />
 
           <EntityDraftRecs
@@ -325,6 +342,7 @@ export default function RelicDetail({
             name={relic.name}
             lang={lang}
             bp={bp}
+            initial={initialRecs}
           />
 
           {/* Version history + localized names */}

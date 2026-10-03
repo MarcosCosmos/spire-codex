@@ -12,6 +12,7 @@ import AnnouncementBadge, { useAnnouncementUnread } from "./AnnouncementBadge";
 import { useAuth } from "@/app/contexts/AuthContext";
 import DiscordIcon from "./DiscordIcon";
 import ThemeToggle from "./ThemeToggle";
+import Wordmark from "./Wordmark";
 import {
   recordRecent,
   getRecent,
@@ -110,7 +111,9 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/leaderboards/stats", label: "Stats" },
       { href: "/leaderboards/encounters", label: "Encounters" },
       { href: "/leaderboards", label: "Leaderboards" },
+      { href: "/leaderboards/elo", label: "Top Players" },
       { href: "/runs", label: "Browse Runs" },
+      { href: "/replays", label: "Browse Replays" },
       { href: "/leaderboards/submit", label: "Submit a Run" },
     ],
   },
@@ -118,6 +121,8 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Tools",
     links: [
       { href: "/tier-list-maker", label: "Tier List Maker" },
+      { href: "/seed-finder", label: "Seed Finder" },
+      { href: "/deck-builder", label: "Deck Builder" },
       { href: "/mod", label: "Steam Mod" },
       { href: "/exporter", label: "Art Exporter" },
       { href: "/overlay", label: "Overlay (Overwolf)" },
@@ -142,7 +147,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/news", label: "News" },
       { href: "/thank-you", label: "Thank You" },
       { href: "https://www.patreon.com/cw/SpireCodex", label: "Patreon" },
-      { href: "https://ko-fi.com/yitsy", label: "Ko-fi" },
+      { href: "https://ko-fi.com/spirecodex", label: "Ko-fi" },
       { href: "/privacy", label: "Privacy" },
       { href: "/terms", label: "Terms" },
       { href: "https://discord.gg/xMsTBeh", label: "Discord" },
@@ -227,10 +232,22 @@ const NAV_COLUMNS: Record<string, { title: string; labels: string[] }[]> = {
       title: "Aggregate data",
       labels: ["Community Stats", "Charts", "Stats", "Encounters"],
     },
-    { title: "Runs", labels: ["Leaderboards", "Browse Runs", "Submit a Run"] },
+    {
+      title: "Runs",
+      labels: [
+        "Leaderboards",
+        "Top Players",
+        "Browse Runs",
+        "Browse Replays",
+        "Submit a Run",
+      ],
+    },
   ],
   Tools: [
-    { title: "Make & share", labels: ["Tier List Maker", "Showcase"] },
+    {
+      title: "Make & share",
+      labels: ["Tier List Maker", "Seed Finder", "Deck Builder", "Showcase"],
+    },
     {
       title: "Companion apps",
       labels: [
@@ -552,23 +569,7 @@ export default function Navbar() {
               href="/"
               className="flex items-center gap-2 shrink-0"
             >
-              <img
-                src="/spire-codex-white-final.webp"
-                alt="Spire Codex"
-                className="sc-nav-logo--w h-8 w-auto sm:hidden"
-              />
-              <img
-                src="/spire-codex-black-final.webp"
-                alt="Spire Codex"
-                aria-hidden="true"
-                className="sc-nav-logo--b h-8 w-auto sm:hidden"
-              />
-              <span className="hidden sm:inline text-xl font-bold text-[var(--accent-gold)]">
-                SPIRE
-              </span>
-              <span className="hidden sm:inline text-xl font-bold text-[var(--text-primary)]">
-                CODEX
-              </span>
+              <Wordmark />
             </Link>
             {/* Desktop nav (lg+): groups + Live, tight against the logo */}
             <div className="hidden lg:flex items-center gap-1">
@@ -591,8 +592,10 @@ export default function Navbar() {
           )}
 
           <div className="flex items-center gap-2 shrink-0">
-            <SiteSwitcher />
-            <LanguageSelector />
+            <div className="hidden sm:flex items-center gap-2">
+              <SiteSwitcher />
+              <LanguageSelector />
+            </div>
 
             {/* Icon search, visible on mobile (below md) AND at lg+
                 where the inline bar collapses. Sits next to the language
@@ -792,10 +795,7 @@ export default function Navbar() {
                   className="fixed top-0 left-0 z-50 h-screen w-screen flex flex-col bg-[var(--bg-primary)]"
                 >
                   <div className="flex items-center justify-between h-16 px-5 border-b border-[var(--border-subtle)] shrink-0">
-                    <span className="text-xl font-bold">
-                      <span className="text-[var(--accent-gold)]">SPIRE</span>{" "}
-                      <span className="text-[var(--text-primary)]">CODEX</span>
-                    </span>
+                    <Wordmark />
                     <button
                       onClick={() => setOpen(false)}
                       aria-label={t("Close menu")}
@@ -959,6 +959,11 @@ export default function Navbar() {
 
                     <div className="border-b border-[var(--border-subtle)] px-5 py-3">
                       <LiveNavButton variant="mobile" />
+                    </div>
+
+                    <div className="sm:hidden flex items-center gap-2 border-b border-[var(--border-subtle)] px-5 py-3">
+                      <SiteSwitcher align="left" />
+                      <LanguageSelector align="left" />
                     </div>
 
                     <ThemeToggle variant="segmented" />

@@ -1,5 +1,6 @@
 "use client";
 
+import { resolveEventOption, type EventText } from "@/lib/event-option";
 import { useT, useGameLocale, type TFn } from "@/lib/i18n";
 
 import type { ReactNode } from "react";
@@ -35,7 +36,7 @@ import {
 } from "../RunPills";
 import { useBetaPrefix } from "@/lib/api/prefix.client";
 
-export interface EventInfo {
+export interface EventInfo extends EventText {
   id: string;
   name: string;
 }
@@ -361,6 +362,29 @@ function describeLine(
       return plain(
         `${t("Reloaded from a save")}${l.reloads > 1 ? ` (${l.reloads})` : ""}`,
       );
+    case "pick":
+      if (!l.cards.length) return undefined;
+      if (l.cards.length === 1)
+        return pill(
+          "Chose {card}",
+          { card: cardName(l.cards[0].id, cat) },
+          "card",
+          <Card id={l.cards[0].id} up={!!l.cards[0].up} cat={cat} bp={bp} />,
+        );
+      return {
+        key: `${t("Chose")}: ${l.cards.map((c) => cardName(c.id, cat)).join(", ")}`,
+        node: (
+          <>
+            {t("Chose")}:{" "}
+            {l.cards.map((c, j) => (
+              <span key={`${l.s}-${j}`}>
+                {j > 0 && ", "}
+                <Card id={c.id} up={!!c.up} cat={cat} bp={bp} />
+              </span>
+            ))}
+          </>
+        ),
+      };
     default:
       return undefined;
   }
@@ -408,15 +432,25 @@ function OptionRow({
     o.kind === "upgrade" ||
     o.kind === "enchant";
   const isRelic = o.kind === "relic" || !!o.grantsRelic;
-  const label = o.label
-    ? o.label
-    : isCard
-      ? `${cardName(o.id, cat)}${o.upgraded ? "+" : ""}`
-      : isRelic
-        ? relicName(o.grantsRelic || o.id, cat)
-        : o.kind === "potion"
-          ? potionName(o.id, cat)
-          : displayName(o.id);
+  const resolved = resolveEventOption(
+    o.kind === "event_option" ? o.id : undefined,
+    cat.events,
+    (id) => cat.relics[id],
+    t,
+    { label: o.label, desc: o.desc, grantsRelic: o.grantsRelic },
+  );
+  const desc = resolved ? resolved.desc : o.desc;
+  const label = resolved
+    ? resolved.label
+    : o.label
+      ? o.label
+      : isCard
+        ? `${cardName(o.id, cat)}${o.upgraded ? "+" : ""}`
+        : isRelic
+          ? relicName(o.grantsRelic || o.id, cat)
+          : o.kind === "potion"
+            ? potionName(o.id, cat)
+            : displayName(o.id);
   const tone = o.chosen
     ? TAKEN_TONE
     : o.selectable
@@ -449,9 +483,9 @@ function OptionRow({
       )}
       <span className="min-w-0 flex-1">
         <span className="block truncate">{label}</span>
-        {o.desc && (
+        {desc && (
           <span className="block text-xs leading-snug text-[var(--text-muted)]">
-            <Markup text={o.desc} />
+            <Markup text={desc} />
           </span>
         )}
       </span>
@@ -1099,6 +1133,24 @@ function TurnBlock({
           break;
         case "generate":
           items.push(cardPill("Created {card}", l.id));
+          break;
+        case "pick":
+          if (l.cards.length === 1)
+            items.push(
+              cardPill("Chose {card}", l.cards[0].id, !!l.cards[0].up),
+            );
+          else if (l.cards.length > 1)
+            items.push(
+              <>
+                {t("Chose")}:{" "}
+                {l.cards.map((c, j) => (
+                  <span key={`${l.s}-${j}`}>
+                    {j > 0 && ", "}
+                    <Card id={c.id} up={!!c.up} cat={cat} bp={bp} />
+                  </span>
+                ))}
+              </>,
+            );
           break;
         case "hp":
           if (l.d)

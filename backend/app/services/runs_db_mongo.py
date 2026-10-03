@@ -179,6 +179,10 @@ def _ensure_indexes(coll) -> None:
     # the ordered scan the cursor walks.
     coll.create_index([("submitted_at", ASCENDING), ("_id", ASCENDING)])
     coll.create_index(
+        [("has_replay", ASCENDING), ("submitted_at", DESCENDING)],
+        partialFilterExpression={"has_replay": True},
+    )
+    coll.create_index(
         [("character", ASCENDING), ("win", ASCENDING), ("ascension", ASCENDING)]
     )
     coll.create_index([("build_id", ASCENDING)])
@@ -453,6 +457,84 @@ def uploader_player_index(players: list, steam_id: str | None) -> int | None:
     return 0
 
 
+_HINT_UNSET = {
+    "steam_id_hint": "",
+    "attribution_unverified": "",
+    "username_hint": "",
+}
+
+
+def forget_shared_run(*hashes: str) -> None:
+    """Drop the cached /api/runs/shared payload for runs whose owner just
+    changed; the blob is immutable but the merged username is not."""
+    from . import cache as app_cache
+
+    for h in hashes:
+        if h:
+            try:
+                app_cache.delete(f"run:{h}")
+            except Exception:
+                pass
+
+
+def _hint_ok(steam_id: str) -> dict:
+    return {"steam_id_hint": {"$in": [None, steam_id]}}
+
+
+def claimable_by(steam_id: str | None) -> dict:
+    """Filter for rows an account may take over: unowned, tagged or hinted
+    to nobody or to this SteamID64, and never an unverified row unless the
+    hint names this account (a planted row must be re-uploaded signed in,
+    which replaces its content, not claimed by hash)."""
+    sid = steam_id or None
+    return {
+        "user_id": None,
+        "steam_id": {"$in": [None, sid]},
+        "steam_id_hint": {"$in": [None, sid]},
+        "$or": [
+            {"attribution_unverified": {"$ne": True}},
+            *([{"steam_id_hint": sid}] if sid else []),
+        ],
+    }
+
+
+def is_claimable(doc: dict, steam_id: str | None) -> bool:
+    sid = steam_id or None
+    if doc.get("user_id") or doc.get("steam_id") not in (None, sid):
+        return False
+    hint = doc.get("steam_id_hint")
+    if hint not in (None, sid):
+        return False
+    if doc.get("attribution_unverified") and not (sid and hint == sid):
+        return False
+    return True
+
+
+def attribute_run_to(run_hash: str, user: dict, coll=None) -> bool:
+    """Give an unowned run to the signed-in account whose SteamID64 matches
+    the hint a bare upload left on it. Returns True when the row changed."""
+    sid = str(user.get("steam_id") or "")
+    if not run_hash or not sid or not user.get("_id"):
+        return False
+    from bson import ObjectId
+
+    owner_set: dict = {"user_id": ObjectId(user["_id"]), "steam_id": sid}
+    username = user.get("username")
+    if username:
+        owner_set["username"] = username
+        owner_set["username_lower"] = str(username).lower()
+    coll = coll if coll is not None else _get_collection()
+    coll.update_one(
+        {"_id": run_hash, "user_id": None, "steam_id": None, "steam_id_hint": sid},
+        {"$set": owner_set, "$unset": _HINT_UNSET},
+    )
+    after = coll.find_one({"_id": run_hash}, {"user_id": 1}) or {}
+    owned = str(after.get("user_id") or "") == str(owner_set["user_id"])
+    if owned:
+        forget_shared_run(run_hash)
+    return owned
+
+
 def _teammate_identity(player: dict) -> tuple[str | None, str | None, str | None]:
     """(username, steam_id, user_id) for a co-op slot the uploader doesn't
     own. Tagged with that player's own SteamID64 and linked to their account
@@ -478,6 +560,8 @@ def submit_run(
     username: str | None = None,
     steam_id: str | None = None,
     discord_id: str | None = None,
+    steam_id_hint: str | None = None,
+    verified: bool = True,
 ) -> dict:
     """Parse a run and store one document per player. Returns the uploader's
     slot's status dict (plus ``player_idx``), matching the SQLite
@@ -497,6 +581,10 @@ def submit_run(
     linked_user_id = None
     linked_username = None
     owner = None
+    if not verified:
+        steam_id_hint = steam_id_hint or steam_id
+        steam_id = None
+        discord_id = None
     if steam_id or discord_id:
         try:
             from .users_db import get_user_by_steam_id, get_user_by_discord_id
@@ -512,7 +600,7 @@ def submit_run(
         except Exception:
             # Linking is best-effort; a lookup failure must not drop the run.
             pass
-    if linked_user_id is None and username:
+    if verified and linked_user_id is None and username:
         # Username-only uploads (Compendium ?username=, mismatched Steam ids)
         # used to stay invisible on the profile until the next sign-in
         # backfill hoovered them (Dobo, 2026-08-30: 304 runs, 0 linked).
@@ -553,17 +641,19 @@ def submit_run(
     )
     players = data["players"]
     player_count = len(players)
-    uploader_idx = uploader_player_index(players, steam_id)
+    uploader_idx = uploader_player_index(players, steam_id or steam_id_hint)
 
     results = []
     owners: list[tuple[str | None, str | None]] = []
     for player_idx, player in enumerate(players):
+        p_hint = None
         if player_idx == uploader_idx:
             p_username = linked_username or username
             p_steam_id, p_discord_id, p_user_id = steam_id, discord_id, linked_user_id
+            p_hint = steam_id_hint if not steam_id else None
         else:
-            p_username, p_steam_id, p_user_id = _teammate_identity(player)
-            p_discord_id = None
+            p_username, p_steam_id, p_user_id, p_discord_id = None, None, None, None
+            p_hint = _steamid64(player.get("id"))
         owners.append((p_user_id, p_username))
         result = _submit_player_run(
             data,
@@ -578,6 +668,8 @@ def submit_run(
             p_discord_id,
             p_user_id,
             is_uploader=player_idx == uploader_idx,
+            steam_id_hint=p_hint,
+            verified=verified,
         )
         results.append(result)
 
@@ -590,8 +682,8 @@ def submit_run(
             run_hash = result.get("run_hash", "")
             if run_hash:
                 run_file = runs_dir / f"{run_hash}.json"
-                fresh = bool(result.get("success"))
-                if fresh and not run_file.exists():
+                fresh = bool(result.get("success") or result.get("reconciled"))
+                if fresh and (result.get("reconciled") or not run_file.exists()):
                     try:
                         with open(run_file, "w", encoding="utf-8") as f:
                             json.dump(data, f, ensure_ascii=False)
@@ -843,6 +935,8 @@ def _submit_player_run(
     discord_id: str | None = None,
     linked_user_id: str | None = None,
     is_uploader: bool = True,
+    steam_id_hint: str | None = None,
+    verified: bool = True,
 ) -> dict:
     """One Mongo insert per player. The full nested structure goes into
     a single document — no joins required at query time. The mod's damage
@@ -938,11 +1032,12 @@ def _submit_player_run(
         "killed_by": killed_by,
         "deck_size": len(deck),
         "relic_count": len(relics),
-        "username": username,
+        "username": username if verified else None,
         # Normalized for case-insensitive matching (stats/list/leaderboard all
         # filter on this; display `username` keeps its original case). Mirrors
         # the users collection's username_lower convention.
-        "username_lower": username.lower() if username else None,
+        "username_lower": username.lower() if (username and verified) else None,
+        **({"username_hint": username} if (username and not verified) else {}),
         # Submitter identity (when the client sends it). Lets a run be linked
         # to its owner's account on sign-in even if it was submitted
         # anonymously. user_id is set here when an account already exists for
@@ -950,6 +1045,8 @@ def _submit_player_run(
         "steam_id": steam_id,
         "discord_id": discord_id,
         "user_id": ObjectId(linked_user_id) if linked_user_id else None,
+        **({"steam_id_hint": steam_id_hint} if steam_id_hint else {}),
+        **({"attribution_unverified": True} if not verified else {}),
         "build_id": data.get("build_id"),
         "submitted_at": datetime.now(timezone.utc),
         "played_at": _played_at_from_blob(data),
@@ -990,7 +1087,10 @@ def _submit_player_run(
             bump_stats_counters(doc)
     except DuplicateKeyError:
         steam_ok: dict = (
-            {"$or": [{"steam_id": None}, {"steam_id": steam_id}]}
+            {
+                "$or": [{"steam_id": None}, {"steam_id": steam_id}],
+                "steam_id_hint": {"$in": [None, steam_id]},
+            }
             if steam_id
             else {"steam_id": None}
         )
@@ -1000,12 +1100,44 @@ def _submit_player_run(
             )
         }
         own_slot = {**steam_ok, **user_ok}
+        if not verified:
+            return {
+                "error": "This run has already been submitted",
+                "duplicate": True,
+                "run_hash": run_hash,
+            }
+        if is_uploader and linked_user_id and steam_id:
+            planted = coll.find_one(
+                {"_id": run_hash},
+                {
+                    "attribution_unverified": 1,
+                    "steam_id_hint": 1,
+                    "user_id": 1,
+                    "steam_id": 1,
+                },
+            )
+            if (
+                planted
+                and planted.get("attribution_unverified")
+                and is_claimable(planted, steam_id)
+            ):
+                coll.replace_one(
+                    {"_id": run_hash, "attribution_unverified": True, "user_id": None},
+                    doc,
+                )
+                forget_shared_run(run_hash)
+                return {
+                    "error": "This run has already been submitted",
+                    "duplicate": True,
+                    "reconciled": True,
+                    "run_hash": run_hash,
+                }
         if is_uploader:
             _undelete_on_reupload(coll, run_hash, own_slot)
         if steam_id:
             coll.update_one(
-                {"_id": run_hash, "steam_id": None, **user_ok},
-                {"$set": {"steam_id": steam_id}},
+                {"_id": run_hash, "steam_id": None, **user_ok, **_hint_ok(steam_id)},
+                {"$set": {"steam_id": steam_id}, "$unset": _HINT_UNSET},
             )
         if discord_id:
             coll.update_one(
@@ -1019,8 +1151,9 @@ def _submit_player_run(
                 owner_set["username_lower"] = username.lower()
             coll.update_one(
                 {"_id": run_hash, "user_id": None, **steam_ok},
-                {"$set": owner_set},
+                {"$set": owner_set, "$unset": _HINT_UNSET},
             )
+            forget_shared_run(run_hash)
         if is_uploader and doc.get("damage"):
             coll.update_one(
                 {"_id": run_hash, "damage": {"$exists": False}, **own_slot},
@@ -1078,7 +1211,11 @@ def backfill_user_runs(
         update["username_lower"] = username.lower()
 
     result = coll.update_many(
-        {"user_id": None, "$or": identity_conds},
+        {
+            "user_id": None,
+            "attribution_unverified": {"$ne": True},
+            "$or": identity_conds,
+        },
         {"$set": update},
     )
     if result.modified_count:
@@ -1294,15 +1431,20 @@ def claim_runs(username: str, hashes: list[str]) -> dict:
     existing = list(
         coll.find(
             {"_id": {"$in": hashes}},
-            {"_id": 1, "username": 1, "user_id": 1, "steam_id": 1},
+            {
+                "_id": 1,
+                "username": 1,
+                "user_id": 1,
+                "steam_id": 1,
+                "steam_id_hint": 1,
+                "attribution_unverified": 1,
+            },
         )
     )
     unclaimed = [
         d["_id"]
         for d in existing
-        if not d.get("username")
-        and not d.get("user_id")
-        and d.get("steam_id") in (None, owner_sid)
+        if not d.get("username") and is_claimable(d, owner_sid)
     ]
     already_claimed = len(existing) - len(unclaimed)
     unknown = len(hashes) - len(existing)
@@ -1318,12 +1460,14 @@ def claim_runs(username: str, hashes: list[str]) -> dict:
         coll.update_many(
             {
                 "_id": {"$in": unclaimed},
-                "user_id": None,
-                "steam_id": {"$in": [None, owner_sid]},
-                "$or": [{"username": None}, {"username": ""}],
+                "$and": [
+                    claimable_by(owner_sid),
+                    {"$or": [{"username": None}, {"username": ""}]},
+                ],
             },
-            {"$set": update},
+            {"$set": update, "$unset": _HINT_UNSET},
         )
+        forget_shared_run(*unclaimed)
         if owner:
             try:
                 from .user_insights import (
@@ -2288,15 +2432,23 @@ def _projection_row() -> dict:
         "build_id": 1,
         "hidden": 1,
         "has_replay": 1,
+        "user_id": 1,
+        "steam_id": 1,
     }
 
 
 def _row_to_dict(doc: dict) -> dict:
-    """Strip Mongo's _id wrapper into the run_hash field the API expects."""
+    """Strip Mongo's _id wrapper into the run_hash field the API expects.
+    The account ids never leave: they become the pseudonymous player_token."""
     if not doc:
         return doc
+    from .player_token import player_token
+
     out = {**doc}
     out["run_hash"] = out.pop("_id")
+    out["player_token"] = player_token(doc)
+    out.pop("user_id", None)
+    out.pop("steam_id", None)
     # Coerce booleans to int (0/1) for backward compat with the SQLite
     # response shape that the frontend consumed historically.
     for k in ("win", "was_abandoned"):
@@ -2380,6 +2532,7 @@ def list_runs(
     page: int = 1,
     limit: int = 50,
     include_hidden: bool = False,
+    has_replay: bool | None = None,
 ) -> dict:
     """Paginated, filterable run list. Mirrors the /api/runs/list SQLite path.
 
@@ -2389,6 +2542,10 @@ def list_runs(
     q: dict[str, Any] = {}
     if not include_hidden:
         q["hidden"] = {"$ne": True}
+    if has_replay is True:
+        q["has_replay"] = True
+    elif has_replay is False:
+        q["has_replay"] = {"$ne": True}
     if character:
         q["character"] = character.upper()
     if win == "true":
@@ -2545,7 +2702,26 @@ def set_run_hidden(run_hash: str, hidden: bool, reason: str | None = None) -> di
     for row in rows:
         if bool(row.get("hidden")) != hidden:
             bump_stats_counters(row, -1 if hidden else 1)
-    return {"matched": result.matched_count, "modified": result.modified_count}
+    hashes = sorted({run_hash, *(str(r["_id"]) for r in rows if r.get("_id"))})
+    evict_run_pages(hashes)
+    return {
+        "matched": result.matched_count,
+        "modified": result.modified_count,
+        "hashes": hashes,
+    }
+
+
+def evict_run_pages(hashes: list[str]) -> None:
+    """Drop the cached share-page payloads for these hashes so a hide or
+    unhide is visible on the next request instead of after the 15 minute
+    Redis TTL."""
+    from . import cache
+
+    for h in hashes:
+        try:
+            cache.delete(f"run:{h}")
+        except Exception:
+            logger.warning("run cache evict failed for %s", h, exc_info=True)
 
 
 def rehide_one_turn_boss_runs(dry_run: bool = False) -> dict:
@@ -2594,6 +2770,48 @@ def rehide_one_turn_boss_runs(dry_run: bool = False) -> dict:
         if not dry_run:
             set_run_hidden(run_hash, True, reason="auto:" + ",".join(reasons[:4]))
             logger.info("auto-hid one-turn-boss run %s: %s", run_hash, reasons[:4])
+    return {"candidates": checked, "hidden": len(hidden_runs), "hashes": hidden_runs}
+
+
+def rehide_impossible_time_runs(dry_run: bool = False) -> dict:
+    """Backfill for the win-time signals: sweep stored wins that finished
+    under the minimum or faster than the per-floor floor (submit-time
+    detection only covers new uploads) and hide them with the reasons the
+    detector gives. Returns counts; dry_run only reports."""
+    from .cheat_detect import MIN_SECONDS_PER_FLOOR, MIN_WIN_SECONDS, detect_cheats
+
+    ceiling = max(MIN_WIN_SECONDS, 60 * MIN_SECONDS_PER_FLOOR)
+    coll = _get_collection()
+    cursor = coll.find(
+        {
+            "hidden": {"$ne": True},
+            "win": {"$in": [1, True]},
+            "run_time": {"$gt": 0, "$lt": ceiling},
+        },
+        {"run_hash": 1, "run_time": 1, "floors_reached": 1},
+    )
+    checked = 0
+    hidden_runs: list[str] = []
+    for doc in cursor:
+        checked += 1
+        reasons = [
+            r
+            for r in detect_cheats(
+                {
+                    "win": True,
+                    "run_time": doc.get("run_time"),
+                    "floors_reached": doc.get("floors_reached"),
+                }
+            )
+            if r.startswith("impossible_")
+        ]
+        if not reasons:
+            continue
+        run_hash = doc.get("run_hash") or doc["_id"]
+        hidden_runs.append(run_hash)
+        if not dry_run:
+            set_run_hidden(run_hash, True, reason="auto:" + ",".join(reasons[:4]))
+            logger.info("auto-hid impossible-time run %s: %s", run_hash, reasons[:4])
     return {"candidates": checked, "hidden": len(hidden_runs), "hashes": hidden_runs}
 
 

@@ -45,6 +45,7 @@ from .routers import (
     ascensions,
     names,
     exports,
+    leaderboards,
     entity_history,
     update_history,
     ancient_pools,
@@ -54,11 +55,15 @@ from .routers import (
     charts,
     beta,
     replays,
+    replays_browse,
     admin,
     admin_searches,
     admin_news,
+    admin_thanks,
+    thanks,
     admin_rate_limits,
     admin_api_keys,
+    admin_replays,
     api_keys,
     glossary,
     guides,
@@ -193,6 +198,16 @@ app.add_middleware(SlowAPIMiddleware)
 # doesn't block on a 5-10s walk of every submitted run JSON. Run in
 # the background so container readiness probes don't have to wait on
 # it; beta deploys (no run submissions) skip the warm-up.
+@app.on_event("startup")
+def _build_search_index() -> None:
+    try:
+        from .services import search_index
+
+        search_index.start_background_build()
+    except Exception:
+        logger.warning("search-index: startup build not scheduled", exc_info=True)
+
+
 @app.on_event("startup")
 def _warm_run_entity_stats() -> None:
     if IS_BETA_BACKEND:
@@ -721,6 +736,7 @@ app.include_router(acts.router)
 app.include_router(ascensions.router)
 app.include_router(names.router)
 app.include_router(exports.router)
+app.include_router(leaderboards.router)
 app.include_router(entity_history.router)
 app.include_router(update_history.router)
 app.include_router(ancient_pools.router)
@@ -730,12 +746,16 @@ app.include_router(draft.router)
 app.include_router(charts.router)
 app.include_router(beta.router)
 app.include_router(replays.router)
+app.include_router(replays_browse.router)
 # Hidden from the OpenAPI schema (/docs): internal admin surface.
 app.include_router(admin.router, include_in_schema=False)
 app.include_router(admin_searches.router, include_in_schema=False)
 app.include_router(admin_rate_limits.router, include_in_schema=False)
 app.include_router(admin_news.router, include_in_schema=False)
+app.include_router(admin_thanks.router, include_in_schema=False)
+app.include_router(thanks.router)
 app.include_router(admin_api_keys.router, include_in_schema=False)
+app.include_router(admin_replays.router, include_in_schema=False)
 # Key management (create/list/revoke) is session-authed and site-internal, so
 # it stays out of /docs; only the public tier info (/api/rate-limits) shows.
 app.include_router(api_keys.router, include_in_schema=False)

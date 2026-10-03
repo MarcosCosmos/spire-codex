@@ -11,7 +11,7 @@ import {
 
 // Regenerate at most every 30 minutes: crawler fetches between ticks are
 // served from cache instead of re-running ~21 API list fetches each hit.
-export const revalidate = 1800;
+export const dynamic = "force-dynamic";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://spire-codex.com";
 const API =
@@ -60,6 +60,8 @@ const LANG_LIST_ROUTES = [
   "guides",
   "news",
   "leaderboards",
+  "seed-finder",
+  "deck-builder",
   "tier-list",
   "charts",
   "community-stats",
@@ -74,8 +76,8 @@ const LANG_LIST_ROUTES = [
   "exporter",
   "overlay",
   "knowledge-demon",
-  "giveaway",
   "runs",
+  "replays",
   "tier-list/cards",
   "tier-list/relics",
   "tier-list/potions",
@@ -140,6 +142,11 @@ const STATIC_PAGES = [
     changeFrequency: "daily" as const,
   },
   {
+    path: "/leaderboards/elo",
+    priority: 0.7,
+    changeFrequency: "daily" as const,
+  },
+  {
     path: "/community-stats",
     priority: 0.7,
     changeFrequency: "daily" as const,
@@ -188,6 +195,7 @@ const STATIC_PAGES = [
   { path: "/news", priority: 0.7, changeFrequency: "daily" as const },
   { path: "/unlocks", priority: 0.6, changeFrequency: "weekly" as const },
   { path: "/runs", priority: 0.7, changeFrequency: "daily" as const },
+  { path: "/replays", priority: 0.6, changeFrequency: "daily" as const },
   { path: "/charts", priority: 0.6, changeFrequency: "daily" as const },
   { path: "/mod", priority: 0.5, changeFrequency: "monthly" as const },
   { path: "/exporter", priority: 0.5, changeFrequency: "monthly" as const },
@@ -197,7 +205,6 @@ const STATIC_PAGES = [
     priority: 0.4,
     changeFrequency: "monthly" as const,
   },
-  { path: "/giveaway", priority: 0.3, changeFrequency: "monthly" as const },
 ];
 
 interface EntityWithImage {
@@ -408,9 +415,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ],
   );
 
-  // `next build` prerenders this route (revalidate above) inside a container
-  // with no backend to reach, so the build ships the entries that need no
-  // network. The first live request fills in the rest and ISR keeps it fresh.
+  // Never prerendered: the build container has no backend, and the stub a
+  // build-time render would produce (static and hub pages only) used to be
+  // served for half an hour after every deploy, and Search Console read it.
+  // Cloudflare holds the generated file for an hour (next.config headers),
+  // so the origin regenerates it a handful of times a day at most.
   if (process.env.NEXT_PHASE === "phase-production-build") {
     return [...staticEntries, ...langListEntries];
   }
@@ -500,7 +509,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })),
     ...TIER_RELIC_ACTS.flatMap((act) =>
       TIER_RELIC_ANCIENTS.map((a) => ({
-        url: `${SITE_URL}/tier-list/relics?act=${act}&ancient=${a}`,
+        url: `${SITE_URL}/tier-list/relics?act=${act}&amp;ancient=${a}`,
         changeFrequency: "daily" as const,
         priority: 0.6,
       })),

@@ -7,6 +7,7 @@ import re
 import time
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 from fastapi import APIRouter, HTTPException, Query, Request, Response
 from pymongo.errors import ExecutionTimeout
 from starlette.concurrency import run_in_threadpool
@@ -162,8 +163,11 @@ async def submit_run_endpoint(
         digits = "".join(ch for ch in steam_id if ch.isdigit())
         clean_steam_id = digits or None
 
-    # Authenticated uploads (the in-game mod sends `Authorization: Bearer <jwt>` from the
-    # Steam sign-in flow): the token's verified steamid outranks the spoofable query param.
+    # Only a verified identity attributes a run to an account: the in-game
+    # mod and the overlay send `Authorization: Bearer <jwt>` from the Steam
+    # sign-in flow. A bare ?steam_id is kept on the row as a hint for the
+    # rank line and for a later authenticated re-upload, never as ownership.
+    verified_steam_id = None
     auth_header = request.headers.get("authorization") or ""
     if auth_header.lower().startswith("bearer "):
         from ..services.auth_jwt import decode_token
@@ -171,7 +175,10 @@ async def submit_run_endpoint(
         claims = decode_token(auth_header[7:].strip())
         token_steamid = str((claims or {}).get("steam_id") or "")
         if token_steamid.isdigit():
-            clean_steam_id = token_steamid
+            verified_steam_id = token_steamid
+    verified = verified_steam_id is not None
+    if verified:
+        clean_steam_id = verified_steam_id
 
     clean_discord_id = None
     if discord_id:
@@ -185,8 +192,10 @@ async def submit_run_endpoint(
         submit_run,
         data,
         username=clean_username,
-        steam_id=clean_steam_id,
-        discord_id=clean_discord_id,
+        steam_id=verified_steam_id,
+        discord_id=clean_discord_id if verified else None,
+        steam_id_hint=None if verified else clean_steam_id,
+        verified=verified,
     )
 
     site_base = os.environ.get("PUBLIC_SITE_BASE", "https://spire-codex.com").rstrip(
@@ -302,32 +311,30 @@ MAX_CLAIM_HASHES = 5000
     rate_limit_config.endpoint_limit("runs.claim_runs_endpoint", "10/minute")
 )
 async def claim_runs_endpoint(request: Request):
-    """Attach a username to previously-submitted runs by hash.
+    """Attach the signed-in account to previously-submitted runs by hash.
 
-    Body: `{ "username": "name", "hashes": ["abc123...", ...] }`
+    Body: `{ "hashes": ["abc123...", ...] }` with the session cookie or a
+    bearer token. The account comes from the verified session only; a
+    `username` in the body is ignored.
 
     Only rows with a NULL/empty username are updated — existing
-    claims are never overwritten. Intended for the Spire Compendium
-    desktop app: after Steam sign-in, the client computes hashes
-    for every local run and claims the ones it already uploaded
-    anonymously.
+    claims are never overwritten. The overlay calls this after Steam
+    sign-in with hashes of every local run so the ones it already uploaded
+    anonymously attach to the account.
     """
+    from ..services.auth_jwt import get_current_user
+
+    user = get_current_user(request)
+    sanitized = str((user or {}).get("username") or "").strip()[:32]
+    if not user or not sanitized:
+        raise HTTPException(status_code=401, detail="Sign in to claim runs")
+
     try:
         payload = await request.json()
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid JSON body")
-
-    raw_username = payload.get("username")
-    if not raw_username or not isinstance(raw_username, str):
-        raise HTTPException(status_code=400, detail="username is required")
-
-    import re
-
-    sanitized = re.sub(r"[^a-zA-Z0-9_\- ]", "", raw_username.strip())[:32].strip()
-    if not sanitized:
-        raise HTTPException(
-            status_code=400, detail="username is empty after sanitization"
-        )
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Invalid JSON body")
 
     hashes = payload.get("hashes")
     if not isinstance(hashes, list):
@@ -371,6 +378,8 @@ def list_runs(
     relic: str | None = None,
     shop: str | None = None,
     today: bool = False,
+    has_replay: bool | None = None,
+    steam_id: str | None = None,
     page: int = 1,
     limit: int = 50,
 ):
@@ -380,6 +389,12 @@ def list_runs(
     win rate percentage; only users with at least 5 submitted runs qualify,
     and anonymous runs never match.
 
+    `has_replay=true` keeps only runs with a replay journal to watch.
+
+    `steam_id=<SteamID64>` lists the runs of the account linked to that Steam
+    ID (what the in-game mod sends); an unknown Steam ID lists nothing rather
+    than everything.
+
     `shop` matches runs that bought the item (card, relic, or potion) at a
     shop; comma-separated ids AND together like `card`/`relic`. Mongo only —
     the dev SQLite fallback ignores it, like the card/relic filters.
@@ -388,6 +403,25 @@ def list_runs(
     # case-insensitive value (the runs are matched on username_lower).
     if username:
         username = username.strip().lower()
+    if steam_id and not username:
+        digits = "".join(ch for ch in steam_id if ch.isdigit())
+        owner = None
+        if digits and os.environ.get("MONGO_URL", "").strip():
+            try:
+                from ..services.users_db import get_user_by_steam_id
+
+                owner = get_user_by_steam_id(digits)
+            except Exception:
+                owner = None
+        if not owner or not owner.get("username"):
+            return {
+                "runs": [],
+                "total": 0,
+                "page": page,
+                "per_page": limit,
+                "total_pages": 0,
+            }
+        username = str(owner["username"]).strip().lower()
     # Browser/edge caching: new runs arrive constantly, but 30s of staleness
     # on a browse page is invisible and lets Cloudflare absorb repeat hits.
     # stale-while-revalidate makes expiry a background refresh instead of one
@@ -418,6 +452,7 @@ def list_runs(
             relic,
             shop,
             int(today),
+            "" if has_replay is None else int(has_replay),
             page,
             limit,
         )
@@ -447,6 +482,7 @@ def list_runs(
             relic=relic,
             shop=shop,
             today=today,
+            has_replay=has_replay,
             page=page,
             limit=limit,
         )
@@ -2075,6 +2111,97 @@ def get_archetypes(request: Request, response: Response, lang: str = "eng"):
     return payload
 
 
+def _seed_predicates(
+    deck: str,
+    offered: str,
+    relics: str,
+    events: str,
+    ancient: str | None,
+    ancient_act: int | None,
+    neow: str,
+    bosses: str,
+    elites: str,
+    shop: str,
+    ancient_offers: str,
+) -> list:
+    """The finder's query language, one comma list per kind. Items are
+    ID[:count][@act][<=floor][>=floor][#seat], e.g. BASH:2@1<=5 means at
+    least two offers of Bash in act 1 by floor 5. Anything that does not
+    parse is a 422, never a silently different search."""
+    import re
+
+    from ..services.seed_profiles import (
+        MAX_PREDICATES,
+        Predicate,
+        PredicateError,
+    )
+
+    item_re = re.compile(
+        r"^(?P<id>[A-Z0-9_]+)(?::(?P<count>\d{1,2}))?(?:@(?P<act>\d))?"
+        r"(?:<=(?P<fmax>\d{1,2}))?(?:>=(?P<fmin>\d{1,2}))?(?:#(?P<seat>\d))?$"
+    )
+    out: list = []
+
+    def take(kind: str, raw: str, act: int | None = None) -> None:
+        for part in raw.split(","):
+            part = part.strip().upper().replace(" ", "")
+            if not part:
+                continue
+            m = item_re.match(part)
+            if not m:
+                raise PredicateError(f"cannot read {part!r}")
+            out.append(
+                Predicate(
+                    kind,
+                    m.group("id"),
+                    act=int(m.group("act")) if m.group("act") else act,
+                    floor_max=int(m.group("fmax")) if m.group("fmax") else None,
+                    floor_min=int(m.group("fmin")) if m.group("fmin") else None,
+                    seat=int(m.group("seat")) if m.group("seat") else None,
+                    count=int(m.group("count") or 1),
+                )
+            )
+
+    take("deck", deck)
+    take("offered", offered)
+    take("relic", relics)
+    take("event", events)
+    take("neow", neow, act=1)
+    take("ancient_offer", ancient_offers)
+    take("boss", bosses)
+    take("elite", elites)
+    if ancient:
+        take("ancient", ancient, act=ancient_act)
+    for part in shop.split(","):
+        part = part.strip().upper()
+        if not part:
+            continue
+        kind = "shop_card"
+        if ":" in part and part.split(":", 1)[0] in ("CARD", "RELIC", "POTION"):
+            prefix, part = part.split(":", 1)
+            kind = f"shop_{prefix.lower()}"
+        take(kind, part)
+    if len(out) > MAX_PREDICATES:
+        raise PredicateError(f"at most {MAX_PREDICATES} predicates")
+    return out
+
+
+def _legacy_compatible(predicates: list, chars: tuple, build_id, players, win) -> bool:
+    """The pre-index scan only knew deck, offered, relic, event and one
+    ancient with an act, for one character; anything else has no legacy
+    answer and must wait for the index rather than return a looser one."""
+    if build_id or players or win or len(chars) > 1:
+        return False
+    for pr in predicates:
+        if pr.kind not in ("deck", "offered", "relic", "event", "ancient"):
+            return False
+        if pr.floor_max is not None or pr.floor_min is not None or pr.seat is not None:
+            return False
+        if pr.act is not None and pr.kind != "ancient":
+            return False
+    return True
+
+
 @router.get("/seed-finder", tags=["Runs"], include_in_schema=False)
 @limiter.limit(rate_limit_config.endpoint_limit("runs.get_seed_finder", "20/minute"))
 def get_seed_finder(
@@ -2087,12 +2214,146 @@ def get_seed_finder(
     events: str = "",
     ancient: str | None = None,
     ancient_act: int | None = Query(None, ge=1, le=4),
+    neow: str = "",
+    ancient_offers: str = "",
+    bosses: str = "",
+    elites: str = "",
+    shop: str = "",
+    build_id: str | None = Query(None, max_length=24),
+    players: int | None = Query(None, ge=1, le=4),
+    win: bool = False,
+    evidence: Literal["recorded", "predicted", "any"] = "any",
     limit: int = Query(20, ge=1, le=50),
 ):
-    """Find community runs whose seed demonstrated a combination of content:
-    cards kept or offered (ID or ID:count), relics obtained, events seen, and
-    ancient relic offers. Ranked by how many predicates matched."""
+    """Find seeds the community has demonstrably played into a combination
+    of content: Neow and ancient offers, card rewards (by act, floor window
+    and count), relics, events, bosses, elites, shop stock and final deck,
+    scoped to a game version, lobby size and characters. Every hit is one
+    real run that showed all of it. Ranked by predicates matched, then
+    wins, then runs."""
     import hashlib
+
+    from ..services import seed_profiles
+    from ..services.seed_profiles import PredicateError
+
+    chars = tuple(
+        sorted(
+            {
+                c.strip()
+                for c in (character or "")
+                .upper()
+                .replace("+", ",")
+                .replace(" ", ",")
+                .split(",")
+                if c.strip() and c.strip() != "ANY"
+            }
+        )
+    )
+    try:
+        predicates = _seed_predicates(
+            deck,
+            offered,
+            relics,
+            events,
+            ancient,
+            ancient_act,
+            neow,
+            bosses,
+            elites,
+            shop,
+            ancient_offers,
+        )
+    except PredicateError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    if not predicates:
+        response.headers["Cache-Control"] = "no-store"
+        return {"available": False, "detail": "give me at least one predicate"}
+
+    if not seed_profiles.available():
+        if evidence != "predicted" and _legacy_compatible(
+            predicates, chars, build_id, players, win
+        ):
+            found = _legacy_seed_finder(
+                chars[0] if chars else None,
+                deck,
+                offered,
+                relics,
+                events,
+                ancient,
+                ancient_act,
+                limit,
+            )
+            response.headers["Cache-Control"] = "no-store"
+            if not found or found.get("available") is False:
+                return {
+                    "available": False,
+                    "detail": (found or {}).get("detail") or "error",
+                }
+            return {"available": True, **found}
+        response.headers["Cache-Control"] = "no-store"
+        response.status_code = 503
+        return {"available": False, "detail": "index_building"}
+
+    key_src = "|".join(
+        [
+            seed_profiles.generation(),
+            ",".join(chars),
+            ";".join(pr.label() for pr in predicates),
+            build_id or "",
+            str(players or ""),
+            str(win),
+            evidence,
+            str(limit),
+        ]
+    )
+    cache_key = "seedfind2:" + hashlib.sha1(key_src.encode()).hexdigest()
+    cached = app_cache.get_json(cache_key)
+    if cached is not None:
+        response.headers["Cache-Control"] = "public, max-age=300"
+        return cached
+    try:
+        found = seed_profiles.search(
+            predicates,
+            seed_profiles.Scope(
+                build_id=build_id or None,
+                player_count=players,
+                characters=chars,
+                win_only=win,
+                evidence=evidence,
+            ),
+            limit=limit,
+        )
+    except PredicateError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except Exception:
+        logger.exception("seed finder index query failed")
+        response.headers["Cache-Control"] = "no-store"
+        response.status_code = 503
+        return {"available": False, "detail": "index_error"}
+    payload = {
+        "available": True,
+        "engine": "index",
+        "index": seed_profiles.meta(),
+        **found,
+    }
+    app_cache.set_json(cache_key, payload, ttl_seconds=600)
+    response.headers["Cache-Control"] = "public, max-age=300"
+    return payload
+
+
+def _legacy_seed_finder(
+    char: str | None,
+    deck: str,
+    offered: str,
+    relics: str,
+    events: str,
+    ancient: str | None,
+    ancient_act: int | None,
+    limit: int,
+) -> dict:
+    """The live Mongo scan the finder used before the seed index existed;
+    still the answer on a box that has not pulled the index yet, and only
+    for the queries it can express."""
 
     def _counted(raw: str) -> list[tuple[str, int]]:
         out = []
@@ -2107,42 +2368,118 @@ def get_seed_finder(
                 out.append((pid, 1))
         return out
 
-    char = (character or "").strip().upper() or None
-    deck_cards = _counted(deck)
-    offered_cards = _counted(offered)
-    relic_ids = sorted(r.strip().upper() for r in relics.split(",") if r.strip())
-    event_ids = sorted(e.strip().upper() for e in events.split(",") if e.strip())
-    ancient_id = (ancient or "").strip().upper() or None
-    if not (deck_cards or offered_cards or relic_ids or event_ids or ancient_id):
-        response.headers["Cache-Control"] = "no-store"
-        return {"available": False, "detail": "give me at least one predicate"}
-
-    key_src = f"{char}|{deck_cards}|{offered_cards}|{relic_ids}|{event_ids}|{ancient_id}|{ancient_act}|{limit}"
-    cache_key = "seedfind:" + hashlib.sha1(key_src.encode()).hexdigest()
-    cached = app_cache.get_json(cache_key)
-    if cached is not None:
-        response.headers["Cache-Control"] = "public, max-age=300"
-        return cached
     from ..services.seed_finder import find_seeds
 
     try:
         found = find_seeds(
             char,
-            deck_cards,
-            offered_cards,
-            relic_ids,
-            event_ids,
-            ancient_id,
+            _counted(deck),
+            _counted(offered),
+            sorted(r.strip().upper() for r in relics.split(",") if r.strip()),
+            sorted(e.strip().upper() for e in events.split(",") if e.strip()),
+            (ancient or "").strip().upper() or None,
             ancient_act,
             limit=limit,
         )
     except Exception:
         logger.warning("seed finder failed", exc_info=True)
-        found = None
-    if found is None:
+        return {"available": False, "detail": "error"}
+    if found:
+        found["engine"] = "legacy"
+    return found or {"available": False, "detail": "error"}
+
+
+@router.get("/seed-finder/meta", tags=["Runs"], include_in_schema=False)
+def get_seed_finder_meta(request: Request, response: Response):
+    from ..services import seed_profiles
+
+    response.headers["Cache-Control"] = "public, max-age=300"
+    return {"available": seed_profiles.available(), **seed_profiles.meta()}
+
+
+@router.get("/seed-finder/random", tags=["Runs"], include_in_schema=False)
+@limiter.limit(
+    rate_limit_config.endpoint_limit("runs.get_seed_finder_random", "10/minute")
+)
+def get_seed_finder_random(
+    request: Request,
+    response: Response,
+    build_id: str | None = Query(None, max_length=24),
+    min_runs: int = Query(1, ge=1, le=100),
+):
+    from ..services import seed_profiles
+
+    response.headers["Cache-Control"] = "no-store"
+    if not seed_profiles.available():
+        response.status_code = 503
+        return {"available": False, "detail": "index_building"}
+    try:
+        pick = seed_profiles.random_seed(build_id or None, min_runs)
+    except Exception:
+        logger.exception("seed finder random failed")
+        response.status_code = 503
+        return {"available": False, "detail": "index_error"}
+    if pick is None:
+        return {"available": False, "detail": "no_seed"}
+    return {"available": True, "seed": pick}
+
+
+@router.get("/seed-finder/seed/{seed}", tags=["Runs"], include_in_schema=False)
+@limiter.limit(rate_limit_config.endpoint_limit("runs.get_seed_profile", "20/minute"))
+def get_seed_profile(
+    request: Request,
+    response: Response,
+    seed: str,
+    build_id: str | None = Query(None, max_length=24),
+    party: str = Query("", max_length=64),
+):
+    """Everything the community's runs have shown for one seed: Neow offers,
+    bosses, ancients, events, card rewards by floor, relics, final deck,
+    shop stock and the act 1 map when a replay recorded it, per version and
+    party."""
+    from ..services import seed_profiles
+
+    cleaned = seed_profiles.normalize_seed(seed)
+    if not cleaned:
+        raise HTTPException(status_code=422, detail="seed is required")
+    characters = tuple(
+        ch.strip().upper() for ch in party.replace("+", ",").split(",") if ch.strip()
+    )
+    if characters and (
+        not 1 <= len(characters) <= 4
+        or any(
+            ch not in {"IRONCLAD", "SILENT", "DEFECT", "NECROBINDER", "REGENT"}
+            for ch in characters
+        )
+    ):
+        raise HTTPException(status_code=422, detail="unsupported party")
+    if not seed_profiles.available() and not (build_id and characters):
         response.headers["Cache-Control"] = "no-store"
-        return {"available": False}
-    payload = {"available": True, **found}
+        response.status_code = 503
+        return {
+            "available": False,
+            "detail": "index_building",
+            "seed": cleaned,
+            "variants": [],
+        }
+    cache_key = f"seedprofile:{seed_profiles.generation()}:{cleaned}:{build_id or ''}:{'+'.join(characters)}"
+    cached = app_cache.get_json(cache_key)
+    if cached is not None:
+        response.headers["Cache-Control"] = "public, max-age=300"
+        return cached
+    try:
+        prof = seed_profiles.profile(cleaned, build_id or None, characters)
+    except Exception:
+        logger.exception("seed profile failed")
+        response.headers["Cache-Control"] = "no-store"
+        response.status_code = 503
+        return {
+            "available": False,
+            "detail": "index_error",
+            "seed": cleaned,
+            "variants": [],
+        }
+    payload = {"available": True, **prof}
     app_cache.set_json(cache_key, payload, ttl_seconds=600)
     response.headers["Cache-Control"] = "public, max-age=300"
     return payload

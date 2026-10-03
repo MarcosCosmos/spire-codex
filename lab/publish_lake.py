@@ -23,6 +23,14 @@ SERVE_FILES = (
     "frame.parquet",
     "generation.json",
     "ingest_metrics.jsonl",
+    "runs_export.jsonl.gz",
+    "runs_export.json",
+    "player_elo.json",
+    "seed_facts.parquet",
+    "seed_profiles.parquet",
+    "seed_facts_predicted.parquet",
+    "seed_profiles_predicted.parquet",
+    "seed_profiles_meta.json",
 )
 
 KEEP_GENERATIONS = 2
